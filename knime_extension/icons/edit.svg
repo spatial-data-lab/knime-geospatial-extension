@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+
+<svg
+   width="16"
+   height="16"
+   viewBox="0 0 4.2333332 4.2333335"
+   version="1.1"
+   id="svg853"
+   inkscape:version="1.1 (c68e22c387, 2021-05-23)"
+   sodipodi:docname="edit.svg"
+   inkscape:export-filename="C:\DEV\Python\geo\icons\edit.png"
+   inkscape:export-xdpi="96"
+   inkscape:export-ydpi="96"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <sodipodi:namedview
+     id="namedview855"
+     pagecolor="#505050"
+     bordercolor="#ffffff"
+     borderopacity="1"
+     inkscape:pageshadow="0"
+     inkscape:pageopacity="0"
+     inkscape:pagecheckerboard="1"
+     inkscape:document-units="mm"
+     showgrid="false"
+     units="px"
+     inkscape:zoom="60.5625"
+     inkscape:cx="8"
+     inkscape:cy="7.9917441"
+     inkscape:window-width="1886"
+     inkscape:window-height="1168"
+     inkscape:window-x="1945"
+     inkscape:window-y="0"
+     inkscape:window-maximized="0"
+     inkscape:current-layer="layer1" />
+  <defs
+     id="defs850" />
+  <g
+     inkscape:label="Layer 1"
+     inkscape:groupmode="layer"
+     id="layer1">
+    <g
+       id="use32"
+       transform="matrix(0.02501779,0,0,0.02334409,0.24108295,0.36726056)">
+      <polygon
+         id="polygon851"
+         points="3.54,110.98 0,149.88 38.89,146.34 " />
+      <polygon
+         id="polygon853"
+         points="3.57,111.02 114.58,0 149.94,35.35 38.92,146.37 " />
+    </g>
+  </g>
+</svg>
