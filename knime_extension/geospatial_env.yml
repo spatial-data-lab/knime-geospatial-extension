@@ -1,0 +1,11 @@
+name: geospatial_env
+channels:
+  - knime
+  - conda-forge
+dependencies:
+  - packaging
+  - python=3.9
+  - knime-extension
+  - knime-python-base
+  - geopandas
+  - libpysal
