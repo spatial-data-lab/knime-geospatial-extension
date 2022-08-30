@@ -12,11 +12,11 @@ This repository is the home of the Geospatial Analysis Nodes Extension for [KNIM
 
 ## Installation
 The extension will be is installable via the [KNIME Hub](https://hub.knime.com/) once it is publicly available. 
-If you want to test the latest version you can follow the instructions in the Setup section of the Contribution guide.
+If you want to test the latest version you can follow the instructions in the Setup section of the [Contribution guide](https://github.com/spatial-data-lab/knime-geospatial-extension/blob/main/CONTRIBUTING.md#setup).
 
 
 ## Contribute
-We are very happy about every contributor. Please read the [Contributors' Guide]() for more details.
+We are very happy about every contributor. Please read the [Contributors' Guide](https://github.com/spatial-data-lab/knime-geospatial-extension/blob/main/CONTRIBUTING.md) for more details.
 
 
 ## License
