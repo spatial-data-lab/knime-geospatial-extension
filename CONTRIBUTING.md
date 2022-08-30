@@ -31,9 +31,9 @@ conda info
 # Record the env location path such as D:\ProgramData\Anaconda3\envs\my_python_env 
 ```
 
-4. Configure the KNIME Python setting.  
-KNIME -> File-> Preference> KNIME> Conda  Choose anaconda directory
-KNIME -> File-> Preference> KNIME> Python(Labs) Choose my_python_env
+4. Configure the following KNIME Python settings:
+   * KNIME -> File-> Preference> KNIME> Conda  Choose anaconda directory
+   * KNIME -> File-> Preference> KNIME> Python(Labs) Choose my_python_env
 
 5. Clone this repository
 ```bash
