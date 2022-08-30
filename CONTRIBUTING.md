@@ -51,9 +51,9 @@ git clone  https://github.com/spatial-data-lab/knime-python-spatial-statistic-no
 
 
 ## Testing
-Every KNIME node that is part of this extension should be accompanied by a KNIME workflow that tests its functionality and also known corner cases. To write the workflows KNIME provides the [KNIME Testing Framework UI extension](https://kni.me/e/ufBEiCcvH9QIFePn) that contains several helper nodes e.g. the [Testflow Configuration node](https://kni.me/n/SrlKL_mJ63P7BVXh) and the [Table Difference Checker node](https://kni.me/n/dWyH_vs7JoIWPRsJ) to create test data and to compare results.
+Every KNIME node that is part of this extension should be accompanied by a KNIME workflow that tests its functionality and its corner cases. To write test workflows KNIME provides the [KNIME Testing Framework UI extension](https://kni.me/e/ufBEiCcvH9QIFePn) that contains several helper nodes. For example, the [Testflow Configuration node](https://kni.me/n/SrlKL_mJ63P7BVXh) allows you to specify which errors or warnings are expected by a specific node within the test workflow. The [Table Difference Checker node](https://kni.me/n/dWyH_vs7JoIWPRsJ) allows you to compare the output table of a node with a gold standard table.
 
-[Test guideline ](https://docs.google.com/document/d/1XrJFvqVCreyBGRcP9M-M9afq0l5gFGIMxk_SUpno1yc/edit?usp=sharing)
+For a detailed introduction on how to write good workflow tests and execute them within the KNIME Analytics Platform have a look at this [blog post](https://www.knime.com/blog/enter-the-era-of-automated-workflow-testing-and-validation).
 
 
 ## Build
