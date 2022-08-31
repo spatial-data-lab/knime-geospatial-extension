@@ -14,7 +14,11 @@ def is_numeric(column: knext.Column) -> bool:
     Checks if column is numeric e.g. int, long or double.
     @return: True if Column is numeric
     """
-    return column.ktype == knext.double()
+    return (
+        column.ktype == knext.double()
+        or column.ktype == knext.int32()
+        or column.ktype == knext.int64()
+    )
 
 def is_string(column: knext.Column) -> bool:
     """
