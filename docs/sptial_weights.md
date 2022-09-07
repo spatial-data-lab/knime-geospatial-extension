@@ -89,7 +89,7 @@ Default is "Fixed", other options include "Fixed","Adaptive"
 
 ## Examples
 
-The example shows how to use the spatial weights nodes to calculate the spatial weights of points data (Baltimore Home Location). The example workflow can be downloaded [here]().
+The example shows how to use the spatial weights nodes to calculate the spatial weights of points data (Baltimore Home Location). The example workflow can be downloaded [here](https://github.com/spatial-data-lab/knime-geospatial-extension/blob/main/tests/nodes/spatial-weights.knwf).
 
 
 ### Data
@@ -109,8 +109,8 @@ Overview of the workflow.
 
 #### How to run 
 
-1. Download the workflow and import it to Knime
-2. Download the data
+1. [Download the workflow](https://github.com/spatial-data-lab/knime-geospatial-extension/blob/main/tests/nodes/spatial-weights.knwf) and import it to Knime
+2. [Download the data](https://drive.google.com/file/d/1Fa7lK4HvxuF2QwCe9oo_vXv1n_uiHsvV/view?usp=sharing)
 3. Dobble click the `GeoReader-Layer` node and select the downloaded data from setp2
 4. click execute all executable nodes in the toolbar
 
