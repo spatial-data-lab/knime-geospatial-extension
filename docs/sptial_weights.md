@@ -1,18 +1,18 @@
-# User Guide for Geosptial extension (sptial weights)
+# User Guide for Geospatial extension (spatial weights)
 
 
 
 ## How to install the extension
 
-You should use Knime 4.7 before start. The extension is build with python 3.9 and libpysal libpysal 4.6.2.   
+You should use Knime 4.7 before starting. The extension is built with python 3.9 and libpysal 4.6.2.   
 
-1. Download the extension from [here](https://drive.google.com/file/d/1SUcQVFK7klSMgdCDvOy5y0PVSOo2JMUE/view?usp=sharing)  (named `my_extension` for now), once it's done, you can download from knimehub.
-2. Uzip the file `my_extension.zip` to `your_path/my_extension`
-3. Open Knime and click File → Preferences → Install/Update → Available Software Sites, click Add..
+1. Download the extension from [here](https://drive.google.com/file/d/1SUcQVFK7klSMgdCDvOy5y0PVSOo2JMUE/view?usp=sharing)  (named `my_extension` for now), once it's done, you can download from Knimehub.
+2. Unzip the file `my_extension.zip` to `your_path/my_extension`
+3. Open Knime and click File → Preferences → Install/Update → Available Software Sites, and click Add..
 
 ![](./imgs/addsite.PNG)
 
-Input a name like `my_extension`and click Local... , select the folder you uzipped `your_path/my_extension`. Apply the preferences
+Input a name like `my_extension`and click Local... , select the folder you unzipped `your_path/my_extension`. Apply the preferences
 
 4. Install it via File → Install KNIME Extensions
 
@@ -24,7 +24,7 @@ Input a name like `my_extension`and click Local... , select the folder you uzipp
 ![](./imgs/nodes.PNG)
 
 
-## Sptial weights References
+## Spatial weights References
 
 This node constructs a contiguity spatial weights matrix from the input data. 
 
@@ -89,19 +89,19 @@ Default is "Fixed", other options include "Fixed","Adaptive"
 
 ## Examples
 
-The example show how to use the sptial weights nodes to calculate the sptial weights of points data (Baltimore Home Location). The example workflow can be downlaod [here]().
+The example shows how to use the spatial weights nodes to calculate the spatial weights of points data (Baltimore Home Location). The example workflow can be downloaded [here]().
 
 
 ### Data
 
-Baltimore Home Sales 1970s (https://geodacenter.github.io/data-and-lab/baltim/),Download from [here](https://drive.google.com/file/d/1Fa7lK4HvxuF2QwCe9oo_vXv1n_uiHsvV/view?usp=sharing). Data overview as below,
+Baltimore Home Sales 1970s (https://geodacenter.github.io/data-and-lab/baltim/),Download from [here](https://drive.google.com/file/d/1Fa7lK4HvxuF2QwCe9oo_vXv1n_uiHsvV/view?usp=sharing). Data overview is below,
 
 ![](./imgs/2022-09-07-17-01-51.png)
 
 
 ### Workflow
 
-Overview of the work flow.
+Overview of the workflow.
 
 
 ![](./imgs//2022-09-07-17-20-52.png)
@@ -109,31 +109,31 @@ Overview of the work flow.
 
 #### How to run 
 
-1. Download the workflow and import to Knime
-2. Downlaod the data
+1. Download the workflow and import it to Knime
+2. Download the data
 3. Dobble click the `GeoReader-Layer` node and select the downloaded data from setp2
-4. click excute all executable nodes in the tool bar
+4. click execute all executable nodes in the toolbar
 
 #### Explanation
 
 
 - GeoReader-Layer
 
-This node read geo-package format data. Dobble click to select the geo-package data.
+This node read geo-package format data. Double click to select the geo-package data.
 
-- Sptial Weights
+- Spatial Weights
 
-This node calulcate the Sptial weights of points or ploygon data. more detilas see Sptial weights References
+This node calculates the Spatial weights of points or polygon data. For more details see Spatial weights References
 
 
 - Table View
 
-The data view of the sptial weight 
+The data view of the spatial weight 
 
 
 - Excel Writer
 
-Write sptial weight into local drive as excel file.
+Write spatial weight into the local drive as an excel file.
 
 
 ### The results
