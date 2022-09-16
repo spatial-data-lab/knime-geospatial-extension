@@ -7,11 +7,21 @@ Everybody is welcome to contribute to this Geospatial extension. The repository 
 Please send a [GitHub Pull Request to KNIME Geospatial Extension](https://github.com/spatial-data-lab/knime-python-spatial-statistic-nodes/pull/new/master) with a clear list of what you've done (read more about [pull requests](http://help.github.com/pull-requests/)). When you send a pull request, please also include an example or testing workflow that demonstrates or tests the new functionality. We can always use more test coverage. Please follow our coding conventions (below) and make sure all of your commits are atomic (one feature per commit).
 
 
-## Coding conventions
-We use the [PEP-8 Style guide](https://peps.python.org/pep-0008/) as a guideline for our source code.
+## Coding Style + Formatting: black
+
+Code must be formatted with [“The uncompromising code formatter” Black](https://black.readthedocs.io/en/stable/)
+* Black defines the code style, and there is no manual formatting involved
+* Black tries to produce small diffs when code changes
+* Black is available as a command-line tool and in many editors: [Editor integration](https://black.readthedocs.io/en/stable/integrations/editors.html)
+
+## Linting
+
+We use [SonarLint](https://www.sonarsource.com/python/) for linting.
+* SonarLint for PyCharm: [SonarLint - IntelliJ IDEs Plugin](https://plugins.jetbrains.com/plugin/7973-sonarlint)
+* SonarLint for VSCode: https://marketplace.visualstudio.com/items?itemName=SonarSource.sonarlint-vscode
 
 
-## Setup
+## Setup for KNIME Analytics Platform
 
 This is a short step by step guide on how to setup your development environment to get started with the node development.
 
@@ -36,10 +46,10 @@ conda info
    * KNIME -> File-> Preference> KNIME> Python(Labs) Choose my_python_env
 
 5. Clone this repository
-```bash
-git clone  https://github.com/spatial-data-lab/knime-python-spatial-statistic-nodes.git
+   ```bash
+   git clone  https://github.com/spatial-data-lab/knime-python-spatial-statistic-nodes.git
 
-```
+   ```
 
 6. Adapt the `config.yml` file to point to the `knime_extension` folder on your local hard drive as described [here](https://docs.knime.com/latest/pure_python_node_extensions_guide/index.html#tutorial-writing-first-py-node). The file tells the KNIME Analytics Platform where to search for the Python extension on your local hard drive during development and debugging.
 
