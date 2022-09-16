@@ -22,3 +22,4 @@ We are very happy about every contributor. Please read the [Contributors' Guide]
 ## License
 The repository is released under the [MIT License](https://opensource.org/licenses/MIT).
 
+[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)

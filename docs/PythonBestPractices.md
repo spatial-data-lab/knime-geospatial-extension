@@ -55,21 +55,21 @@ _-Dknime.python.extension.config=C:\DEV\Python\config.yml_
 
 ## Local Debugging
 
-To debug your Python code in Visual Studio Code (VSCode) follow the following steps:
+To debug your Python code in Visual Studio Code (VSCode) even though it is executed from KNIME, perform the following steps:
 
-1. In the Python environment that you use for running the tests, install _ **debugpy** _ using
+1. In the Python environment that you use for running the tests, install **debugpy** using
 _pip install debugpy_ or Anaconda or similar
 2. Open the Python file you want to edit, e.g., _my\_node__.py_ (by pressing _Ctrl+P_ and start typing the file name)
 3. Inject the following lines of code in your Python file from where you want to start debugging e.g. in the _execute_ method of your node:
-```python
- import debugpy
- import logging
- LOGGER = logging.getLogger(__name__)
- debugpy.listen(5678)
- LOGGER.error("Waiting for debugger attach")
- debugpy.wait_for_client()
- debugpy.breakpoint()
-```
+    ```python
+    import debugpy
+    import logging
+    LOGGER = logging.getLogger(__name__)
+    debugpy.listen(5678)
+    LOGGER.error("Waiting for debugger attach")
+    debugpy.wait_for_client()
+    debugpy.breakpoint()
+    ```
 4. Start KNIME Analytics Platform and execute the Python node you want to debug
 5. Once you see "Waiting for debugger attach" in the KNIME Analytics Platform console, go to VSCode and open the **Run & Debug** view (*Ctrl+Shift+D*), click  **Run and Debug** , choose  **Remote**  **Attach** , localhost (should be default), and Port 5678 (default).
  (If you do not have a Python file open while clicking here, it will not show the Python debugging options!)
