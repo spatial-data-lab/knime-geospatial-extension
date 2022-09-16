@@ -21,25 +21,36 @@ category = knext.category(
 )
 
 
-@knext.node(name="Geospatial View", node_type=knext.NodeType.VISUALIZER, icon_path="icons/icon.png", category=category)
-@knext.input_table(name="Geospatial table to visualize", description="Table with geospatial data to visualize")
-@knext.output_view(name="Geospatial view", description="Showing a map woth the selected geo points.")
+@knext.node(
+    name="Geospatial View",
+    node_type=knext.NodeType.VISUALIZER,
+    icon_path="icons/icon.png",
+    category=category,
+)
+@knext.input_table(
+    name="Geospatial table to visualize",
+    description="Table with geospatial data to visualize",
+)
+@knext.output_view(
+    name="Geospatial view", description="Showing a map woth the selected geo points."
+)
 class ViewNode:
     """
     This node will visualize the given geometric elements on a map.
     """
+
     geo_col = knext.ColumnParameter(
         "Geometry column",
         "Select the geometry column to visualize.",
-        column_filter=knut.is_geo_point, # Allows only GeoPoints
+        column_filter=knut.is_geo_point,  # Allows only GeoPoints
         include_row_key=False,
-        include_none_column=False
+        include_none_column=False,
     )
 
     name_cols: knext.MultiColumnParameter = knext.MultiColumnParameter(
         "Tooltip columns",
         "Select columns which should be shown in the marker tooltip.",
-        column_filter=knut.is_string
+        column_filter=knut.is_string,
     )
 
     color_col = knext.ColumnParameter(
@@ -47,7 +58,7 @@ class ViewNode:
         "Select marker color column. The column must contain the color name e.g. red, green, blue, etc.",
         column_filter=knut.is_string,
         include_row_key=False,
-        include_none_column=False
+        include_none_column=False,
     )
 
     def configure(self, configure_context, input_schema):
@@ -61,45 +72,49 @@ class ViewNode:
 
         exec_context.set_progress(0.1, "Checking CRS")
         knut.check_canceled(exec_context)
-        
-        #project the gdf into the default CRS used by folium if necessary
-        #TODO: DOes not seem to work like this
+
+        # project the gdf into the default CRS used by folium if necessary
+        # TODO: DOes not seem to work like this
         # if gdf.crs != "EPSG:3857":
         #     gdf = gdf.to_crs("EPSG:3857")
 
         exec_context.set_progress(0.3, "Computing map center")
         knut.check_canceled(exec_context)
-        
-        #compute the mean coordinate for the tile center
-        gdf['Lat'] = gdf[self.geo_col].y
-        gdf['Long'] = gdf[self.geo_col].x
-        mean_lat_long = gdf[['Lat', 'Long']].mean().values.tolist()
-       
-        map =  folium.Map(location = mean_lat_long, tiles = "OpenStreetMap", zoom_start = 3)
+
+        # compute the mean coordinate for the tile center
+        gdf["Lat"] = gdf[self.geo_col].y
+        gdf["Long"] = gdf[self.geo_col].x
+        mean_lat_long = gdf[["Lat", "Long"]].mean().values.tolist()
+
+        map = folium.Map(location=mean_lat_long, tiles="OpenStreetMap", zoom_start=3)
 
         exec_context.set_progress(0.5, "Create markers")
         knut.check_canceled(exec_context)
         # Create a geometry list from the GeoDataFrame
-        geo_df_list = [[point.xy[1][0], point.xy[0][0]] for point in gdf.geometry ]
+        geo_df_list = [[point.xy[1][0], point.xy[0][0]] for point in gdf.geometry]
         # Iterate through list and add a marker for each volcano, color-coded by its type.
         i = 0
         for coordinates in geo_df_list:
             # Place the markers with the popup labels and data
             tooltip = ""
             for col_name in self.name_cols:
-                tooltip += col_name + ": " + str(gdf[col_name][i]) + '<br>'
-                
-            map.add_child(folium.Marker(location = coordinates,
-                                    popup = tooltip + "Coordinates: " + str(geo_df_list[i]),
-                                    icon = folium.Icon(color = "%s" % gdf[self.color_col][i])))
+                tooltip += col_name + ": " + str(gdf[col_name][i]) + "<br>"
+
+            map.add_child(
+                folium.Marker(
+                    location=coordinates,
+                    popup=tooltip + "Coordinates: " + str(geo_df_list[i]),
+                    icon=folium.Icon(color="%s" % gdf[self.color_col][i]),
+                )
+            )
             i = i + 1
-            
+
         exec_context.set_progress(0.8, "Fit map view to markers")
         knut.check_canceled(exec_context)
-        #calculate the corner coordinates and fit the view port
-        sw = gdf[['Lat', 'Long']].min().values.tolist()
-        ne = gdf[['Lat', 'Long']].max().values.tolist()
-        map.fit_bounds([sw, ne]) 
+        # calculate the corner coordinates and fit the view port
+        sw = gdf[["Lat", "Long"]].min().values.tolist()
+        ne = gdf[["Lat", "Long"]].max().values.tolist()
+        map.fit_bounds([sw, ne])
 
         exec_context.set_progress(0.95, "Create view")
         knut.check_canceled(exec_context)

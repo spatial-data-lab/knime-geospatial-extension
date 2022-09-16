@@ -1,4 +1,4 @@
-#The root category of all Geospatial categories
+# The root category of all Geospatial categories
 import knime_extension as knext
 
 # This defines the root Geospatial KNIME category that is displayed in the node repository
@@ -12,7 +12,7 @@ category = knext.category(
 )
 
 
-#The different node files
+# The different node files
 import nodes.manipulation
 import nodes.overlay
 import nodes.spatial_weights
