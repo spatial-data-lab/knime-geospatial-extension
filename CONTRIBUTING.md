@@ -61,9 +61,11 @@ conda info
 
 
 ## Testing
-Every KNIME node that is part of this extension should be accompanied by a KNIME workflow that tests its functionality and its corner cases. To write test workflows KNIME provides the [KNIME Testing Framework UI extension](https://kni.me/e/ufBEiCcvH9QIFePn) that contains several helper nodes. For example, the [Testflow Configuration node](https://kni.me/n/SrlKL_mJ63P7BVXh) allows you to specify which errors or warnings are expected by a specific node within the test workflow. The [Table Difference Checker node](https://kni.me/n/dWyH_vs7JoIWPRsJ) allows you to compare the output table of a node with a gold standard table.
+Every KNIME node that is part of this extension should be accompanied by a KNIME workflow that tests its functionality and its corner cases. 
 
-For a detailed introduction on how to write good workflow tests and execute them within the KNIME Analytics Platform have a look at this [blog post](https://www.knime.com/blog/enter-the-era-of-automated-workflow-testing-and-validation).
+To write test workflows KNIME provides the [KNIME Testing Framework UI extension](https://kni.me/e/ufBEiCcvH9QIFePn) that contains several helper nodes. For example, the [Testflow Configuration node](https://kni.me/n/SrlKL_mJ63P7BVXh) allows you to specify which errors or warnings are expected by a specific node within the test workflow. This is useful to test that you node properly validates input values e.g. that they must not be empty. The [Table Difference Checker node](https://kni.me/n/dWyH_vs7JoIWPRsJ) allows you to compare the output table of a node with a gold standard table.
+
+For a detailed introduction on how to write good workflow tests and execute them within the KNIME Analytics Platform have a look at this [blog post](https://medium.com/low-code-for-advanced-data-science/testflows-in-knime-analytics-platform-539bd6509980).
 
 
 ## Build
