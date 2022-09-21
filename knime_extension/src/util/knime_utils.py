@@ -20,9 +20,10 @@ def is_numeric(column: knext.Column) -> bool:
         or column.ktype == knext.int64()
     )
 
+
 def is_string(column: knext.Column) -> bool:
     """
-    Checks if column is string 
+    Checks if column is string
     @return: True if Column is string
     """
     return column.ktype == knext.string()
@@ -34,7 +35,10 @@ def is_geo(column: knext.Column) -> bool:
     GeoPointCell, GeoLineCell, GeoPolygonCell, GeoMultiPointCell, GeoMultiLineCell, GeoMultiPolygonCell, ...
     @return: True if Column Type is GeoValue compatible
     """
-    return isinstance(column.ktype, knext.LogicalType) and column.ktype.value_type == knext.logical(gt.GeoValue).value_type
+    return (
+        isinstance(column.ktype, knext.LogicalType)
+        and column.ktype.value_type == knext.logical(gt.GeoValue).value_type
+    )
 
 
 def is_geo_point(column: knext.Column) -> bool:
@@ -99,23 +103,36 @@ def __is_geo_x(column: knext.Column, type: str) -> bool:
     GeoPointCell, GeoLineCell, GeoPolygonCell, GeoMultiPointCell, GeoMultiLineCell, GeoMultiPolygonCell, ...
     @return: True if Column Type is a GeoLogical Point
     """
-    return isinstance(column.ktype, knext.LogicalType) and type in column.ktype.logical_type
+    return (
+        isinstance(column.ktype, knext.LogicalType)
+        and type in column.ktype.logical_type
+    )
 
 
 ############################################
 # General helper
 ############################################
-def column_exists(column: knext.Column, schema: knext.Schema, none_msg : str = "Please select a column") -> None:
+def column_exists(
+    column: knext.Column, schema: knext.Schema, none_msg: str = "Please select a column"
+) -> None:
     """
     Checks that the given column is not None and exists in the given schema otherwise it throws an exception
     """
     if column is None:
         raise knext.InvalidParametersError(none_msg)
-    #Check that the column exists in the schema     
+    # Check that the column exists in the schema
     if column not in schema.column_names:
-        raise knext.InvalidParametersError(f"Column '{column}' not available in input table")
+        raise knext.InvalidParametersError(
+            f"Column '{column}' not available in input table"
+        )
+    # TODO: Check that column type of input and selected column is the same
 
-def columns_exist(columns: List[knext.Column], schema: knext.Schema, none_msg : str = "Please select a column") -> None:
+
+def columns_exist(
+    columns: List[knext.Column],
+    schema: knext.Schema,
+    none_msg: str = "Please select a column",
+) -> None:
     """
     Checks that the given columns are not None and exist in the given schema otherwise it throws an exception
     """
