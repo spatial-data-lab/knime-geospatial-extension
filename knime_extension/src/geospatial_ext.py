@@ -13,7 +13,7 @@ category = knext.category(
 
 
 # The different node files
-import nodes.manipulation
+import nodes.calculation
 import nodes.overlay
 import nodes.spatial_weights
 import nodes.transform
