@@ -6,13 +6,13 @@
 
 You should use Knime 4.7 before starting. The extension is built with python 3.9 and libpysal 4.6.2.   
 
-1. Download the extension from [here](https://drive.google.com/file/d/1SUcQVFK7klSMgdCDvOy5y0PVSOo2JMUE/view?usp=sharing)  (named `my_extension` for now), once it's done, you can download from Knimehub.
-2. Unzip the file `my_extension.zip` to `your_path/my_extension`
+1. Download the extension from [here](https://drive.google.com/file/d/1SUcQVFK7klSMgdCDvOy5y0PVSOo2JMUE/view?usp=sharing)  (named `spatial_weights` for now), once it's done, you can download from Knimehub.
+2. Unzip the file `spatial_weights.zip` to `your_path/spatial_weights`
 3. Open Knime and click File → Preferences → Install/Update → Available Software Sites, and click Add..
 
 ![](./imgs/addsite.PNG)
 
-Input a name like `my_extension`and click Local... , select the folder you unzipped `your_path/my_extension`. Apply the preferences
+Input a name like `spatial_weights`and click Local... , select the folder you unzipped `your_path/spatial_weights`. Apply the preferences
 
 4. Install it via File → Install KNIME Extensions
 
