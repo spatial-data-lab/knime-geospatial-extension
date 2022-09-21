@@ -30,16 +30,16 @@ This is a short step by step guide on how to setup your development environment 
 2.  Install KNIME extension: Open the downloaded KNIME Analytics Platform nightly build and click KNIME -> File-> Install KNIME Extensions, Search for 'Python' and select `KNIME Python Extension Development (Labs)`,`KNIME Python Integration (Labs) `, Disable the “Group items by category” option and search for 'geo' and select  `KNIME Geospatial Nodes`.
 
 3. Follow the instruction in the Tutorials section of the [Create a New Python based KNIME Extension guide](https://docs.knime.com/latest/pure_python_node_extensions_guide/index.html#_tutorials). When building the new Python environment for Geospatial node development also install the `geopandas` package as following: 
-```bash
-conda create -n my_python_env python=3.9 knime-python-base knime-extension geopandas -c knime -c conda-forge 
-
-conda activate my_python_env
-
-conda install libpysal scipy # if you use these packages, please install here too
-
-conda info
-# Record the env location path such as D:\ProgramData\Anaconda3\envs\my_python_env 
-```
+   ```bash
+   conda create -n my_python_env python=3.9 knime-python-base knime-extension geopandas -c knime -c conda-forge 
+   
+   conda activate my_python_env
+   
+   conda install libpysal scipy # if you use these packages, please install here too
+   
+   conda info
+   # Record the env location path such as D:\ProgramData\Anaconda3\envs\my_python_env 
+   ```
 
 4. Configure the following KNIME Python settings:
    * KNIME -> File-> Preference> KNIME> Conda  Choose anaconda directory
