@@ -75,7 +75,7 @@ class _SingelCalculator:
 @knext.node(
     name="Area",
     node_type=knext.NodeType.MANIPULATOR,
-    icon_path=__NODE_ICON_PATH + "LengthArea.png",
+    icon_path=__NODE_ICON_PATH + "Area.png",
     category=__category,
 )
 @knut.geo_node_description(
@@ -106,7 +106,7 @@ class AreaNode(_SingelCalculator):
 @knext.node(
     name="Length",
     node_type=knext.NodeType.MANIPULATOR,
-    icon_path=__NODE_ICON_PATH + "LengthArea.png",
+    icon_path=__NODE_ICON_PATH + "Length.png",
     category=__category,
 )
 @knut.geo_node_description(
