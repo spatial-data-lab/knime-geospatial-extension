@@ -24,7 +24,7 @@ category = knext.category(
 @knext.node(
     name="Geospatial View",
     node_type=knext.NodeType.VISUALIZER,
-    icon_path="icons/icon.png",
+    icon_path="icons/visualize.png",
     category=category,
 )
 @knext.input_table(
@@ -32,90 +32,149 @@ category = knext.category(
     description="Table with geospatial data to visualize",
 )
 @knext.output_view(
-    name="Geospatial view", description="Showing a map woth the selected geo points."
+    name="Geospatial view", description="Showing a map with the geospatial data"
 )
 class ViewNode:
     """
     This node will visualize the given geometric elements on a map.
     """
 
-    geo_col = knext.ColumnParameter(
-        "Geometry column",
-        "Select the geometry column to visualize.",
-        column_filter=knut.is_geo_point,  # Allows only GeoPoints
+    # geo_col = knext.ColumnParameter(
+    #     "Geometry column",
+    #     "Select the geometry column to visualize.",
+    #     column_filter=knut.is_geo_point,  # Allows only GeoPoints
+    #     include_row_key=False,
+    #     include_none_column=False,
+    # )
+
+    color_col = knext.ColumnParameter(
+        "Marker color column",
+        "Select marker color column. The column must contain the color name e.g. red, green, blue, etc.",
+        column_filter=knut.is_numeric,
         include_row_key=False,
         include_none_column=False,
     )
 
-    name_cols: knext.MultiColumnParameter = knext.MultiColumnParameter(
+    color_map = knext.StringParameter(
+        "Color map",
+        "Select the color map to use for the color column. See https://matplotlib.org/stable/tutorials/colors/colormaps.html",
+        default_value="viridis",
+        enum=["viridis", "plasma", "inferno", "magma", "cividis"],
+        
+    )
+
+    name_cols = knext.MultiColumnParameter(
         "Tooltip columns",
         "Select columns which should be shown in the marker tooltip.",
         column_filter=knut.is_string,
     )
 
-    color_col = knext.ColumnParameter(
-        "Marker color column",
-        "Select marker color column. The column must contain the color name e.g. red, green, blue, etc.",
+    popup_cols = knext.MultiColumnParameter(
+        "Popup columns",
+        "Select columns which should be shown in the marker popup.",
         column_filter=knut.is_string,
-        include_row_key=False,
-        include_none_column=False,
     )
 
+    base_map = knext.StringParameter(
+        "Base map",
+        "Select the base map to use for the visualization. See https://python-visualization.github.io/folium/quickstart.html#Tiles",
+        default_value="OpenStreetMap",
+        enum=["OpenStreetMap", "Stamen Terrain", "Stamen Toner", "Stamen Watercolor" "CartoDB positron", "CartoDB dark_matter"]
+    )
+
+    use_classify = knext.BoolParameter(
+        "Use classification",
+        "If checked, the color column will be classified using the selected classification method.",
+        default_value=True,
+    )
+
+    classification_method = knext.StringParameter(
+        "Classification method",
+        "Select the classification method to use for the color column.",
+        default_value="EqualInterval",
+        enum=['BoxPlot', 'EqualInterval', 'FisherJenks', 'FisherJenksSampled', 'HeadTailBreaks', 'JenksCaspall', 'JenksCaspallForced', 'JenksCaspallSampled', 'MaxP', 'MaximumBreaks', 'NaturalBreaks', 'Quantiles', 'Percentiles', 'StdMean']
+        
+    )
+
+    classification_bins = knext.IntParameter(
+        "Number of classes",
+        "Select the number of classes to use for the color column.",
+        default_value=5,
+        min_value=1,
+        max_value=10,
+    )
+
+    plot_legend = knext.BoolParameter(
+        "Show legend",
+        "If checked, a legend will be shown in the plot.",
+        default_value=True,
+
+    )
+
+    # size_col = knext.ColumnParameter(
+    #     "Marker size column",
+    #     "Select marker size column. The column must contain the size value.",
+    #     column_filter=knut.is_numeric,
+    # )
+
+    legend_caption = knext.StringParameter(
+        "Legend caption",
+        "Set the caption for the legend.",
+        default_value=color_col,
+    )
+
+
     def configure(self, configure_context, input_schema):
-        knut.columns_exist([self.geo_col, self.color_col], input_schema)
-        if self.name_cols is None:
-            self.name_cols = [c.name for c in input_schema if knut.is_string(c)]
+        # knut.columns_exist([ self.color_col,self.name_cols], input_schema)
+        # if self.name_cols is None:
+        #     self.name_cols = [c.name for c in input_schema if knut.is_string(c)]
         return None
 
     def execute(self, exec_context: knext.ExecutionContext, input_table):
-        gdf = gp.GeoDataFrame(input_table.to_pandas(), geometry=self.geo_col)
+        gdf = gp.GeoDataFrame(input_table.to_pandas(), geometry="geometry")
 
-        exec_context.set_progress(0.1, "Checking CRS")
-        knut.check_canceled(exec_context)
+        # if self.size_col is not None:
+        #     gdf["geometry"] = gdf.centroid
 
-        # project the gdf into the default CRS used by folium if necessary
-        # TODO: DOes not seem to work like this
-        # if gdf.crs != "EPSG:3857":
-        #     gdf = gdf.to_crs("EPSG:3857")
-
-        exec_context.set_progress(0.3, "Computing map center")
-        knut.check_canceled(exec_context)
-
-        # compute the mean coordinate for the tile center
-        gdf["Lat"] = gdf[self.geo_col].y
-        gdf["Long"] = gdf[self.geo_col].x
-        mean_lat_long = gdf[["Lat", "Long"]].mean().values.tolist()
-
-        map = folium.Map(location=mean_lat_long, tiles="OpenStreetMap", zoom_start=3)
-
-        exec_context.set_progress(0.5, "Create markers")
-        knut.check_canceled(exec_context)
-        # Create a geometry list from the GeoDataFrame
-        geo_df_list = [[point.xy[1][0], point.xy[0][0]] for point in gdf.geometry]
-        # Iterate through list and add a marker for each volcano, color-coded by its type.
-        i = 0
-        for coordinates in geo_df_list:
-            # Place the markers with the popup labels and data
-            tooltip = ""
-            for col_name in self.name_cols:
-                tooltip += col_name + ": " + str(gdf[col_name][i]) + "<br>"
-
-            map.add_child(
-                folium.Marker(
-                    location=coordinates,
-                    popup=tooltip + "Coordinates: " + str(geo_df_list[i]),
-                    icon=folium.Icon(color="%s" % gdf[self.color_col][i]),
+        if self.use_classify:
+            map = gdf.explore(
+                column=self.color_col, 
+                cmap=self.color_map,
+                tooltip=self.name_cols,
+                tiles=self.base_map,
+                popup=self.popup_cols,
+                scheme=self.classification_method,
+                k=self.classification_bins,
+                legend=self.plot_legend,
+                # marker_kwds={"radius":self.size_col},
+                legend_kwds={"caption": self.legend_caption,"scale":False,"max_labels":20,"colorbar":False}
                 )
+        else:
+            map = gdf.explore(
+                column=self.color_col, 
+                cmap=self.color_map,
+                tooltip=self.name_cols,
+                tiles=self.base_map,
+                popup=self.popup_cols,
+                legend=self.plot_legend,
+                # marker_kwds={"radius":self.size_col},
+                legend_kwds={"caption": self.legend_caption,"scale":False,"max_labels":3,"colorbar":True}
             )
-            i = i + 1
-
-        exec_context.set_progress(0.8, "Fit map view to markers")
-        knut.check_canceled(exec_context)
-        # calculate the corner coordinates and fit the view port
-        sw = gdf[["Lat", "Long"]].min().values.tolist()
-        ne = gdf[["Lat", "Long"]].max().values.tolist()
-        map.fit_bounds([sw, ne])
-
-        exec_context.set_progress(0.95, "Create view")
-        knut.check_canceled(exec_context)
+    
+        # knut.check_canceled(exec_context)
         return knext.view(map)
+
+
+
+
+# TODO:
+# make point view node interactive and static map
+# set size of the point, set color of the point
+# make polygon view node interactive and static map
+# only set the color of the polygon
+# multi-layer map
+# get two layers of data, and show them on the map
+# make dynamic map
+# not support yet
+# density map
+# line view

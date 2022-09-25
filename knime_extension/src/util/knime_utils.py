@@ -28,6 +28,19 @@ def is_string(column: knext.Column) -> bool:
     """
     return column.ktype == knext.string()
 
+def is_boolean(column: knext.Column) -> bool:
+    """
+    Checks if column is boolean
+    @return: True if Column is boolean
+    """
+    return column.ktype == knext.boolean()
+
+def is_numeric_or_string(column: knext.Column) -> bool:
+    """
+    Checks if column is numeric or string
+    @return: True if Column is numeric or string
+    """
+    return is_numeric(column) or is_string(column)
 
 def is_geo(column: knext.Column) -> bool:
     """
