@@ -63,18 +63,6 @@ class ViewNode:
         
     )
 
-    name_cols = knext.MultiColumnParameter(
-        "Tooltip columns",
-        "Select columns which should be shown in the marker tooltip.",
-        column_filter=knut.is_string,
-    )
-
-    popup_cols = knext.MultiColumnParameter(
-        "Popup columns",
-        "Select columns which should be shown in the marker popup.",
-        column_filter=knut.is_string,
-    )
-
     base_map = knext.StringParameter(
         "Base map",
         "Select the base map to use for the visualization. See https://python-visualization.github.io/folium/quickstart.html#Tiles",
@@ -104,18 +92,31 @@ class ViewNode:
         max_value=10,
     )
 
-    plot_legend = knext.BoolParameter(
-        "Show legend",
-        "If checked, a legend will be shown in the plot.",
-        default_value=True,
-
-    )
-
     size_col = knext.ColumnParameter(
         "Marker size column",
         "Select marker size column. The column must contain the size value.",
         column_filter=knut.is_numeric,
         include_none_column=True,
+    )
+
+
+    name_cols = knext.MultiColumnParameter(
+        "Tooltip columns",
+        "Select columns which should be shown in the marker tooltip.",
+        column_filter=knut.is_string,
+    )
+
+    popup_cols = knext.MultiColumnParameter(
+        "Popup columns",
+        "Select columns which should be shown in the marker popup.",
+        column_filter=knut.is_string,
+    )
+
+    plot_legend = knext.BoolParameter(
+        "Show legend",
+        "If checked, a legend will be shown in the plot.",
+        default_value=True,
+
     )
 
     legend_caption = knext.StringParameter(
