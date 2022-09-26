@@ -17,14 +17,14 @@ category = knext.category(
     name="Views",
     description="Spatial view nodes",
     # starting at the root folder of the extension_module parameter in the knime.yml file
-    icon="icons/visualize.png",
+    icon="icons/icon/VisulizationCategory.png",
 )
 
 
 @knext.node(
     name="Geospatial View",
     node_type=knext.NodeType.VISUALIZER,
-    icon_path="icons/visualize.png",
+    icon_path="icons/icon/Visulization/InteractiveMap.png",
     category=category,
 )
 @knext.input_table(
@@ -248,7 +248,7 @@ class ViewNode:
 @knext.node(
     name="Geospatial View Static",
     node_type=knext.NodeType.VISUALIZER,
-    icon_path="icons/visualize.png",
+    icon_path="icons/icon/Visulization/StaticMap.png",
     category=category,
 )
 @knext.input_table(
