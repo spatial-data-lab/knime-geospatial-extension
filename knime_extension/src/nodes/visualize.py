@@ -39,13 +39,13 @@ class ViewNode:
     This node will visualize the given geometric elements on a map.
     """
 
-    # geo_col = knext.ColumnParameter(
-    #     "Geometry column",
-    #     "Select the geometry column to visualize.",
-    #     column_filter=knut.is_geo_point,  # Allows only GeoPoints
-    #     include_row_key=False,
-    #     include_none_column=False,
-    # )
+    geo_col = knext.ColumnParameter(
+        "Geometry column",
+        "Select the geometry column to visualize.",
+        column_filter=knut.is_geo,  # Allows only GeoPoints
+        include_row_key=False,
+        include_none_column=False,
+    )
 
     color_col = knext.ColumnParameter(
         "Marker color column",
@@ -127,13 +127,13 @@ class ViewNode:
 
 
     def configure(self, configure_context, input_schema):
-        # knut.columns_exist([ self.color_col,self.name_cols], input_schema)
+        knut.columns_exist([ self.geo_col], input_schema)
         # if self.name_cols is None:
         #     self.name_cols = [c.name for c in input_schema if knut.is_string(c)]
         return None
 
     def execute(self, exec_context: knext.ExecutionContext, input_table):
-        gdf = gp.GeoDataFrame(input_table.to_pandas(), geometry="geometry")
+        gdf = gp.GeoDataFrame(input_table.to_pandas(), geometry=self.geo_col)
 
         if (self.legend_caption is None) or (self.legend_caption == ""):
             self.legend_caption = self.color_col
