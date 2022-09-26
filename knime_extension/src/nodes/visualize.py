@@ -32,24 +32,25 @@ category = knext.category(
     description="Table with geospatial data to visualize",
 )
 @knext.output_view(
-    name="Geospatial view", description="Showing a map with the geospatial data"
+    name="Geospatial view", description="Showing a interactive map with the geospatial data"
 )
 class ViewNode:
     """
-    This node will visualize the given geometric elements on a map.
+    This node cteates a interative map view based on the selected geometric elements of the input table.
     """
 
     geo_col = knext.ColumnParameter(
         "Geometry column",
         "Select the geometry column to visualize.",
-        column_filter=knut.is_geo,  # Allows only GeoPoints
+        # "geometry",
+        column_filter=knut.is_geo,  # Allows all geo columns
         include_row_key=False,
-        include_none_column=False,
+        include_none_column=False, # must contains a geometry column
     )
 
     color_col = knext.ColumnParameter(
         "Marker color column",
-        "Select marker color column. The column must contain the color name e.g. red, green, blue, etc.",
+        "Select marker color column to be plotted.",
         column_filter=knut.is_numeric,
         include_row_key=False,
         include_none_column=False,
@@ -57,22 +58,36 @@ class ViewNode:
 
     color_map = knext.StringParameter(
         "Color map",
-        "Select the color map to use for the color column. See https://matplotlib.org/stable/tutorials/colors/colormaps.html",
+        "Select the color map to use for the color column. `xxx_r` mean reverse of the `xxx` colormap. See [Colormaps in Matplotlib](https://matplotlib.org/stable/tutorials/colors/colormaps.html)",
         default_value="viridis",
-        enum=["viridis", "plasma", "inferno", "magma", "cividis"],
+        enum=["viridis", "plasma", "inferno", "magma", "cividis",
+                'Greys', 'Purples', 'Blues', 'Greens', 'Oranges', 'Reds',
+                'YlOrBr', 'YlOrRd', 'OrRd', 'PuRd', 'RdPu', 'BuPu',
+                'GnBu', 'PuBu', 'YlGnBu', 'PuBuGn', 'BuGn', 'YlGn',
+                'binary', 'gist_yarg', 'gist_gray', 'gray', 'bone',
+                'pink', 'spring', 'summer', 'autumn', 'winter', 'cool',
+                'Wistia', 'hot', 'afmhot', 'gist_heat', 'copper',
+
+                "viridis_r", "plasma_r", "inferno_r", "magma_r", "cividis_r",
+                'Greys_r', 'Purples_r', 'Blues_r', 'Greens_r', 'Oranges_r', 'Reds_r',
+                'YlOrBr_r', 'YlOrRd_r', 'OrRd_r', 'PuRd_r', 'RdPu_r', 'BuPu_r',
+                'GnBu_r', 'PuBu_r', 'YlGnBu_r', 'PuBuGn_r', 'BuGn_r', 'YlGn_r',
+                'binary_r', 'gist_yarg_r', 'gist_gray_r', 'gray_r', 'bone_r',
+                'pink_r', 'spring_r', 'summer_r', 'autumn_r', 'winter_r', 'cool_r',
+                'Wistia_r', 'hot_r', 'afmhot_r', 'gist_heat_r', 'copper_r'],
         
     )
 
     base_map = knext.StringParameter(
         "Base map",
-        "Select the base map to use for the visualization. See https://python-visualization.github.io/folium/quickstart.html#Tiles",
+        "Select the base map to use for the visualization. See [Folium base maps](https://python-visualization.github.io/folium/quickstart.html#Tiles).",
         default_value="OpenStreetMap",
         enum=["OpenStreetMap", "Stamen Terrain", "Stamen Toner", "Stamen Watercolor" "CartoDB positron", "CartoDB dark_matter"]
     )
 
     use_classify = knext.BoolParameter(
         "Use classification",
-        "If checked, the color column will be classified using the selected classification method.",
+        "If checked, the color column will be classified using the selected classification method. The `Number of classes` will be used to determine the number of classes.",
         default_value=True,
     )
 
@@ -86,15 +101,15 @@ class ViewNode:
 
     classification_bins = knext.IntParameter(
         "Number of classes",
-        "Select the number of classes to use for the color column.",
+        "Select the number of classes of the classification method.",
         default_value=5,
         min_value=1,
-        max_value=10,
+        max_value=50,
     )
 
     size_col = knext.ColumnParameter(
         "Marker size column",
-        "Select marker size column. The column must contain the size value.",
+        "Select marker size column. The size is fixed by default. If a size column is selected, the size will be scaled by the values of the column. For point features, the size is the radius of the circle. For line features, the size is the width of the line. For polygon features, the size is the radius of the centroid of the ploygon.",
         column_filter=knut.is_numeric,
         include_none_column=True,
     )
@@ -121,8 +136,8 @@ class ViewNode:
 
     legend_caption = knext.StringParameter(
         "Legend caption",
-        "Set the caption for the legend.",
-        default_value="Legend",
+        "Set the caption for the legend. By default, the caption is the name of the selected color column.",
+        default_value="",
     )
 
 
@@ -137,7 +152,7 @@ class ViewNode:
 
         if (self.legend_caption is None) or (self.legend_caption == ""):
             self.legend_caption = self.color_col
-        if "none" not in self.size_col:
+        if "none" not in str(self.size_col).lower():
 
             
             max_pop_est = gdf[self.size_col].max()
@@ -148,10 +163,20 @@ class ViewNode:
             if  ("LineString" in geo_types) or ("MultiLineString" in geo_types):
                 size = "weight"
                 max_size = 8
-            else:
+                m = None
+            # else:
+            #     size = "radius"
+            #     max_size = 30
+            #     # m = 1
+            elif ("Polygon" in geo_types) or ("MultiPolygon" in geo_types):
                 size = "radius"
+                m = gdf.explore()
                 gdf["geometry"] = gdf.centroid
                 max_size = 30
+            else:
+                size = "radius"
+                max_size = 30
+                m = None
 
             if self.use_classify:
                 map = gdf.explore(
@@ -163,6 +188,7 @@ class ViewNode:
                     scheme=self.classification_method,
                     k=self.classification_bins,
                     legend=self.plot_legend,
+                    m=m,
                     # marker_kwds={"radius":self.size_col},
                     # mape POP_EST to 1-60
                     style_kwds={ 
@@ -181,6 +207,7 @@ class ViewNode:
                     tiles=self.base_map,
                     popup=self.popup_cols,
                     legend=self.plot_legend,
+                    m=m,
                     style_kwds={ 
                         "style_function": lambda x: {
                             size: (x["properties"][self.size_col] - min_pop_est) / (max_pop_est - min_pop_est) * 30
