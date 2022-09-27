@@ -18,3 +18,4 @@ import nodes.overlay
 import nodes.spatial_weights
 import nodes.transform
 import nodes.visualize
+import nodes.spatialtool
