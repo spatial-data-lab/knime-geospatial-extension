@@ -8,12 +8,13 @@ category = knext.category(
     name="Geospatial",
     description="Geospatial processing nodes",
     # starting at the root folder of the extension_module parameter in the knime.yml file
-    icon="icons/globe.png",
+    icon="icons/icon/Geospatial.png",
 )
 
 
 # The different node files
 import nodes.calculation
+import nodes.conversion
 import nodes.overlay
 import nodes.spatial_weights
 import nodes.transform
