@@ -1,12 +1,23 @@
 from doctest import debug_script
 import logging
-
+import plotly.express as px
 import geopandas as gp
 import knime_extension as knext
 import util.knime_utils as knut
 # import contextily as cx
 import folium
+from io import StringIO
 import matplotlib.pyplot as plt
+import hvplot.pandas
+import hvplot
+import plotly.io as io
+import altair as alt
+from vega_datasets import data
+from keplergl import KeplerGl
+from pyecharts.charts import Bar
+
+import pydeck as pdk
+import pandas as pd
 
 LOGGER = logging.getLogger(__name__)
 
@@ -245,6 +256,9 @@ class ViewNode:
         return knext.view(map)
 
 # geo view static
+# TODO:
+# - add legend location
+# - add legend caption
 @knext.node(
     name="Geospatial View Static",
     node_type=knext.NodeType.VISUALIZER,
@@ -260,16 +274,16 @@ class ViewNode:
 )
 class ViewNodeStatic:
     """
-    This node will visualize the given geometric elements on a map.
+    This node will visualize the given geometric elements on a static map.
     """
 
-    # geo_col = knext.ColumnParameter(
-    #     "Geometry column",
-    #     "Select the geometry column to visualize.",
-    #     column_filter=knut.is_geo_point,  # Allows only GeoPoints
-    #     include_row_key=False,
-    #     include_none_column=False,
-    # )
+    geo_col = knext.ColumnParameter(
+        "Geometry column",
+        "Select the geometry column to visualize.",
+        column_filter=knut.is_geo,  
+        include_row_key=False,
+        include_none_column=False,
+    )
 
     color_col = knext.ColumnParameter(
         "Marker color column",
@@ -287,22 +301,22 @@ class ViewNodeStatic:
         
     )
 
-    base_map = knext.StringParameter(
-        "Base map",
-        "Select the base map to use for the visualization. See https://contextily.readthedocs.io/en/latest/providers_deepdive.html",
-        default_value="OpenStreetMap",
-        enum=['OpenStreetMap.Mapnik',
-             'OpenTopoMap',
-             'Stamen.Toner',
-             'Stamen.TonerLite',
-             'Stamen.Terrain',
-             'Stamen.TerrainBackground',
-             'Stamen.Watercolor',
-             'NASAGIBS.ViirsEarthAtNight2012',
-             'CartoDB.Positron',
-             'CartoDB.Voyager'
-            ]
-    )
+    # base_map = knext.StringParameter(
+    #     "Base map",
+    #     "Select the base map to use for the visualization. See https://contextily.readthedocs.io/en/latest/providers_deepdive.html",
+    #     default_value="OpenStreetMap",
+    #     enum=['OpenStreetMap.Mapnik',
+    #          'OpenTopoMap',
+    #          'Stamen.Toner',
+    #          'Stamen.TonerLite',
+    #          'Stamen.Terrain',
+    #          'Stamen.TerrainBackground',
+    #          'Stamen.Watercolor',
+    #          'NASAGIBS.ViirsEarthAtNight2012',
+    #          'CartoDB.Positron',
+    #          'CartoDB.Voyager'
+    #         ]
+    # )
 
     use_classify = knext.BoolParameter(
         "Use classification",
@@ -341,17 +355,38 @@ class ViewNodeStatic:
     legend_caption = knext.StringParameter(
         "Legend caption",
         "Set the caption for the legend.",
+        default_value="",
         # default_value=color_col,
     )
+    
+    legend_location = knext.StringParameter(
+        "Legend location",
+        "Select the location for the legend.",
+        default_value="best",
+        enum=['best', 'upper right', 'upper left', 'lower left', 'lower right', 'right', 'center left', 'center right', 'lower center', 'upper center', 'center']
+    )
+
+    legend_orientation = knext.StringParameter(
+        "Legend orientation",
+        "Select the orientation for the legend.",
+        default_value="vertical",
+        enum=['vertical', 'horizontal']
+    )
+
 
     def configure(self, configure_context, input_schema):
-        # knut.columns_exist([ self.color_col,self.name_cols], input_schema)
+        knut.columns_exist([ self.geo_col], input_schema)
         # if self.name_cols is None:
         #     self.name_cols = [c.name for c in input_schema if knut.is_string(c)]
         return None
 
     def execute(self, exec_context: knext.ExecutionContext, input_table):
-        gdf = gp.GeoDataFrame(input_table.to_pandas(), geometry="geometry")
+        gdf = gp.GeoDataFrame(input_table.to_pandas(), geometry=self.geo_col)
+
+        if (self.legend_caption is None) or (self.legend_caption == ""):
+            self.legend_caption = self.color_col
+
+
 
         # if self.size_col is not None:
         #     gdf["geometry"] = gdf.centroid
@@ -365,9 +400,13 @@ class ViewNodeStatic:
                 scheme=self.classification_method,
                 k=self.classification_bins,
                 legend=self.plot_legend,
-                # marker_kwds={"radius":self.size_col},
-                # legend_kwds={'shrink': 0.6}
-                # legend_kwds={"caption": self.legend_caption,"scale":False,"max_labels":20,"colorbar":False}
+                legend_kwds={
+                    # 'shrink': 0.56,
+                    'fmt':"{:.0f}",
+                    'loc': self.legend_location,
+                    # "bbox_to_anchor":(0.47, -0.1),
+                    "title": self.legend_caption,
+                    },
                 )
         else:
             map = gdf.plot(
@@ -377,7 +416,10 @@ class ViewNodeStatic:
                 alpha=0.7,
                 legend=self.plot_legend,
                 # marker_kwds={"radius":self.size_col},
-                # legend_kwds={'shrink': 0.6}
+                legend_kwds={
+                    'shrink': 0.56,
+                    'orientation': self.legend_orientation,
+                    }
                 # legend_kwds={"caption": self.legend_caption,"scale":False,"max_labels":3,"colorbar":True}
             )
     
@@ -387,6 +429,204 @@ class ViewNodeStatic:
 
         return knext.view_matplotlib(map.get_figure())
 
+
+# geo view html
+# geo view static
+# TODO:
+# - add legend location
+# - add legend caption
+@knext.node(
+    name="Geospatial View html",
+    node_type=knext.NodeType.VISUALIZER,
+    icon_path="icons/icon/Visulization/StaticMap.png",
+    category=category,
+)
+@knext.input_table(
+    name="Geospatial table to visualize",
+    description="Table with geospatial data to visualize",
+)
+@knext.output_view(
+    name="Geospatial view", description="Showing a map with the geospatial data"
+)
+class ViewNodeStaticHTML:
+    """
+    This node will visualize the given geometric elements on a static map.
+    """
+
+    geo_col = knext.ColumnParameter(
+        "Geometry column",
+        "Select the geometry column to visualize.",
+        column_filter=knut.is_geo,  
+        include_row_key=False,
+        include_none_column=False,
+    )
+
+    color_col = knext.ColumnParameter(
+        "Marker color column",
+        "Select marker color column. The column must contain the color name e.g. red, green, blue, etc.",
+        column_filter=knut.is_numeric,
+        include_row_key=False,
+        include_none_column=False,
+    )
+
+    color_map = knext.StringParameter(
+        "Color map",
+        "Select the color map to use for the color column. See https://matplotlib.org/stable/tutorials/colors/colormaps.html",
+        default_value="viridis",
+        enum=["viridis", "plasma", "inferno", "magma", "cividis"],
+        
+    )
+
+    # base_map = knext.StringParameter(
+    #     "Base map",
+    #     "Select the base map to use for the visualization. See https://contextily.readthedocs.io/en/latest/providers_deepdive.html",
+    #     default_value="OpenStreetMap",
+    #     enum=['OpenStreetMap.Mapnik',
+    #          'OpenTopoMap',
+    #          'Stamen.Toner',
+    #          'Stamen.TonerLite',
+    #          'Stamen.Terrain',
+    #          'Stamen.TerrainBackground',
+    #          'Stamen.Watercolor',
+    #          'NASAGIBS.ViirsEarthAtNight2012',
+    #          'CartoDB.Positron',
+    #          'CartoDB.Voyager'
+    #         ]
+    # )
+
+    use_classify = knext.BoolParameter(
+        "Use classification",
+        "If checked, the color column will be classified using the selected classification method.",
+        default_value=True,
+    )
+
+    classification_method = knext.StringParameter(
+        "Classification method",
+        "Select the classification method to use for the color column.",
+        default_value="EqualInterval",
+        enum=['BoxPlot', 'EqualInterval', 'FisherJenks', 'FisherJenksSampled', 'HeadTailBreaks', 'JenksCaspall', 'JenksCaspallForced', 'JenksCaspallSampled', 'MaxP', 'MaximumBreaks', 'NaturalBreaks', 'Quantiles', 'Percentiles', 'StdMean']
+    )
+
+    classification_bins = knext.IntParameter(
+        "Number of classes",
+        "Select the number of classes to use for the color column.",
+        default_value=5,
+        min_value=1,
+        max_value=10,
+    )
+
+    plot_legend = knext.BoolParameter(
+        "Show legend",
+        "If checked, a legend will be shown in the plot.",
+        default_value=True,
+
+    )
+
+    # size_col = knext.ColumnParameter(
+    #     "Marker size column",
+    #     "Select marker size column. The column must contain the size value.",
+    #     column_filter=knut.is_numeric,
+    # )
+
+    legend_caption = knext.StringParameter(
+        "Legend caption",
+        "Set the caption for the legend.",
+        default_value="",
+        # default_value=color_col,
+    )
+    
+    legend_location = knext.StringParameter(
+        "Legend location",
+        "Select the location for the legend.",
+        default_value="best",
+        enum=['best', 'upper right', 'upper left', 'lower left', 'lower right', 'right', 'center left', 'center right', 'lower center', 'upper center', 'center']
+    )
+
+    legend_orientation = knext.StringParameter(
+        "Legend orientation",
+        "Select the orientation for the legend.",
+        default_value="vertical",
+        enum=['vertical', 'horizontal']
+    )
+
+
+    def configure(self, configure_context, input_schema):
+        knut.columns_exist([ self.geo_col], input_schema)
+        # if self.name_cols is None:
+        #     self.name_cols = [c.name for c in input_schema if knut.is_string(c)]
+        return None
+
+    def execute(self, exec_context: knext.ExecutionContext, input_table):
+        gdf = gp.GeoDataFrame(input_table.to_pandas(), geometry=self.geo_col)
+
+        if (self.legend_caption is None) or (self.legend_caption == ""):
+            self.legend_caption = self.color_col
+
+
+# hvplot
+        # m= gdf.hvplot(geo=True,  tiles='OSM', cmap='viridis', c=self.color_col, edgecolor='black')
+        
+        # html =StringIO()
+        # hvplot.save(m,html)
+        # html.seek(0)
+        # html = html.read()
+
+
+        # plotly
+        # df = px.data.gapminder()
+        # fig = px.scatter_geo(df, locations="iso_alpha", color="continent", hover_name="country", size="pop",
+        #             animation_frame="year", projection="natural earth")
+        # # fig.show()
+        # html = io.to_html(fig, full_html=False)
+
+
+# pydeck
+        # CPU_GRID_LAYER_DATA = (
+        #     "https://raw.githubusercontent.com/uber-common/" "deck.gl-data/master/website/sf-bike-parking.json"
+        # )
+        # df = pd.read_json(CPU_GRID_LAYER_DATA)
+
+        # # Define a layer to display on a map
+
+        # layer = pdk.Layer(
+        #     "GridLayer",
+        #     df,
+        #     pickable=True,
+        #     extruded=True,
+        #     cell_size=200,
+        #     elevation_scale=4,
+        #     get_position="COORDINATES",
+        # )
+
+        # view_state = pdk.ViewState(latitude=37.7749295, longitude=-122.4194155, zoom=11, bearing=0, pitch=45)
+
+        # # Render
+        # r = pdk.Deck(
+        #     layers=[layer],
+        #     initial_view_state=view_state,
+        #     tooltip={"text": "{position}\nCount: {count}"},
+        # )
+
+        # html = r._repr_html_()
+
+# keplrgl
+
+        # map_1 = KeplerGl()
+        # html = map_1._repr_html_()
+        # html = html.decode("utf-8")
+
+# pyecharts
+
+
+        bar = Bar()
+        bar.add_xaxis(["衬衫", "羊毛衫", "雪纺衫", "裤子", "高跟鞋", "袜子"])
+        bar.add_yaxis("商家A", [5, 20, 36, 10, 75, 90])
+        # render 会生成本地 HTML 文件，默认会在当前目录生成 render.html 文件
+        # 也可以传入路径参数，如 bar.render("mycharts.html")
+        # html = bar.render_notebook()._repr_html_()
+        html = bar.render_embed()
+
+        return knext.view_html(html)
 
 
 # TODO:
