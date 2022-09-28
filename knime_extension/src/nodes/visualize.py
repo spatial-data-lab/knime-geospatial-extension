@@ -339,6 +339,20 @@ class ViewNodeStatic:
         max_value=10,
     )
 
+    figure_title = knext.StringParameter(
+        "Figure title",
+        "Set the title of the figure.",
+        default_value="",
+    )
+
+    figure_title_size = knext.IntParameter(
+        "Figure title size",
+        "Set the size of the figure title.",
+        default_value=10,
+        min_value=1,
+        max_value=100,
+    )
+
     plot_legend = knext.BoolParameter(
         "Show legend",
         "If checked, a legend will be shown in the plot.",
@@ -359,11 +373,100 @@ class ViewNodeStatic:
         # default_value=color_col,
     )
     
+    legend_caption_fontsize = knext.IntParameter(
+        "Legend caption font size",
+        "Set the font size for the legend caption.",
+        default_value=10,
+        min_value=1,
+        max_value=100,
+    )
+
+    legend_expand = knext.BoolParameter(
+        "Expand legend",
+        "If checked, the legend will be horizontally expanded to fill the axes area",
+        default_value=False,
+    )
+
     legend_location = knext.StringParameter(
         "Legend location",
         "Select the location for the legend.",
         default_value="best",
-        enum=['best', 'upper right', 'upper left', 'lower left', 'lower right', 'right', 'center left', 'center right', 'lower center', 'upper center', 'center']
+        enum=['best', 
+            'upper right', 
+            'upper left', 
+            'lower left', 
+            'lower right', 
+            'right', 
+            'center left', 
+            'center right', 
+            'lower center', 
+            'upper center', 
+            'center',
+            'outside_top',
+            'outside_bottom',
+            ]
+    )
+
+    legend_columns = knext.IntParameter(
+        "Legend columns",
+        "Select the number of columns for the legend.",
+        default_value=1,
+        min_value=1,
+        max_value=30,
+    )
+
+    legend_size = knext.IntParameter(
+        "Legend size",
+        "Select the size for the legend.",
+        default_value=8,
+        min_value=1,
+        max_value=30,
+    )
+
+    legend_fontsize = knext.IntParameter(
+        "Legend font size",
+        "Select the font size for the legend.",
+        default_value=10,
+        min_value=1,
+        max_value=30,
+    )
+
+    legend_labelcolor = knext.StringParameter(
+        "Legend label color",
+        "Select the label color for the legend.",
+        default_value="black",
+        enum=['black', 'red', 'green', 'blue', 'yellow', 'purple', 'orange', 'white']
+    )
+
+    legend_frame = knext.BoolParameter(
+        "Show legend frame",
+        "If checked, a frame will be shown in the legend.",
+        default_value=True,
+
+    )
+
+    legend_framealpha = knext.DoubleParameter(
+        "Legend frame alpha",
+        "Select the alpha value for the legend frame.",
+        default_value=1.0,
+        min_value=0.0,
+        max_value=1.0,
+    )
+
+    legend_borderpad = knext.DoubleParameter(
+        "Legend border pad",
+        "Select the border pad for the legend.",
+        default_value=0.5,
+        min_value=0.0,
+        max_value=3.0,
+    )
+
+    legend_labelspacing = knext.DoubleParameter(
+        "Legend label spacing",
+        "Select the label spacing for the legend.",
+        default_value=0.5,
+        min_value=0.0,
+        max_value=1.0,
     )
 
     legend_orientation = knext.StringParameter(
@@ -372,6 +475,7 @@ class ViewNodeStatic:
         default_value="vertical",
         enum=['vertical', 'horizontal']
     )
+
 
 
     def configure(self, configure_context, input_schema):
@@ -385,8 +489,17 @@ class ViewNodeStatic:
 
         if (self.legend_caption is None) or (self.legend_caption == ""):
             self.legend_caption = self.color_col
-
-
+        legend_bbox_to_anchor = None
+        if self.legend_location == "outside_top":
+            self.legend_location = "lower right"
+            legend_bbox_to_anchor = (0.0, 1.02, 1.0, 0.102)
+        if self.legend_location == "outside_bottom":
+            self.legend_location = "upper right"
+            legend_bbox_to_anchor =  (0.0, -0.2, 1.0, 0.102)
+        if self.legend_expand:
+            legend_expand = "expand"
+        else:
+            legend_expand = None
 
         # if self.size_col is not None:
         #     gdf["geometry"] = gdf.centroid
@@ -396,7 +509,7 @@ class ViewNodeStatic:
                 column=self.color_col, 
                 cmap=self.color_map,
                 # tiles=self.base_map,
-                alpha=0.7,
+                alpha=1,
                 scheme=self.classification_method,
                 k=self.classification_bins,
                 legend=self.plot_legend,
@@ -406,8 +519,27 @@ class ViewNodeStatic:
                     'loc': self.legend_location,
                     # "bbox_to_anchor":(0.47, -0.1),
                     "title": self.legend_caption,
+                    'ncols': self.legend_columns,
+                    'prop': {'size': self.legend_size},
+                    'fontsize': self.legend_fontsize,
+                    'bbox_to_anchor': legend_bbox_to_anchor, 
+                    'labelcolor': self.legend_labelcolor,
+                    'frameon': self.legend_frame,
+                    'framealpha': self.legend_framealpha,
+                    'fancybox': True,
+                    'mode': legend_expand,
+                    'alignment': "left",
+                    'title': "Population",
+                    'title_fontsize': self.legend_caption_fontsize,
+                    'labelspacing': self.legend_labelspacing,
+                    # 'handletextpad': 0.5,
+                    # 'handlelength': 1.5,
+                    # 'handleheight': 1,
+                    'borderaxespad':self.legend_borderpad,
+                    # 'columnspacing' : 4,
                     },
                 )
+            map.set_title(self.figure_title, fontsize=self.figure_title_size)
         else:
             map = gdf.plot(
                 column=self.color_col, 
