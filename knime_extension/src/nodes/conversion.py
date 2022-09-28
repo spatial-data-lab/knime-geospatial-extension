@@ -178,7 +178,9 @@ class WKTtoGeoNode(_ToGeoConverter):
     crs = crs_input_parameter()
 
     def __init__(self):
-        super().__init__(lambda df, col: gp.GeoSeries.from_wkt(df[col]), knut.is_string)
+        super().__init__(
+            lambda df, col: gp.GeoSeries.from_wkt(df[col].astype("str")), knut.is_string
+        )
 
 
 ############################################
