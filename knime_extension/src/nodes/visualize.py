@@ -390,7 +390,7 @@ class ViewNodeStatic:
     legend_location = knext.StringParameter(
         "Legend location",
         "Select the location for the legend.",
-        default_value="best",
+        default_value="lower right",
         enum=['best', 
             'upper right', 
             'upper left', 
@@ -469,15 +469,23 @@ class ViewNodeStatic:
         max_value=1.0,
     )
 
-    legend_orientation = knext.StringParameter(
-        "Legend orientation",
-        "Select the orientation for the legend.",
-        default_value="vertical",
-        enum=['vertical', 'horizontal']
+    legend_colorbar_shrink = knext.DoubleParameter(
+        "Colorbar legend shrink",
+        "Select the shrink value for the colorbar legend. Only work for colorbar",
+        default_value=1.0,
+        min_value=0.0,
+        max_value=1.0,
     )
 
+    legend_colorbar_pad = knext.DoubleParameter(
+        "Colorbar legend pad",
+        "Select the pad value for the colorbar legend. Only work for colorbar",
+        default_value=0.1,
+        min_value=0.0,
+        max_value=0.99,
+    )
 
-
+   
     def configure(self, configure_context, input_schema):
         knut.columns_exist([ self.geo_col], input_schema)
         # if self.name_cols is None:
@@ -489,6 +497,18 @@ class ViewNodeStatic:
 
         if (self.legend_caption is None) or (self.legend_caption == ""):
             self.legend_caption = self.color_col
+        
+        if self.legend_location in ["upper left", "lower left", "center left"]:
+            colorbar_legend_location = "right"
+        if self.legend_location in ["upper right", "lower right", "center right", "right"]:
+            colorbar_legend_location = "right"
+        if self.legend_location == "outside_top":
+            colorbar_legend_location = "top"
+        if self.legend_location == "outside_bottom":
+            colorbar_legend_location = "bottom"
+        else:
+            colorbar_legend_location = "right"
+
         legend_bbox_to_anchor = None
         if self.legend_location == "outside_top":
             self.legend_location = "lower right"
@@ -500,6 +520,8 @@ class ViewNodeStatic:
             legend_expand = "expand"
         else:
             legend_expand = None
+
+
 
         # if self.size_col is not None:
         #     gdf["geometry"] = gdf.centroid
@@ -545,12 +567,14 @@ class ViewNodeStatic:
                 column=self.color_col, 
                 cmap=self.color_map,
                 # tiles=self.base_map,
-                alpha=0.7,
+                alpha=1,
                 legend=self.plot_legend,
                 # marker_kwds={"radius":self.size_col},
                 legend_kwds={
-                    'shrink': 0.56,
-                    'orientation': self.legend_orientation,
+                    'shrink': self.legend_colorbar_shrink,
+                    'fmt':"{:.0f}",
+                    'location': colorbar_legend_location,
+                    'pad': self.legend_colorbar_pad,
                     }
                 # legend_kwds={"caption": self.legend_caption,"scale":False,"max_labels":3,"colorbar":True}
             )
