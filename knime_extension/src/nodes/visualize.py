@@ -293,6 +293,14 @@ class ViewNodeStatic:
         include_none_column=False,
     )
 
+    color = knext.StringParameter(
+        "Marker color",
+        "Select marker color. The column must contain the color name e.g. red, green, blue, etc.",
+        default_value="red",
+        enum=["red", "blue", "green", "orange", "purple", "darkred", "lightred", "beige", "darkblue", "darkgreen", "cadetblue", "darkpurple", "white", "pink", "lightblue", "lightgreen", "gray", "black", "lightgray"],
+    )
+
+
     color_map = knext.StringParameter(
         "Color map",
         "Select the color map to use for the color column. See https://matplotlib.org/stable/tutorials/colors/colormaps.html",
@@ -300,6 +308,37 @@ class ViewNodeStatic:
         enum=["viridis", "plasma", "inferno", "magma", "cividis"],
         
     )
+
+    edge_color = knext.StringParameter(
+        "Edge color",
+        "Select the edge color to use for the color column. See https://matplotlib.org/stable/tutorials/colors/colormaps.html",
+        default_value="black",
+        enum=["black", "red", "blue", "green", "orange", "purple", "darkred", "lightred", "beige", "darkblue", "darkgreen", "cadetblue", "darkpurple", "white", "pink", "lightblue", "lightgreen", "gray", "black", "lightgray"],
+    )
+
+    size_col = knext.ColumnParameter(
+        "Marker size column",
+        "Select marker size column. The size is fixed by default. If a size column is selected, the size will be scaled by the values of the column. For point features, the size is the radius of the circle. For line features, the size is the width of the line. For polygon features, the size is the radius of the centroid of the ploygon.",
+        column_filter=knut.is_numeric,
+        include_none_column=True,
+    )
+
+    line_width_col = knext.ColumnParameter(
+        "Line width column",
+        "Select line width column. The width is fixed by default. If a width column is selected, the width will be scaled by the values of the column.",
+        column_filter=knut.is_numeric,
+        include_none_column=True,
+    )
+
+    line_width = knext.IntParameter(
+        "Line width",
+        "Select the line width. The width is fixed by default. If a width column is selected, the width will be scaled by the values of the column.",
+        default_value=1,
+        min_value=1,
+        max_value=10,
+    )
+
+    
 
     # base_map = knext.StringParameter(
     #     "Base map",
@@ -485,7 +524,12 @@ class ViewNodeStatic:
         max_value=0.99,
     )
 
-   
+    set_axis_off = knext.BoolParameter(
+        "Set axis off",
+        "If checked, the axis will be set off.",
+        default_value=False,
+    )
+
     def configure(self, configure_context, input_schema):
         knut.columns_exist([ self.geo_col], input_schema)
         # if self.name_cols is None:
@@ -495,16 +539,14 @@ class ViewNodeStatic:
     def execute(self, exec_context: knext.ExecutionContext, input_table):
         gdf = gp.GeoDataFrame(input_table.to_pandas(), geometry=self.geo_col)
 
+# check legend caption
         if (self.legend_caption is None) or (self.legend_caption == ""):
             self.legend_caption = self.color_col
         
-        if self.legend_location in ["upper left", "lower left", "center left"]:
-            colorbar_legend_location = "right"
-        if self.legend_location in ["upper right", "lower right", "center right", "right"]:
-            colorbar_legend_location = "right"
+#  set legend location
         if self.legend_location == "outside_top":
             colorbar_legend_location = "top"
-        if self.legend_location == "outside_bottom":
+        elif self.legend_location == "outside_bottom":
             colorbar_legend_location = "bottom"
         else:
             colorbar_legend_location = "right"
@@ -516,69 +558,73 @@ class ViewNodeStatic:
         if self.legend_location == "outside_bottom":
             self.legend_location = "upper right"
             legend_bbox_to_anchor =  (0.0, -0.2, 1.0, 0.102)
+        
         if self.legend_expand:
             legend_expand = "expand"
         else:
             legend_expand = None
 
 
+        kws = {"column":self.color_col, 
+                "cmap":self.color_map,
+                "alpha":1,
+                "legend":self.plot_legend,
+                "color":self.color,
+                "edgecolor":self.edge_color
+        }
 
-        # if self.size_col is not None:
-        #     gdf["geometry"] = gdf.centroid
 
-        if self.use_classify:
-            map = gdf.plot(
-                column=self.color_col, 
-                cmap=self.color_map,
-                # tiles=self.base_map,
-                alpha=1,
-                scheme=self.classification_method,
-                k=self.classification_bins,
-                legend=self.plot_legend,
-                legend_kwds={
-                    # 'shrink': 0.56,
-                    'fmt':"{:.0f}",
-                    'loc': self.legend_location,
-                    # "bbox_to_anchor":(0.47, -0.1),
-                    "title": self.legend_caption,
-                    'ncols': self.legend_columns,
-                    'prop': {'size': self.legend_size},
-                    'fontsize': self.legend_fontsize,
-                    'bbox_to_anchor': legend_bbox_to_anchor, 
-                    'labelcolor': self.legend_labelcolor,
-                    'frameon': self.legend_frame,
-                    'framealpha': self.legend_framealpha,
-                    'fancybox': True,
-                    'mode': legend_expand,
-                    'alignment': "left",
-                    'title': "Population",
-                    'title_fontsize': self.legend_caption_fontsize,
-                    'labelspacing': self.legend_labelspacing,
-                    # 'handletextpad': 0.5,
-                    # 'handlelength': 1.5,
-                    # 'handleheight': 1,
-                    'borderaxespad':self.legend_borderpad,
-                    # 'columnspacing' : 4,
-                    },
-                )
-            map.set_title(self.figure_title, fontsize=self.figure_title_size)
-        else:
-            map = gdf.plot(
-                column=self.color_col, 
-                cmap=self.color_map,
-                # tiles=self.base_map,
-                alpha=1,
-                legend=self.plot_legend,
-                # marker_kwds={"radius":self.size_col},
-                legend_kwds={
-                    'shrink': self.legend_colorbar_shrink,
-                    'fmt':"{:.0f}",
-                    'location': colorbar_legend_location,
-                    'pad': self.legend_colorbar_pad,
-                    }
-                # legend_kwds={"caption": self.legend_caption,"scale":False,"max_labels":3,"colorbar":True}
-            )
     
+        if self.use_classify:
+            kws["legend_kwds"] ={
+                            'fmt':"{:.0f}",
+                            'loc': self.legend_location,
+                            "title": self.legend_caption,
+                            'ncols': self.legend_columns,
+                            'prop': {'size': self.legend_size},
+                            'fontsize': self.legend_fontsize,
+                            'bbox_to_anchor': legend_bbox_to_anchor, 
+                            'labelcolor': self.legend_labelcolor,
+                            'frameon': self.legend_frame,
+                            'framealpha': self.legend_framealpha,
+                            'fancybox': True,
+                            'mode': legend_expand,
+                            'alignment': "left",
+                            'title': "Population",
+                            'title_fontsize': self.legend_caption_fontsize,
+                            'labelspacing': self.legend_labelspacing,
+                            'borderaxespad':self.legend_borderpad,
+                        },
+            kws["scheme"] = self.classify_scheme
+            kws["k"] = self.classify_k
+        else:
+            kws["legend_kwds"] = {
+                        'shrink': self.legend_colorbar_shrink,
+                        'fmt':"{:.0f}",
+                        'location': colorbar_legend_location,
+                        'pad': self.legend_colorbar_pad,
+                        }
+        if "none" not in str(self.size_col).lower():
+            max_point_size = 2000
+            max_val = gdf[self.size_col].max()
+            min_val = gdf[self.size_col].min()
+            normal_base = (gdf[self.size_col]-min_val)/max_val
+            kws["makersize"] = normal_base*max_point_size
+        if "none" not in str(self.line_width_col).lower():
+            max_line_width = 5
+            max_val = gdf[self.line_width_col].max()
+            min_val = gdf[self.line_width_col].min()
+            normal_base = (gdf[self.line_width_col]-min_val)/max_val
+            kws["linewidth"] = normal_base*max_line_width
+
+        map = gdf.plot(**kws)
+        map.set_title(self.figure_title, fontsize=self.figure_title_size)
+        if self.set_axis_off:
+            map.set_axis_off()
+
+
+            
+
         # knut.check_canceled(exec_context)
         # return knext.
         # cx.add_basemap(map, crs=gdf.crs.to_string(), source=cx.providers.flatten()[self.base_map])
