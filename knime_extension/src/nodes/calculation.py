@@ -20,22 +20,20 @@ __NODE_ICON_PATH = "icons/icon/GeometryCalculation/"
 ############################################
 # Simple transformation helper class
 ############################################
-class _SingelCalculator:
+class _SingleCalculator:
     """
     Helper class for transformations that append a single result column to an input table with geo column.
     """
 
     def __init__(
         self,
-        geo_col: knext.Column,
         func: Callable[[gp.GeoDataFrame], gp.GeoDataFrame],
         col_name: str,
-        coltype: knext.KnimeType = knext.double(),
+        col_type: knext.KnimeType = knext.double(),
     ):
-        self.geo_col = geo_col
         self.func = func
         self.col_name = col_name
-        self.coltype = coltype
+        self.coltype = col_type
 
         # standard input port description can be overwritten in the child classes
         self.input_ports = [
@@ -57,11 +55,13 @@ class _SingelCalculator:
         ]
 
     def configure(self, configure_context, input_schema):
-        knut.column_exists(self.geo_col, input_schema, knut.is_geo)
+        # geo_col needs to be defined in the child class
+        knut.geo_column_exists(self.geo_col, input_schema)
         return input_schema.append(knext.Column(self.coltype, self.col_name))
 
     def execute(self, exec_context, input_table):
-        # create GeoDataFrame with the selected column as active geometry column
+        # create GeoDataFrame with the selected column as active geometry column.
+        # The geo_col needs to be defined in the child class
         gdf = knut.load_geo_data_frame(input_table, self.geo_col, exec_context)
         gdf[self.col_name] = self.func(
             gdf
@@ -90,14 +90,14 @@ class _SingelCalculator:
         "Area": "https://geopandas.org/en/stable/docs/reference/api/geopandas.GeoSeries.area.html"
     },
 )
-class AreaNode(_SingelCalculator):
+class AreaNode(_SingleCalculator):
 
     geo_col = knut.geo_col_parameter(
         description="Select the geometry column to compute the area."
     )
 
     def __init__(self):
-        super().__init__(self.geo_col, lambda gdf: gdf.area, "area")
+        super().__init__(lambda gdf: gdf.area, "area")
 
 
 ############################################
@@ -121,14 +121,14 @@ class AreaNode(_SingelCalculator):
         "Length": "https://geopandas.org/en/stable/docs/reference/api/geopandas.GeoSeries.length.html"
     },
 )
-class LengthNode(_SingelCalculator):
+class LengthNode(_SingleCalculator):
 
     geo_col = knut.geo_col_parameter(
         description="Select the geometry column to compute the length."
     )
 
     def __init__(self):
-        super().__init__(self.geo_col, lambda gdf: gdf.length, "length")
+        super().__init__(lambda gdf: gdf.length, "length")
 
 
 ############################################
@@ -161,7 +161,7 @@ class BoundsNode:
     )
 
     def configure(self, configure_context, input_schema_1):
-        knut.column_exists(self.geo_col, input_schema_1, knut.is_geo)
+        knut.geo_column_exists(self.geo_col, input_schema_1)
         return input_schema_1.append(
             [
                 knext.Column(knext.double(), "minx"),
@@ -214,7 +214,7 @@ class TotalBoundsNode:
     col_max_y = "maxy"
 
     def configure(self, configure_context, input_schema_1):
-        knut.column_exists(self.geo_col, input_schema_1, knut.is_geo)
+        knut.geo_column_exists(self.geo_col, input_schema_1)
         return knext.Schema.from_columns(
             [
                 knext.Column(knext.double(), self.col_min_x),

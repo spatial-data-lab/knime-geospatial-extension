@@ -13,14 +13,22 @@ LOGGER = logging.getLogger(__name__)
 # Column selection helper
 ############################################
 
-DEF_GEO_COL_LABEL = "Geometry column"
-DEF_GEO_COL_DESC = "Select the Geometry column to use"
+__DEF_GEO_COL_LABEL = "Geometry column"
+__DEF_GEO_COL_DESC = "Select the Geometry column to use"
+
+__TYPE_POINT = "GeoPointCell"
+__TYPE_LINE = "GeoLineCell"
+__TYPE_POLYGON = "GeoPolygonCell"
+__TYPE_COLLECTION = "GeoCollectionCell"
+__TYPE_MULTI_POINT = "GeoMultiPointCell"
+__TYPE_MULTI_LINE = "GeoMultiLineCell"
+__TYPE_MULTI_POLYGON = "GeoMultiPolygonCell"
 
 
 def geo_point_col_parameter(
-    label: str = DEF_GEO_COL_LABEL,
-    description: str = DEF_GEO_COL_DESC,
-):
+    label: str = __DEF_GEO_COL_LABEL,
+    description: str = __DEF_GEO_COL_DESC,
+) -> knext.ColumnParameter:
     """
     Returns a column selection parameter that only supports GeoPoint columns.
     @return: Column selection parameter for point columns
@@ -29,9 +37,9 @@ def geo_point_col_parameter(
 
 
 def geo_col_parameter(
-    label: str = DEF_GEO_COL_LABEL,
-    description: str = DEF_GEO_COL_DESC,
-):
+    label: str = __DEF_GEO_COL_LABEL,
+    description: str = __DEF_GEO_COL_DESC,
+) -> knext.ColumnParameter:
     """
     Returns a column selection parameter that supports Geo columns.
     @return: Column selection parameter for all Geo columns
@@ -40,10 +48,10 @@ def geo_col_parameter(
 
 
 def typed_geo_col_parameter(
-    label: str = DEF_GEO_COL_LABEL,
-    description: str = DEF_GEO_COL_DESC,
+    label: str = __DEF_GEO_COL_LABEL,
+    description: str = __DEF_GEO_COL_DESC,
     type_filter: Callable[[knext.Column], bool] = None,
-):
+) -> knext.ColumnParameter:
     """
     Returns a column selection parameter that allows the user to select all columns that are compatible with
     the provided type filter.
@@ -77,6 +85,7 @@ def is_string(column: knext.Column) -> bool:
     """
     return column.ktype == knext.string()
 
+
 def is_boolean(column: knext.Column) -> bool:
     """
     Checks if column is boolean
@@ -84,12 +93,22 @@ def is_boolean(column: knext.Column) -> bool:
     """
     return column.ktype == knext.boolean()
 
+
 def is_numeric_or_string(column: knext.Column) -> bool:
     """
     Checks if column is numeric or string
     @return: True if Column is numeric or string
     """
     return is_numeric(column) or is_string(column)
+
+
+def is_binary(column: knext.Column) -> bool:
+    """
+    Checks if column is binary
+    @return: True if Column is binary
+    """
+    return column.ktype == knext.blob
+
 
 def is_geo(column: knext.Column) -> bool:
     """
@@ -108,7 +127,7 @@ def is_geo_point(column: knext.Column) -> bool:
     Checks if column is a GeoPointCell.
     @return: True if Column Type is a GeoPointCell
     """
-    return __is_type_x(column, "GeoPointCell")
+    return __is_type_x(column, __TYPE_POINT)
 
 
 def is_geo_line(column: knext.Column) -> bool:
@@ -116,7 +135,7 @@ def is_geo_line(column: knext.Column) -> bool:
     Checks if column is a GeoLineCell.
     @return: True if Column Type is a GeoLineCell
     """
-    return __is_type_x(column, "GeoLineCell")
+    return __is_type_x(column, __TYPE_LINE)
 
 
 def is_geo_polygon(column: knext.Column) -> bool:
@@ -124,7 +143,7 @@ def is_geo_polygon(column: knext.Column) -> bool:
     Checks if column is a GeoPolygonCell.
     @return: True if Column Type is a GeoPolygonCell
     """
-    return __is_type_x(column, "GeoPolygonCell")
+    return __is_type_x(column, __TYPE_POLYGON)
 
 
 def is_geo_collection(column: knext.Column) -> bool:
@@ -132,7 +151,7 @@ def is_geo_collection(column: knext.Column) -> bool:
     Checks if column is a GeoCollectionCell.
     @return: True if Column Type is a GeoCollectionCell
     """
-    return __is_type_x(column, "GeoCollectionCell")
+    return __is_type_x(column, __TYPE_COLLECTION)
 
 
 def is_geo_multi_point(column: knext.Column) -> bool:
@@ -140,7 +159,7 @@ def is_geo_multi_point(column: knext.Column) -> bool:
     Checks if column is a GeoMultiPointCell.
     @return: True if Column Type is a GeoMultiPointCell
     """
-    return __is_type_x(column, "GeoMultiPointCell")
+    return __is_type_x(column, __TYPE_MULTI_POINT)
 
 
 def is_geo_multi_line(column: knext.Column) -> bool:
@@ -148,7 +167,7 @@ def is_geo_multi_line(column: knext.Column) -> bool:
     Checks if column is a GeoMultiLineCell.
     @return: True if Column Type is a GeoMultiLineCell
     """
-    return __is_type_x(column, "GeoMultiLineCell")
+    return __is_type_x(column, __TYPE_MULTI_LINE)
 
 
 def is_geo_multi_polygon(column: knext.Column) -> bool:
@@ -156,7 +175,7 @@ def is_geo_multi_polygon(column: knext.Column) -> bool:
     Checks if column is a GeoMultiPolygonCell.
     @return: True if Column Type is a GeoMultiPolygonCell
     """
-    return __is_type_x(column, "GeoMultiPolygonCell")
+    return __is_type_x(column, __TYPE_MULTI_POLYGON)
 
 
 def __is_type_x(column: knext.Column, type: str) -> bool:
@@ -229,41 +248,67 @@ def to_table(
 ############################################
 # General helper
 ############################################
-def column_exists(
-    col_name: str,
+
+__DEF_PLEASE_SELECT_COLUMN = "Please select a column"
+
+
+def geo_column_exists(
+    column: knext.Column,
     schema: knext.Schema,
-    func: Callable[[knext.Column], bool] = lambda c: True,
-    none_msg: str = "Please select a column",
+    none_msg: str = __DEF_PLEASE_SELECT_COLUMN,
+) -> None:
+    """
+    Checks that the given column is not None, of type geo and exists in the given schema otherwise it throws an exception
+    """
+    return column_exists(column, schema, is_geo, none_msg)
+
+
+def column_exists(
+    column: knext.Column,
+    schema: knext.Schema,
+    func: Callable[[knext.Column], bool] = None,
+    none_msg: str = __DEF_PLEASE_SELECT_COLUMN,
 ) -> None:
     """
     Checks that the given column is not None and exists in the given schema otherwise it throws an exception
     """
-    if col_name is None:
+    if column is None:
         raise knext.InvalidParametersError(none_msg)
     # Check that the column exists in the schema and that it has a compatible type
     try:
-        column = schema[col_name]
-        if not func(column):
+        existing_column = schema[column]
+        if func is not None and not func(existing_column):
             raise knext.InvalidParametersError(
-                f"Column '{col_name}' has incompatible data type"
+                f"Column '{str(column)}' has incompatible data type"
             )
     except IndexError:
         raise knext.InvalidParametersError(
-            f"Column '{col_name}' not available in input table"
+            f"Column '{str(column)}' not available in input table"
         )
 
 
 def columns_exist(
-    columns: List[str],
+    columns: List[knext.Column],
     schema: knext.Schema,
     func: Callable[[knext.Column], bool] = lambda c: True,
-    none_msg: str = "Please select a column",
+    none_msg: str = __DEF_PLEASE_SELECT_COLUMN,
 ) -> None:
     """
     Checks that the given columns are not None and exist in the given schema otherwise it throws an exception
     """
     for col in columns:
         column_exists(col, schema, func, none_msg)
+
+
+def fail_if_column_exists(
+    column_name: str, input_schema: knext.Schema, msg: str = None
+):
+    """Checks that the given column name does not exists in the input schema.
+    Can be used to check that a column is not accidentally overwritten."""
+    if column_name in input_schema.column_names:
+        if msg is None:
+            msg = f"Column '{column_name}' exists"
+        raise knext.InvalidParametersError(msg)
 
 
 def check_canceled(exec_context: knext.ExecutionContext) -> None:
