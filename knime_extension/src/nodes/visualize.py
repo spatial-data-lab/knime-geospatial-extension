@@ -159,106 +159,73 @@ class ViewNode:
         return None
 
     def execute(self, exec_context: knext.ExecutionContext, input_table):
+
         gdf = gp.GeoDataFrame(input_table.to_pandas(), geometry=self.geo_col)
 
         if (self.legend_caption is None) or (self.legend_caption == ""):
             self.legend_caption = self.color_col
+
+        kws = {"column":self.color_col, 
+            "cmap":self.color_map,
+            "tooltip":self.name_cols,
+            "tiles":self.base_map,
+            "popup":self.popup_cols,
+            "legend":self.plot_legend,
+            "m":None,
+            "legend_kwds":{
+                "caption": self.legend_caption,
+                "scale":False,
+                "max_labels":3,
+                "colorbar":True
+            }
+        }
+
+        if self.use_classify:
+            kws["scheme"] = self.classification_method
+            kws["k"] = self.classification_bins
+            kws["legend_kwds"]["colorbar"] = False
+            kws["legend_kwds"]["max_labels"] = 20
+        
         if "none" not in str(self.size_col).lower():
 
             
             max_pop_est = gdf[self.size_col].max()
             min_pop_est = gdf[self.size_col].min()
 
+
             # check whether is line 
             geo_types = gdf["geometry"].geom_type.unique()
             if  ("LineString" in geo_types) or ("MultiLineString" in geo_types):
-                size = "weight"
                 max_size = 8
-                m = None
-            # else:
-            #     size = "radius"
-            #     max_size = 30
-            #     # m = 1
+                kws["style_kwds"]={ 
+                "style_function": lambda x: {
+                    "weight": (x["properties"][self.size_col] - min_pop_est) / (max_pop_est - min_pop_est) * max_size
+                    }
+                }
             elif ("Polygon" in geo_types) or ("MultiPolygon" in geo_types):
-                size = "radius"
-                m = gdf.explore()
+                max_size = 30
+                kws["style_kwds"]={ 
+                "style_function": lambda x: {
+                    "radius": (x["properties"][self.size_col] - min_pop_est) / (max_pop_est - min_pop_est) * max_size
+                    }
+                }
+                kws["m"] = gdf.explore()
                 gdf["geometry"] = gdf.centroid
+                
+            else:
                 max_size = 30
-            else:
-                size = "radius"
-                max_size = 30
-                m = None
+                kws["style_kwds"]={ 
+                "style_function": lambda x: {
+                    "radius": (x["properties"][self.size_col] - min_pop_est) / (max_pop_est - min_pop_est) * max_size
+                    }
+                }
 
-            if self.use_classify:
-                map = gdf.explore(
-                    column=self.color_col, 
-                    cmap=self.color_map,
-                    tooltip=self.name_cols,
-                    tiles=self.base_map,
-                    popup=self.popup_cols,
-                    scheme=self.classification_method,
-                    k=self.classification_bins,
-                    legend=self.plot_legend,
-                    m=m,
-                    # marker_kwds={"radius":self.size_col},
-                    # mape POP_EST to 1-60
-                    style_kwds={ 
-                        "style_function": lambda x: {
-                            size: (x["properties"][self.size_col] - min_pop_est) / (max_pop_est - min_pop_est) * max_size
-                            }
-                        },
-
-                    legend_kwds={"caption": self.legend_caption,"scale":False,"max_labels":20,"colorbar":False}
-                )
-            else:
-                map = gdf.explore(
-                    column=self.color_col, 
-                    cmap=self.color_map,
-                    tooltip=self.name_cols,
-                    tiles=self.base_map,
-                    popup=self.popup_cols,
-                    legend=self.plot_legend,
-                    m=m,
-                    style_kwds={ 
-                        "style_function": lambda x: {
-                            size: (x["properties"][self.size_col] - min_pop_est) / (max_pop_est - min_pop_est) * 30
-                            }
-                        },
-                    legend_kwds={"caption": self.legend_caption,"scale":False,"max_labels":3,"colorbar":True}
-                )
-        else:
-
-            if self.use_classify:
-                map = gdf.explore(
-                    column=self.color_col, 
-                    cmap=self.color_map,
-                    tooltip=self.name_cols,
-                    tiles=self.base_map,
-                    popup=self.popup_cols,
-                    scheme=self.classification_method,
-                k=self.classification_bins,
-                legend=self.plot_legend,
-                legend_kwds={"caption": self.legend_caption,"scale":False,"max_labels":20,"colorbar":False}
-                )
-            else:
-                map = gdf.explore(
-                    column=self.color_col, 
-                    cmap=self.color_map,
-                    tooltip=self.name_cols,
-                    tiles=self.base_map,
-                    popup=self.popup_cols,
-                    legend=self.plot_legend,
-                    # marker_kwds={"radius":self.size_col},
-                    legend_kwds={"caption": self.legend_caption,"scale":False,"max_labels":3,"colorbar":True}
-                )                                                           
-    
+        map = gdf.explore(**kws)
         # knut.check_canceled(exec_context)
         return knext.view(map)
 
 # geo view static
 # TODO:
-# - add legend location
-# - add legend caption
 @knext.node(
     name="Geospatial View Static",
     node_type=knext.NodeType.VISUALIZER,
@@ -594,7 +561,7 @@ class ViewNodeStatic:
                             'title_fontsize': self.legend_caption_fontsize,
                             'labelspacing': self.legend_labelspacing,
                             'borderaxespad':self.legend_borderpad,
-                        },
+                        }
             kws["scheme"] = self.classify_scheme
             kws["k"] = self.classify_k
         else:
