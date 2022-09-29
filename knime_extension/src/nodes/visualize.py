@@ -209,7 +209,7 @@ class ViewNode:
                     "radius": (x["properties"][self.size_col] - min_pop_est) / (max_pop_est - min_pop_est) * max_size
                     }
                 }
-                kws["m"] = gdf.explore()
+                kws["m"] = gdf.explore(tiles=self.base_map)
                 gdf["geometry"] = gdf.centroid
                 
             else:
