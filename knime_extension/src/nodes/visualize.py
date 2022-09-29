@@ -257,14 +257,14 @@ class ViewNodeStatic:
         "Select marker color column. The column must contain the color name e.g. red, green, blue, etc.",
         column_filter=knut.is_numeric,
         include_row_key=False,
-        include_none_column=False,
+        include_none_column=True,
     )
 
     color = knext.StringParameter(
         "Marker color",
         "Select marker color. The column must contain the color name e.g. red, green, blue, etc.",
-        default_value="red",
-        enum=["red", "blue", "green", "orange", "purple", "darkred", "lightred", "beige", "darkblue", "darkgreen", "cadetblue", "darkpurple", "white", "pink", "lightblue", "lightgreen", "gray", "black", "lightgray"],
+        default_value="none",
+        enum=["none","red", "blue", "green", "orange", "purple", "darkred", "lightred", "beige", "darkblue", "darkgreen", "cadetblue", "darkpurple", "white", "pink", "lightblue", "lightgreen", "gray", "black", "lightgray"],
     )
 
 
@@ -532,17 +532,25 @@ class ViewNodeStatic:
             legend_expand = None
 
 
-        kws = {"column":self.color_col, 
-                "cmap":self.color_map,
+        kws = {
+                # "column":self.color_col, 
+                # "cmap":self.color_map,
                 "alpha":1,
                 "legend":self.plot_legend,
-                "color":self.color,
+                # "color":self.color,
                 "edgecolor":self.edge_color
         }
 
 
-    
+        if "none" not in str(self.color_col).lower():
+            kws["column"] = self.color_col
+            kws["cmap"] = self.color_map
+        if "none" not in str(self.color).lower():
+            kws["color"] = self.color
+
         if self.use_classify:
+            kws["column"] = self.color_col
+            kws["cmap"] = self.color_map
             kws["legend_kwds"] ={
                             'fmt':"{:.0f}",
                             'loc': self.legend_location,
