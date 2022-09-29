@@ -562,8 +562,8 @@ class ViewNodeStatic:
                             'labelspacing': self.legend_labelspacing,
                             'borderaxespad':self.legend_borderpad,
                         }
-            kws["scheme"] = self.classify_scheme
-            kws["k"] = self.classify_k
+            kws["scheme"] = self.classification_method
+            kws["k"] = self.classification_bins
         else:
             kws["legend_kwds"] = {
                         'shrink': self.legend_colorbar_shrink,
@@ -668,7 +668,7 @@ class ViewNodeHTML:
         gdf = gp.GeoDataFrame(input_table.to_pandas(), geometry=self.geo_col)
         gdf["x"] = gdf.centroid.geometry.x
         gdf["y"] = gdf.centroid.geometry.y
-        
+
 
 
 
