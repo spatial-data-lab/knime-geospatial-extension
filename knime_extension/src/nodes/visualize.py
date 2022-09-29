@@ -605,7 +605,7 @@ class ViewNodeStatic:
 # - add legend location
 # - add legend caption
 @knext.node(
-    name="Geospatial View html",
+    name="Geospatial View 3D",
     node_type=knext.NodeType.VISUALIZER,
     icon_path="icons/icon/Visulization/StaticMap.png",
     category=category,
@@ -617,7 +617,7 @@ class ViewNodeStatic:
 @knext.output_view(
     name="Geospatial view", description="Showing a map with the geospatial data"
 )
-class ViewNodeStaticHTML:
+class ViewNodeHTML:
     """
     This node will visualize the given geometric elements on a static map.
     """
@@ -630,21 +630,6 @@ class ViewNodeStaticHTML:
         include_none_column=False,
     )
 
-    color_col = knext.ColumnParameter(
-        "Marker color column",
-        "Select marker color column. The column must contain the color name e.g. red, green, blue, etc.",
-        column_filter=knut.is_numeric,
-        include_row_key=False,
-        include_none_column=False,
-    )
-
-    color_map = knext.StringParameter(
-        "Color map",
-        "Select the color map to use for the color column. See https://matplotlib.org/stable/tutorials/colors/colormaps.html",
-        default_value="viridis",
-        enum=["viridis", "plasma", "inferno", "magma", "cividis"],
-        
-    )
 
     # base_map = knext.StringParameter(
     #     "Base map",
@@ -663,33 +648,7 @@ class ViewNodeStaticHTML:
     #         ]
     # )
 
-    use_classify = knext.BoolParameter(
-        "Use classification",
-        "If checked, the color column will be classified using the selected classification method.",
-        default_value=True,
-    )
 
-    classification_method = knext.StringParameter(
-        "Classification method",
-        "Select the classification method to use for the color column.",
-        default_value="EqualInterval",
-        enum=['BoxPlot', 'EqualInterval', 'FisherJenks', 'FisherJenksSampled', 'HeadTailBreaks', 'JenksCaspall', 'JenksCaspallForced', 'JenksCaspallSampled', 'MaxP', 'MaximumBreaks', 'NaturalBreaks', 'Quantiles', 'Percentiles', 'StdMean']
-    )
-
-    classification_bins = knext.IntParameter(
-        "Number of classes",
-        "Select the number of classes to use for the color column.",
-        default_value=5,
-        min_value=1,
-        max_value=10,
-    )
-
-    plot_legend = knext.BoolParameter(
-        "Show legend",
-        "If checked, a legend will be shown in the plot.",
-        default_value=True,
-
-    )
 
     # size_col = knext.ColumnParameter(
     #     "Marker size column",
@@ -697,26 +656,6 @@ class ViewNodeStaticHTML:
     #     column_filter=knut.is_numeric,
     # )
 
-    legend_caption = knext.StringParameter(
-        "Legend caption",
-        "Set the caption for the legend.",
-        default_value="",
-        # default_value=color_col,
-    )
-    
-    legend_location = knext.StringParameter(
-        "Legend location",
-        "Select the location for the legend.",
-        default_value="best",
-        enum=['best', 'upper right', 'upper left', 'lower left', 'lower right', 'right', 'center left', 'center right', 'lower center', 'upper center', 'center']
-    )
-
-    legend_orientation = knext.StringParameter(
-        "Legend orientation",
-        "Select the orientation for the legend.",
-        default_value="vertical",
-        enum=['vertical', 'horizontal']
-    )
 
 
     def configure(self, configure_context, input_schema):
@@ -727,9 +666,10 @@ class ViewNodeStaticHTML:
 
     def execute(self, exec_context: knext.ExecutionContext, input_table):
         gdf = gp.GeoDataFrame(input_table.to_pandas(), geometry=self.geo_col)
+        gdf["x"] = gdf.centroid.geometry.x
+        gdf["y"] = gdf.centroid.geometry.y
+        
 
-        if (self.legend_caption is None) or (self.legend_caption == ""):
-            self.legend_caption = self.color_col
 
 
 # hvplot
@@ -780,20 +720,21 @@ class ViewNodeStaticHTML:
 
 # keplrgl
 
-        # map_1 = KeplerGl()
-        # html = map_1._repr_html_()
-        # html = html.decode("utf-8")
+        map_1 = KeplerGl()
+        map_1.add_data(data=gdf.copy(), name="Layer1")
+        html = map_1._repr_html_()
+        html = html.decode("utf-8")
 
 # pyecharts
 
 
-        bar = Bar()
-        bar.add_xaxis(["衬衫", "羊毛衫", "雪纺衫", "裤子", "高跟鞋", "袜子"])
-        bar.add_yaxis("商家A", [5, 20, 36, 10, 75, 90])
-        # render 会生成本地 HTML 文件，默认会在当前目录生成 render.html 文件
-        # 也可以传入路径参数，如 bar.render("mycharts.html")
-        # html = bar.render_notebook()._repr_html_()
-        html = bar.render_embed()
+        # bar = Bar()
+        # bar.add_xaxis(["衬衫", "羊毛衫", "雪纺衫", "裤子", "高跟鞋", "袜子"])
+        # bar.add_yaxis("商家A", [5, 20, 36, 10, 75, 90])
+        # # render 会生成本地 HTML 文件，默认会在当前目录生成 render.html 文件
+        # # 也可以传入路径参数，如 bar.render("mycharts.html")
+        # # html = bar.render_notebook()._repr_html_()
+        # html = bar.render_embed()
 
         return knext.view_html(html)
 
