@@ -64,24 +64,6 @@ def parse_crs(crs: str) -> pyp.CRS:
     return pyp.CRS.from_user_input(crs)
 
 
-def is_lat_lon_gdf(gdf: gp.GeoDataFrame) -> bool:
-    """Returns True if the projection (crs) of the given GeoDataFrame is in lat long order
-    e.g. the X coordinate represents the latitude (north) and the Y coordinate represent the longitude (east)
-    otherwise False."""
-    return is_lat_lon(gdf.crs)
-
-
-def is_lat_lon(crs: pyp.CRS) -> bool:
-    """Returns True if the projection (crs) of the given crs object is in lat long order
-    e.g. the X coordinate represents the latitude (north) and the Y coordinate represent the longitude (east)
-    otherwise False."""
-    axis_info = crs.axis_info
-    # TODO: Check that the lat check is correct and works for different projections
-    if axis_info[0].abbrev == "Lat":
-        return True
-    return False
-
-
 ########################################################################################
 # Converter that converts a single input column to a geometry column
 ########################################################################################
@@ -324,17 +306,14 @@ class LatLongToGeoNode:
         validate_crs(self.crs)
 
     def execute(self, exec_context: knext.ExecutionContext, input_table):
-        # create GeoDataFrame with the selected column as active geometry column
+        # https://geopandas.org/en/stable/docs/user_guide/projections.html#the-axis-order-of-a-crs
+        # In GeoPandas the coordinates are always stored as (x, y), and thus as (lon, lat) order, regardless of the CRS
         df = input_table.to_pandas()
-        if is_lat_lon(parse_crs(self.crs)):
-            x = self.lat_col
-            y = self.lon_col
-        else:
-            x = self.lon_col
-            y = self.lat_col
         try:
             # input_column and crs need to be defined in the child class
-            df[_ToGeoConverter.DEF_GEO_COL_NAME] = gp.points_from_xy(df[x], df[y])
+            df[_ToGeoConverter.DEF_GEO_COL_NAME] = gp.points_from_xy(
+                df[self.lon_col], df[self.lat_col]
+            )
             gdf = gp.GeoDataFrame(
                 df, geometry=_ToGeoConverter.DEF_GEO_COL_NAME, crs=self.crs
             )
@@ -574,10 +553,8 @@ class GeoToLatLongNode:
     def execute(self, exec_context: knext.ExecutionContext, input_1):
         gdf = knut.load_geo_data_frame(input_1, self.geo_col, exec_context)
         gs = gdf.loc[:, self.geo_col]
-        if is_lat_lon_gdf(gdf):
-            gdf[self.col_lat] = gs.x
-            gdf[self.col_lon] = gs.y
-        else:
-            gdf[self.col_lat] = gs.y
-            gdf[self.col_lon] = gs.x
+        # https://geopandas.org/en/stable/docs/user_guide/projections.html#the-axis-order-of-a-crs
+        # In GeoPandas the coordinates are always stored as (x, y), and thus as (lon, lat) order, regardless of the CRS
+        gdf[self.col_lon] = gs.x
+        gdf[self.col_lat] = gs.y
         return knut.to_table(gdf, exec_context)
