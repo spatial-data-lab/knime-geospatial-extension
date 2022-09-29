@@ -1,22 +1,21 @@
 from doctest import debug_script
 import logging
-import plotly.express as px
+# import plotly.express as px
 import geopandas as gp
 import knime_extension as knext
 import util.knime_utils as knut
 # import contextily as cx
-import folium
-from io import StringIO
+# import folium
+# from io import StringIO
 import matplotlib.pyplot as plt
-import hvplot.pandas
-import hvplot
-import plotly.io as io
-import altair as alt
-from vega_datasets import data
-from keplergl import KeplerGl
-from pyecharts.charts import Bar
-
-import pydeck as pdk
+# import hvplot.pandas
+# import hvplot
+# import plotly.io as io
+# import altair as alt
+# from vega_datasets import data
+# from keplergl import KeplerGl
+# from pyecharts.charts import Bar
+# import pydeck as pdk
 import pandas as pd
 
 LOGGER = logging.getLogger(__name__)
@@ -194,6 +193,7 @@ class ViewNode:
 
 
             # check whether is line 
+            # FIXME: change it to use utlis.is_line
             geo_types = gdf["geometry"].geom_type.unique()
             if  ("LineString" in geo_types) or ("MultiLineString" in geo_types):
                 max_size = 8
@@ -279,8 +279,8 @@ class ViewNodeStatic:
     edge_color = knext.StringParameter(
         "Edge color",
         "Select the edge color to use for the color column. See https://matplotlib.org/stable/tutorials/colors/colormaps.html",
-        default_value="black",
-        enum=["black", "red", "blue", "green", "orange", "purple", "darkred", "lightred", "beige", "darkblue", "darkgreen", "cadetblue", "darkpurple", "white", "pink", "lightblue", "lightgreen", "gray", "black", "lightgray"],
+        default_value="none",
+        enum=["none","black", "red", "blue", "green", "orange", "purple", "darkred", "lightred", "beige", "darkblue", "darkgreen", "cadetblue", "darkpurple", "white", "pink", "lightblue", "lightgreen", "gray", "black", "lightgray"],
     )
 
     size_col = knext.ColumnParameter(
@@ -304,8 +304,6 @@ class ViewNodeStatic:
         min_value=1,
         max_value=10,
     )
-
-    
 
     # base_map = knext.StringParameter(
     #     "Base map",
@@ -536,12 +534,13 @@ class ViewNodeStatic:
                 # "column":self.color_col, 
                 # "cmap":self.color_map,
                 "alpha":1,
-                "legend":self.plot_legend,
+                "legend":self.plot_legend
                 # "color":self.color,
-                "edgecolor":self.edge_color
+                # "edgecolor":self.edge_color
         }
 
-
+        if "none" not in str(self.edge_color):
+            kws["edgecolor"] = self.edge_color
         if "none" not in str(self.color_col).lower():
             kws["column"] = self.color_col
             kws["cmap"] = self.color_map
@@ -549,8 +548,8 @@ class ViewNodeStatic:
             kws["color"] = self.color
 
         if self.use_classify:
-            kws["column"] = self.color_col
-            kws["cmap"] = self.color_map
+            # kws["column"] = self.color_col
+            # kws["cmap"] = self.color_map
             kws["legend_kwds"] ={
                             'fmt':"{:.0f}",
                             'loc': self.legend_location,
@@ -579,12 +578,13 @@ class ViewNodeStatic:
                         'location': colorbar_legend_location,
                         'pad': self.legend_colorbar_pad,
                         }
-        if "none" not in str(self.size_col).lower():
-            max_point_size = 2000
-            max_val = gdf[self.size_col].max()
-            min_val = gdf[self.size_col].min()
-            normal_base = (gdf[self.size_col]-min_val)/max_val
-            kws["makersize"] = normal_base*max_point_size
+        if not (knut.is_geo_line(self.geo_col) or knut.is_geo_multi_line(self.geo_col)):
+            if "none" not in str(self.size_col).lower():
+                max_point_size = 2000
+                max_val = gdf[self.size_col].max()
+                min_val = gdf[self.size_col].min()
+                normal_base = (gdf[self.size_col]-min_val)/max_val
+                kws["makersize"] = normal_base*max_point_size
         if "none" not in str(self.line_width_col).lower():
             max_line_width = 5
             max_val = gdf[self.line_width_col].max()
@@ -607,144 +607,144 @@ class ViewNodeStatic:
         return knext.view_matplotlib(map.get_figure())
 
 
-# geo view html
-# geo view static
-# TODO:
-# - add legend location
-# - add legend caption
-@knext.node(
-    name="Geospatial View 3D",
-    node_type=knext.NodeType.VISUALIZER,
-    icon_path="icons/icon/Visulization/StaticMap.png",
-    category=category,
-)
-@knext.input_table(
-    name="Geospatial table to visualize",
-    description="Table with geospatial data to visualize",
-)
-@knext.output_view(
-    name="Geospatial view", description="Showing a map with the geospatial data"
-)
-class ViewNodeHTML:
-    """
-    This node will visualize the given geometric elements on a static map.
-    """
+# # geo view html
+# # geo view static
+# # TODO:
+# # - add legend location
+# # - add legend caption
+# @knext.node(
+#     name="Geospatial View 3D",
+#     node_type=knext.NodeType.VISUALIZER,
+#     icon_path="icons/icon/Visulization/StaticMap.png",
+#     category=category,
+# )
+# @knext.input_table(
+#     name="Geospatial table to visualize",
+#     description="Table with geospatial data to visualize",
+# )
+# @knext.output_view(
+#     name="Geospatial view", description="Showing a map with the geospatial data"
+# )
+# class ViewNodeHTML:
+#     """
+#     This node will visualize the given geometric elements on a static map.
+#     """
 
-    geo_col = knext.ColumnParameter(
-        "Geometry column",
-        "Select the geometry column to visualize.",
-        column_filter=knut.is_geo,  
-        include_row_key=False,
-        include_none_column=False,
-    )
-
-
-    # base_map = knext.StringParameter(
-    #     "Base map",
-    #     "Select the base map to use for the visualization. See https://contextily.readthedocs.io/en/latest/providers_deepdive.html",
-    #     default_value="OpenStreetMap",
-    #     enum=['OpenStreetMap.Mapnik',
-    #          'OpenTopoMap',
-    #          'Stamen.Toner',
-    #          'Stamen.TonerLite',
-    #          'Stamen.Terrain',
-    #          'Stamen.TerrainBackground',
-    #          'Stamen.Watercolor',
-    #          'NASAGIBS.ViirsEarthAtNight2012',
-    #          'CartoDB.Positron',
-    #          'CartoDB.Voyager'
-    #         ]
-    # )
+#     geo_col = knext.ColumnParameter(
+#         "Geometry column",
+#         "Select the geometry column to visualize.",
+#         column_filter=knut.is_geo,  
+#         include_row_key=False,
+#         include_none_column=False,
+#     )
 
 
-
-    # size_col = knext.ColumnParameter(
-    #     "Marker size column",
-    #     "Select marker size column. The column must contain the size value.",
-    #     column_filter=knut.is_numeric,
-    # )
+#     # base_map = knext.StringParameter(
+#     #     "Base map",
+#     #     "Select the base map to use for the visualization. See https://contextily.readthedocs.io/en/latest/providers_deepdive.html",
+#     #     default_value="OpenStreetMap",
+#     #     enum=['OpenStreetMap.Mapnik',
+#     #          'OpenTopoMap',
+#     #          'Stamen.Toner',
+#     #          'Stamen.TonerLite',
+#     #          'Stamen.Terrain',
+#     #          'Stamen.TerrainBackground',
+#     #          'Stamen.Watercolor',
+#     #          'NASAGIBS.ViirsEarthAtNight2012',
+#     #          'CartoDB.Positron',
+#     #          'CartoDB.Voyager'
+#     #         ]
+#     # )
 
 
 
-    def configure(self, configure_context, input_schema):
-        knut.columns_exist([ self.geo_col], input_schema)
-        # if self.name_cols is None:
-        #     self.name_cols = [c.name for c in input_schema if knut.is_string(c)]
-        return None
-
-    def execute(self, exec_context: knext.ExecutionContext, input_table):
-        gdf = gp.GeoDataFrame(input_table.to_pandas(), geometry=self.geo_col)
-        gdf["x"] = gdf.centroid.geometry.x
-        gdf["y"] = gdf.centroid.geometry.y
+#     # size_col = knext.ColumnParameter(
+#     #     "Marker size column",
+#     #     "Select marker size column. The column must contain the size value.",
+#     #     column_filter=knut.is_numeric,
+#     # )
 
 
 
+#     def configure(self, configure_context, input_schema):
+#         knut.columns_exist([ self.geo_col], input_schema)
+#         # if self.name_cols is None:
+#         #     self.name_cols = [c.name for c in input_schema if knut.is_string(c)]
+#         return None
 
-# hvplot
-        # m= gdf.hvplot(geo=True,  tiles='OSM', cmap='viridis', c=self.color_col, edgecolor='black')
+#     def execute(self, exec_context: knext.ExecutionContext, input_table):
+#         gdf = gp.GeoDataFrame(input_table.to_pandas(), geometry=self.geo_col)
+#         gdf["x"] = gdf.centroid.geometry.x
+#         gdf["y"] = gdf.centroid.geometry.y
+
+
+
+
+# # hvplot
+#         # m= gdf.hvplot(geo=True,  tiles='OSM', cmap='viridis', c=self.color_col, edgecolor='black')
         
-        # html =StringIO()
-        # hvplot.save(m,html)
-        # html.seek(0)
-        # html = html.read()
+#         # html =StringIO()
+#         # hvplot.save(m,html)
+#         # html.seek(0)
+#         # html = html.read()
 
 
-        # plotly
-        # df = px.data.gapminder()
-        # fig = px.scatter_geo(df, locations="iso_alpha", color="continent", hover_name="country", size="pop",
-        #             animation_frame="year", projection="natural earth")
-        # # fig.show()
-        # html = io.to_html(fig, full_html=False)
+#         # plotly
+#         # df = px.data.gapminder()
+#         # fig = px.scatter_geo(df, locations="iso_alpha", color="continent", hover_name="country", size="pop",
+#         #             animation_frame="year", projection="natural earth")
+#         # # fig.show()
+#         # html = io.to_html(fig, full_html=False)
 
 
-# pydeck
-        # CPU_GRID_LAYER_DATA = (
-        #     "https://raw.githubusercontent.com/uber-common/" "deck.gl-data/master/website/sf-bike-parking.json"
-        # )
-        # df = pd.read_json(CPU_GRID_LAYER_DATA)
+# # pydeck
+#         # CPU_GRID_LAYER_DATA = (
+#         #     "https://raw.githubusercontent.com/uber-common/" "deck.gl-data/master/website/sf-bike-parking.json"
+#         # )
+#         # df = pd.read_json(CPU_GRID_LAYER_DATA)
 
-        # # Define a layer to display on a map
+#         # # Define a layer to display on a map
 
-        # layer = pdk.Layer(
-        #     "GridLayer",
-        #     df,
-        #     pickable=True,
-        #     extruded=True,
-        #     cell_size=200,
-        #     elevation_scale=4,
-        #     get_position="COORDINATES",
-        # )
+#         # layer = pdk.Layer(
+#         #     "GridLayer",
+#         #     df,
+#         #     pickable=True,
+#         #     extruded=True,
+#         #     cell_size=200,
+#         #     elevation_scale=4,
+#         #     get_position="COORDINATES",
+#         # )
 
-        # view_state = pdk.ViewState(latitude=37.7749295, longitude=-122.4194155, zoom=11, bearing=0, pitch=45)
+#         # view_state = pdk.ViewState(latitude=37.7749295, longitude=-122.4194155, zoom=11, bearing=0, pitch=45)
 
-        # # Render
-        # r = pdk.Deck(
-        #     layers=[layer],
-        #     initial_view_state=view_state,
-        #     tooltip={"text": "{position}\nCount: {count}"},
-        # )
+#         # # Render
+#         # r = pdk.Deck(
+#         #     layers=[layer],
+#         #     initial_view_state=view_state,
+#         #     tooltip={"text": "{position}\nCount: {count}"},
+#         # )
 
-        # html = r._repr_html_()
+#         # html = r._repr_html_()
 
-# keplrgl
+# # keplrgl
 
-        map_1 = KeplerGl()
-        map_1.add_data(data=gdf.copy(), name="Layer1")
-        html = map_1._repr_html_()
-        html = html.decode("utf-8")
+#         map_1 = KeplerGl()
+#         map_1.add_data(data=gdf.copy(), name="Layer1")
+#         html = map_1._repr_html_()
+#         html = html.decode("utf-8")
 
-# pyecharts
+# # pyecharts
 
 
-        # bar = Bar()
-        # bar.add_xaxis(["衬衫", "羊毛衫", "雪纺衫", "裤子", "高跟鞋", "袜子"])
-        # bar.add_yaxis("商家A", [5, 20, 36, 10, 75, 90])
-        # # render 会生成本地 HTML 文件，默认会在当前目录生成 render.html 文件
-        # # 也可以传入路径参数，如 bar.render("mycharts.html")
-        # # html = bar.render_notebook()._repr_html_()
-        # html = bar.render_embed()
+#         # bar = Bar()
+#         # bar.add_xaxis(["衬衫", "羊毛衫", "雪纺衫", "裤子", "高跟鞋", "袜子"])
+#         # bar.add_yaxis("商家A", [5, 20, 36, 10, 75, 90])
+#         # # render 会生成本地 HTML 文件，默认会在当前目录生成 render.html 文件
+#         # # 也可以传入路径参数，如 bar.render("mycharts.html")
+#         # # html = bar.render_notebook()._repr_html_()
+#         # html = bar.render_embed()
 
-        return knext.view_html(html)
+#         return knext.view_html(html)
 
 
 # TODO:
