@@ -578,7 +578,9 @@ class ViewNodeStatic:
                         'location': colorbar_legend_location,
                         'pad': self.legend_colorbar_pad,
                         }
-        if not (knut.is_geo_line(self.geo_col) or knut.is_geo_multi_line(self.geo_col)):
+
+        geo_types = gdf["geometry"].geom_type.unique()
+        if  not (("LineString" in geo_types) or ("MultiLineString" in geo_types)):
             if "none" not in str(self.size_col).lower():
                 max_point_size = 2000
                 max_val = gdf[self.size_col].max()
