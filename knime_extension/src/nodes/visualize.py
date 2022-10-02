@@ -51,7 +51,7 @@ class ViewNode:
     color_col = knext.ColumnParameter(
         "Marker color column",
         "Select marker color column to be plotted.",
-        column_filter=knut.is_numeric,
+        column_filter=knut.is_numeric_or_string,
         include_row_key=False,
         include_none_column=False,
     )
@@ -210,11 +210,11 @@ class ViewNode:
 
         gdf = gp.GeoDataFrame(input_table.to_pandas(), geometry=self.geo_col)
 
-        if (self.legend_caption is None) or (self.legend_caption == ""):
-            self.legend_caption = self.color_col
+        
 
-        kws = {"column":self.color_col, 
-            "cmap":self.color_map,
+        kws = {
+            # "column":self.color_col, 
+            # "cmap":self.color_map,
             "tooltip":self.name_cols,
             "tiles":self.base_map,
             "popup":self.popup_cols,
@@ -227,6 +227,22 @@ class ViewNode:
                 "colorbar":True
             }
         }
+
+
+        if "none" not in str(self.color_col).lower():
+            kws["column"] = self.color_col
+            kws["cmap"] = self.color_map
+
+            if type(gdf[self.color_col].values[0]) == str:
+                kws["categorical"] = True
+                kws["legend_kwds"]["colorbar"] = False
+                
+            if (self.legend_caption is None) or (self.legend_caption == ""):
+                self.legend_caption = self.color_col
+        else:
+            self.plot_legend = False
+
+        
 
         if self.use_classify:
             kws["scheme"] = self.classification_method

@@ -99,7 +99,12 @@ def is_numeric_or_string(column: knext.Column) -> bool:
     Checks if column is numeric or string
     @return: True if Column is numeric or string
     """
-    return is_numeric(column) or is_string(column)
+    return (
+        column.ktype == knext.double()
+        or column.ktype == knext.int32()
+        or column.ktype == knext.int64()
+        or column.ktype == knext.string()
+    )
 
 
 def is_binary(column: knext.Column) -> bool:
