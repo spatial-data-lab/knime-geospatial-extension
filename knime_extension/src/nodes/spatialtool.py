@@ -399,7 +399,7 @@ object (not its boundary or exterior).</li>
         knut.check_canceled(exec_context)
         right_gdf = right_gdf.to_crs(left_gdf.crs)
         gdf = left_gdf.sjoin(right_gdf, how=self.join_mode, predicate=self.match_mode)
-        gdf = gdf.reset_index(drop=True)
+        gdf = gdf.reset_index(drop=True).drop(columns='index_right')        
         return knext.Table.from_pandas(gdf)
 
 
@@ -486,10 +486,10 @@ class NearestJoinNode:
             how=self.join_mode,
             max_distance=self.maxdist,
             distance_col="NearDist",
-            lsuffix="0",
-            rsuffix="1",
+            lsuffix="1",
+            rsuffix="2",
         )
-        gdf = gdf.reset_index(drop=True)
+        gdf = gdf.reset_index(drop=True).drop(columns='index_2')        
         return knext.Table.from_pandas(gdf)
 
 
@@ -552,9 +552,9 @@ class ClipNode:
         )
         knut.check_canceled(exec_context)
         right_gdf = right_gdf.to_crs(left_gdf.crs)
-        gdf_clip = gp.clip(left_gdf, right_gdf)
-        # gdf_clip =gp.clip(left_gdf, right_gdf,keep_geom_type=True)
-        gdf_clipnew = gp.GeoDataFrame(geometry=gdf_clip.geometry)
+        #gdf_clip = gp.clip(left_gdf, right_gdf)
+        gdf_clipnew =gp.clip(left_gdf, right_gdf,keep_geom_type=True)
+         #gdf_clipnew = gp.GeoDataFrame(geometry=gdf_clip.geometry)
         # =gdf_clip.reset_index(drop=True)
         return knext.Table.from_pandas(gdf_clipnew)
 
