@@ -255,7 +255,7 @@ class OSMdataNode:
 @knext.node(
     name="Parquet Reader",
     node_type=knext.NodeType.MANIPULATOR,
-    icon_path=__NODE_ICON_PATH + "GeoFileReader.png",
+    icon_path=__NODE_ICON_PATH + "parquet.png",
     category=__category,
 )
 
