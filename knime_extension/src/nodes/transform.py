@@ -19,9 +19,12 @@ category = knext.category(
     icon="icons/icon/TransformationCategory.png",
 )
 
+############################################
+# CRS Transformer
+############################################
 
 @knext.node(
-    name="CRS-Transformer",
+    name="CRS Transformer",
     node_type=knext.NodeType.MANIPULATOR,
     icon_path="icons/icon/GeometryTransformation/Projection.png",
     category=category,
@@ -63,8 +66,12 @@ class CrsTransformerNode:
         return knext.Table.from_pandas(gdf)
 
 
+############################################
+# Geometry To Point
+############################################
+
 @knext.node(
-    name="GeometryToPoint",
+    name="Geometry To Point",
     node_type=knext.NodeType.MANIPULATOR,
     icon_path="icons/icon/GeometryTransformation/FeatureToPoint.png",
     category=category,
@@ -119,8 +126,12 @@ class GeometryToPointNode:
         return knext.Table.from_pandas(gdf)
 
 
+############################################
+# Multipart to Singlepart
+############################################
+
 @knext.node(
-    name="Explode",
+    name="Multipart To Singlepart",
     node_type=knext.NodeType.MANIPULATOR,
     icon_path="icons/icon/GeometryTransformation/Explode.png",
     category=category,
@@ -161,8 +172,13 @@ class ExplodeNode:
         return knext.Table.from_pandas(exploded)
 
 
+############################################
+# Polygon To Line
+############################################
+
+
 @knext.node(
-    name="PolygonToLine",
+    name="Polygon To Line",
     node_type=knext.NodeType.MANIPULATOR,
     icon_path="icons/icon/GeometryTransformation/PolygonToLine.png",
     category=category,
@@ -202,8 +218,12 @@ class PolygonToLineNode:
         return knext.Table.from_pandas(gdf)
 
 
+############################################
+# Points To Line
+############################################
+
 @knext.node(
-    name="PointsToLine",
+    name="Points To Line",
     node_type=knext.NodeType.MANIPULATOR,
     icon_path="icons/icon/GeometryTransformation/PointToLine.png",
     category=category,
@@ -273,8 +293,12 @@ class PointsToLineNode:
         return knext.Table.from_pandas(line_gdf)
 
 
+############################################
+# Line To MultiPoint
+############################################
+
 @knext.node(
-    name="LineToMultiPoint",
+    name="Line To MultiPoint",
     node_type=knext.NodeType.MANIPULATOR,
     icon_path="icons/icon/GeometryTransformation/LinePolygonToPoints.png",
     category=category,
