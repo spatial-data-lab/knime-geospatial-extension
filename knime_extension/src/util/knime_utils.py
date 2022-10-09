@@ -219,6 +219,89 @@ def geo_node_description(short_description: str, description: str, references: d
 
     return set_description
 
+def census_node_description(short_description: str, description: str, references: dict):
+    """This decorator takes the provided information and generates a standardized node description
+    for nodes that are based on GeoPandas functionality."""
+
+    def set_description(node_factory):
+        s = f"{short_description}\n"
+        s += f"{description}\n\n"
+        # s += "___\n\n"  # separator line between description and general part
+        s += "The node is based on the data from [US Census](https://www.census.gov/)  and here are related data sources and references"
+        if references is not None:
+            if len(references) > 1:
+                s += "s"
+            s += ":"
+            s += "\n\n"
+            for key in references:
+                s += f"- [{key}]({references[key]})\n"
+        node_factory.__doc__ = s
+        return node_factory
+
+    return set_description
+
+def osm_node_description(short_description: str, description: str, references: dict):
+    """This decorator takes the provided information and generates a standardized node description
+    for nodes that are based on GeoPandas functionality."""
+
+    def set_description(node_factory):
+        s = f"{short_description}\n"
+        s += f"{description}\n\n"
+        # s += "___\n\n"  # separator line between description and general part
+        s += "The node is based on the project [OSMnx](https://github.com/gboeing/osmnx)  and here are related tools and references"
+        if references is not None:
+            if len(references) > 1:
+                s += "s"
+            s += ":"
+            s += "\n\n"
+            for key in references:
+                s += f"- [{key}]({references[key]})\n"
+        node_factory.__doc__ = s
+        return node_factory
+
+    return set_description
+
+def pd_node_description(short_description: str, description: str, references: dict):
+    """This decorator takes the provided information and generates a standardized node description
+    for nodes that are based on GeoPandas functionality."""
+
+    def set_description(node_factory):
+        s = f"{short_description}\n"
+        s += f"{description}\n\n"
+        # s += "___\n\n"  # separator line between description and general part
+        s += "The node is based on the package [pandas](https://pandas.pydata.org/docs/reference/api/pandas.read_parquet.html)  and here are related tools and references"
+        if references is not None:
+            if len(references) > 1:
+                s += "s"
+            s += ":"
+            s += "\n\n"
+            for key in references:
+                s += f"- [{key}]({references[key]})\n"
+        node_factory.__doc__ = s
+        return node_factory
+
+    return set_description
+
+def pulp_node_description(short_description: str, description: str, references: dict):
+    """This decorator takes the provided information and generates a standardized node description
+    for nodes that are based on GeoPandas functionality."""
+
+    def set_description(node_factory):
+        s = f"{short_description}\n"
+        s += f"{description}\n\n"
+        # s += "___\n\n"  # separator line between description and general part
+        s += "The node is based on the package [PuLP](https://coin-or.github.io/pulp/)  and here are related tools and references"
+        if references is not None:
+            if len(references) > 1:
+                s += "s"
+            s += ":"
+            s += "\n\n"
+            for key in references:
+                s += f"- [{key}]({references[key]})\n"
+        node_factory.__doc__ = s
+        return node_factory
+
+    return set_description
 
 ############################################
 # GeoPandas helper
