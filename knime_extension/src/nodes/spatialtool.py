@@ -105,7 +105,7 @@ class DissolveNode:
         "Dissolve column",
         "Select the dissolve column as group id.",
         # Allow only string columns
-        column_filter=knut.is_string,
+        column_filter=knut.is_numeric_or_string,
         include_row_key=False,
         include_none_column=False,
     )
