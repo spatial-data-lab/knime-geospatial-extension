@@ -6,6 +6,7 @@ import knime_extension as knext
 import util.knime_utils as knut
 import requests
 import osmnx as ox
+from keplergl import KeplerGl
 
 __category = knext.category(
     path="/geo",
@@ -318,9 +319,179 @@ class GeoFileReaderNode:
 
     def execute(self, exec_context: knext.ExecutionContext):        
         gdf=gp.read_file(self.data_url)
+        gdf=gdf.reset_index(drop=True)
         return knext.Table.from_pandas(gdf)
 
 
+############################################
+# Location-allocation Pmedian
+############################################
+@knext.node(
+    name="P-media",
+    node_type=knext.NodeType.MANIPULATOR,
+    icon_path=__NODE_ICON_PATH + "pmedian.png",
+    category=__category,
+)
+
+@knext.input_table(
+    name="Input OD list with geometries ",
+    description="Table with geometry information of demand and supply ",
+)
+@knext.output_table(
+    name="Demand table with P-median result",
+    description="Demand table with assigned supply point and link",
+)
+
+@knut.pulp_node_description(
+    short_description="Solve P-median problem for location-allocation.",
+    description="The p-median model, one of the most widely used location models of any kind,"
+    +"locates p facilities and allocates demand nodes to them to minimize total weighted distance traveled. "
+    +"The P-Median problem will be solved by PuLP package. ",
+    references={        
+        "Pulp.Solver": "https://coin-or.github.io/pulp/guides/how_to_configure_solvers.html",  
+    },
+)
+class PmediaNode: 
+
+    DemandID  = knext.ColumnParameter(
+        "Serial id column for demand",
+        "Integer id number starting with 0",
+        #port_index=0,
+        column_filter=knut.is_numeric,
+        include_row_key=False,
+        include_none_column=False,
+    )   
+
+    SupplyID  = knext.ColumnParameter(
+        "Serial id column for supply",
+        "Integer id number starting with 0",
+        #port_index=1,
+        column_filter=knut.is_numeric,
+        include_row_key=False,
+        include_none_column=False,
+    )  
+
+    DemandPopu  = knext.ColumnParameter(
+        "Column for demand population",
+        "The populaiton of demand",
+        #port_index=2,
+        column_filter=knut.is_numeric,
+        include_row_key=False,
+        include_none_column=False,
+    ) 
+
+    DemandGeometry  = knext.ColumnParameter(
+        "Geometry column for demand points",
+        "The Geometry column for demand points",
+        #port_index=3,
+        column_filter=knut.is_geo,
+        include_row_key=False,
+        include_none_column=False,
+    ) 
+
+    SupplyGeometry= knext.ColumnParameter(
+        "Geometry column for supply points",
+        "The Geometry column for supply points",
+        #port_index=4,
+        column_filter=knut.is_geo,
+        include_row_key=False,
+        include_none_column=False,
+    )  
+    ODcost= knext.ColumnParameter(
+        "Travel cost between supply and demand",
+        "The travel cost between the points of supply and demand",
+        #port_index=5,
+        column_filter=knut.is_numeric,
+        include_row_key=False,
+        include_none_column=False,
+    ) 
+    CRSinfo = knext.StringParameter("Input CRSinfo for geometries of demand and supply", "The CRS information for geometry columns", "epsg:3857")
+    Pnumber = knext.IntParameter("Input optimum p number of p-median", "The optimum p number of p-median", 5)
+
+    def configure(self, configure_context, input_schema_1):
+        #knut.geo_column_exists(self.geo_col, input_schema_1)
+        # TODO Create combined schema
+        return None
+            #knext.Schema.from_columns(
+            # [
+            #     knext.Column(knext.(), self.DemandID),
+            #     knext.Column(knext.double(), self.DemandPopu),
+            #     knext.Column(knext.double(), "geometry"),
+            #     knext.Column(knext.double(), "assignSID"),
+            #     knext.Column(knext.double(), "SIDwkt"),
+            #     knext.Column(knext.double(), "Linewkt"),
+            # ])
+
+
+    def execute(self, exec_context: knext.ExecutionContext,input_1):        
+        df = gp.GeoDataFrame(input_1.to_pandas())
+        # Sort with DID and SID
+        df=df.sort_values(by=[self.DemandID, self.SupplyID]).reset_index(drop=True)
+
+        # rebuild demand and supply data
+        DemandPt=df[[self.DemandID,self.DemandPopu,self.DemandGeometry]].groupby([self.DemandID]).first().reset_index().rename(columns={"index": self.DemandID,self.DemandGeometry:'geometry'})
+        SupplyPt=df[[self.SupplyID,self.SupplyGeometry]].groupby([self.SupplyID]).first().reset_index().rename(columns={"index": self.SupplyID,self.SupplyGeometry:'geometry'})
+        DemandPt=gp.GeoDataFrame(DemandPt,geometry='geometry')
+        SupplyPt=gp.GeoDataFrame(SupplyPt,geometry='geometry')
+        DemandPt = DemandPt.set_crs(self.CRSinfo)
+        SupplyPt=SupplyPt.set_crs(self.CRSinfo)
+
+        # calculate parameter for matrix
+        num_trt=DemandPt.shape[0] 
+        num_hosp=SupplyPt.shape[0] 
+
+        # define problem
+        problem=pulp.LpProblem("MyProblem",sense=pulp.LpMinimize)
+
+        def getIndex(s):
+            li=s.split()
+            if len(li)==2 :
+                return int(li[-1])
+            else :
+                return int(li[-2]),int(li[-1])
+
+        X=['X'+' '+str(i)+' '+str(j) for i in range(num_trt) for j in range(num_hosp)]
+        Y=['Y'+' '+str(j) for j in range(num_hosp) ]
+
+        varX=pulp.LpVariable.dicts("x",X,cat="Binary")
+        varY=pulp.LpVariable.dicts("y",Y,cat="Binary")
+
+        object_list=[]
+        for it in X:
+            i,j=getIndex(it)
+            cost = df[(df[self.DemandID]== i) & (df[self.SupplyID]== j)][self.ODcost].values[0]
+            object_list.append(DemandPt[self.DemandPopu][i]*cost*varX[it])
+        problem+=pulp.lpSum(object_list)
+
+        problem+=pulp.lpSum([varY[it] for it in Y])==self.Pnumber
+        for i in range(num_trt):
+            problem+=pulp.lpSum([varX['X'+' '+str(i)+' '+str(j)] for j in range(num_hosp) ])==1
+        for i in range(num_trt):
+            for j in range(num_hosp):
+                problem+=(varX['X'+' '+str(i)+' '+str(j)]-varY['Y'+' '+str(j)]<=0)
+
+        problem.solve()
+        print(pulp.LpStatus[problem.status])
+
+        # Extract result             
+
+        DemandPt['assignSID']=None
+        DemandPt['SIDcoord']=None
+        for it in X:
+            v = varX[it]
+            if v.varValue == 1:
+                i,j=getIndex(it)
+                DemandPt.at[i,'assignSID']=SupplyPt.at[j,self.SupplyID]
+                DemandPt.at[i,'SIDcoord']=SupplyPt.at[j,'geometry']
+        DemandPt['linxy']=[LineString(xy) for xy in zip(DemandPt['geometry'],DemandPt['SIDcoord'])]
+        DemandPt['SIDwkt']=DemandPt.set_geometry('SIDcoord').geometry.to_wkt()
+        DemandPt['Linewkt']=DemandPt.set_geometry('linxy').geometry.to_wkt()
+        DemandPt=DemandPt.drop(columns=['linxy','SIDcoord'])
+        DemandPt=DemandPt.reset_index(drop=True)
+        #DemandPt=DemandPt.rename(columns={'geometry':'DIDgeometry'})
+        gdf = gp.GeoDataFrame(DemandPt, geometry="geometry", crs=self.CRSinfo)
+        return knext.Table.from_pandas(gdf)
+    
 ############################################
 # Kepler.gl 
 ############################################
