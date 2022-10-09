@@ -6,6 +6,8 @@ import knime_extension as knext
 import util.knime_utils as knut
 import requests
 import osmnx as ox
+import pulp
+from shapely.geometry import  LineString
 from keplergl import KeplerGl
 
 __category = knext.category(
