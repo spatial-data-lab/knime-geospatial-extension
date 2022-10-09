@@ -109,8 +109,9 @@ class US2020TIGERNode:
             if self.geofile == "roads": self.geofile = "prisecroads"
             data_url = f'{base_url}{Statepath}/{County5Fips}/tl_2020_{County5Fips}_{self.geofile}.zip'
         gdf=gp.read_file(data_url)
-
-        return knext.Table.from_pandas(gdf)
+        gdf1=gdf.reset_index(drop=True)
+        #gdf1=gdf1[["GEOID20","geometry"]]
+        return knext.Table.from_pandas(gdf1)
 
 
 ############################################
@@ -493,7 +494,10 @@ class PmediaNode:
         #DemandPt=DemandPt.rename(columns={'geometry':'DIDgeometry'})
         gdf = gp.GeoDataFrame(DemandPt, geometry="geometry", crs=self.CRSinfo)
         return knext.Table.from_pandas(gdf)
-    
+
+
+
+
 ############################################
 # Kepler.gl 
 ############################################
