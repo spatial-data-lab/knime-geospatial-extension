@@ -5,6 +5,7 @@ import geopandas as gp
 import knime_extension as knext
 import util.knime_utils as knut
 import geospatial_types as gt
+import numpy as np
 
 LOGGER = logging.getLogger(__name__)
 
@@ -18,6 +19,9 @@ category = knext.category(
     icon="icons/icon/SpatialToolCategory.png",
 )
 
+############################################
+# Buffer
+############################################
 
 @knext.node(
     name="Buffer",
@@ -66,6 +70,10 @@ class BufferNode:
         return knext.Table.from_pandas(gdf)
 
 
+############################################
+# Dissolve
+############################################
+
 @knext.node(
     name="Dissolve",
     node_type=knext.NodeType.MANIPULATOR,
@@ -98,7 +106,7 @@ class DissolveNode:
         "Dissolve column",
         "Select the dissolve column as group id.",
         # Allow only string columns
-        column_filter=knut.is_string,
+        column_filter=knut.is_numeric_or_string,
         include_row_key=False,
         include_none_column=False,
     )
@@ -119,8 +127,12 @@ class DissolveNode:
         return knext.Table.from_pandas(gdf)
 
 
+############################################
+# Bounding Box
+############################################
+
 @knext.node(
-    name="BoundingBox",
+    name="Bounding Box",
     node_type=knext.NodeType.MANIPULATOR,
     icon_path="icons/icon/SpatialTool/BoundingBox.png",
     category=category,
@@ -162,8 +174,12 @@ class BoundingBoxNode:
         return knext.Table.from_pandas(gdf)
 
 
+############################################
+# Convex Hull
+############################################
+
 @knext.node(
-    name="ConvexHull",
+    name="Convex Hull",
     node_type=knext.NodeType.MANIPULATOR,
     icon_path="icons/icon/SpatialTool/ConvexHull.png",
     category=category,
@@ -205,51 +221,12 @@ class ConvexHullNode:
         return knext.Table.from_pandas(gdf)
 
 
-@knext.node(
-    name="UnaryUnion",
-    node_type=knext.NodeType.MANIPULATOR,
-    icon_path="icons/icon/SpatialTool/UnaryUnion.png",
-    category=category,
-)
-@knext.input_table(
-    name="Geo table",
-    description="Table with geometry column to transform",
-)
-@knext.output_table(
-    name="Transformed geo table",
-    description="Transformed Geo input table",
-)
-class UnaryUnionNode:
-    """
-    This node generate the smallest convex Polygon containing all the points in each geometry.
-    """
-
-    geo_col = knext.ColumnParameter(
-        "Geometry column",
-        "Select the geometry column to transform.",
-        # Allow only GeoValue compatible columns
-        column_filter=knut.is_geo,
-        include_row_key=False,
-        include_none_column=False,
-    )
-
-    def configure(self, configure_context, input_schema_1):
-        knut.column_exists(self.geo_col, input_schema_1)
-        return input_schema_1
-
-    def execute(self, exec_context: knext.ExecutionContext, input_1):
-        gdf = gp.GeoDataFrame(input_1.to_pandas(), geometry=self.geo_col)
-        exec_context.set_progress(
-            0.3, "Geo data frame loaded. Starting transformation..."
-        )
-        gdf_union = gdf.unary_union
-        exec_context.set_progress(0.1, "Transformation done")
-        LOGGER.debug("Feature converted to ConvexHull")
-        return knext.Table.from_pandas(gdf_union)
-
+############################################
+# Unary Union
+############################################
 
 @knext.node(
-    name="UnaryUnion",
+    name="Unary Union",
     node_type=knext.NodeType.MANIPULATOR,
     icon_path="icons/icon/SpatialTool/UnaryUnion.png",
     category=category,
@@ -291,6 +268,10 @@ class UnaryUnionNode:
         LOGGER.debug("Feature converted to ConvexHull")
         return knext.Table.from_pandas(gdfunion)
 
+
+############################################
+# Spatial Join
+############################################
 
 @knext.node(
     name="SpatialJoin",
@@ -399,9 +380,13 @@ object (not its boundary or exterior).</li>
         knut.check_canceled(exec_context)
         right_gdf = right_gdf.to_crs(left_gdf.crs)
         gdf = left_gdf.sjoin(right_gdf, how=self.join_mode, predicate=self.match_mode)
-        gdf = gdf.reset_index(drop=True)
+        gdf = gdf.reset_index(drop=True).drop(columns='index_right')        
         return knext.Table.from_pandas(gdf)
 
+
+############################################
+# Nearest Join
+############################################
 
 @knext.node(
     name="NearestJoin",
@@ -486,12 +471,16 @@ class NearestJoinNode:
             how=self.join_mode,
             max_distance=self.maxdist,
             distance_col="NearDist",
-            lsuffix="0",
-            rsuffix="1",
+            lsuffix="1",
+            rsuffix="2",
         )
-        gdf = gdf.reset_index(drop=True)
+        gdf = gdf.reset_index(drop=True).drop(columns='index_2')        
         return knext.Table.from_pandas(gdf)
 
+
+############################################
+# Clip
+############################################
 
 @knext.node(
     name="Clip",
@@ -552,12 +541,16 @@ class ClipNode:
         )
         knut.check_canceled(exec_context)
         right_gdf = right_gdf.to_crs(left_gdf.crs)
-        gdf_clip = gp.clip(left_gdf, right_gdf)
-        # gdf_clip =gp.clip(left_gdf, right_gdf,keep_geom_type=True)
-        gdf_clipnew = gp.GeoDataFrame(geometry=gdf_clip.geometry)
+        #gdf_clip = gp.clip(left_gdf, right_gdf)
+        gdf_clipnew =gp.clip(left_gdf, right_gdf,keep_geom_type=True)
+         #gdf_clipnew = gp.GeoDataFrame(geometry=gdf_clip.geometry)
         # =gdf_clip.reset_index(drop=True)
         return knext.Table.from_pandas(gdf_clipnew)
 
+
+############################################
+# Overlay
+############################################
 
 @knext.node(
     name="Overlay",
@@ -642,3 +635,170 @@ class OverlayNode:
         gdf = gp.overlay(left_gdf, right_gdf, how=self.overlay_mode)
         gdf = gdf.reset_index(drop=True)
         return knext.Table.from_pandas(gdf)
+
+
+############################################
+# Euclidean Distance
+############################################
+
+@knext.node(
+    name="Euclidean Distance",
+    node_type=knext.NodeType.MANIPULATOR,
+    icon_path="icons/icon/SpatialTool/EuclideanDistance.png",
+    category=category,
+)
+@knext.input_table(
+    name="Left geo table",
+    description="Left table with geometry column to join on",
+)
+@knext.input_table(
+    name="Right geo table",
+    description="Right table with geometry column to join on",
+)
+@knext.output_table(
+    name="Geo table Distance",
+    description="Euclidean distance between objects",
+)
+class EuclideanDistanceNode:
+    """
+    This node will calculate the distance between two geometries.
+    """
+
+    left_geo_col = knext.ColumnParameter(
+        "Left geometry column",
+        "Select the geometry column from the left (top) input table to calcualte.",
+        # Allow only GeoValue compatible columns
+        port_index=0,
+        column_filter=knut.is_geo,
+        include_row_key=False,
+        include_none_column=False,
+    )
+
+    right_geo_col = knext.ColumnParameter(
+        "Right  geometry column",
+        "Select the geometry column from the right (bottom) input table to calcualte.",
+        # Allow only GeoValue compatible columns
+        port_index=1,
+        column_filter=knut.is_geo,
+        include_row_key=False,
+        include_none_column=False,
+    )
+
+    crs_info = knext.StringParameter(
+        label="CRS for ditance calculation",
+        description="Input the CRS to use",
+        default_value="EPSG:3857",
+    )
+
+    def configure(self, configure_context, left_input_schema, right_input_schema):
+        knut.column_exists(self.left_geo_col, left_input_schema)
+        knut.column_exists(self.right_geo_col, left_input_schema)
+        # TODO Create combined schema
+        return None
+
+    def execute(self, exec_context: knext.ExecutionContext, left_input, right_input):
+        left_gdf = gp.GeoDataFrame(left_input.to_pandas(), geometry=self.left_geo_col)
+        right_gdf = gp.GeoDataFrame(right_input.to_pandas(), geometry=self.right_geo_col)
+        knut.check_canceled(exec_context)
+        right_gdf = right_gdf.to_crs(self.crs_info)
+        left_gdf = left_gdf.to_crs(self.crs_info)
+        #left_gdf['LID'] = range(1,(left_gdf.shape[0]+1))
+        #right_gdf['RID'] = range(1,(right_gdf.shape[0]+1))
+        mergedf=left_gdf.merge(right_gdf, how='cross')
+        mergedf_x=gp.GeoDataFrame(geometry=mergedf['geometry_x'])
+        mergedf_y=gp.GeoDataFrame(geometry=mergedf['geometry_y'])
+        mergedf['EuDist']=mergedf_x.distance(mergedf_y, align=False)        
+        mergedf= mergedf.reset_index(drop=True)
+        return knext.Table.from_pandas(mergedf)
+
+
+############################################
+# Multiple Ring Buffer
+############################################
+
+@knext.node(
+    name="Multiple Ring Buffer",
+    node_type=knext.NodeType.MANIPULATOR,
+    icon_path="icons/icon/SpatialTool/MultipleRingBuffer.png",
+    category=category,
+)
+@knext.input_table(
+    name="Geo table",
+    description="Table with geometry column to buffer",
+)
+@knext.output_table(
+    name="Transformed geo table",
+    description="Transformed table by Multiple Ring Buffer",
+)
+class MultiRingBufferNode:
+    """
+    This node generate multiple polygons with a series  distances of each geometric object.
+    """
+
+    geo_col = knext.ColumnParameter(
+        "Geometry column",
+        "Select the geometry column to transform.",
+        # Allow only GeoValue compatible columns
+        column_filter=knut.is_geo,
+        include_row_key=False,
+        include_none_column=False,
+    )
+
+    bufferdist = knext.StringParameter(
+        "Serial Buffer Distances with coma", "The buffer distances for geometry ", "10,20,30"
+    )
+
+    bufferunit = knext.StringParameter(
+        label="Serial Buffer Distances", 
+        description="The buffer distances for geometry ", 
+        default_value="Meter",
+        enum=[
+            "Meter",
+            "KiloMeter",
+            "Mile",           
+        ],
+    )
+
+    crs_info = knext.StringParameter(
+        label="CRS for buffering ditance calculation",
+        description="Input the CRS to use",
+        default_value="EPSG:3857",
+    )
+
+    def configure(self, configure_context, input_schema_1):
+        knut.column_exists(self.geo_col, input_schema_1)
+        # TODO Create combined schema
+        return None
+
+    def execute(self, exec_context: knext.ExecutionContext, input_1):
+        gdf = gp.GeoDataFrame(input_1.to_pandas(), geometry=self.geo_col)
+        gdf = gp.GeoDataFrame(geometry=gdf.geometry)
+        gdf = gdf.to_crs(self.crs_info)
+        exec_context.set_progress(0.3, "Geo data frame loaded. Starting buffering...")
+        # transfrom string list to number 
+        bufferlist= np.array(self.bufferdist.split(","), dtype=np.int64)
+        if self.bufferunit=="Meter" :
+            bufferlist=bufferlist
+        elif self.bufferunit=="KiloMeter" :
+            bufferlist=bufferlist*1000
+        else:
+            bufferlist=bufferlist*1609.34 
+        # sort list
+        bufferlist=bufferlist.tolist() 
+        bufferlist.sort()   
+        c1 = gp.GeoDataFrame(geometry=gdf.buffer(bufferlist[0]))
+        c2 = gp.GeoDataFrame(geometry=gdf.buffer(bufferlist[1]))
+        gdf0 = gp.overlay(c1 , c2 , how='union')
+        if len(bufferlist)>2:
+            # Construct all other rings by loop
+            for i in range(2,len(bufferlist)):
+                ci = gp.GeoDataFrame(geometry=gdf.buffer(bufferlist[i]));
+                gdf0 = gp.overlay(gdf0, ci, how='union')
+        # Add ring radius values as a new column    
+        gdf0['dist']=bufferlist
+        gdf0=gdf0.reset_index(drop=True)
+        exec_context.set_progress(0.1, "Buffering done")
+        return knext.Table.from_pandas(gdf0)
+
+
+
