@@ -10,7 +10,7 @@ import numpy as np
 LOGGER = logging.getLogger(__name__)
 
 
-category = knext.category(
+__category = knext.category(
     path="/geo",
     level_id="spatialtool",
     name="Spatial Tool",
@@ -26,8 +26,8 @@ category = knext.category(
 @knext.node(
     name="Buffer",
     node_type=knext.NodeType.MANIPULATOR,
-    icon_path="icons/icon/SpatialTool/Buffer.png",
-    category=category,
+    icon_path=__NODE_ICON_PATH + "Buffer.png",
+    category=__category,
 )
 @knext.input_table(
     name="Geo table",
@@ -77,8 +77,8 @@ class BufferNode:
 @knext.node(
     name="Dissolve",
     node_type=knext.NodeType.MANIPULATOR,
-    icon_path="icons/icon/SpatialTool/Dissolve.png",
-    category=category,
+    icon_path=__NODE_ICON_PATH + "Dissolve.png",
+    category=__category,
 )
 @knext.input_table(
     name="Geo table",
@@ -134,8 +134,8 @@ class DissolveNode:
 @knext.node(
     name="Bounding Box",
     node_type=knext.NodeType.MANIPULATOR,
-    icon_path="icons/icon/SpatialTool/BoundingBox.png",
-    category=category,
+    icon_path=__NODE_ICON_PATH + "BoundingBox.png",
+    category=__category,
 )
 @knext.input_table(
     name="Geo table",
@@ -181,8 +181,8 @@ class BoundingBoxNode:
 @knext.node(
     name="Convex Hull",
     node_type=knext.NodeType.MANIPULATOR,
-    icon_path="icons/icon/SpatialTool/ConvexHull.png",
-    category=category,
+    icon_path=__NODE_ICON_PATH + "ConvexHull.png",
+    category=__category,
 )
 @knext.input_table(
     name="Geo table",
@@ -228,8 +228,8 @@ class ConvexHullNode:
 @knext.node(
     name="Unary Union",
     node_type=knext.NodeType.MANIPULATOR,
-    icon_path="icons/icon/SpatialTool/UnaryUnion.png",
-    category=category,
+    icon_path=__NODE_ICON_PATH + "UnaryUnion.png",
+    category=__category,
 )
 @knext.input_table(
     name="Geo table",
@@ -276,8 +276,8 @@ class UnaryUnionNode:
 @knext.node(
     name="SpatialJoin",
     node_type=knext.NodeType.MANIPULATOR,
-    icon_path="icons/icon/SpatialTool/SpatialJoin.png",
-    category=category,
+    icon_path=__NODE_ICON_PATH + "SpatialJoin.png",
+    category=__category,
 )
 @knext.input_table(
     name="Left geo table",
@@ -391,8 +391,8 @@ object (not its boundary or exterior).</li>
 @knext.node(
     name="NearestJoin",
     node_type=knext.NodeType.MANIPULATOR,
-    icon_path="icons/icon/SpatialTool/NearestJoin.png",
-    category=category,
+    icon_path=__NODE_ICON_PATH + "NearestJoin.png",
+    category=__category,
 )
 @knext.input_table(
     name="Left geo table",
@@ -485,8 +485,8 @@ class NearestJoinNode:
 @knext.node(
     name="Clip",
     node_type=knext.NodeType.MANIPULATOR,
-    icon_path="icons/icon/SpatialTool/Clip.png",
-    category=category,
+    icon_path=__NODE_ICON_PATH + "Clip.png",
+    category=__category,
 )
 @knext.input_table(
     name="Left geo table",
@@ -555,8 +555,8 @@ class ClipNode:
 @knext.node(
     name="Overlay",
     node_type=knext.NodeType.MANIPULATOR,
-    icon_path="icons/icon/SpatialTool/SpatialOverlay.png",
-    category=category,
+    icon_path=__NODE_ICON_PATH + "SpatialOverlay.png",
+    category=__category,
 )
 @knext.input_table(
     name="Left geo table",
@@ -644,8 +644,8 @@ class OverlayNode:
 @knext.node(
     name="Euclidean Distance",
     node_type=knext.NodeType.MANIPULATOR,
-    icon_path="icons/icon/SpatialTool/EuclideanDistance.png",
-    category=category,
+    icon_path=__NODE_ICON_PATH + "EuclideanDistance.png",
+    category=__category,
 )
 @knext.input_table(
     name="Left geo table",
@@ -719,8 +719,8 @@ class EuclideanDistanceNode:
 @knext.node(
     name="Multiple Ring Buffer",
     node_type=knext.NodeType.MANIPULATOR,
-    icon_path="icons/icon/SpatialTool/MultipleRingBuffer.png",
-    category=category,
+    icon_path=__NODE_ICON_PATH + "MultipleRingBuffer.png",
+    category=__category,
 )
 @knext.input_table(
     name="Geo table",
