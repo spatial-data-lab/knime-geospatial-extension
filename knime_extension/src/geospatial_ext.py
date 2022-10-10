@@ -15,8 +15,17 @@ category = knext.category(
 # The different node files
 import nodes.calculation
 import nodes.conversion
+<<<<<<< HEAD
+=======
+import nodes.overlay
+#import nodes.spatial_weights
+>>>>>>> 112fb7c9dc883bfddf7cbf3e54379c6f8d2bf29b
 import nodes.spatialstatistics
 import nodes.transform
 import nodes.visualize
 import nodes.spatialtool
+<<<<<<< HEAD
 import nodes.geolab
+=======
+import nodes.geolab
+>>>>>>> 112fb7c9dc883bfddf7cbf3e54379c6f8d2bf29b
