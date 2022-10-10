@@ -1,5 +1,6 @@
 # from doctest import debug_script
 import logging
+from xml.etree.ElementInclude import include
 import geopandas as gp
 import knime_extension as knext
 from numpy import save
@@ -236,7 +237,7 @@ class ViewNode:
             if type(gdf[self.color_col].values[0]) == str:
                 kws["categorical"] = True
                 kws["legend_kwds"]["colorbar"] = False
-                
+
             if (self.legend_caption is None) or (self.legend_caption == ""):
                 self.legend_caption = self.color_col
         else:
@@ -369,23 +370,6 @@ class ViewNodeStatic:
         min_value=1,
         max_value=10,
     )
-
-    # base_map = knext.StringParameter(
-    #     "Base map",
-    #     "Select the base map to use for the visualization. See https://contextily.readthedocs.io/en/latest/providers_deepdive.html",
-    #     default_value="OpenStreetMap",
-    #     enum=['OpenStreetMap.Mapnik',
-    #          'OpenTopoMap',
-    #          'Stamen.Toner',
-    #          'Stamen.TonerLite',
-    #          'Stamen.Terrain',
-    #          'Stamen.TerrainBackground',
-    #          'Stamen.Watercolor',
-    #          'NASAGIBS.ViirsEarthAtNight2012',
-    #          'CartoDB.Positron',
-    #          'CartoDB.Voyager'
-    #         ]
-    # )
 
     use_classify = knext.BoolParameter(
         "Use classification",
@@ -608,36 +592,37 @@ class ViewNodeStatic:
         if "none" not in str(self.color).lower():
             kws["color"] = self.color
 
-        if self.use_classify:
-            kws["legend_kwds"] ={
+        if ("none" not in str(self.edge_color)) or ("none" not in str(self.color_col).lower()):
+            if self.use_classify:
+                kws["legend_kwds"] ={
+                                'fmt':"{:.0f}",
+                                'loc': self.legend_location,
+                                "title": self.legend_caption,
+                                'ncols': self.legend_columns,
+                                'prop': {'size': self.legend_size},
+                                'fontsize': self.legend_fontsize,
+                                'bbox_to_anchor': legend_bbox_to_anchor, 
+                                'labelcolor': self.legend_labelcolor,
+                                'frameon': self.legend_frame,
+                                'framealpha': self.legend_framealpha,
+                                'fancybox': True,
+                                'mode': legend_expand,
+                                'alignment': "left",
+                                'title': "Population",
+                                'title_fontsize': self.legend_caption_fontsize,
+                                'labelspacing': self.legend_labelspacing,
+                                'borderaxespad':self.legend_borderpad,
+                            }
+                kws["scheme"] = self.classification_method
+                kws["k"] = self.classification_bins
+            else:
+                kws["legend_kwds"] = {
+                            'shrink': self.legend_colorbar_shrink,
                             'fmt':"{:.0f}",
-                            'loc': self.legend_location,
-                            "title": self.legend_caption,
-                            'ncols': self.legend_columns,
-                            'prop': {'size': self.legend_size},
-                            'fontsize': self.legend_fontsize,
-                            'bbox_to_anchor': legend_bbox_to_anchor, 
-                            'labelcolor': self.legend_labelcolor,
-                            'frameon': self.legend_frame,
-                            'framealpha': self.legend_framealpha,
-                            'fancybox': True,
-                            'mode': legend_expand,
-                            'alignment': "left",
-                            'title': "Population",
-                            'title_fontsize': self.legend_caption_fontsize,
-                            'labelspacing': self.legend_labelspacing,
-                            'borderaxespad':self.legend_borderpad,
-                        }
-            kws["scheme"] = self.classification_method
-            kws["k"] = self.classification_bins
-        else:
-            kws["legend_kwds"] = {
-                        'shrink': self.legend_colorbar_shrink,
-                        'fmt':"{:.0f}",
-                        'location': colorbar_legend_location,
-                        'pad': self.legend_colorbar_pad,
-                        }
-
+                            'location': colorbar_legend_location,
+                            'pad': self.legend_colorbar_pad,
+                            }
+        
         geo_types = gdf["geometry"].geom_type.unique()
         if  not (("LineString" in geo_types) or ("MultiLineString" in geo_types)):
             if "none" not in str(self.size_col).lower():
