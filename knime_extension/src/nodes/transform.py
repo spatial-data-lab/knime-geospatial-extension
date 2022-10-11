@@ -4,7 +4,6 @@ import pandas as pd
 import geopandas as gp
 import knime_extension as knext
 import util.knime_utils as knut
-import geospatial_types as gt
 from shapely.geometry import Point, MultiPoint, LineString
 
 LOGGER = logging.getLogger(__name__)
@@ -22,6 +21,7 @@ category = knext.category(
 ############################################
 # CRS Transformer
 ############################################
+
 
 @knext.node(
     name="CRS Transformer",
@@ -69,6 +69,7 @@ class CrsTransformerNode:
 ############################################
 # Geometry To Point
 ############################################
+
 
 @knext.node(
     name="Geometry To Point",
@@ -129,6 +130,7 @@ class GeometryToPointNode:
 ############################################
 # Multipart to Singlepart
 ############################################
+
 
 @knext.node(
     name="Multipart To Singlepart",
@@ -222,6 +224,7 @@ class PolygonToLineNode:
 # Points To Line
 ############################################
 
+
 @knext.node(
     name="Points To Line",
     node_type=knext.NodeType.MANIPULATOR,
@@ -297,6 +300,7 @@ class PointsToLineNode:
 # Line To MultiPoint
 ############################################
 
+
 @knext.node(
     name="Line To MultiPoint",
     node_type=knext.NodeType.MANIPULATOR,
@@ -338,4 +342,3 @@ class GeometryToMultiPointNode:
         exec_context.set_progress(0.1, "LineToMultiPoint done")
         LOGGER.debug("Line feature " + self.geo_col + "transformed to MultiPoint")
         return knext.Table.from_pandas(gdf)
-

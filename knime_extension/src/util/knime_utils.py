@@ -3,7 +3,7 @@ from typing import Callable
 from typing import List
 
 import geopandas as gp
-import geospatial_types as gt
+import knime.types.geospatial as gt
 import knime_extension as knext
 
 LOGGER = logging.getLogger(__name__)
@@ -219,6 +219,7 @@ def geo_node_description(short_description: str, description: str, references: d
 
     return set_description
 
+
 def census_node_description(short_description: str, description: str, references: dict):
     """This decorator takes the provided information and generates a standardized node description
     for nodes that are based on GeoPandas functionality."""
@@ -239,6 +240,7 @@ def census_node_description(short_description: str, description: str, references
         return node_factory
 
     return set_description
+
 
 def osm_node_description(short_description: str, description: str, references: dict):
     """This decorator takes the provided information and generates a standardized node description
@@ -261,6 +263,7 @@ def osm_node_description(short_description: str, description: str, references: d
 
     return set_description
 
+
 def pd_node_description(short_description: str, description: str, references: dict):
     """This decorator takes the provided information and generates a standardized node description
     for nodes that are based on GeoPandas functionality."""
@@ -282,6 +285,7 @@ def pd_node_description(short_description: str, description: str, references: di
 
     return set_description
 
+
 def pulp_node_description(short_description: str, description: str, references: dict):
     """This decorator takes the provided information and generates a standardized node description
     for nodes that are based on GeoPandas functionality."""
@@ -302,6 +306,7 @@ def pulp_node_description(short_description: str, description: str, references: 
         return node_factory
 
     return set_description
+
 
 ############################################
 # GeoPandas helper

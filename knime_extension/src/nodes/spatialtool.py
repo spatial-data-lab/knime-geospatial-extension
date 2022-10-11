@@ -4,11 +4,12 @@ import pandas as pd
 import geopandas as gp
 import knime_extension as knext
 import util.knime_utils as knut
-import geospatial_types as gt
 import numpy as np
 
 LOGGER = logging.getLogger(__name__)
 
+# Root path for all node icons in this file
+__NODE_ICON_PATH = "icons/icon/SpatialTool/"
 
 __category = knext.category(
     path="/geo",
@@ -22,6 +23,7 @@ __category = knext.category(
 ############################################
 # Buffer
 ############################################
+
 
 @knext.node(
     name="Buffer",
@@ -73,6 +75,7 @@ class BufferNode:
 ############################################
 # Dissolve
 ############################################
+
 
 @knext.node(
     name="Dissolve",
@@ -131,6 +134,7 @@ class DissolveNode:
 # Bounding Box
 ############################################
 
+
 @knext.node(
     name="Bounding Box",
     node_type=knext.NodeType.MANIPULATOR,
@@ -177,6 +181,7 @@ class BoundingBoxNode:
 ############################################
 # Convex Hull
 ############################################
+
 
 @knext.node(
     name="Convex Hull",
@@ -225,6 +230,7 @@ class ConvexHullNode:
 # Unary Union
 ############################################
 
+
 @knext.node(
     name="Unary Union",
     node_type=knext.NodeType.MANIPULATOR,
@@ -272,6 +278,7 @@ class UnaryUnionNode:
 ############################################
 # Spatial Join
 ############################################
+
 
 @knext.node(
     name="SpatialJoin",
@@ -380,13 +387,14 @@ object (not its boundary or exterior).</li>
         knut.check_canceled(exec_context)
         right_gdf = right_gdf.to_crs(left_gdf.crs)
         gdf = left_gdf.sjoin(right_gdf, how=self.join_mode, predicate=self.match_mode)
-        gdf = gdf.reset_index(drop=True).drop(columns='index_right')        
+        gdf = gdf.reset_index(drop=True).drop(columns="index_right")
         return knext.Table.from_pandas(gdf)
 
 
 ############################################
 # Nearest Join
 ############################################
+
 
 @knext.node(
     name="NearestJoin",
@@ -474,13 +482,14 @@ class NearestJoinNode:
             lsuffix="1",
             rsuffix="2",
         )
-        gdf = gdf.reset_index(drop=True).drop(columns='index_2')        
+        gdf = gdf.reset_index(drop=True).drop(columns="index_2")
         return knext.Table.from_pandas(gdf)
 
 
 ############################################
 # Clip
 ############################################
+
 
 @knext.node(
     name="Clip",
@@ -541,9 +550,9 @@ class ClipNode:
         )
         knut.check_canceled(exec_context)
         right_gdf = right_gdf.to_crs(left_gdf.crs)
-        #gdf_clip = gp.clip(left_gdf, right_gdf)
-        gdf_clipnew =gp.clip(left_gdf, right_gdf,keep_geom_type=True)
-         #gdf_clipnew = gp.GeoDataFrame(geometry=gdf_clip.geometry)
+        # gdf_clip = gp.clip(left_gdf, right_gdf)
+        gdf_clipnew = gp.clip(left_gdf, right_gdf, keep_geom_type=True)
+        # gdf_clipnew = gp.GeoDataFrame(geometry=gdf_clip.geometry)
         # =gdf_clip.reset_index(drop=True)
         return knext.Table.from_pandas(gdf_clipnew)
 
@@ -551,6 +560,7 @@ class ClipNode:
 ############################################
 # Overlay
 ############################################
+
 
 @knext.node(
     name="Overlay",
@@ -641,6 +651,7 @@ class OverlayNode:
 # Euclidean Distance
 ############################################
 
+
 @knext.node(
     name="Euclidean Distance",
     node_type=knext.NodeType.MANIPULATOR,
@@ -698,23 +709,26 @@ class EuclideanDistanceNode:
 
     def execute(self, exec_context: knext.ExecutionContext, left_input, right_input):
         left_gdf = gp.GeoDataFrame(left_input.to_pandas(), geometry=self.left_geo_col)
-        right_gdf = gp.GeoDataFrame(right_input.to_pandas(), geometry=self.right_geo_col)
+        right_gdf = gp.GeoDataFrame(
+            right_input.to_pandas(), geometry=self.right_geo_col
+        )
         knut.check_canceled(exec_context)
         right_gdf = right_gdf.to_crs(self.crs_info)
         left_gdf = left_gdf.to_crs(self.crs_info)
-        #left_gdf['LID'] = range(1,(left_gdf.shape[0]+1))
-        #right_gdf['RID'] = range(1,(right_gdf.shape[0]+1))
-        mergedf=left_gdf.merge(right_gdf, how='cross')
-        mergedf_x=gp.GeoDataFrame(geometry=mergedf['geometry_x'])
-        mergedf_y=gp.GeoDataFrame(geometry=mergedf['geometry_y'])
-        mergedf['EuDist']=mergedf_x.distance(mergedf_y, align=False)        
-        mergedf= mergedf.reset_index(drop=True)
+        # left_gdf['LID'] = range(1,(left_gdf.shape[0]+1))
+        # right_gdf['RID'] = range(1,(right_gdf.shape[0]+1))
+        mergedf = left_gdf.merge(right_gdf, how="cross")
+        mergedf_x = gp.GeoDataFrame(geometry=mergedf["geometry_x"])
+        mergedf_y = gp.GeoDataFrame(geometry=mergedf["geometry_y"])
+        mergedf["EuDist"] = mergedf_x.distance(mergedf_y, align=False)
+        mergedf = mergedf.reset_index(drop=True)
         return knext.Table.from_pandas(mergedf)
 
 
 ############################################
 # Multiple Ring Buffer
 ############################################
+
 
 @knext.node(
     name="Multiple Ring Buffer",
@@ -745,17 +759,19 @@ class MultiRingBufferNode:
     )
 
     bufferdist = knext.StringParameter(
-        "Serial Buffer Distances with coma", "The buffer distances for geometry ", "10,20,30"
+        "Serial Buffer Distances with coma",
+        "The buffer distances for geometry ",
+        "10,20,30",
     )
 
     bufferunit = knext.StringParameter(
-        label="Serial Buffer Distances", 
-        description="The buffer distances for geometry ", 
+        label="Serial Buffer Distances",
+        description="The buffer distances for geometry ",
         default_value="Meter",
         enum=[
             "Meter",
             "KiloMeter",
-            "Mile",           
+            "Mile",
         ],
     )
 
@@ -775,28 +791,27 @@ class MultiRingBufferNode:
         gdf = gp.GeoDataFrame(geometry=gdf.geometry)
         gdf = gdf.to_crs(self.crs_info)
         exec_context.set_progress(0.3, "Geo data frame loaded. Starting buffering...")
-        # transfrom string list to number 
-        bufferlist= np.array(self.bufferdist.split(","), dtype=np.int64)
-        if self.bufferunit=="Meter" :
-            bufferlist=bufferlist
-        elif self.bufferunit=="KiloMeter" :
-            bufferlist=bufferlist*1000
+        # transfrom string list to number
+        bufferlist = np.array(self.bufferdist.split(","), dtype=np.int64)
+        if self.bufferunit == "Meter":
+            bufferlist = bufferlist
+        elif self.bufferunit == "KiloMeter":
+            bufferlist = bufferlist * 1000
         else:
-            bufferlist=bufferlist*1609.34 
+            bufferlist = bufferlist * 1609.34
         # sort list
-        bufferlist=bufferlist.tolist() 
-        bufferlist.sort()   
+        bufferlist = bufferlist.tolist()
+        bufferlist.sort()
         c1 = gp.GeoDataFrame(geometry=gdf.buffer(bufferlist[0]))
         c2 = gp.GeoDataFrame(geometry=gdf.buffer(bufferlist[1]))
-        gdf0 = gp.overlay(c1 , c2 , how='union')
-        if len(bufferlist)>2:
+        gdf0 = gp.overlay(c1, c2, how="union")
+        if len(bufferlist) > 2:
             # Construct all other rings by loop
-            for i in range(2,len(bufferlist)):
-                ci = gp.GeoDataFrame(geometry=gdf.buffer(bufferlist[i]));
-                gdf0 = gp.overlay(gdf0, ci, how='union')
-        # Add ring radius values as a new column    
-        gdf0['dist']=bufferlist
-        gdf0=gdf0.reset_index(drop=True)
+            for i in range(2, len(bufferlist)):
+                ci = gp.GeoDataFrame(geometry=gdf.buffer(bufferlist[i]))
+                gdf0 = gp.overlay(gdf0, ci, how="union")
+        # Add ring radius values as a new column
+        gdf0["dist"] = bufferlist
+        gdf0 = gdf0.reset_index(drop=True)
         exec_context.set_progress(0.1, "Buffering done")
         return knext.Table.from_pandas(gdf0)
-
