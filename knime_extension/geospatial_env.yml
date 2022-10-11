@@ -9,3 +9,7 @@ dependencies:
   - knime-python-base
   - geopandas
   - libpysal
+  - keplergl
+  - pyecharts
+  - osmnx
+  - pulp
