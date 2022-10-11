@@ -647,3 +647,82 @@ class ViewNodeStatic:
 
         return knext.view_matplotlib(map.get_figure())
 
+
+
+
+############################################
+# Kepler.gl 
+############################################
+@knext.node(
+    name="Kepler.gl Geoview ",
+    node_type=knext.NodeType.VISUALIZER,
+    icon_path=__NODE_ICON_PATH + "Kepler.gl.png",
+    category=__category,
+)
+@knext.input_table(
+    name="Geospatial table to visualize",
+    description="Table with geospatial data to visualize",
+)
+@knext.output_view(
+    name="Geospatial view", description="Showing a map with the geospatial data"
+)
+class ViewNodeKepler:
+    """
+    This node will visualize the given geometric elements on a map.
+    """
+
+    geo_col = knext.ColumnParameter(
+        "Geometry column",
+        "Select the geometry column to visualize.",
+        column_filter=knut.is_geo,  
+        include_row_key=False,
+        include_none_column=False,
+    )
+
+    save_config = knext.BoolParameter(
+        "Save config",
+        "Save the config for the map",
+        default_value=False,
+    )
+
+    load_config = knext.BoolParameter(
+        "Load config",
+        "Load the config for the map",
+        default_value=False,
+    )
+
+
+    def configure(self, configure_context, input_schema):
+        knut.columns_exist([ self.geo_col], input_schema)
+        # if self.name_cols is None:
+        #     self.name_cols = [c.name for c in input_schema if knut.is_string(c)]
+        return None
+
+    def execute(self, exec_context: knext.ExecutionContext, input_table):
+        gdf = gp.GeoDataFrame(input_table.to_pandas(), geometry=self.geo_col)
+        
+        map_1 = KeplerGl(show_docs=False)
+        map_1.add_data(data=gdf.copy(), name="state")
+        config = {}
+        if self.save_config:
+            # Save map_1 config to a file
+            # config_str = json.dumps(map_1.config)
+            # if type(config) == str:
+            #     config = config.encode("utf-8")
+            with open('kepler_config.json', 'w') as f:
+                f.write(json.dumps(map_1.config))
+        
+        
+        if self.load_config:
+            with open('kepler_config.json', 'r') as f:
+                config = json.loads(f.read())
+        map_1.config = config
+
+        # map_1.add_data(data=data.copy(), name="haha")
+        html = map_1._repr_html_()
+        html = html.decode("utf-8")
+        # knext.view_html(html)
+        # knut.check_canceled(exec_context)
+        # cx.add_basemap(map, crs=gdf.crs.to_string(), source=cx.providers.flatten()[self.base_map])
+
+        return knext.view_html(html)
