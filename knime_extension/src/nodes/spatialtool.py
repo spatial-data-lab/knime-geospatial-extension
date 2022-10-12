@@ -816,3 +816,63 @@ class MultiRingBufferNode:
         gdf0 = gdf0.reset_index(drop=True)
         exec_context.set_progress(0.1, "Buffering done")
         return knext.Table.from_pandas(gdf0)
+    
+############################################
+# Simplify
+############################################
+
+@knext.node(
+    name="Simplify",
+    node_type=knext.NodeType.MANIPULATOR,
+    icon_path=__NODE_ICON_PATH + "Simplify.png",
+    category=__category,
+)
+@knext.input_table(
+    name="Geo table",
+    description="Table with geometry column to simplify",
+)
+@knext.output_table(
+    name="Transformed geo table",
+    description="Transformed Geo input table",
+)
+class SimplifyNode:
+    """
+    This node generate the smallest convex Polygon containing all the points in each geometry.
+    """
+
+    geo_col = knext.ColumnParameter(
+        "Geometry column",
+        "Select the geometry column to transform.",
+        # Allow only GeoValue compatible columns
+        column_filter=knut.is_geo,
+        include_row_key=False,
+        include_none_column=False,
+    )
+
+    simplifydist = knext.DoubleParameter(
+        label="Simplification tolerance", 
+        description="The simplification tolerance distances for geometry ", 
+        default_value="1",
+    )
+
+    crs_info = knext.StringParameter(
+        label="CRS for simplification ",
+        description="Input the CRS to use",
+        default_value="EPSG:3857",
+    )
+
+    def configure(self, configure_context, input_schema_1):
+        knut.column_exists(self.geo_col, input_schema_1)
+        return input_schema_1
+
+    def execute(self, exec_context: knext.ExecutionContext, input_1):
+        gdf = gp.GeoDataFrame(input_1.to_pandas(), geometry=self.geo_col)
+        gdf = gdf.to_crs(self.crs_info)
+        exec_context.set_progress(
+            0.3, "Geo data frame loaded. Starting transformation..."
+        )
+        gdf["geometry"] = gdf.geometry.simplify(self.simplifydist)
+        gdf=gdf.reset_index(drop=True)
+        exec_context.set_progress(0.1, "Transformation done")
+        LOGGER.debug("Feature Simplified")
+        return knext.Table.from_pandas(gdf)
