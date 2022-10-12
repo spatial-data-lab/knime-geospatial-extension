@@ -3,7 +3,7 @@ from typing import Callable
 from typing import List
 
 import geopandas as gp
-import knime.types.geospatial as gt
+import geospatial_types as gt
 import knime_extension as knext
 
 LOGGER = logging.getLogger(__name__)
