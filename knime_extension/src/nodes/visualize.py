@@ -20,12 +20,14 @@ category = knext.category(
     # starting at the root folder of the extension_module parameter in the knime.yml file
     icon="icons/icon/VisulizationCategory.png",
 )
+# Root path for all node icons in this file
+__NODE_ICON_PATH = "icons/icon/Visulization/"
 
 
 @knext.node(
     name="Geospatial View",
     node_type=knext.NodeType.VISUALIZER,
-    icon_path="icons/icon/Visulization/InteractiveMap.png",
+    icon_path=__NODE_ICON_PATH + "InteractiveMap.png",
     category=category,
 )
 @knext.input_table(
@@ -33,7 +35,8 @@ category = knext.category(
     description="Table with geospatial data to visualize",
 )
 @knext.output_view(
-    name="Geospatial view", description="Showing a interactive map with the geospatial data"
+    name="Geospatial view",
+    description="Showing a interactive map with the geospatial data",
 )
 class ViewNode:
     """
@@ -46,7 +49,7 @@ class ViewNode:
         # "geometry",
         column_filter=knut.is_geo,  # Allows all geo columns
         include_row_key=False,
-        include_none_column=False, # must contains a geometry column
+        include_none_column=False,  # must contains a geometry column
     )
 
     color_col = knext.ColumnParameter(
@@ -61,22 +64,86 @@ class ViewNode:
         "Color map",
         "Select the color map to use for the color column. `xxx_r` mean reverse of the `xxx` colormap. See [Colormaps in Matplotlib](https://matplotlib.org/stable/tutorials/colors/colormaps.html)",
         default_value="viridis",
-        enum=["viridis", "plasma", "inferno", "magma", "cividis",
-                'Greys', 'Purples', 'Blues', 'Greens', 'Oranges', 'Reds',
-                'YlOrBr', 'YlOrRd', 'OrRd', 'PuRd', 'RdPu', 'BuPu',
-                'GnBu', 'PuBu', 'YlGnBu', 'PuBuGn', 'BuGn', 'YlGn',
-                'binary', 'gist_yarg', 'gist_gray', 'gray', 'bone',
-                'pink', 'spring', 'summer', 'autumn', 'winter', 'cool',
-                'Wistia', 'hot', 'afmhot', 'gist_heat', 'copper',
-
-                "viridis_r", "plasma_r", "inferno_r", "magma_r", "cividis_r",
-                'Greys_r', 'Purples_r', 'Blues_r', 'Greens_r', 'Oranges_r', 'Reds_r',
-                'YlOrBr_r', 'YlOrRd_r', 'OrRd_r', 'PuRd_r', 'RdPu_r', 'BuPu_r',
-                'GnBu_r', 'PuBu_r', 'YlGnBu_r', 'PuBuGn_r', 'BuGn_r', 'YlGn_r',
-                'binary_r', 'gist_yarg_r', 'gist_gray_r', 'gray_r', 'bone_r',
-                'pink_r', 'spring_r', 'summer_r', 'autumn_r', 'winter_r', 'cool_r',
-                'Wistia_r', 'hot_r', 'afmhot_r', 'gist_heat_r', 'copper_r'],
-        
+        enum=[
+            "viridis",
+            "plasma",
+            "inferno",
+            "magma",
+            "cividis",
+            "Greys",
+            "Purples",
+            "Blues",
+            "Greens",
+            "Oranges",
+            "Reds",
+            "YlOrBr",
+            "YlOrRd",
+            "OrRd",
+            "PuRd",
+            "RdPu",
+            "BuPu",
+            "GnBu",
+            "PuBu",
+            "YlGnBu",
+            "PuBuGn",
+            "BuGn",
+            "YlGn",
+            "binary",
+            "gist_yarg",
+            "gist_gray",
+            "gray",
+            "bone",
+            "pink",
+            "spring",
+            "summer",
+            "autumn",
+            "winter",
+            "cool",
+            "Wistia",
+            "hot",
+            "afmhot",
+            "gist_heat",
+            "copper",
+            "viridis_r",
+            "plasma_r",
+            "inferno_r",
+            "magma_r",
+            "cividis_r",
+            "Greys_r",
+            "Purples_r",
+            "Blues_r",
+            "Greens_r",
+            "Oranges_r",
+            "Reds_r",
+            "YlOrBr_r",
+            "YlOrRd_r",
+            "OrRd_r",
+            "PuRd_r",
+            "RdPu_r",
+            "BuPu_r",
+            "GnBu_r",
+            "PuBu_r",
+            "YlGnBu_r",
+            "PuBuGn_r",
+            "BuGn_r",
+            "YlGn_r",
+            "binary_r",
+            "gist_yarg_r",
+            "gist_gray_r",
+            "gray_r",
+            "bone_r",
+            "pink_r",
+            "spring_r",
+            "summer_r",
+            "autumn_r",
+            "winter_r",
+            "cool_r",
+            "Wistia_r",
+            "hot_r",
+            "afmhot_r",
+            "gist_heat_r",
+            "copper_r",
+        ],
     )
 
     base_map = knext.StringParameter(
@@ -84,65 +151,64 @@ class ViewNode:
         "Select the base map to use for the visualization. See [Folium base maps](https://python-visualization.github.io/folium/quickstart.html#Tiles).",
         default_value="OpenStreetMap",
         enum=[
-            "OpenStreetMap", 
-            "Stamen Watercolor", 
-            'Stamen Toner',
-            'Stamen TonerBackground',
-            'Stamen TonerHybrid',
-            'Stamen TonerLines',
-            'Stamen TonerLabels',
-            'Stamen TonerLite',
-            'Stamen Watercolor',
-            'Stamen Terrain',
-            'Stamen TerrainBackground',
-            'Stamen TerrainLabels',
-            'Stamen TopOSMRelief',
-            'Stamen TopOSMFeatures',
-            'CartoDB Positron',
-            'CartoDB PositronNoLabels',
-            'CartoDB PositronOnlyLabels',
-            'CartoDB DarkMatter',
-            'CartoDB DarkMatterNoLabels',
-            'CartoDB DarkMatterOnlyLabels',
-            'CartoDB Voyager',
-            'CartoDB VoyagerNoLabels',
-            'CartoDB VoyagerOnlyLabels',
-            'CartoDB VoyagerLabelsUnder',
-            'NASAGIBS ModisTerraTrueColorCR',
-            'NASAGIBS ModisTerraBands367CR',
-            'NASAGIBS ViirsEarthAtNight2012',
-            'NASAGIBS ModisTerraLSTDay',
-            'NASAGIBS ModisTerraSnowCover',
-            'NASAGIBS ModisTerraAOD',
-            'NASAGIBS ModisTerraChlorophyll',
-            'NASAGIBS ModisTerraBands721CR',
-            'NASAGIBS ModisAquaTrueColorCR',
-            'NASAGIBS ModisAquaBands721CR',
-            'NASAGIBS ViirsTrueColorCR',
-            'NASAGIBS BlueMarble3413',
-            'NASAGIBS BlueMarble3031',
-            'NASAGIBS BlueMarble',
-            'NASAGIBS ASTER_GDEM_Greyscale_Shaded_Relief',
-            'Esri WorldStreetMap',
-            'Esri DeLorme',
-            'Esri WorldTopoMap',
-            'Esri WorldImagery',
-            'Esri WorldTerrain',
-            'Esri WorldShadedRelief',
-            'Esri WorldPhysical',
-            'Esri OceanBasemap',
-            'Esri NatGeoWorldMap',
-            'Esri WorldGrayCanvas',
-            'Gaode Normal', 
-            'Gaode Satellite',
-            'OpenRailwayMap',
-            'Strava All', 
-            'Strava Ride', 
-            'Strava Run', 
-            'Strava Water', 
-            'Strava Winter',
-
-            ]
+            "OpenStreetMap",
+            "Stamen Watercolor",
+            "Stamen Toner",
+            "Stamen TonerBackground",
+            "Stamen TonerHybrid",
+            "Stamen TonerLines",
+            "Stamen TonerLabels",
+            "Stamen TonerLite",
+            "Stamen Watercolor",
+            "Stamen Terrain",
+            "Stamen TerrainBackground",
+            "Stamen TerrainLabels",
+            "Stamen TopOSMRelief",
+            "Stamen TopOSMFeatures",
+            "CartoDB Positron",
+            "CartoDB PositronNoLabels",
+            "CartoDB PositronOnlyLabels",
+            "CartoDB DarkMatter",
+            "CartoDB DarkMatterNoLabels",
+            "CartoDB DarkMatterOnlyLabels",
+            "CartoDB Voyager",
+            "CartoDB VoyagerNoLabels",
+            "CartoDB VoyagerOnlyLabels",
+            "CartoDB VoyagerLabelsUnder",
+            "NASAGIBS ModisTerraTrueColorCR",
+            "NASAGIBS ModisTerraBands367CR",
+            "NASAGIBS ViirsEarthAtNight2012",
+            "NASAGIBS ModisTerraLSTDay",
+            "NASAGIBS ModisTerraSnowCover",
+            "NASAGIBS ModisTerraAOD",
+            "NASAGIBS ModisTerraChlorophyll",
+            "NASAGIBS ModisTerraBands721CR",
+            "NASAGIBS ModisAquaTrueColorCR",
+            "NASAGIBS ModisAquaBands721CR",
+            "NASAGIBS ViirsTrueColorCR",
+            "NASAGIBS BlueMarble3413",
+            "NASAGIBS BlueMarble3031",
+            "NASAGIBS BlueMarble",
+            "NASAGIBS ASTER_GDEM_Greyscale_Shaded_Relief",
+            "Esri WorldStreetMap",
+            "Esri DeLorme",
+            "Esri WorldTopoMap",
+            "Esri WorldImagery",
+            "Esri WorldTerrain",
+            "Esri WorldShadedRelief",
+            "Esri WorldPhysical",
+            "Esri OceanBasemap",
+            "Esri NatGeoWorldMap",
+            "Esri WorldGrayCanvas",
+            "Gaode Normal",
+            "Gaode Satellite",
+            "OpenRailwayMap",
+            "Strava All",
+            "Strava Ride",
+            "Strava Run",
+            "Strava Water",
+            "Strava Winter",
+        ],
     )
 
     use_classify = knext.BoolParameter(
@@ -155,8 +221,22 @@ class ViewNode:
         "Classification method",
         "Select the classification method to use for the color column.",
         default_value="EqualInterval",
-        enum=['BoxPlot', 'EqualInterval', 'FisherJenks', 'FisherJenksSampled', 'HeadTailBreaks', 'JenksCaspall', 'JenksCaspallForced', 'JenksCaspallSampled', 'MaxP', 'MaximumBreaks', 'NaturalBreaks', 'Quantiles', 'Percentiles', 'StdMean']
-        
+        enum=[
+            "BoxPlot",
+            "EqualInterval",
+            "FisherJenks",
+            "FisherJenksSampled",
+            "HeadTailBreaks",
+            "JenksCaspall",
+            "JenksCaspallForced",
+            "JenksCaspallSampled",
+            "MaxP",
+            "MaximumBreaks",
+            "NaturalBreaks",
+            "Quantiles",
+            "Percentiles",
+            "StdMean",
+        ],
     )
 
     classification_bins = knext.IntParameter(
@@ -174,7 +254,6 @@ class ViewNode:
         include_none_column=True,
     )
 
-
     name_cols = knext.MultiColumnParameter(
         "Tooltip columns",
         "Select columns which should be shown in the marker tooltip.",
@@ -191,7 +270,6 @@ class ViewNode:
         "Show legend",
         "If checked, a legend will be shown in the plot.",
         default_value=True,
-
     )
 
     legend_caption = knext.StringParameter(
@@ -200,9 +278,8 @@ class ViewNode:
         default_value="",
     )
 
-
     def configure(self, configure_context, input_schema):
-        knut.columns_exist([ self.geo_col], input_schema)
+        knut.columns_exist([self.geo_col], input_schema)
         # if self.name_cols is None:
         #     self.name_cols = [c.name for c in input_schema if knut.is_string(c)]
         return None
@@ -211,24 +288,21 @@ class ViewNode:
 
         gdf = gp.GeoDataFrame(input_table.to_pandas(), geometry=self.geo_col)
 
-        
-
         kws = {
-            # "column":self.color_col, 
+            # "column":self.color_col,
             # "cmap":self.color_map,
-            "tooltip":self.name_cols,
-            "tiles":self.base_map,
-            "popup":self.popup_cols,
-            "legend":self.plot_legend,
-            "m":None,
-            "legend_kwds":{
+            "tooltip": self.name_cols,
+            "tiles": self.base_map,
+            "popup": self.popup_cols,
+            "legend": self.plot_legend,
+            "m": None,
+            "legend_kwds": {
                 "caption": self.legend_caption,
-                "scale":False,
-                "max_labels":3,
-                "colorbar":True
-            }
+                "scale": False,
+                "max_labels": 3,
+                "colorbar": True,
+            },
         }
-
 
         if "none" not in str(self.color_col).lower():
             kws["column"] = self.color_col
@@ -243,46 +317,48 @@ class ViewNode:
         else:
             self.plot_legend = False
 
-        
-
         if self.use_classify:
             kws["scheme"] = self.classification_method
             kws["k"] = self.classification_bins
             kws["legend_kwds"]["colorbar"] = False
             kws["legend_kwds"]["max_labels"] = 20
-        
+
         if "none" not in str(self.size_col).lower():
 
-            
             max_pop_est = gdf[self.size_col].max()
             min_pop_est = gdf[self.size_col].min()
 
-
-            # check whether is line 
+            # check whether is line
             # FIXME: change it to use utlis.is_line
             geo_types = gdf["geometry"].geom_type.unique()
-            if  ("LineString" in geo_types) or ("MultiLineString" in geo_types):
+            if ("LineString" in geo_types) or ("MultiLineString" in geo_types):
                 max_size = 8
-                kws["style_kwds"]={ 
-                "style_function": lambda x: {
-                    "weight": (x["properties"][self.size_col] - min_pop_est) / (max_pop_est - min_pop_est) * max_size
+                kws["style_kwds"] = {
+                    "style_function": lambda x: {
+                        "weight": (x["properties"][self.size_col] - min_pop_est)
+                        / (max_pop_est - min_pop_est)
+                        * max_size
                     }
                 }
             elif ("Polygon" in geo_types) or ("MultiPolygon" in geo_types):
                 max_size = 30
-                kws["style_kwds"]={ 
-                "style_function": lambda x: {
-                    "radius": (x["properties"][self.size_col] - min_pop_est) / (max_pop_est - min_pop_est) * max_size
+                kws["style_kwds"] = {
+                    "style_function": lambda x: {
+                        "radius": (x["properties"][self.size_col] - min_pop_est)
+                        / (max_pop_est - min_pop_est)
+                        * max_size
                     }
                 }
                 kws["m"] = gdf.explore(tiles=self.base_map)
                 gdf["geometry"] = gdf.centroid
-                
+
             else:
                 max_size = 30
-                kws["style_kwds"]={ 
-                "style_function": lambda x: {
-                    "radius": (x["properties"][self.size_col] - min_pop_est) / (max_pop_est - min_pop_est) * max_size
+                kws["style_kwds"] = {
+                    "style_function": lambda x: {
+                        "radius": (x["properties"][self.size_col] - min_pop_est)
+                        / (max_pop_est - min_pop_est)
+                        * max_size
                     }
                 }
 
@@ -290,12 +366,14 @@ class ViewNode:
         # knut.check_canceled(exec_context)
         return knext.view(map)
 
+
 # geo view static
+
 
 @knext.node(
     name="Geospatial View Static",
     node_type=knext.NodeType.VISUALIZER,
-    icon_path="icons/icon/Visulization/StaticMap.png",
+    icon_path=__NODE_ICON_PATH + "StaticMap.png",
     category=category,
 )
 @knext.input_table(
@@ -313,7 +391,7 @@ class ViewNodeStatic:
     geo_col = knext.ColumnParameter(
         "Geometry column",
         "Select the geometry column to visualize.",
-        column_filter=knut.is_geo,  
+        column_filter=knut.is_geo,
         include_row_key=False,
         include_none_column=False,
     )
@@ -330,23 +408,64 @@ class ViewNodeStatic:
         "Marker color",
         "Select marker color. The column must contain the color name e.g. red, green, blue, etc.",
         default_value="none",
-        enum=["none","red", "blue", "green", "orange", "purple", "darkred", "lightred", "beige", "darkblue", "darkgreen", "cadetblue", "darkpurple", "white", "pink", "lightblue", "lightgreen", "gray", "black", "lightgray"],
+        enum=[
+            "none",
+            "red",
+            "blue",
+            "green",
+            "orange",
+            "purple",
+            "darkred",
+            "lightred",
+            "beige",
+            "darkblue",
+            "darkgreen",
+            "cadetblue",
+            "darkpurple",
+            "white",
+            "pink",
+            "lightblue",
+            "lightgreen",
+            "gray",
+            "black",
+            "lightgray",
+        ],
     )
-
 
     color_map = knext.StringParameter(
         "Color map",
         "Select the color map to use for the color column. See https://matplotlib.org/stable/tutorials/colors/colormaps.html",
         default_value="viridis",
         enum=["viridis", "plasma", "inferno", "magma", "cividis"],
-        
     )
 
     edge_color = knext.StringParameter(
         "Edge color",
         "Select the edge color to use for the color column. See https://matplotlib.org/stable/tutorials/colors/colormaps.html",
         default_value="none",
-        enum=["none","black", "red", "blue", "green", "orange", "purple", "darkred", "lightred", "beige", "darkblue", "darkgreen", "cadetblue", "darkpurple", "white", "pink", "lightblue", "lightgreen", "gray", "black", "lightgray"],
+        enum=[
+            "none",
+            "black",
+            "red",
+            "blue",
+            "green",
+            "orange",
+            "purple",
+            "darkred",
+            "lightred",
+            "beige",
+            "darkblue",
+            "darkgreen",
+            "cadetblue",
+            "darkpurple",
+            "white",
+            "pink",
+            "lightblue",
+            "lightgreen",
+            "gray",
+            "black",
+            "lightgray",
+        ],
     )
 
     size_col = knext.ColumnParameter(
@@ -381,7 +500,22 @@ class ViewNodeStatic:
         "Classification method",
         "Select the classification method to use for the color column.",
         default_value="EqualInterval",
-        enum=['BoxPlot', 'EqualInterval', 'FisherJenks', 'FisherJenksSampled', 'HeadTailBreaks', 'JenksCaspall', 'JenksCaspallForced', 'JenksCaspallSampled', 'MaxP', 'MaximumBreaks', 'NaturalBreaks', 'Quantiles', 'Percentiles', 'StdMean']
+        enum=[
+            "BoxPlot",
+            "EqualInterval",
+            "FisherJenks",
+            "FisherJenksSampled",
+            "HeadTailBreaks",
+            "JenksCaspall",
+            "JenksCaspallForced",
+            "JenksCaspallSampled",
+            "MaxP",
+            "MaximumBreaks",
+            "NaturalBreaks",
+            "Quantiles",
+            "Percentiles",
+            "StdMean",
+        ],
     )
 
     classification_bins = knext.IntParameter(
@@ -410,7 +544,6 @@ class ViewNodeStatic:
         "Show legend",
         "If checked, a legend will be shown in the plot.",
         default_value=True,
-
     )
 
     # size_col = knext.ColumnParameter(
@@ -425,7 +558,7 @@ class ViewNodeStatic:
         default_value="",
         # default_value=color_col,
     )
-    
+
     legend_caption_fontsize = knext.IntParameter(
         "Legend caption font size",
         "Set the font size for the legend caption.",
@@ -444,20 +577,21 @@ class ViewNodeStatic:
         "Legend location",
         "Select the location for the legend.",
         default_value="lower right",
-        enum=['best', 
-            'upper right', 
-            'upper left', 
-            'lower left', 
-            'lower right', 
-            'right', 
-            'center left', 
-            'center right', 
-            'lower center', 
-            'upper center', 
-            'center',
-            'outside_top',
-            'outside_bottom',
-            ]
+        enum=[
+            "best",
+            "upper right",
+            "upper left",
+            "lower left",
+            "lower right",
+            "right",
+            "center left",
+            "center right",
+            "lower center",
+            "upper center",
+            "center",
+            "outside_top",
+            "outside_bottom",
+        ],
     )
 
     legend_columns = knext.IntParameter(
@@ -488,14 +622,13 @@ class ViewNodeStatic:
         "Legend label color",
         "Select the label color for the legend.",
         default_value="black",
-        enum=['black', 'red', 'green', 'blue', 'yellow', 'purple', 'orange', 'white']
+        enum=["black", "red", "green", "blue", "yellow", "purple", "orange", "white"],
     )
 
     legend_frame = knext.BoolParameter(
         "Show legend frame",
         "If checked, a frame will be shown in the legend.",
         default_value=True,
-
     )
 
     legend_framealpha = knext.DoubleParameter(
@@ -545,7 +678,7 @@ class ViewNodeStatic:
     )
 
     def configure(self, configure_context, input_schema):
-        knut.columns_exist([ self.geo_col], input_schema)
+        knut.columns_exist([self.geo_col], input_schema)
         # if self.name_cols is None:
         #     self.name_cols = [c.name for c in input_schema if knut.is_string(c)]
         return None
@@ -553,11 +686,11 @@ class ViewNodeStatic:
     def execute(self, exec_context: knext.ExecutionContext, input_table):
         gdf = gp.GeoDataFrame(input_table.to_pandas(), geometry=self.geo_col)
 
-# check legend caption
+        # check legend caption
         if (self.legend_caption is None) or (self.legend_caption == ""):
             self.legend_caption = self.color_col
-        
-#  set legend location
+
+        #  set legend location
         if self.legend_location == "outside_top":
             colorbar_legend_location = "top"
         elif self.legend_location == "outside_bottom":
@@ -571,18 +704,14 @@ class ViewNodeStatic:
             legend_bbox_to_anchor = (0.0, 1.02, 1.0, 0.102)
         if self.legend_location == "outside_bottom":
             self.legend_location = "upper right"
-            legend_bbox_to_anchor =  (0.0, -0.2, 1.0, 0.102)
-        
+            legend_bbox_to_anchor = (0.0, -0.2, 1.0, 0.102)
+
         if self.legend_expand:
             legend_expand = "expand"
         else:
             legend_expand = None
 
-
-        kws = {
-                "alpha":1,
-                "legend":self.plot_legend
-        }
+        kws = {"alpha": 1, "legend": self.plot_legend}
 
         if "none" not in str(self.edge_color):
             kws["edgecolor"] = self.edge_color
@@ -592,51 +721,53 @@ class ViewNodeStatic:
         if "none" not in str(self.color).lower():
             kws["color"] = self.color
 
-        if ("none" not in str(self.edge_color)) or ("none" not in str(self.color_col).lower()):
+        if ("none" not in str(self.edge_color)) or (
+            "none" not in str(self.color_col).lower()
+        ):
             if self.use_classify:
-                kws["legend_kwds"] ={
-                                'fmt':"{:.0f}",
-                                'loc': self.legend_location,
-                                "title": self.legend_caption,
-                                'ncols': self.legend_columns,
-                                'prop': {'size': self.legend_size},
-                                'fontsize': self.legend_fontsize,
-                                'bbox_to_anchor': legend_bbox_to_anchor, 
-                                'labelcolor': self.legend_labelcolor,
-                                'frameon': self.legend_frame,
-                                'framealpha': self.legend_framealpha,
-                                'fancybox': True,
-                                'mode': legend_expand,
-                                'alignment': "left",
-                                'title': "Population",
-                                'title_fontsize': self.legend_caption_fontsize,
-                                'labelspacing': self.legend_labelspacing,
-                                'borderaxespad':self.legend_borderpad,
-                            }
+                kws["legend_kwds"] = {
+                    "fmt": "{:.0f}",
+                    "loc": self.legend_location,
+                    "title": self.legend_caption,
+                    "ncols": self.legend_columns,
+                    "prop": {"size": self.legend_size},
+                    "fontsize": self.legend_fontsize,
+                    "bbox_to_anchor": legend_bbox_to_anchor,
+                    "labelcolor": self.legend_labelcolor,
+                    "frameon": self.legend_frame,
+                    "framealpha": self.legend_framealpha,
+                    "fancybox": True,
+                    "mode": legend_expand,
+                    "alignment": "left",
+                    "title": "Population",
+                    "title_fontsize": self.legend_caption_fontsize,
+                    "labelspacing": self.legend_labelspacing,
+                    "borderaxespad": self.legend_borderpad,
+                }
                 kws["scheme"] = self.classification_method
                 kws["k"] = self.classification_bins
             else:
                 kws["legend_kwds"] = {
-                            'shrink': self.legend_colorbar_shrink,
-                            'fmt':"{:.0f}",
-                            'location': colorbar_legend_location,
-                            'pad': self.legend_colorbar_pad,
-                            }
-        
+                    "shrink": self.legend_colorbar_shrink,
+                    "fmt": "{:.0f}",
+                    "location": colorbar_legend_location,
+                    "pad": self.legend_colorbar_pad,
+                }
+
         geo_types = gdf["geometry"].geom_type.unique()
-        if  not (("LineString" in geo_types) or ("MultiLineString" in geo_types)):
+        if not (("LineString" in geo_types) or ("MultiLineString" in geo_types)):
             if "none" not in str(self.size_col).lower():
                 max_point_size = 2000
                 max_val = gdf[self.size_col].max()
                 min_val = gdf[self.size_col].min()
-                normal_base = (gdf[self.size_col]-min_val)/max_val
-                kws["makersize"] = normal_base*max_point_size
+                normal_base = (gdf[self.size_col] - min_val) / max_val
+                kws["makersize"] = normal_base * max_point_size
         if "none" not in str(self.line_width_col).lower():
             max_line_width = 5
             max_val = gdf[self.line_width_col].max()
             min_val = gdf[self.line_width_col].min()
-            normal_base = (gdf[self.line_width_col]-min_val)/max_val
-            kws["linewidth"] = normal_base*max_line_width
+            normal_base = (gdf[self.line_width_col] - min_val) / max_val
+            kws["linewidth"] = normal_base * max_line_width
 
         map = gdf.plot(**kws)
         map.set_title(self.figure_title, fontsize=self.figure_title_size)
@@ -648,16 +779,14 @@ class ViewNodeStatic:
         return knext.view_matplotlib(map.get_figure())
 
 
-
-
 ############################################
-# Kepler.gl 
+# Kepler.gl
 ############################################
 @knext.node(
     name="Kepler.gl Geoview ",
     node_type=knext.NodeType.VISUALIZER,
     icon_path=__NODE_ICON_PATH + "Kepler.gl.png",
-    category=__category,
+    category=category,
 )
 @knext.input_table(
     name="Geospatial table to visualize",
@@ -674,7 +803,7 @@ class ViewNodeKepler:
     geo_col = knext.ColumnParameter(
         "Geometry column",
         "Select the geometry column to visualize.",
-        column_filter=knut.is_geo,  
+        column_filter=knut.is_geo,
         include_row_key=False,
         include_none_column=False,
     )
@@ -691,16 +820,15 @@ class ViewNodeKepler:
         default_value=False,
     )
 
-
     def configure(self, configure_context, input_schema):
-        knut.columns_exist([ self.geo_col], input_schema)
+        knut.columns_exist([self.geo_col], input_schema)
         # if self.name_cols is None:
         #     self.name_cols = [c.name for c in input_schema if knut.is_string(c)]
         return None
 
     def execute(self, exec_context: knext.ExecutionContext, input_table):
         gdf = gp.GeoDataFrame(input_table.to_pandas(), geometry=self.geo_col)
-        
+
         map_1 = KeplerGl(show_docs=False)
         map_1.add_data(data=gdf.copy(), name="state")
         config = {}
@@ -709,12 +837,11 @@ class ViewNodeKepler:
             # config_str = json.dumps(map_1.config)
             # if type(config) == str:
             #     config = config.encode("utf-8")
-            with open('kepler_config.json', 'w') as f:
+            with open("kepler_config.json", "w") as f:
                 f.write(json.dumps(map_1.config))
-        
-        
+
         if self.load_config:
-            with open('kepler_config.json', 'r') as f:
+            with open("kepler_config.json", "r") as f:
                 config = json.loads(f.read())
         map_1.config = config
 
