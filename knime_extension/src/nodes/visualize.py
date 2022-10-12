@@ -1,13 +1,11 @@
 # from doctest import debug_script
 import logging
-from xml.etree.ElementInclude import include
 import geopandas as gp
 import knime_extension as knext
-from numpy import save
 import util.knime_utils as knut
 from keplergl import KeplerGl
 import json
-from pyecharts.charts import Bar
+# from pyecharts.charts import Bar
 
 LOGGER = logging.getLogger(__name__)
 
