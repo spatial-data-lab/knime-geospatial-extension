@@ -1,11 +1,12 @@
 # from doctest import debug_script
 import logging
+from xml.etree.ElementInclude import include
 import geopandas as gp
 import knime_extension as knext
 import util.knime_utils as knut
 from keplergl import KeplerGl
 import json
-# from pyecharts.charts import Bar
+
 
 LOGGER = logging.getLogger(__name__)
 
@@ -252,6 +253,16 @@ class ViewNode:
         include_none_column=True,
     )
 
+# TODO: add just for size
+
+    size_scale = knext.IntParameter(
+        "Size scale",
+        "Select the size scale of the markers.",
+        default_value=10,
+        min_value=1,
+        max_value=100,
+    )
+
     name_cols = knext.MultiColumnParameter(
         "Tooltip columns",
         "Select columns which should be shown in the marker tooltip.",
@@ -359,6 +370,14 @@ class ViewNode:
                         * max_size
                     }
                 }
+        if "none" not in str(self.size_scale).lower():
+            geo_types = gdf["geometry"].geom_type.unique()
+            if ("LineString" in geo_types) or ("MultiLineString" in geo_types):
+                kws["style_kwds"] = {"weight": self.size_scale}
+            elif  ("Polygon" in geo_types) or ("MultiPolygon" in geo_types):
+                pass
+            else:
+                kws["style_kwds"] = {"radius": self.size_scale}
 
         map = gdf.explore(**kws)
         # knut.check_canceled(exec_context)
@@ -737,7 +756,7 @@ class ViewNodeStatic:
                     "fancybox": True,
                     "mode": legend_expand,
                     "alignment": "left",
-                    "title": "Population",
+                    # "title": "Population",
                     "title_fontsize": self.legend_caption_fontsize,
                     "labelspacing": self.legend_labelspacing,
                     "borderaxespad": self.legend_borderpad,

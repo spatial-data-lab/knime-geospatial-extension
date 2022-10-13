@@ -8,6 +8,13 @@ import numpy as np
 import libpysal
 import scipy.sparse
 from libpysal.weights import WSP
+from pysal.explore import esda
+import pysal.lib as lps
+import pickle
+import seaborn as sbn
+import matplotlib.pyplot as plt
+from libpysal.weights import W
+
 
 __category = knext.category(
     path="/geo",
@@ -187,3 +194,87 @@ class spatialWeights:
 
         return knext.Table.from_pandas(out)
 
+############################################
+# Global Moran's I node
+############################################
+# 
+
+@knext.node(
+    name="Global Moran's I",
+    node_type=knext.NodeType.SINK,
+    category=__category,
+    icon_path=__NODE_ICON_PATH + "SpatialWeight.png",
+)
+@knext.input_table(
+    name="Input Table",
+    description="Input table for calculation of Global Moran's I",
+
+)
+@knext.input_table(
+    name="Spatial Weights",
+    description="Spatial Weights table for calculation of Global Moran's I",
+
+)
+@knext.output_table(
+    name="Output Table",
+    description="Output table results of Global Moran's I",
+)
+# @knext.output_binary(
+#     name="output model",
+#     description="Output model of Global Moran's I",
+#     id="pysal.esda.moran.Moran",
+# )
+@knext.output_view(
+    name="output view",
+    description="Output view of Global Moran's I",
+)
+class GlobalMoransI:
+    """
+    Global Moran's I
+    """
+
+    # input parameters
+    geo_col = knext.ColumnParameter(
+        "Geometry column",
+        "The column containing the geometry to use for the spatial weights matrix.",
+    )
+    
+
+    Field_col = knext.ColumnParameter(
+        "Field column",
+        "The column containing the field to use for the calculation of Global Moran's I.",
+        column_filter=knut.is_numeric,
+        include_none_column=False,
+    )
+   
+
+    def configure(self, configure_context, input_schema_1, input_schema_2):
+        knut.columns_exist([self.geo_col], input_schema_1)
+        return None
+
+    def execute(self, exec_context:knext.ExecutionContext, input_1, input_2):
+
+        gdf = gp.GeoDataFrame(input_1.to_pandas(), geometry=self.geo_col)
+        adjust_list = input_2.to_pandas()
+        w = W.from_adjlist(adjust_list)
+
+        y = gdf[self.Field_col]
+        np.random.seed(12345)
+        mi = esda.moran.Moran(y, w)
+        result = {"Moran's I": mi.I, "p-value": mi.p_norm, "z-score": mi.z_norm}
+        out = pd.DataFrame(result, index=[0])
+
+        
+        ax = sbn.kdeplot(mi.sim, shade=True)
+        plt.vlines(mi.I, 0, 1, color='r')
+        plt.vlines(mi.EI, 0,1)
+        plt.xlabel("Moran's I")
+
+
+
+        return knext.Table.from_pandas(out),knext.view_matplotlib(ax.get_figure())
+
+
+
+
+   
