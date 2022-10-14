@@ -258,7 +258,7 @@ class ViewNode:
     size_scale = knext.IntParameter(
         "Size scale",
         "Select the size scale of the markers.",
-        default_value=10,
+        default_value=1,
         min_value=1,
         max_value=100,
     )
