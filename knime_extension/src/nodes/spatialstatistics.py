@@ -1,4 +1,5 @@
 import logging
+from platform import node
 import knime_extension as knext
 import util.knime_utils as knut
 import pandas as pd
@@ -274,7 +275,117 @@ class GlobalMoransI:
 
         return knext.Table.from_pandas(out),knext.view_matplotlib(ax.get_figure())
 
+############################################
+# Local Moran's I node
+############################################
 
+
+@knext.node(
+    name="Local Moran's I",
+    node_type=knext.NodeType.SINK,
+    # node_type=knext.NodeType.MANIPULATOR,
+    category=__category,
+    icon_path=__NODE_ICON_PATH + "SpatialWeight.png",
+)
+@knext.input_table(
+    name="Input Table",
+    description="Input table for calculation of Local Moran's I",
+
+)
+@knext.input_table(
+    name="Spatial Weights",
+    description="Spatial Weights table for calculation of Local Moran's I",
+
+)
+@knext.output_table(
+    name="Output Table",
+    description="Output table results of Local Moran's I",
+)
+# @knext.output_binary(
+#     name="output model",
+#     description="Output model of Global Moran's I",
+#     id="pysal.esda.moran.Moran",
+# )
+@knext.output_view(
+    name="output view",
+    description="Output view of Local Moran's I",
+)
+class LocalMoransI:
+    """
+    Local Moran's I
+    """
+
+    # input parameters
+    geo_col = knext.ColumnParameter(
+        "Geometry column",
+        "The column containing the geometry to use for local Moran's I.",
+    )
+    
+
+    Field_col = knext.ColumnParameter(
+        "Field column",
+        "The column containing the field to use for the calculation of Local Moran's I.",
+        column_filter=knut.is_numeric,
+        include_none_column=False,
+    )
+   
+
+    def configure(self, configure_context, input_schema_1, input_schema_2):
+        knut.columns_exist([self.geo_col], input_schema_1)
+        return None
+
+    def execute(self, exec_context:knext.ExecutionContext, input_1, input_2):
+
+        gdf = gp.GeoDataFrame(input_1.to_pandas(), geometry=self.geo_col)
+        adjust_list = input_2.to_pandas()
+        w = W.from_adjlist(adjust_list)
+
+        y = gdf[self.Field_col]
+        np.random.seed(12345)
+        li = esda.moran.Moran_Local(y, w)
+
+
+
+
+        # gdf.loc[:,"spots_type"] = gdf["spots_type"].fillna("Not Significant")
+
+        gdf.loc[:,"Moran's I"] = li.Is
+        gdf.loc[:,"p-value"] = li.p_sim
+        gdf.loc[:,"z-score"] = li.z_sim
+        gdf.loc[:,"spots"] = li.q
+
+        gdf.loc[:,"spots_type"] = gdf["spots"].replace({1: "HH", 2: "LL", 3: "LH", 4: "HL"})
+        gdf.loc[gdf["p-value"] < 0.05,"spots_type"] = "Not Significant"
+        # out = pd.merge(gdf, out, left_index=True, right_index=True)
+   
+
+
+
+        lag_index = lps.weights.lag_spatial(w, gdf[self.Field_col])
+        index_v = gdf[self.Field_col]
+        b, a = np.polyfit(index_v, lag_index, 1)
+        f, ax = plt.subplots(1, figsize=(9, 9))
+
+        plt.plot(index_v, lag_index, '.', color='firebrick')
+
+        # dashed vert at mean of the index_v
+        plt.vlines(index_v.mean(), lag_index.min(), lag_index.max(), linestyle='--')
+        # dashed horizontal at mean of lagged index_v 
+        plt.hlines(lag_index.mean(), index_v.min(), index_v.max(), linestyle='--')
+
+        # red line of best fit using global I as slope
+        plt.plot(index_v, a + b*index_v, 'r')
+        plt.title('Moran Scatterplot')
+        plt.ylabel('Spatial Lag of %s' % self.Field_col)
+        plt.xlabel('%s' % self.Field_col)
+        
+        # out.drop(columns=[self.geo_col], inplace=True)
+        # out.reset_index(inplace=True)
+        
+        
+        # return knext.Table.from_pandas(out)
+        return knext.Table.from_pandas(gdf), knext.view_matplotlib(f)
+  
 
 
    
