@@ -728,7 +728,7 @@ class ViewNodeStatic:
         else:
             legend_expand = None
 
-        kws = {"alpha": 1, "legend": self.plot_legend}
+        kws = {"alpha": 1, "legend": self.plot_legend,"aspect": 1}
 
         if "none" not in str(self.edge_color):
             kws["edgecolor"] = self.edge_color

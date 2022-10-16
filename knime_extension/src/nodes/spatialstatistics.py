@@ -15,7 +15,7 @@ import pickle
 import seaborn as sbn
 import matplotlib.pyplot as plt
 from libpysal.weights import W
-
+import spreg
 
 __category = knext.category(
     path="/geo",
@@ -238,6 +238,9 @@ class GlobalMoransI:
     geo_col = knext.ColumnParameter(
         "Geometry column",
         "The column containing the geometry to use for the spatial weights matrix.",
+        column_filter=knut.is_geo,
+        include_row_key=False,
+        include_none_column=False,
     )
     
 
@@ -319,6 +322,9 @@ class LocalMoransI:
     geo_col = knext.ColumnParameter(
         "Geometry column",
         "The column containing the geometry to use for local Moran's I.",
+        column_filter=knut.is_geo,
+        include_row_key=False,
+        include_none_column=False,
     )
     
 
@@ -388,4 +394,577 @@ class LocalMoransI:
   
 
 
+
+############################################
+# Global  Geary’s C node
+############################################
+
+@knext.node(
+    name="Global Geary’s C",
+    node_type=knext.NodeType.SINK,
+    # node_type=knext.NodeType.MANIPULATOR,
+    category=__category,
+    icon_path=__NODE_ICON_PATH + "SpatialWeight.png",
+)
+@knext.input_table(
+    name="Input Table",
+    description="Input table for calculation of Global Geary’s C",
+
+)
+@knext.input_table(
+    name="Spatial Weights",
+    description="Spatial Weights table for calculation of Global Geary’s C",
+
+)
+@knext.output_table(
+    name="Output Table",
+    description="Output table results of Global Geary’s C",
+)
+# @knext.output_binary(
+#     name="output model",
+#     description="Output model of Global Geary’s C",
+#     id="pysal.esda.moran.Moran",
+# )
+@knext.output_view(
+    name="output view",
+    description="Output view of Global Geary’s C",
+)
+class GlobalGearysC:
+    """
+    Global Geary’s C
+    """
+
+    # input parameters
+    geo_col = knext.ColumnParameter(
+        "Geometry column",
+        "The column containing the geometry to use for global Geary’s C.",
+        column_filter=knut.is_geo,
+        include_row_key=False,
+        include_none_column=False,
+    )
+    
+
+    Field_col = knext.ColumnParameter(
+        "Field column",
+        "The column containing the field to use for the calculation of Global Geary’s C.",
+        column_filter=knut.is_numeric,
+        include_none_column=False,
+    )
    
+
+    def configure(self, configure_context, input_schema_1, input_schema_2):
+        knut.columns_exist([self.geo_col], input_schema_1)
+        return None
+
+    def execute(self, exec_context:knext.ExecutionContext, input_1, input_2):
+
+        gdf = gp.GeoDataFrame(input_1.to_pandas(), geometry=self.geo_col)
+        adjust_list = input_2.to_pandas()
+        w = W.from_adjlist(adjust_list)
+
+        y = gdf[self.Field_col]
+        np.random.seed(12345)
+        gc = esda.geary.Geary(y, w)
+
+        out = pd.DataFrame({"Geary's C": [gc.C], "p-value": [gc.p_sim], "z-score": [gc.z_sim]})        
+        out.reset_index(inplace=True)
+        
+        ax = sbn.kdeplot(gc.sim, shade=True)
+        plt.vlines(gc.C, 0, 1, color="r")
+        plt.vlines(gc.EC, 0, 1)
+        plt.xlabel("Geary's C")
+        
+        return knext.Table.from_pandas(out),knext.view_matplotlib(ax.get_figure())
+
+############################################
+# Global Getis-Ord node
+############################################
+
+@knext.node(
+    name="Global Getis-Ord",
+    node_type=knext.NodeType.SINK,
+    # node_type=knext.NodeType.MANIPULATOR,
+    category=__category,
+    icon_path=__NODE_ICON_PATH + "SpatialWeight.png",
+)
+@knext.input_table(
+    name="Input Table",
+    description="Input table for calculation of Global Getis-Ord",
+
+)
+@knext.input_table(
+    name="Spatial Weights",
+    description="Spatial Weights table for calculation of Global Getis-Ord",
+
+)
+@knext.output_table(
+    name="Output Table",
+    description="Output table results of Global Getis-Ord",
+)
+# @knext.output_binary(
+#     name="output model",
+#     description="Output model of Global Getis-Ord",
+#     id="pysal.esda.moran.Moran",
+# )
+@knext.output_view(
+    name="output view",
+    description="Output view of Global Getis-Ord",
+)
+class GlobalGetisOrd:
+    """
+    Global Getis-Ord
+    """
+
+    # input parameters
+    geo_col = knext.ColumnParameter(
+        "Geometry column",
+        "The column containing the geometry to use for global Getis-Ord.",
+        column_filter=knut.is_geo,
+        include_row_key=False,
+        include_none_column=False,
+    )
+    
+
+    Field_col = knext.ColumnParameter(
+        "Field column",
+        "The column containing the field to use for the calculation of Global Getis-Ord.",
+        column_filter=knut.is_numeric,
+        include_none_column=False,
+    )
+   
+
+    def configure(self, configure_context, input_schema_1, input_schema_2):
+        knut.columns_exist([self.geo_col], input_schema_1)
+        return None
+
+    def execute(self, exec_context:knext.ExecutionContext, input_1, input_2):
+
+        gdf = gp.GeoDataFrame(input_1.to_pandas(), geometry=self.geo_col)
+        adjust_list = input_2.to_pandas()
+        w = W.from_adjlist(adjust_list)
+
+        y = gdf[self.Field_col]
+        np.random.seed(12345)
+        go = esda.getisord.G(y, w)
+
+        out = pd.DataFrame({"Getis-Ord G": [go.G], "p-value": [go.p_sim], "z-score": [go.z_sim]})        
+        out.reset_index(inplace=True)
+        
+        ax = sbn.kdeplot(go.sim, shade=True)
+        plt.vlines(go.G, 0, 1, color="r")
+        plt.vlines(go.EG, 0, 1)
+        plt.xlabel("Getis-Ord G")
+        
+        return knext.Table.from_pandas(out),knext.view_matplotlib(ax.get_figure())
+
+############################################
+# Local Getis-Ord node
+############################################
+
+@knext.node(
+    name="Local Getis-Ord",
+    node_type=knext.NodeType.SINK,
+    # node_type=knext.NodeType.MANIPULATOR,
+    category=__category,
+    icon_path=__NODE_ICON_PATH + "SpatialWeight.png",
+)
+@knext.input_table(
+    name="Input Table",
+    description="Input table for calculation of Local Getis-Ord",
+
+)
+@knext.input_table(
+    name="Spatial Weights",
+    description="Spatial Weights table for calculation of Local Getis-Ord",
+
+)
+@knext.output_table(
+    name="Output Table",
+    description="Output table results of Local Getis-Ord",
+)
+# @knext.output_binary(
+#     name="output model",
+#     description="Output model of Local Getis-Ord",
+#     id="pysal.esda.moran.Moran",
+# )
+@knext.output_view(
+    name="output view",
+    description="Output view of Local Getis-Ord",
+)
+
+class LocalGetisOrd:
+    """
+    Local Getis-Ord
+    """
+
+    # input parameters
+    geo_col = knext.ColumnParameter(
+        "Geometry column",
+        "The column containing the geometry to use for local Getis-Ord.",
+        column_filter=knut.is_geo,
+        include_row_key=False,
+        include_none_column=False,
+    )
+    
+
+    Field_col = knext.ColumnParameter(
+        "Field column",
+        "The column containing the field to use for the calculation of Local Getis-Ord.",
+        column_filter=knut.is_numeric,
+        include_none_column=False,
+    )
+   
+
+    def configure(self, configure_context, input_schema_1, input_schema_2):
+        knut.columns_exist([self.geo_col], input_schema_1)
+        return None
+
+    def execute(self, exec_context:knext.ExecutionContext, input_1, input_2):
+
+        gdf = gp.GeoDataFrame(input_1.to_pandas(), geometry=self.geo_col)
+        adjust_list = input_2.to_pandas()
+        w = W.from_adjlist(adjust_list)
+
+        y = gdf[self.Field_col]
+        np.random.seed(12345)
+        lo = esda.getisord.G_Local(y, w)
+
+        gdf.loc[:, "Local Getis-Ord G"] = lo.Gs
+        gdf.loc[:, "p-value"] = lo.p_sim
+        gdf.loc[:, "z-score"] = lo.z_sim
+
+        lag_index = lps.weights.lag_spatial(w, gdf[self.Field_col])
+        index_v = gdf[self.Field_col]
+        b,a = np.polyfit(index_v, lag_index, 1)
+        f, ax = plt.subplots(1, figsize=(9, 9))
+
+        plt.plot(index_v, lag_index, '.', color='firebrick') 
+        plt.vlines(index_v.mean(), lag_index.min(), lag_index.max(),linestyle='--')
+        plt.hlines(lag_index.mean(), index_v.min(), index_v.max(),linestyle='--')
+
+        plt.plot(index_v, a + b*index_v, 'r')
+        plt.xlabel(self.Field_col)
+        plt.ylabel("Spatial Lag of " + self.Field_col)
+        plt.title("Local Getis-Ord G Scatterplot")
+
+        return knext.Table.from_pandas(gdf),knext.view_matplotlib(f)
+        
+############################################
+# spatial 2SlS node
+############################################
+
+@knext.node(
+    name="Spatial 2SlS",
+    node_type=knext.NodeType.SINK,
+    # node_type=knext.NodeType.MANIPULATOR,
+    category=__category,
+    icon_path=__NODE_ICON_PATH + "SpatialWeight.png",
+)
+@knext.input_table(
+    name="Input Table",
+    description="Input table for calculation of Spatial 2SlS",
+
+)
+@knext.input_table(
+    name="Spatial Weights",
+    description="Spatial Weights table for calculation of Spatial 2SlS",
+
+)
+@knext.output_table(
+    name="Model Description Table",
+    description="Description of Spatial 2SlS, including Pseudo R-squared, Spatial Pseudo R-squared, Number of Observations, and Number of Variables",
+)
+# @knext.output_binary(
+#     name="output model",
+#     description="Output model of Spatial 2SlS",
+#     id="pysal.esda.moran.Moran",
+# )
+@knext.output_table(
+    name="Variable and Coefficient Table",
+    description="Variable and Coefficient Table of Spatial 2SlS",
+)
+@knext.output_view(
+    name="Model Summary View",
+    description="Model Summary View of Spatial 2SlS",
+)
+
+class Spatial2SLSModel:
+    """
+    Spatial two stage least squares (S2SLS) with results and diagnostics; Anselin (1988)
+    """
+
+    # input parameters
+    geo_col = knext.ColumnParameter(
+        "Geometry column",
+        "The column containing the geometry to use for spatial 2SlS.",
+        column_filter=knut.is_geo,
+        include_row_key=False,
+        include_none_column=False,
+    )
+    
+
+    dependent_variable = knext.ColumnParameter(
+        "Dependent variable",
+        "The column containing the dependent variable to use for the calculation of Spatial 2SlS.",
+        column_filter=knut.is_numeric,
+        include_none_column=False,
+    )
+
+    independent_variables = knext.MultiColumnParameter(
+        "Independent variables",
+        "The columns containing the independent variables to use for the calculation of Spatial 2SlS.",
+        column_filter=knut.is_numeric
+    )
+
+    Orders_of_W = knext.IntParameter(
+        "Orders of W",
+        "Orders of W to include as instruments for the spatially lagged dependent variable. For example, w_lags=1, then instruments are WX; if w_lags=2, then WX, WWX; and so on.",
+        default_value=1,
+    )
+
+    Spatial_Diagnostics = knext.BoolParameter(
+        "Spatial Diagnostics",
+        "If True, then compute Anselin-Kelejian test",
+        default_value=False,
+    )
+
+    robust = knext.StringParameter(
+        "Robust",
+        "If ‘white’, then a White consistent estimator of the variance-covariance matrix is given. If ‘hac’, then a HAC consistent estimator of the variance-covariance matrix is given. Default set to None.",
+        enum=["white", "hac", "none"],
+        default_value="none",
+    )
+
+
+
+
+    def configure(self, configure_context, input_schema_1, input_schema_2):
+        knut.columns_exist([self.geo_col], input_schema_1)
+        return None
+    
+    def execute(self, exec_context:knext.ExecutionContext, input_1, input_2):
+            
+            gdf = gp.GeoDataFrame(input_1.to_pandas(), geometry=self.geo_col)
+            adjust_list = input_2.to_pandas()
+            w = W.from_adjlist(adjust_list)
+    
+            y = gdf[self.dependent_variable].values
+            x = gdf[self.independent_variables].values
+
+            kws={"y":y, "x":x, "w":w, "w_lags":self.Orders_of_W, "spat_diag":self.Spatial_Diagnostics, 
+                "name_y":self.dependent_variable, "name_x":self.independent_variables, 
+                "name_w":"Spatial Weights", "name_ds":"Input Table"}
+            if "none" not in str(self.robust).lower():
+                kws["robust"] = self.robust
+
+            model = spreg.GM_Lag(**kws)
+    
+            # model = spreg.GM_Lag(y, x, w=w,w_lags=self.Orders_of_W, robust= self.robust,
+            # name_y=self.dependent_variable, name_x=self.independent_variables, name_w="Spatial Weights", name_ds="Input Table")
+    
+            results = pd.DataFrame([model.name_x, model.betas, model.std_err, model.z_stat] ).T
+            results.columns = ["Variable", "Coefficient", "Std.Error", "z-Statistic"]
+            results.loc[:,"Coefficient"] = results.loc[:,"Coefficient"].map(lambda x: x[0])
+            results.loc[:,"Probability"] = results.loc[:,"z-Statistic"].map(lambda x: x[1])
+            results.loc[:,"z-Statistic"] = results.loc[:,"z-Statistic"].map(lambda x: x[0])
+            # 
+            results.loc[:,"Coefficient"] = results.loc[:,"Coefficient"].map(lambda x: round(x,7))
+            results.loc[:,"Std.Error"] = results.loc[:,"Std.Error"].map(lambda x: round(x,7))
+            results.loc[:,"z-Statistic"] = results.loc[:,"z-Statistic"].map(lambda x: round(x,7))
+            results.loc[:,"Probability"] = results.loc[:,"Probability"].map(lambda x: round(x,7))
+            results =  results.dropna()
+
+            result2 = pd.DataFrame({"Pseudo R-squared ":model.pr2, "Spatial Pseudo R-squared":model.pr2_e, "Number of Observations":model.n, "Number of Variables":model.k}, index=[0])
+            result2 = result2.round(7)
+    
+            
+            html = """<p><pre>%s</pre>"""% model.summary.replace("\n", "<br/>")
+
+            return knext.Table.from_pandas(result2),knext.Table.from_pandas(results),knext.view_html(html)
+
+############################################################################################################
+# Spatial Lag Panel Model with Fixed Effects node
+############################################################################################################
+
+@knext.node(
+    name="Spatial Lag Panel Model with Fixed Effects",
+    node_type=knext.NodeType.SINK,
+    category=__category,
+    icon_path=__NODE_ICON_PATH + "SpatialWeight.png",
+)
+@knext.input_table(
+    name="Input Table",
+    description="Input Table for Spatial Lag Panel Model with Fixed Effects",
+)
+@knext.input_table(
+    name="Spatial Weights",
+    description="Spatial Weights for Spatial Lag Panel Model with Fixed Effects",
+)
+@knext.output_table(
+    name="Model Description Table",
+    description="Model Description Table for Spatial Lag Panel Model with Fixed Effects",
+)
+@knext.output_table(
+    name="Model Coefficients Table",
+    description="Model Coefficients Table for Spatial Lag Panel Model with Fixed Effects",
+)
+@knext.output_view(
+    name="Model Summary",
+    description="Model Summary for Spatial Lag Panel Model with Fixed Effects",
+)
+class SpatialLagPanelModelwithFixedEffects:
+    """
+    Spatial Lag Panel Model with Fixed Effects
+    """
+    geo_col = knext.ColumnParameter(
+        "Geometry Column",
+        "The column containing the geometry of the input table.",
+        column_filter=knut.is_geo,
+        include_row_key=False,
+        include_none_column=False,
+    )
+
+    dependent_variable = knext.MultiColumnParameter(
+        "Dependent variables",
+        "The column containing the dependent variables to use for the calculation of Spatial Lag Panel Model with Fixed Effects.",
+        column_filter=knut.is_numeric,
+    )
+
+    independent_variables = knext.MultiColumnParameter(
+        "Independent variables",
+        "The columns containing the independent variables to use for the calculation of Spatial Lag Panel Model with Fixed Effects.",
+        column_filter=knut.is_numeric
+    )
+
+
+    def configure(self, configure_context, input_schema_1, input_schema_2):
+        knut.columns_exist([self.geo_col], input_schema_1)
+        return None
+    
+    def execute(self, exec_context:knext.ExecutionContext, input_1, input_2):
+            
+            gdf = gp.GeoDataFrame(input_1.to_pandas(), geometry=self.geo_col)
+            adjust_list = input_2.to_pandas()
+            w = W.from_adjlist(adjust_list)
+
+            x = gdf[self.independent_variables].values
+            y = gdf[self.dependent_variable].values
+
+            kws = {"y":y, "x":x, "w":w, "name_y":self.dependent_variable, 
+            "name_x":self.independent_variables, 
+            "name_w":"Spatial Weights", "name_ds":"Input Table"}
+            model = spreg.Panel_FE_Lag(**kws)
+
+            results = pd.DataFrame([model.name_x, model.betas, model.std_err, model.z_stat] ).T
+            results.columns = ["Variable", "Coefficient", "Std.Error", "z-Statistic"]
+            results.loc[:,"Coefficient"] = results.loc[:,"Coefficient"].map(lambda x: x[0])
+            results.loc[:,"Probability"] = results.loc[:,"z-Statistic"].map(lambda x: x[1])
+            results.loc[:,"z-Statistic"] = results.loc[:,"z-Statistic"].map(lambda x: x[0])
+            # 
+            results.loc[:,"Coefficient"] = results.loc[:,"Coefficient"].map(lambda x: round(x,7))
+            results.loc[:,"Std.Error"] = results.loc[:,"Std.Error"].map(lambda x: round(x,7))
+            results.loc[:,"z-Statistic"] = results.loc[:,"z-Statistic"].map(lambda x: round(x,7))
+            results.loc[:,"Probability"] = results.loc[:,"Probability"].map(lambda x: round(x,7))
+            results =  results.dropna()
+    
+            result2 = pd.DataFrame({"Pseudo R-squared ":model.pr2, "Spatial Pseudo R-squared":model.pr2_e, "Number of Observations":model.n, "Number of Variables":model.k}, index=[0])
+            result2 = result2.round(7)
+
+            html = """<p><pre>%s</pre>"""% model.summary.replace("\n", "<br/>")
+
+            return knext.Table.from_pandas(result2),knext.Table.from_pandas(results),knext.view_html(html)
+        
+
+
+############################################################################################################
+# Spatial Error Panel Model with Fixed Effects node
+############################################################################################################
+
+@knext.node(
+    name="Spatial Error Panel Model with Fixed Effects",
+    node_type=knext.NodeType.SINK,
+    category=__category,
+    icon_path=__NODE_ICON_PATH + "SpatialWeight.png",
+)
+@knext.input_table(
+    name="Input Table",
+    description="Input Table for Spatial Error Panel Model with Fixed Effects",
+)
+@knext.input_table(
+    name="Spatial Weights",
+    description="Spatial Weights for Spatial Error Panel Model with Fixed Effects",
+)
+@knext.output_table(
+    name="Model Description Table",
+    description="Model Description Table for Spatial Error Panel Model with Fixed Effects",
+)
+@knext.output_table(
+    name="Model Coefficients Table",
+    description="Model Coefficients Table for Spatial Error Panel Model with Fixed Effects",
+)
+@knext.output_view(
+    name="Model Summary",
+    description="Model Summary for Spatial Error Panel Model with Fixed Effects",
+)
+class SpatialErrorPanelModelwithFixedEffects:
+    """
+    Spatial Error Panel Model with Fixed Effects node
+    """
+    geo_col = knext.ColumnParameter(
+        "Geometry Column",
+        "The column containing the geometry of the input table.",
+        column_filter=knut.is_geo,
+        include_row_key=False,
+        include_none_column=False,
+    )
+
+    dependent_variable = knext.MultiColumnParameter(
+        "Dependent variables",
+        "The column containing the dependent variables to use for the calculation of Spatial Error Panel Model with Fixed Effects.",
+        column_filter=knut.is_numeric,
+    )
+
+    independent_variables = knext.MultiColumnParameter(
+        "Independent variables",
+        "The columns containing the independent variables to use for the calculation of Spatial Error Panel Model with Fixed Effects.",
+        column_filter=knut.is_numeric
+    )
+
+
+    def configure(self, configure_context, input_schema_1, input_schema_2):
+        knut.columns_exist([self.geo_col], input_schema_1)
+        return None
+    
+    def execute(self, exec_context:knext.ExecutionContext, input_1, input_2):
+            
+            gdf = gp.GeoDataFrame(input_1.to_pandas(), geometry=self.geo_col)
+            adjust_list = input_2.to_pandas()
+            w = W.from_adjlist(adjust_list)
+
+            x = gdf[self.independent_variables].values
+            y = gdf[self.dependent_variable].values
+
+            kws = {"y":y, "x":x, "w":w, "name_y":self.dependent_variable, 
+            "name_x":self.independent_variables, 
+            "name_w":"Spatial Weights", "name_ds":"Input Table"}
+            model = spreg.Panel_FE_Error(**kws)
+
+            results = pd.DataFrame([model.name_x, model.betas, model.std_err, model.z_stat] ).T
+            results.columns = ["Variable", "Coefficient", "Std.Error", "z-Statistic"]
+            results.loc[:,"Coefficient"] = results.loc[:,"Coefficient"].map(lambda x: x[0])
+            results.loc[:,"Probability"] = results.loc[:,"z-Statistic"].map(lambda x: x[1])
+            results.loc[:,"z-Statistic"] = results.loc[:,"z-Statistic"].map(lambda x: x[0])
+            # 
+            results.loc[:,"Coefficient"] = results.loc[:,"Coefficient"].map(lambda x: round(x,7))
+            results.loc[:,"Std.Error"] = results.loc[:,"Std.Error"].map(lambda x: round(x,7))
+            results.loc[:,"z-Statistic"] = results.loc[:,"z-Statistic"].map(lambda x: round(x,7))
+            results.loc[:,"Probability"] = results.loc[:,"Probability"].map(lambda x: round(x,7))
+            results =  results.dropna()
+    
+            result2 = pd.DataFrame({"Pseudo R-squared ":model.pr2,  "Number of Observations":model.n, "Number of Variables":model.k}, index=[0])
+            result2 = result2.round(7)
+
+            html = """<p><pre>%s</pre>"""% model.summary.replace("\n", "<br/>")
+
+            return knext.Table.from_pandas(result2),knext.Table.from_pandas(results),knext.view_html(html)
+        
