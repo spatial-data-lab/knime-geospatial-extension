@@ -1,10 +1,12 @@
 import logging
 from platform import node
+from time import sleep
 import knime_extension as knext
 import util.knime_utils as knut
 import pandas as pd
 import geopandas as gp
-
+from mgwr.gwr import GWR, MGWR
+from mgwr.sel_bw import Sel_BW
 import numpy as np
 import libpysal
 import scipy.sparse
@@ -16,6 +18,9 @@ import seaborn as sbn
 import matplotlib.pyplot as plt
 from libpysal.weights import W
 import spreg
+from io import StringIO
+import sys
+
 
 __category = knext.category(
     path="/geo",
@@ -968,3 +973,257 @@ class SpatialErrorPanelModelwithFixedEffects:
 
             return knext.Table.from_pandas(result2),knext.Table.from_pandas(results),knext.view_html(html)
         
+############################################################################################################
+# Geographically Weighted Regression (GWR) node
+############################################################################################################
+
+@knext.node(
+    name="Geographically Weighted Regression",
+    node_type=knext.NodeType.SINK,
+    category=__category,
+    icon_path=__NODE_ICON_PATH + "SpatialWeight.png",
+)
+@knext.input_table(
+    name="Input Table",
+    description="Input Table for Geographically Weighted Regression",
+)
+# @knext.output_table(
+#     name="Model Description Table",
+#     description="Model Description Table for Geographically Weighted Regression",
+# )
+@knext.output_table(
+    name="Model Coefficients Table",
+    description="Model Coefficients Table for Geographically Weighted Regression",
+)
+# @knext.output_binary(
+#     name="Model",
+#     description="Model for Geographically Weighted Regression",
+#     id="mgwr.gwr.GWR",
+# )
+@knext.output_view(
+    name="Model Summary",
+    description="Model Summary for Geographically Weighted Regression",
+)
+class GeographicallyWeightedRegression:
+    """
+    Geographically Weighted Regression node
+    """
+    geo_col = knext.ColumnParameter(
+        "Geometry Column",
+        "The column containing the geometry of the input table.",
+        column_filter=knut.is_geo,
+        include_row_key=False,
+        include_none_column=False,
+    )
+
+    dependent_variable = knext.ColumnParameter(
+        "Dependent variable",
+        "The column containing the dependent variable to use for the calculation of Geographically Weighted Regression.",
+        column_filter=knut.is_numeric,
+    )
+
+    independent_variables = knext.MultiColumnParameter(
+        "Independent variables",
+        "The columns containing the independent variables to use for the calculation of Geographically Weighted Regression.",
+        column_filter=knut.is_numeric
+    )
+
+    search_method = knext.StringParameter(
+        "Search Method",
+        "bw search method: ‘golden’, ‘interval’",
+        default_value="golden",
+        enum=["golden", "interval"],
+    )
+
+    bandwith_min = knext.IntParameter(
+        "Bandwith Min",
+        "min value used in bandwidth search",
+        default_value=2,
+    )
+
+    # bandwith_max = knext.IntParameter(
+    #     "Bandwith Max",
+    #     "max value used in bandwidth search",
+    #     default=200,
+    # )
+
+    kernel = knext.StringParameter(
+        "Kernel",
+        "type of kernel function used to weight observations; available options: ‘gaussian’ ‘bisquare’ ‘exponential’",
+        default_value="bisquare",
+        enum=["gaussian", "bisquare", "exponential"],
+    )
+
+    def configure(self, configure_context, input_schema):
+        knut.columns_exist([self.geo_col], input_schema)
+        return None
+    
+    def execute(self, exec_context:knext.ExecutionContext, input_1):
+            
+            gdf = gp.GeoDataFrame(input_1.to_pandas(), geometry=self.geo_col)
+            #Prepare Georgia dataset inputs
+            g_y = gdf[self.dependent_variable].values.reshape((-1,1))
+            g_X = gdf[self.independent_variables].values
+            u = gdf['geometry'].x
+            v = gdf['geometry'].y
+            g_coords = list(zip(u,v))
+            g_X = (g_X - g_X.mean(axis=0)) / g_X.std(axis=0)
+            g_y = g_y.reshape((-1,1))
+            g_y = (g_y - g_y.mean(axis=0)) / g_y.std(axis=0)
+
+            #Calibrate GWR model
+
+            gwr_selector = Sel_BW(g_coords, g_y, g_X)
+            gwr_bw = gwr_selector.search(bw_min=self.bandwith_min)
+            # gwr_bw = gwr_selector.search(bw_min=self.bandwith_min,search_method=self.search_method)
+            # print(gwr_bw)
+            gwr_model = GWR(g_coords, g_y, g_X, gwr_bw).fit()
+
+            gdf.loc[:,'predy'] = gwr_model.predy
+            gdf.loc[:,'resid'] = gwr_model.resid_response.reshape(-1,1)
+            gdf.loc[:, ["Intercept_beta"] + ["%s_beta"%item for item in self.independent_variables]] = gwr_model.params
+            gdf.loc[:, ["Intercept_t"] + ["%s_t"%item for item in self.independent_variables]] = gwr_model.filter_tvals()
+            intervals = gwr_model.get_bws_intervals(gwr_selector)
+            intervals=np.asarray(intervals)
+            if gwr_bw.shape == ():
+                gdf.loc[:1,"bw"] = gwr_bw
+                gdf.loc[:1,["bw_lower","bw_upper"]] = intervals
+            else:
+                gdf.loc[:(gwr_bw.shape[0]),"bw"] = gwr_bw
+                gdf.loc[:(intervals.shape[0]),["bw_lower","bw_upper"]] = intervals
+            # gdf.loc[:,"localR2"] = results.localR2
+            # gdf.drop(columns=["<Row Key>"], inplace=True, axis=1)   
+            gdf.reset_index(drop=True, inplace=True)
+            
+
+            buffer = StringIO()
+            sys.stdout = buffer
+            gwr_model.summary()
+            summary = buffer.getvalue()
+            sys.stdout = sys.__stdout__
+
+            html = """<p><pre>%s</pre>"""% summary.replace("\n", "<br/>")
+
+            return knext.Table.from_pandas(gdf),knext.view_html(html)
+
+##############################################################################################################
+# Multiscale Geographically Weighted Regression (MGWR)
+##############################################################################################################
+
+@knext.node(
+    name="Multiscale Geographically Weighted Regression",
+    node_type=knext.NodeType.SINK,
+    category=__category,
+    icon_path=__NODE_ICON_PATH + "SpatialWeight.png",
+)
+@knext.input_table(
+    name="Input Table",
+    description="The input table containing the data to use for the calculation of Multiscale Geographically Weighted Regression.",
+
+)
+@knext.output_table(
+    name="Model Coefficients Table",
+    description="The output table containing the model coefficients for Multiscale Geographically Weighted Regression.",
+)
+@knext.output_view(
+    name="Model Summary",
+    description="Model Summary for Multiscale Geographically Weighted Regression",
+)
+class MultiscaleGeographicallyWeightedRegression:
+    """
+    Multiscale Geographically Weighted Regression node
+    """
+    geo_col = knext.ColumnParameter(
+        "Geometry Column",
+        "The column containing the geometry of the input table.",
+        column_filter=knut.is_geo,
+        include_row_key=False,
+        include_none_column=False,
+    )
+
+    dependent_variable = knext.ColumnParameter(
+        "Dependent variable",
+        "The column containing the dependent variable to use for the calculation of Multiscale Geographically Weighted Regression.",
+        column_filter=knut.is_numeric,
+    )
+
+    independent_variables = knext.MultiColumnParameter(
+        "Independent variables",
+        "The columns containing the independent variables to use for the calculation of Multiscale Geographically Weighted Regression.",
+        column_filter=knut.is_numeric
+    )
+
+    search_method = knext.StringParameter(
+        "Search Method",
+        "bw search method: ‘golden’, ‘interval’",
+        default_value="golden",
+        enum=["golden", "interval"],
+    )
+
+    bandwith_min = knext.IntParameter(
+        "Bandwith Min",
+        "min value used in bandwidth search",
+        default_value=2,
+    )
+
+    # bandwith_max = knext.IntParameter(
+    #     "Bandwith Max",
+    #     "max value used in bandwidth search",
+    #     default=200,
+    # )
+
+    kernel = knext.StringParameter(
+        "Kernel",
+        "type of kernel function used to weight observations; available options: ‘gaussian’ ‘bisquare’ ‘exponential’",
+        default_value="bisquare",
+        enum=["gaussian", "bisquare", "exponential"],
+    )
+
+    def configure(self, configure_context, input_schema):
+        knut.columns_exist([self.geo_col], input_schema)
+        return None
+    
+    def execute(self, exec_context:knext.ExecutionContext, input_1):
+            
+            gdf = gp.GeoDataFrame(input_1.to_pandas(), geometry=self.geo_col)
+            #Prepare Georgia dataset inputs
+            g_y = gdf[self.dependent_variable].values.reshape((-1,1))
+            g_X = gdf[self.independent_variables].values
+            u = gdf['geometry'].x
+            v = gdf['geometry'].y
+            g_coords = list(zip(u,v))
+            g_X = (g_X - g_X.mean(axis=0)) / g_X.std(axis=0)
+            g_y = g_y.reshape((-1,1))
+            g_y = (g_y - g_y.mean(axis=0)) / g_y.std(axis=0)
+
+            #Calibrate MGWR model
+            mgwr_selector = Sel_BW(g_coords, g_y, g_X,multi=True)
+            mgwr_bw = mgwr_selector.search(multi_bw_min=[self.bandwith_min])
+            mgwr_model = MGWR(g_coords, g_y, g_X, mgwr_selector, fixed=False,sigma2_v1=True,kernel='bisquare').fit()
+
+            gdf.loc[:,'predy'] = mgwr_model.predy
+            gdf.loc[:,'resid'] = mgwr_model.resid_response.reshape(-1,1)
+            gdf.loc[:, ["Intercept_beta"] + ["%s_beta"%item for item in self.independent_variables]] = mgwr_model.params
+            gdf.loc[:, ["Intercept_t"] + ["%s_t"%item for item in self.independent_variables]] = mgwr_model.filter_tvals()
+            intervals = mgwr_model.get_bws_intervals(mgwr_selector)
+            intervals=np.asarray(intervals)
+            if mgwr_bw.shape == ():
+                gdf.loc[:1,"bw"] = mgwr_bw
+                gdf.loc[:1,["bw_lower","bw_upper"]] = intervals
+            else:
+                gdf.loc[:(mgwr_bw.shape[0]),"bw"] = mgwr_bw.reshape(-1,1)
+                gdf.loc[:(intervals.shape[0]),["bw_lower","bw_upper"]] = intervals
+            # gdf.loc[:,"localR2"] = results.localR2
+            # gdf.drop(columns=["<Row Key>"], inplace=True, axis=1)
+            gdf.reset_index(drop=True, inplace=True)
+
+            buffer = StringIO()
+            sys.stdout = buffer
+            mgwr_model.summary()
+            summary = buffer.getvalue()
+            sys.stdout = sys.__stdout__
+
+            html = """<p><pre>%s</pre>"""% summary.replace("\n", "<br/>")
+
+            return knext.Table.from_pandas(gdf),knext.view_html(html)
+
