@@ -1186,11 +1186,11 @@ class GeographicallyWeightedRegressionPredictor:
     name="Model Coefficients Table",
     description="The output table containing the model coefficients for Multiscale Geographically Weighted Regression.",
 )
-@knext.output_binary(
-    name="Model",
-    description="The output binary containing the model for Multiscale Geographically Weighted Regression.",
-    id = "mgwr.gwr.MGWR",
-)
+# @knext.output_binary(
+#     name="Model",
+#     description="The output binary containing the model for Multiscale Geographically Weighted Regression.",
+#     id = "mgwr.gwr.MGWR",
+# )
 @knext.output_view(
     name="Model Summary",
     description="Model Summary for Multiscale Geographically Weighted Regression",
@@ -1293,5 +1293,71 @@ class MultiscaleGeographicallyWeightedRegression:
 
             model_string = pickle.dumps(mgwr_model)
 
-            return knext.Table.from_pandas(gdf),model_string,knext.view_html(html)
+            return knext.Table.from_pandas(gdf),knext.view_html(html)
+            # return knext.Table.from_pandas(gdf),model_string,knext.view_html(html)
 
+##############################################################################################################
+# Multiscale Geographically Weighted Regression Predictor Node
+# Notice that the prediction of MGWR is not yet implemented in the mgwr package
+##############################################################################################################
+
+# @knext.node(
+#     name="Multiscale Geographically Weighted Regression Predictor",
+#     node_type=knext.NodeType.PREDICTOR,
+#     category=__category,
+#     icon_path=__NODE_ICON_PATH + "SpatialWeight.png",
+# )
+# @knext.input_table(
+#     name="Input Table",
+#     description="The input table containing the data to use for the prediction of Multiscale Geographically Weighted Regression.",
+# )
+# @knext.input_binary(
+#     name="Model",
+#     description="The model to use for the prediction of Multiscale Geographically Weighted Regression.",
+#     id="mgwr.gwr.MGWR",
+# )
+# @knext.output_table(
+#     name="Output Table",
+#     description="The output table containing the prediction of Multiscale Geographically Weighted Regression.",
+# )
+# class MGWRPredictorNode:
+#     """
+#     Multiscale Geographically Weighted Regression Predictor Node
+#     """
+
+#     geo_col = knext.ColumnParameter(
+#         "Geometry Column",
+#         "The column containing the geometry of the input table.",
+#         column_filter=knut.is_geo,
+#         include_row_key=False,
+#         include_none_column=False,
+#     )
+
+# # do we need this?
+#     independent_variables = knext.MultiColumnParameter(
+#         "Independent variables",
+#         "The columns containing the independent variables to use for the prediction of Multiscale Geographically Weighted Regression.",
+#         column_filter=knut.is_numeric
+#     )
+
+#     def configure(self, configure_context, input_schema,input_schema_2):
+#         knut.columns_exist([self.geo_col], input_schema)
+#         return None
+    
+#     def execute(self, exec_context:knext.ExecutionContext, input_1, model):
+            
+#             gdf = gp.GeoDataFrame(input_1.to_pandas(), geometry=self.geo_col)
+#             #Prepare Georgia dataset inputs
+#             g_X = gdf[self.independent_variables].values
+#             u = gdf['geometry'].x
+#             v = gdf['geometry'].y
+#             g_coords = np.array(list(zip(u,v)))
+#             # g_X = (g_X - g_X.mean(axis=0)) / g_X.std(axis=0)
+
+#             #Calibrate MGWR model
+#             mgwr_model = pickle.loads(model)
+#             gdf.loc[:,'predy'] = mgwr_model.model.predict(g_coords, g_X).predictions
+#             gdf.reset_index(drop=True, inplace=True)
+
+#             return knext.Table.from_pandas(gdf)
+            
