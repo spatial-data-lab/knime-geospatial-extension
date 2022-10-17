@@ -18,7 +18,7 @@ import seaborn as sbn
 import matplotlib.pyplot as plt
 from libpysal.weights import W
 import spreg
-from io import StringIO
+from io import StringIO, BytesIO
 import sys
 
 
@@ -995,11 +995,11 @@ class SpatialErrorPanelModelwithFixedEffects:
     name="Model Coefficients Table",
     description="Model Coefficients Table for Geographically Weighted Regression",
 )
-# @knext.output_binary(
-#     name="Model",
-#     description="Model for Geographically Weighted Regression",
-#     id="mgwr.gwr.GWR",
-# )
+@knext.output_binary(
+    name="Model",
+    description="Model for Geographically Weighted Regression",
+    id="mgwr.gwr.GWR",
+)
 @knext.output_view(
     name="Model Summary",
     description="Model Summary for Geographically Weighted Regression",
@@ -1067,9 +1067,9 @@ class GeographicallyWeightedRegression:
             u = gdf['geometry'].x
             v = gdf['geometry'].y
             g_coords = list(zip(u,v))
-            g_X = (g_X - g_X.mean(axis=0)) / g_X.std(axis=0)
+            # g_X = (g_X - g_X.mean(axis=0)) / g_X.std(axis=0)
             g_y = g_y.reshape((-1,1))
-            g_y = (g_y - g_y.mean(axis=0)) / g_y.std(axis=0)
+            # g_y = (g_y - g_y.mean(axis=0)) / g_y.std(axis=0)
 
             #Calibrate GWR model
 
@@ -1077,7 +1077,7 @@ class GeographicallyWeightedRegression:
             gwr_bw = gwr_selector.search(bw_min=self.bandwith_min)
             # gwr_bw = gwr_selector.search(bw_min=self.bandwith_min,search_method=self.search_method)
             # print(gwr_bw)
-            gwr_model = GWR(g_coords, g_y, g_X, gwr_bw).fit()
+            gwr_model = GWR(g_coords, g_y, g_X, gwr_bw,fixed=False).fit()
 
             gdf.loc[:,'predy'] = gwr_model.predy
             gdf.loc[:,'resid'] = gwr_model.resid_response.reshape(-1,1)
@@ -1104,8 +1104,69 @@ class GeographicallyWeightedRegression:
 
             html = """<p><pre>%s</pre>"""% summary.replace("\n", "<br/>")
 
-            return knext.Table.from_pandas(gdf),knext.view_html(html)
+            model_string = pickle.dumps(gwr_model)
 
+
+            return knext.Table.from_pandas(gdf),model_string ,knext.view_html(html)
+
+#############################################################################################################
+# Geographically Weighted Regression Predictor Node
+#############################################################################################################
+@knext.node(
+    name="Geographically Weighted Regression Predictor",
+    node_type=knext.NodeType.PREDICTOR,
+    category=__category,
+    icon_path=__NODE_ICON_PATH + "SpatialWeight.png",
+)
+@knext.input_table(
+    name="Input Table",
+    description="Input table for Geographically Weighted Regression Predictor",
+)
+@knext.input_binary(
+    name="Model",
+    description="Model for Geographically Weighted Regression Predictor",
+    id = "mgwr.gwr.GWR",
+)
+@knext.output_table(
+    name="Output Table",
+    description="Output table for Geographically Weighted Regression Predictor",
+)
+class GeographicallyWeightedRegressionPredictor:
+    """
+    Geographically Weighted Regression Predictor node
+    """
+    geo_col = knext.ColumnParameter(
+        "Geometry Column",
+        "The column containing the geometry of the input table.",
+        column_filter=knut.is_geo,
+        include_row_key=False,
+        include_none_column=False,
+    )
+
+    independent_variables = knext.MultiColumnParameter(
+        "Independent variables",
+        "The columns containing the independent variables to use for the calculation of Geographically Weighted Regression.",
+        column_filter=knut.is_numeric
+    )
+
+    def configure(self, configure_context, input_schema,input_binary_schema):
+        knut.columns_exist([self.geo_col], input_schema)
+        return None
+    
+    def execute(self, exec_context:knext.ExecutionContext, input_1, model):
+            
+            gdf = gp.GeoDataFrame(input_1.to_pandas(), geometry=self.geo_col)
+            #Prepare Georgia dataset inputs
+            g_X = gdf[self.independent_variables].values
+            u = gdf['geometry'].x
+            v = gdf['geometry'].y
+            g_coords = np.array(list(zip(u,v)))
+            # g_X = (g_X - g_X.mean(axis=0)) / g_X.std(axis=0)
+            gwr_model = pickle.loads(model)
+
+            gdf.loc[:,'predy'] = gwr_model.model.predict(g_coords,g_X).predictions
+            gdf.reset_index(drop=True, inplace=True)
+            return knext.Table.from_pandas(gdf)
 ##############################################################################################################
 # Multiscale Geographically Weighted Regression (MGWR)
 ##############################################################################################################
@@ -1192,9 +1253,9 @@ class MultiscaleGeographicallyWeightedRegression:
             u = gdf['geometry'].x
             v = gdf['geometry'].y
             g_coords = list(zip(u,v))
-            g_X = (g_X - g_X.mean(axis=0)) / g_X.std(axis=0)
+            # g_X = (g_X - g_X.mean(axis=0)) / g_X.std(axis=0)
             g_y = g_y.reshape((-1,1))
-            g_y = (g_y - g_y.mean(axis=0)) / g_y.std(axis=0)
+            # g_y = (g_y - g_y.mean(axis=0)) / g_y.std(axis=0)
 
             #Calibrate MGWR model
             mgwr_selector = Sel_BW(g_coords, g_y, g_X,multi=True)
