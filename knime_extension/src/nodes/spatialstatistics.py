@@ -1186,6 +1186,11 @@ class GeographicallyWeightedRegressionPredictor:
     name="Model Coefficients Table",
     description="The output table containing the model coefficients for Multiscale Geographically Weighted Regression.",
 )
+@knext.output_binary(
+    name="Model",
+    description="The output binary containing the model for Multiscale Geographically Weighted Regression.",
+    id = "mgwr.gwr.MGWR",
+)
 @knext.output_view(
     name="Model Summary",
     description="Model Summary for Multiscale Geographically Weighted Regression",
@@ -1286,5 +1291,7 @@ class MultiscaleGeographicallyWeightedRegression:
 
             html = """<p><pre>%s</pre>"""% summary.replace("\n", "<br/>")
 
-            return knext.Table.from_pandas(gdf),knext.view_html(html)
+            model_string = pickle.dumps(mgwr_model)
+
+            return knext.Table.from_pandas(gdf),model_string,knext.view_html(html)
 
