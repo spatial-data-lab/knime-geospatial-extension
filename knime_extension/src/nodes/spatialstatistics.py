@@ -207,9 +207,9 @@ class spatialWeights:
 
 @knext.node(
     name="Global Moran's I",
-    node_type=knext.NodeType.SINK,
+    node_type=knext.NodeType.LEARNER,
     category=__category,
-    icon_path=__NODE_ICON_PATH + "SpatialWeight.png",
+    icon_path=__NODE_ICON_PATH + "GlobalMoran.png",
 )
 @knext.input_table(
     name="Input Table",
@@ -290,10 +290,10 @@ class GlobalMoransI:
 
 @knext.node(
     name="Local Moran's I",
-    node_type=knext.NodeType.SINK,
+    node_type=knext.NodeType.LEARNER,
     # node_type=knext.NodeType.MANIPULATOR,
     category=__category,
-    icon_path=__NODE_ICON_PATH + "SpatialWeight.png",
+    icon_path=__NODE_ICON_PATH + "LocalMoran.png",
 )
 @knext.input_table(
     name="Input Table",
@@ -406,10 +406,10 @@ class LocalMoransI:
 
 @knext.node(
     name="Global Geary’s C",
-    node_type=knext.NodeType.SINK,
+    node_type=knext.NodeType.LEARNER,
     # node_type=knext.NodeType.MANIPULATOR,
     category=__category,
-    icon_path=__NODE_ICON_PATH + "SpatialWeight.png",
+    icon_path=__NODE_ICON_PATH + "GlobalGeary.png",
 )
 @knext.input_table(
     name="Input Table",
@@ -487,10 +487,10 @@ class GlobalGearysC:
 
 @knext.node(
     name="Global Getis-Ord",
-    node_type=knext.NodeType.SINK,
+    node_type=knext.NodeType.LEARNER,
     # node_type=knext.NodeType.MANIPULATOR,
     category=__category,
-    icon_path=__NODE_ICON_PATH + "SpatialWeight.png",
+    icon_path=__NODE_ICON_PATH + "GlobalGetis.png",
 )
 @knext.input_table(
     name="Input Table",
@@ -568,10 +568,10 @@ class GlobalGetisOrd:
 
 @knext.node(
     name="Local Getis-Ord",
-    node_type=knext.NodeType.SINK,
+    node_type=knext.NodeType.LEARNER,
     # node_type=knext.NodeType.MANIPULATOR,
     category=__category,
-    icon_path=__NODE_ICON_PATH + "SpatialWeight.png",
+    icon_path=__NODE_ICON_PATH + "LocalGeary.png",
 )
 @knext.input_table(
     name="Input Table",
@@ -660,10 +660,10 @@ class LocalGetisOrd:
 
 @knext.node(
     name="Spatial 2SlS",
-    node_type=knext.NodeType.SINK,
+    node_type=knext.NodeType.LEARNER,
     # node_type=knext.NodeType.MANIPULATOR,
     category=__category,
-    icon_path=__NODE_ICON_PATH + "SpatialWeight.png",
+    icon_path=__NODE_ICON_PATH + "2SLS.png",
 )
 @knext.input_table(
     name="Input Table",
@@ -793,9 +793,9 @@ class Spatial2SLSModel:
 
 @knext.node(
     name="Spatial Lag Panel Model with Fixed Effects",
-    node_type=knext.NodeType.SINK,
+    node_type=knext.NodeType.LEARNER,
     category=__category,
-    icon_path=__NODE_ICON_PATH + "SpatialWeight.png",
+    icon_path=__NODE_ICON_PATH + "SpatialLag.png",
 )
 @knext.input_table(
     name="Input Table",
@@ -887,9 +887,9 @@ class SpatialLagPanelModelwithFixedEffects:
 
 @knext.node(
     name="Spatial Error Panel Model with Fixed Effects",
-    node_type=knext.NodeType.SINK,
+    node_type=knext.NodeType.LEARNER,
     category=__category,
-    icon_path=__NODE_ICON_PATH + "SpatialWeight.png",
+    icon_path=__NODE_ICON_PATH + "SpatialError.png",
 )
 @knext.input_table(
     name="Input Table",
@@ -979,9 +979,9 @@ class SpatialErrorPanelModelwithFixedEffects:
 
 @knext.node(
     name="Geographically Weighted Regression",
-    node_type=knext.NodeType.SINK,
+    node_type=knext.NodeType.LEARNER,
     category=__category,
-    icon_path=__NODE_ICON_PATH + "SpatialWeight.png",
+    icon_path=__NODE_ICON_PATH + "GWR.png",
 )
 @knext.input_table(
     name="Input Table",
@@ -1173,9 +1173,9 @@ class GeographicallyWeightedRegressionPredictor:
 
 @knext.node(
     name="Multiscale Geographically Weighted Regression",
-    node_type=knext.NodeType.SINK,
+    node_type=knext.NodeType.LEARNER,
     category=__category,
-    icon_path=__NODE_ICON_PATH + "SpatialWeight.png",
+    icon_path=__NODE_ICON_PATH + "GWR.png",
 )
 @knext.input_table(
     name="Input Table",
