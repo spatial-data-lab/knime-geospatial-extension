@@ -15,5 +15,6 @@ dependencies:
   - pulp
   - pysal
   - seaborn
+  - pip
   - pip:
     - pyecharts
