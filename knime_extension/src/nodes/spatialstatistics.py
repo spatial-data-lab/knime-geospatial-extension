@@ -655,7 +655,7 @@ class LocalGetisOrd:
 ############################################
 # Bivariate Global Moran’s I node
 ############################################
-
+# FIXME: add test workflow
 @knext.node(
     name="Bivariate Global Moran’s I",
     node_type=knext.NodeType.LEARNER,
@@ -744,7 +744,7 @@ class BivariateGlobalMoran:
 ############################################
 # Bivariate Local Moran Statistics
 ############################################
-
+# FIXME: add test workflow
 @knext.node(
     name="Bivariate Local Moran Statistics",
     node_type=knext.NodeType.LEARNER,
@@ -842,12 +842,3 @@ class BivariateLocalMoran:
         plt.xlabel('%s' % self.Field_col)
 
         return knext.Table.from_pandas(gdf),knext.view_matplotlib(f)
-
-############################################
-# Local Getis-Ord node
-############################################
-
-
-############################################
-# Local Getis-Ord node
-############################################

@@ -1574,7 +1574,7 @@ class SpatialGM_Combo_Hom:
 ############################################
 # spatial GM_Endog_Error node
 ############################################
-
+# FIXME: add another two parameters
 @knext.node(
     name="Spatial GM_Endog_Error",
     node_type=knext.NodeType.LEARNER,
@@ -1627,6 +1627,20 @@ class SpatialGM_Endog_Error:
         column_filter=knut.is_numeric
     )
 
+    yend = knext.ColumnParameter(
+        "Endogenous variable",
+        "The column containing the endogenous variable to use for the calculation of the spatial GM_Endog_Error model.",
+        column_filter=knut.is_numeric,
+        include_none_column=False,
+    )
+
+    q = knext.ColumnParameter(
+        "External exogenous variable",
+        "The column containing the external exogenous variable to use for the calculation of the spatial GM_Endog_Error model.",
+        column_filter=knut.is_numeric,
+        include_none_column=False,
+    )
+
     def configure(self, configure_context, input_schema, input_schema_2):
         knut.columns_exist([self.geo_col], input_schema)
 
@@ -1639,8 +1653,9 @@ class SpatialGM_Endog_Error:
         #Prepare Georgia dataset inputs
         X = gdf[self.independent_variables].values
         y = gdf[self.dependent_variable].values
-        
-        model = spreg.GM_Endog_Error(y=y, x=X, w=w)
+        yend = gdf[self.yend].values
+        q = gdf[self.q].values
+        model = spreg.GM_Endog_Error(y=y, x=X, w=w,yend=yend,q=q)
 
         results = pd.DataFrame([model.name_x, model.betas, model.std_err, model.z_stat] ).T
         results.columns = ["Variable", "Coefficient", "Std.Error", "Z-Statistic"]
@@ -1665,7 +1680,7 @@ class SpatialGM_Endog_Error:
 ############################################
 # spatial GM_Endog_Error_Het node
 ############################################
-
+# FIXME: add another two parameters
 @knext.node(
     name="Spatial GM_Endog_Error_Het",
     node_type=knext.NodeType.LEARNER,
@@ -1718,6 +1733,20 @@ class SpatialGM_Endog_Error_Het:
         column_filter=knut.is_numeric
     )
 
+    yend = knext.ColumnParameter(
+        "Endogenous variable",
+        "The column containing the endogenous variable to use for the calculation of the spatial GM_Endog_Error_Het model.",
+        column_filter=knut.is_numeric,
+        include_none_column=False,
+    )
+
+    q = knext.ColumnParameter(
+        "External exogenous variable",
+        "The column containing the external exogenous variable to use for the calculation of the spatial GM_Endog_Error_Het model.",
+        column_filter=knut.is_numeric,
+        include_none_column=False,
+    )
+
     def configure(self, configure_context, input_schema, input_schema_2):
         knut.columns_exist([self.geo_col], input_schema)
 
@@ -1730,8 +1759,10 @@ class SpatialGM_Endog_Error_Het:
         #Prepare Georgia dataset inputs
         X = gdf[self.independent_variables].values
         y = gdf[self.dependent_variable].values
+        yend = gdf[self.yend].values
+        q = gdf[self.q].values
         
-        model = spreg.GM_Endog_Error_Het(y=y, x=X, w=w)
+        model = spreg.GM_Endog_Error_Het(y=y, x=X, w=w,yend=yend,q=q)
 
         results = pd.DataFrame([model.name_x, model.betas, model.std_err, model.z_stat] ).T
         results.columns = ["Variable", "Coefficient", "Std.Error", "Z-Statistic"]
@@ -1755,7 +1786,7 @@ class SpatialGM_Endog_Error_Het:
 ############################################
 # spatial GM_Endog_Error_Hom node
 ############################################
-
+# FIXME: add another two parameters 
 @knext.node(
     name="Spatial GM_Endog_Error_Hom",
     node_type=knext.NodeType.LEARNER,
@@ -1808,6 +1839,21 @@ class SpatialGM_Endog_Error_Hom:
         column_filter=knut.is_numeric
     )
 
+    yend = knext.ColumnParameter(
+        "Endogenous variable",
+        "The column containing the endogenous variable to use for the calculation of the spatial GM_Endog_Error_Hom model.",
+        column_filter=knut.is_numeric,
+        include_none_column=False,
+    )
+
+    q = knext.ColumnParameter(
+        "External exogenous variable",
+        "The column containing the external exogenous variable to use for the calculation of the spatial GM_Endog_Error_Hom model.",
+        column_filter=knut.is_numeric,
+        include_none_column=False,
+    )
+
+
     def configure(self, configure_context, input_schema, input_schema_2):
         knut.columns_exist([self.geo_col], input_schema)
 
@@ -1820,8 +1866,11 @@ class SpatialGM_Endog_Error_Hom:
         #Prepare Georgia dataset inputs
         X = gdf[self.independent_variables].values
         y = gdf[self.dependent_variable].values
+        yend = gdf[self.yend].values
+        q = gdf[self.q].values
+
         
-        model = spreg.GM_Endog_Error_Hom(y=y, x=X, w=w)
+        model = spreg.GM_Endog_Error_Hom(y=y, x=X, w=w,yend=yend,q=q)
 
         results = pd.DataFrame([model.name_x, model.betas, model.std_err, model.z_stat] ).T
         results.columns = ["Variable", "Coefficient", "Std.Error", "Z-Statistic"]
