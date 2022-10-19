@@ -27,37 +27,37 @@ This is a short step by step guide on how to setup your development environment 
 
 1. [Download](https://www.knime.com/nightly-build-downloads) and install the latest KNIME nightly build
 
-2.  Install KNIME extension: Open the downloaded KNIME Analytics Platform nightly build and click KNIME -> File-> Install KNIME Extensions, Search for 'Python' and select `KNIME Python Extension Development (Labs)`,`KNIME Python Integration (Labs) `, Disable the “Group items by category” option and search for 'geo' and select  `KNIME Geospatial Nodes`.
+2.  Install KNIME extension: Open the downloaded KNIME Analytics Platform nightly build and click KNIME -> File-> Install KNIME Extensions, Search for 'Python' and select `KNIME Python Extension Development (Labs)`,`KNIME Python Integration (Labs) `, Disable the “Group items by category” option and search for 'geo' and select  `KNIME Geospatial Extension`. The KNIME Geospatial Extension contains the Java and Python representation of the geometry data types.
 
-3. Follow the instruction in the Tutorials section of the [Create a New Python based KNIME Extension guide](https://docs.knime.com/latest/pure_python_node_extensions_guide/index.html#_tutorials). When building the new Python environment for Geospatial node development also install the `geopandas` package as following: 
+3. Clone this repository
    ```bash
-   conda create -n my_python_env python=3.9 knime-python-base knime-extension geopandas -c knime -c conda-forge 
+   git clone  https://github.com/spatial-data-lab/knime-geospatial-extension.git
+
+   ```
+
+4. Before proceeding in KNIME Analytics Platform we have to create the Python environment with all required packages e.g. `geopandas` execute the following command that uses the [geospatial_env.yml](https://github.com/spatial-data-lab/knime-geospatial-extension/blob/main/knime_extension/geospatial_env.yml) file in the local repository clone: 
+   ```bash
+   #browse to the folder where the geospatial_env.yml file of the local repository clone is located and then execute
+   conda env create -f geospatial_env.yml 
    
-   conda activate my_python_env
    
-   conda install libpysal scipy # if you use these packages, please install here too
+   conda activate geospatial_env
    
    conda info
-   # Record the env location path such as D:\ProgramData\Anaconda3\envs\my_python_env 
+   # Record the env location path such as D:\ProgramData\Anaconda3\envs\geospatial_env 
    ```
 
-4. Configure the following KNIME Python settings:
+5. Make a copy of the `config.yml` file e.g. `config_YOURNAME.yml`. Adapt the copied file to point to the `knime_extension` folder of this repository on your local hard drive as described [here](https://docs.knime.com/latest/pure_python_node_extensions_guide/index.html#tutorial-writing-first-py-node). The file tells the KNIME Analytics Platform where to search for the Python extension on your local hard drive during development and debugging.
+
+6. Add the following line to your `knime.ini`, located in the KNIME nightly root folder, to point to your adjusted `config_YOURNAME.yml` file e.g. `-Dknime.python.extension.config=D:\Software\knime_470\knimespace\geo\config_YOURNAME.yml`
+
+7. Go back to the KNIME Analytics Platform and configure the following KNIME Python settings:
    * KNIME -> File-> Preference> KNIME> Conda  Choose anaconda directory
-   * KNIME -> File-> Preference> KNIME> Python(Labs) Choose my_python_env
-
-5. Clone this repository
-   ```bash
-   git clone  https://github.com/spatial-data-lab/knime-python-spatial-statistic-nodes.git
-
-   ```
-
-6. Adapt the `config.yml` file to point to the `knime_extension` folder on your local hard drive as described [here](https://docs.knime.com/latest/pure_python_node_extensions_guide/index.html#tutorial-writing-first-py-node). The file tells the KNIME Analytics Platform where to search for the Python extension on your local hard drive during development and debugging.
-
-7. Add the following line to your `knime.ini`, located in the KNIME nightly root folder, to point to your adjusted `config.yml` file e.g. `-Dknime.python.extension.config=D:\Software\knime_470\knimespace\geo\config.yml`
+   * KNIME -> File-> Preference> KNIME> Python(Labs) Choose geospatial_env
 
 8.  Reopen the KNIME Analytics Platform and you should see the Geospatial extension in your KNIME node repository.
 
-9. If you do not see the extension have a look at the KNIME log file via View -> Open KNIME log. One common problem is that not all required Python packages are install in you Python environment (for example `libpysal` or `geopandas`)
+9. If you do not see the extension have a look at the KNIME log file via View -> Open KNIME log.
 
 
 ## Testing
@@ -69,5 +69,6 @@ For a detailed introduction on how to write good workflow tests and execute them
 
 
 ## Build
-When testing locally you do not need to build anything. All you need to do is adjust the `config.yml` to your local setup e.g. adjust the `src` path to the location of the `knime_extension` folder on your hard drive and the `conda_env_path` path to the path of the local conda environment that contains all dependencies required by the extension e.g. geopandas and add the path to the adjusted `config.yml` file to your `knime.ini` file as described above.
-However if you want to build the extension locally follow the instructions [here](https://docs.knime.com/latest/pure_python_node_extensions_guide/index.html#extension-bundling).
+When testing locally you do not need to build anything. Just follow the instructions in the [Setup for KNIME Analytics Platform section](https://github.com/spatial-data-lab/knime-geospatial-extension/blob/main/CONTRIBUTING.md#setup-for-knime-analytics-platform) above e.g.adjust the `config.yml` to your local setup and add the path to the adjusted `config.yml` file to your `knime.ini` file.
+
+However if you want to build the extension locally, e.g. to make them available to other KNIME users, follow the instructions [here](https://docs.knime.com/latest/pure_python_node_extensions_guide/index.html#extension-bundling).
