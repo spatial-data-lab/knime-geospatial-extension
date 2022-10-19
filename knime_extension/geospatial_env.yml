@@ -8,7 +8,6 @@ dependencies:
   - knime-extension
   - knime-python-base
   - geopandas
-  - libpysal
   - pysal
   - keplergl
   - osmnx

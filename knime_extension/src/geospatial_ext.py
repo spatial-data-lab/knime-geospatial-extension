@@ -22,3 +22,4 @@ import nodes.transform
 import nodes.visualize
 import nodes.spatialtool
 import nodes.geolab
+import nodes.spatialmodels
