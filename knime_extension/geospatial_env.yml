@@ -8,10 +8,13 @@ dependencies:
   - knime-extension
   - knime-python-base
   - geopandas
-  - pysal
   - keplergl
+  - libpysal
+  - mgwr
   - osmnx
   - pulp
+  - pysal
   - seaborn
+  - pip
   - pip:
     - pyecharts
