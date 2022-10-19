@@ -36,8 +36,9 @@ __NODE_ICON_PATH = "icons/icon/SpatialStatistics/"
 
 
 
-
-
+############################################
+# spatial 2SlS node
+############################################
 @knext.node(
     name="Spatial 2SlS",
     node_type=knext.NodeType.LEARNER,
