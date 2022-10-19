@@ -47,7 +47,7 @@ This is a short step by step guide on how to setup your development environment 
    # Record the env location path such as D:\ProgramData\Anaconda3\envs\geospatial_env 
    ```
 
-5. Make a copy of the `config.yml` file e.g. `config_YOURNAME.yml`. Adapt the copied file to point to the `knime_extension` folder of this repository on your local hard drive as described [here](https://docs.knime.com/latest/pure_python_node_extensions_guide/index.html#tutorial-writing-first-py-node). The file tells the KNIME Analytics Platform where to search for the Python extension on your local hard drive during development and debugging.
+5. Make a copy of the `config.yml` file e.g. `config_YOURNAME.yml`. Adapt the copied file to point to the `knime_extension` folder of this repository on your local hard drive as well as to the path of the just created `geospatial_env` as described [here](https://docs.knime.com/latest/pure_python_node_extensions_guide/index.html#tutorial-writing-first-py-node). The file tells the KNIME Analytics Platform where to search for the Python extension on your local hard drive and which Python environment should be used during development and debugging.
 
 6. Add the following line to your `knime.ini`, located in the KNIME nightly root folder, to point to your adjusted `config_YOURNAME.yml` file e.g. `-Dknime.python.extension.config=D:\Software\knime_470\knimespace\geo\config_YOURNAME.yml`
 
