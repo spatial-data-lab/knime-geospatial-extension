@@ -35,12 +35,11 @@ __NODE_ICON_PATH = "icons/icon/SpatialStatistics/"
 
 
 
-
 ############################################
 # spatial 2SlS node
 ############################################
 @knext.node(
-    name="Spatial 2SlS",
+    name="Spatial 2SLS",
     node_type=knext.NodeType.LEARNER,
     # node_type=knext.NodeType.MANIPULATOR,
     category=__category,
@@ -60,11 +59,6 @@ __NODE_ICON_PATH = "icons/icon/SpatialStatistics/"
     name="Model Description Table",
     description="Description of Spatial 2SlS, including Pseudo R-squared, Spatial Pseudo R-squared, Number of Observations, and Number of Variables",
 )
-# @knext.output_binary(
-#     name="output model",
-#     description="Output model of Spatial 2SlS",
-#     id="pysal.esda.moran.Moran",
-# )
 @knext.output_table(
     name="Variable and Coefficient Table",
     description="Variable and Coefficient Table of Spatial 2SlS",
@@ -742,3 +736,171 @@ class MultiscaleGeographicallyWeightedRegression:
 
 #             return knext.Table.from_pandas(gdf)
             
+
+############################################
+# spatial OLS node
+############################################
+
+@knext.node(
+    name="Spatial OLS",
+    node_type=knext.NodeType.LEARNER,
+    category=__category,
+    icon_path=__NODE_ICON_PATH + "SpatialOLS.png",
+)
+@knext.input_table(
+    name="Input Table",
+    description="Input Table with dependent and independent variables for calculation of the spatial OLS model.",
+)
+@knext.input_table(
+    name="Spatial Weights",
+    description="Input Table with spatial weights for calculation of the spatial OLS model.",
+)
+@knext.output_table(
+    name="Output Table",
+    description="Description of the spatial OLS model.",
+)
+@knext.output_table(
+    name="Variable and Coefficient Table",
+    description="Variable and Coefficient Table of the spatial OLS model.",
+)
+@knext.output_view(
+    name="Model summary view",
+    description="Model summary view of the spatial OLS model.",
+)
+class SpatialOLS: 
+    """
+    Spatial OLS
+    """
+
+    geo_col = knext.ColumnParameter(
+        "Geometry Column",
+        "The column containing the geometry of the input table.",
+        column_filter=knut.is_geo,
+        include_row_key=False,
+        include_none_column=False,
+    )
+
+    dependent_variable = knext.ColumnParameter(
+        "Dependent variable",
+        "The column containing the dependent variable to use for the calculation of the spatial OLS model.",
+        column_filter=knut.is_numeric,
+        include_none_column=False,
+    )
+
+    independent_variables = knext.MultiColumnParameter(
+        "Independent variables",
+        "The columns containing the independent variables to use for the calculation of the spatial OLS model.",
+        column_filter=knut.is_numeric
+    )
+
+    def configure(self, configure_context, input_schema, input_schema_2):
+        knut.columns_exist([self.geo_col], input_schema)
+
+        return None
+
+    def execute(self, exec_context:knext.ExecutionContext, input_1, input_2):
+        gdf = gp.GeoDataFrame(input_1.to_pandas(), geometry=self.geo_col)
+        adjust_list = input_2.to_pandas()
+        w = W.from_adjlist(adjust_list)
+        #Prepare Georgia dataset inputs
+        X = gdf[self.independent_variables].values
+        y = gdf[self.dependent_variable].values
+        
+        model = spreg.OLS(y, X, w, spat_diag=True, moran=True, white_test=True)
+
+        results = pd.DataFrame([model.name_x, model.betas, model.std_err, model.t_stat] ).T
+        results.columns = ["Variable", "Coefficient", "Std.Error", "t-Statistic"]
+        results.loc[:,"Coefficient"] = results.loc[:,"Coefficient"].map(lambda x: x[0])
+        results.loc[:,"Probability"] = results.loc[:,"t-Statistic"].map(lambda x: x[1])
+        results.loc[:,"t-Statistic"] = results.loc[:,"t-Statistic"].map(lambda x: x[0])
+        # 
+        results.loc[:,"Coefficient"] = results.loc[:,"Coefficient"].map(lambda x: round(x,7))
+        results.loc[:,"Std.Error"] = results.loc[:,"Std.Error"].map(lambda x: round(x,7))
+        results.loc[:,"t-Statistic"] = results.loc[:,"t-Statistic"].map(lambda x: round(x,7))
+        results.loc[:,"Probability"] = results.loc[:,"Probability"].map(lambda x: round(x,7))
+        results =  results.dropna()
+
+        result2 = pd.DataFrame({"R squared":model.r2,  "Number of Observations":model.n, "Number of Variables":model.k}, index=[0])
+        result2 = result2.round(7)
+
+        
+        html = """<p><pre>%s</pre>"""% model.summary.replace("\n", "<br/>")
+
+        return knext.Table.from_pandas(result2),knext.Table.from_pandas(results),knext.view_html(html)
+
+
+############################################
+# spatial ML_Lag node
+############################################
+
+
+
+############################################
+# spatial ML_Error node
+############################################
+
+
+
+############################################
+# spatial GM_Error node
+############################################
+
+
+
+############################################
+# spatial GM_Error_Het node
+############################################
+
+
+
+############################################
+# spatial GM_Error_Hom node
+############################################
+
+
+
+
+############################################
+# spatial GM_Combo node
+############################################
+
+
+
+
+############################################
+# spatial GM_Combo_Het node
+############################################
+
+
+############################################
+# spatial GM_Combo_Het node
+############################################
+
+
+############################################
+# spatial GM_Combo_Hom node
+############################################
+
+
+
+############################################
+# spatial GM_Endog_Error node
+############################################
+
+
+############################################
+# spatial GM_Endog_Error_Het node
+############################################
+
+
+
+############################################
+# spatial GM_Endog_Error_Hom node
+############################################
+
+
+
+
+
+
+
