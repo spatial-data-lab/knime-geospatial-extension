@@ -1101,7 +1101,7 @@ class SpatialGM_Error:
         results.loc[:,"Std.Error"] = results.loc[:,"Std.Error"].map(lambda x: round(x,7))
         results.loc[:,"Z-Statistic"] = results.loc[:,"Z-Statistic"].map(lambda x: round(x,7))
         results.loc[:, "Probability"] = results.loc[:, "Probability"].map(lambda x: round(x, 7))
-        results =  results.dropna()
+        # results =  results.dropna()
 
         result2 = pd.DataFrame({"Pseudo R-squared ":model.pr2, "Number of Observations":model.n, "Number of Variables":model.k}, index=[0])
         result2 = result2.round(7)
@@ -1116,6 +1116,94 @@ class SpatialGM_Error:
 # spatial GM_Error_Het node
 ############################################
 
+@knext.node(
+    name="Spatial GM_Error_Het",
+    node_type=knext.NodeType.LEARNER,
+    category=__category,
+    icon_path=__NODE_ICON_PATH + "SpatialGM_Error_Het.png",
+)
+@knext.input_table(
+    name="Input Table",
+    description="Input Table with dependent and independent variables for calculation of the spatial GM_Error_Het model.",
+)
+@knext.input_table(
+    name="Spatial Weights",
+    description="Input Table with spatial weights for calculation of the spatial GM_Error_Het model.",
+)
+@knext.output_table(
+    name="Output Table",
+    description="Description of the spatial GM_Error_Het model.",
+)
+@knext.output_table(
+    name="Variable and Coefficient Table",
+    description="Variable and Coefficient Table of the spatial GM_Error_Het model.",
+)
+@knext.output_view(
+    name="Model summary view",
+    description="Model summary view of the spatial GM_Error_Het model.",
+)
+class SpatialGM_Error_Het:
+    """
+    Spatial GM_Error_Het
+    """
+
+    geo_col = knext.ColumnParameter(
+        "Geometry Column",
+        "The column containing the geometry of the input table.",
+        column_filter=knut.is_geo,
+        include_row_key=False,
+        include_none_column=False,
+    )
+
+    dependent_variable = knext.ColumnParameter(
+        "Dependent variable",
+        "The column containing the dependent variable to use for the calculation of the spatial GM_Error_Het model.",
+        column_filter=knut.is_numeric,
+        include_none_column=False,
+    )
+
+    independent_variables = knext.MultiColumnParameter(
+        "Independent variables",
+        "The columns containing the independent variables to use for the calculation of the spatial GM_Error_Het model.",
+        column_filter=knut.is_numeric
+    )
+
+    def configure(self, configure_context, input_schema, input_schema_2):
+        knut.columns_exist([self.geo_col], input_schema)
+
+        return None
+
+    def execute(self, exec_context:knext.ExecutionContext, input_1, input_2):
+        gdf = gp.GeoDataFrame(input_1.to_pandas(), geometry=self.geo_col)
+        adjust_list = input_2.to_pandas()
+        w = W.from_adjlist(adjust_list)
+        #Prepare Georgia dataset inputs
+        X = gdf[self.independent_variables].values
+        y = gdf[self.dependent_variable].values
+        
+        model = spreg.GM_Error_Het(y, X, w)
+
+        results = pd.DataFrame([model.name_x, model.betas, model.std_err, model.z_stat] ).T
+        results.columns = ["Variable", "Coefficient", "Std.Error", "Z-Statistic"]
+        results =  results.dropna()
+        results.loc[:,"Coefficient"] = results.loc[:,"Coefficient"].map(lambda x: x[0])
+        results.loc[:,"Probability"] = results.loc[:,"Z-Statistic"].map(lambda x: x[1])
+        results.loc[:,"Z-Statistic"] = results.loc[:,"Z-Statistic"].map(lambda x: x[0])
+        # # 
+        results.loc[:,"Coefficient"] = results.loc[:,"Coefficient"].map(lambda x: round(x,7))
+        results.loc[:,"Std.Error"] = results.loc[:,"Std.Error"].map(lambda x: round(x,7))
+        results.loc[:,"Z-Statistic"] = results.loc[:,"Z-Statistic"].map(lambda x: round(x,7))
+        results.loc[:, "Probability"] = results.loc[:, "Probability"].map(lambda x: round(x, 7))
+        # results =  results.dropna()
+
+        result2 = pd.DataFrame({"Pseudo R-squared ":model.pr2, "Number of Observations":model.n, "Number of Variables":model.k}, index=[0])
+        result2 = result2.round(7)
+
+        html = """<p><pre>%s</pre>"""% model.summary.replace("\n", "<br/>")
+
+        return knext.Table.from_pandas(result2),knext.Table.from_pandas(results),knext.view_html(html)
+
+        
 
 
 
