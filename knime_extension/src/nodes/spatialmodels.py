@@ -31,6 +31,48 @@ __category = knext.category(
 # Root path for all node icons in this file
 __NODE_ICON_PATH = "icons/icon/SpatialStatistics/"
 
+
+
+
+
+
+
+
+@knext.node(
+    name="Spatial 2SlS",
+    node_type=knext.NodeType.LEARNER,
+    # node_type=knext.NodeType.MANIPULATOR,
+    category=__category,
+    icon_path=__NODE_ICON_PATH + "2SLS.png",
+)
+@knext.input_table(
+    name="Input Table",
+    description="Input table for calculation of Spatial 2SlS",
+
+)
+@knext.input_table(
+    name="Spatial Weights",
+    description="Spatial Weights table for calculation of Spatial 2SlS",
+
+)
+@knext.output_table(
+    name="Model Description Table",
+    description="Description of Spatial 2SlS, including Pseudo R-squared, Spatial Pseudo R-squared, Number of Observations, and Number of Variables",
+)
+# @knext.output_binary(
+#     name="output model",
+#     description="Output model of Spatial 2SlS",
+#     id="pysal.esda.moran.Moran",
+# )
+@knext.output_table(
+    name="Variable and Coefficient Table",
+    description="Variable and Coefficient Table of Spatial 2SlS",
+)
+@knext.output_view(
+    name="Model Summary View",
+    description="Model Summary View of Spatial 2SlS",
+)
+
 class Spatial2SLSModel:
     """
     Spatial two stage least squares (S2SLS) with results and diagnostics; Anselin (1988)
