@@ -22,7 +22,7 @@ import sys
 __category = knext.category(
     path="/geo",
     level_id="spatialstatistic",
-    name="Spatial Statistic",
+    name="Exploratory Spatial Data Analysis",
     description="Spatial Statistic Nodes",
     # starting at the root folder of the extension_module parameter in the knime.yml file
     icon="icons/icon/SpatialStatisticsCategory.png",
