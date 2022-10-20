@@ -838,7 +838,7 @@ class BivariateLocalMoran:
 
         plt.plot(index_v, a + b*index_v, 'r')
         plt.title('Moran Scatterplot')
-        plt.ylabel('Spatial Lag of %s' % self.Field_col)
-        plt.xlabel('%s' % self.Field_col)
+        plt.ylabel('Spatial Lag of %s' % self.Field_col1)
+        plt.xlabel('%s' % self.Field_col1)
 
         return knext.Table.from_pandas(gdf),knext.view_matplotlib(f)
