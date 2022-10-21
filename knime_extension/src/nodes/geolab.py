@@ -1,15 +1,22 @@
 # lingbo
 from typing import Callable
 from wsgiref.util import shift_path_info
+from jmespath import search
 import pandas as pd
 import geopandas as gp
 import knime_extension as knext
+from sympy import content
 import util.knime_utils as knut
 import requests
 import osmnx as ox
 import pulp
 from shapely.geometry import  LineString
 from keplergl import KeplerGl
+from pandarallel import pandarallel
+from pyDataverse.api import NativeApi, DataAccessApi
+from pyDataverse.models import Dataverse
+import io
+
 
 __category = knext.category(
     path="/geo",
@@ -1281,4 +1288,243 @@ class BivariateLocalMoran:
         return knext.Table.from_pandas(gdf),knext.view_matplotlib(f)
 
 
+############################################
+# Harvard DataVerse Search Node
+############################################
 
+
+@knext.node(
+    name="Harvard DataVerse Search",
+    node_type=knext.NodeType.SOURCE,
+    icon_path=__NODE_ICON_PATH + "UStiger.png",
+    category=__category,
+)
+@knext.output_table(
+    name="Output Table",
+    description="Output table of Harvard DataVerse Search",
+)
+class HarvardDataVerseSearch:
+    """
+    Harvard DataVerse Search
+    """
+
+    # input parameters
+    search_term = knext.StringParameter(
+        "Search Term",
+        "The search term or terms. Using “title:data” will search only the “title” field. “*” can be used as a wildcard either alone or adjacent to a term (i.e. “bird*”). ",
+        default_value="mobility",
+    )
+
+    search_type = knext.StringParameter(
+        "Search Type",
+        "Can be either “Dataverse”, “dataset”, or “file”. ",
+        enum=["dataset", "file", "dataverse", "all"],
+        default_value="dataset",
+    )
+
+    def configure(self, configure_context):
+
+        return None
+
+    def execute(self, exec_context:knext.ExecutionContext):
+        # get the search term
+        pandarallel.initialize(progress_bar=False,nb_workers=15)
+
+        search_term = self.search_term
+        
+        start = 0
+        type_ = self.search_type
+        per_page = 1000
+        url = 'https://dataverse.harvard.edu/api/search?q=%s&start=%d&type=%s&per_page=%d'%(search_term, start, type_, per_page)
+        r = requests.get(url)
+        data = r.json()
+        pages = data["data"]["total_count"] // per_page + 1
+
+        # Get the data all pages from the API and save it to a dataframe
+
+        urls = []
+        for start in range(pages):
+            temp = {}
+            url = 'https://dataverse.harvard.edu/api/search?q=%s&start=%d&type=%s&per_page=%d'%(search_term, start, type_, per_page)
+            temp["url"] = url
+            temp["query"] = search_term
+            urls.append(temp)
+        urls = pd.DataFrame(urls)
+
+
+        def get_data(url):
+            import requests
+            import pandas as pd
+            r = requests.get(url)
+            data = r.json()
+            return pd.DataFrame(data["data"]["items"])
+
+        urls["data"] = urls["url"].parallel_apply(get_data)
+        df = pd.concat(urls["data"].values, ignore_index=True)
+
+        def float_list(x):
+            try:
+                f = ";".join([str(i) for i in x])
+                return f
+            except:
+                return x
+
+        df[[ 'subjects','contacts', 'authors',
+            'keywords',  'producers', 'relatedMaterial',
+            'geographicCoverage', 'dataSources']] = df[[  'subjects','contacts', 'authors',
+            'keywords',  'producers', 'relatedMaterial',
+            'geographicCoverage', 'dataSources']].applymap(float_list)
+        df.drop("publications",axis=1,inplace=True)
+
+
+        # return the results as a table
+        return knext.Table.from_pandas(df)
+
+############################################
+# Harvard DataVerse Query Data Files Source Node
+############################################
+
+@knext.node(
+    name="Harvard DataVerse Query Data Files Source",
+    node_type=knext.NodeType.SOURCE,
+    icon_path=__NODE_ICON_PATH + "UStiger.png",
+    category=__category,
+)
+@knext.output_table(
+    name="Output Table",
+    description="Output table of Harvard DataVerse Query Data Files",
+)
+class HarvardDataVerseQueryDataFilesSource:
+    """
+    Harvard DataVerse Query Data Files
+    """
+
+    # input parameters
+    global_doi = knext.StringParameter(
+        "Global DOI",
+        "The global DOI of the dataset. ",
+        default_value="doi:10.7910/DVN/ZAKKCE",
+    )
+
+    def configure(self, configure_context):
+            
+            return None
+    
+    def execute(self, exec_context:knext.ExecutionContext):
+
+        base_url = 'https://dataverse.harvard.edu/'
+        global_doi = self.global_doi
+        api = NativeApi(base_url)
+        data_api = DataAccessApi(base_url)
+        dataset = api.get_dataset(global_doi)
+        files_list = dataset.json()['data']['latestVersion']['files']
+        df = pd.json_normalize(files_list)
+        df = df.fillna(method = "bfill")
+
+        return knext.Table.from_pandas(df)
+
+
+############################################
+# Harvard DataVerse Query Data Files Node
+############################################
+
+@knext.node(
+    name="Harvard DataVerse Query Data Files ",
+    node_type=knext.NodeType.MANIPULATOR,
+    icon_path=__NODE_ICON_PATH + "UStiger.png",
+    category=__category,
+)
+@knext.input_table(
+    name="Input Table",
+    description="Input table of Harvard DataVerse Query Data Files",
+)
+@knext.output_table(
+    name="Output Table",
+    description="Output table of Harvard DataVerse Query Data Files",
+)
+class HarvardDataVerseQueryDataFiles:
+    """
+    Harvard DataVerse Query Data Files
+    """
+
+    # input parameters
+    global_doi_column = knext.ColumnParameter(
+        "Global DOI Column",
+        "The column containing the global DOI of the dataset. ",
+    )
+
+
+    def configure(self, configure_context, input_schema):
+            
+            return None
+    
+    def execute(self, exec_context:knext.ExecutionContext, input_table):
+
+        base_url = 'https://dataverse.harvard.edu/'
+        global_doi = input_table.to_pandas()[self.global_doi_column].values[0]
+        api = NativeApi(base_url)
+        data_api = DataAccessApi(base_url)
+        dataset = api.get_dataset(global_doi)
+        files_list = dataset.json()['data']['latestVersion']['files']
+        df = pd.json_normalize(files_list)
+        df = df.fillna(method = "bfill")
+
+        return knext.Table.from_pandas(df)
+
+############################################
+# Harvard DataVerse Read Data File Node
+############################################
+
+@knext.node(
+    name="Harvard DataVerse Read Data File",
+    node_type=knext.NodeType.MANIPULATOR,
+    icon_path=__NODE_ICON_PATH + "UStiger.png",
+    category=__category,
+)
+@knext.input_table(
+    name="Input Table",
+    description="Input table of Harvard DataVerse Read Data File",
+)
+@knext.output_table(
+    name="Output Table",
+    description="Output table of Harvard DataVerse Read Data File",
+)
+class HarvardDataVerseReadDataFile:
+    """
+    Harvard DataVerse Read Data File
+    """
+
+    # input parameters
+    dataFile_id_column = knext.ColumnParameter(
+        "DataFile ID Column",
+        "The column containing the DataFile ID of the dataset. ",
+    )
+
+    is_geo = knext.BoolParameter(
+        "Is Geo",
+        "Is the file a geo file?",
+        default_value=False,
+    )
+
+
+    def configure(self, configure_context, input_schema):
+                
+        return None
+
+    def execute(self, exec_context:knext.ExecutionContext, input_table):
+
+        base_url = 'https://dataverse.harvard.edu/'
+        api = NativeApi(base_url)
+        data_api = DataAccessApi(base_url)
+
+        file_id = input_table.to_pandas()[self.dataFile_id_column].values[0]
+        response = data_api.get_datafile(file_id)
+        content_ = io.BytesIO(response.content)
+
+        if self.is_geo:
+            df = gp.read_file(content_)
+            df.reset_index(inplace=True,drop=True)
+            
+        else:            
+            df = pd.read_csv(content_,encoding='utf8', sep="\t")
+        return knext.Table.from_pandas(df)
