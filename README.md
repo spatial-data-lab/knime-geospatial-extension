@@ -1,6 +1,6 @@
-# KNIME Geospatial Extension
+# Geospatial Analytics Extension for KNIME
 
-This repository is the home of the Geospatial Analysis Nodes Extension for [KNIME Analytics Platform](https://www.knime.com/knime-analytics-platform). The extension is developed by the [Center for Geographic Analysis](https://gis.harvard.edu/) at [Harvard University](https://www.harvard.edu/) and [KNIME](https://www.knime.com/) as part of a two-year project of the [Spatiotemporal Innovation Center](https://www.stcenter.net/). The goal of the collaboration is to develop KNIME Analytics Platform extensions and best-practice workflows to provide a consistent and compatible platform for spatial data analysis across disciplines.
+This repository is the home of the Geospatial Analytics Extension for [KNIME Analytics Platform](https://www.knime.com/knime-analytics-platform). The extension is developed by the [Center for Geographic Analysis](https://gis.harvard.edu/) at [Harvard University](https://www.harvard.edu/) and [KNIME](https://www.knime.com/) as part of a two-year project of the [Spatiotemporal Innovation Center](https://www.stcenter.net/). The goal of the collaboration is to develop KNIME Analytics Platform extensions and best-practice workflows to provide a consistent and compatible platform for spatial data analysis across disciplines.
 
 ## Package Organization
 

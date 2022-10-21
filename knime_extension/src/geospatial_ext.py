@@ -5,8 +5,8 @@ import knime_extension as knext
 category = knext.category(
     path="/",
     level_id="geo",
-    name="Geospatial",
-    description="Geospatial processing nodes",
+    name="Geospatial Analytics",
+    description="Nodes for Geospatial Analytics",
     # starting at the root folder of the extension_module parameter in the knime.yml file
     icon="icons/icon/Geospatial.png",
 )

@@ -2,8 +2,8 @@ group_id: sdl.harvard
 name: geospatial # Will be concatenated with the group_id to an ID
 author: Xiaokang Fu, Hanchen Yu, Lingbo Liu
 vendor: SDL, Harvard, Cambridge US
-description: Geospatial  KNIME Nodes # Human readable bundle name / description
-long_description: Extension for Geospatial Analysis Nodes.
+description: Geospatial Analytics Extension # Human readable bundle name / description
+long_description: KNIME nodes for processing, analyzing and visualizing Geospatial data.
 version: 0.1.0 # Version of this Python node extension
 license_file: LICENSE.TXT # Best practice: put your LICENSE.TXT next to the knime.yml; otherwise you would need to change to path/to/LICENSE.txt
 extension_module: src/geospatial_ext # The .py Python module containing the nodes of your extension
