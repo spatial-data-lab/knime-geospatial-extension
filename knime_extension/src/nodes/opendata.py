@@ -268,7 +268,7 @@ class UScensusACSNode:
 @knext.node(
     name="OSM POIs",
     node_type=knext.NodeType.SOURCE,
-    icon_path=__NODE_ICON_PATH + "OSMdata.png",
+    icon_path=__NODE_ICON_PATH + "OSMpoi.png",
     category=__category,
 )
 
@@ -325,3 +325,114 @@ class OSMdataNode:
         gdfpoi=ox.geometries.geometries_from_polygon(gdf_union,tags)
         gdfpoi=gdfpoi.reset_index(drop=True)
         return knext.Table.from_pandas(gdfpoi )
+
+############################################
+# OSM Network
+############################################
+@knext.node(
+    name="OSM Network",
+    node_type=knext.NodeType.SOURCE,
+    icon_path=__NODE_ICON_PATH + "OSMnetwork.png",
+    category=__category,
+)
+
+@knext.input_table(
+    name="Polygon Data",
+    description="Table with geometry used for downloading street network",
+)
+@knext.output_table(
+    name="OSM Network data",
+    description="Road Network Geodata from the Open Street Map",
+)
+
+@knut.osm_node_description(
+    short_description="Get Road Netwrok from the Open Street Map.",
+    description="This node Download geospatial network and its attributes from OpenStreetMap."
+    +"If the network type of drive is used for query, it will use the module add_edge_sppeds to append the speed information directly. "
+    +"The total travel time for the segment will be calculated as well with the module add_edge_travel_times. ",
+    references={        
+        "osmnx.graph.graph_from_polygon": "https://osmnx.readthedocs.io/en/stable/osmnx.html#module-osmnx.graph",  
+        "osmnx.speed.add_edge_speeds": "https://osmnx.readthedocs.io/en/stable/osmnx.html#module-osmnx.speed ",    
+    },
+)
+class OSMnetworkNode:
+    
+    geo_col = knext.ColumnParameter(
+        "Geometry column",
+        "Select the geometry column as boundary to get POIs.",
+        # Allow only GeoValue compatible columns
+        column_filter=knut.is_geo_polygon,
+        include_row_key=False,
+        include_none_column=False,
+    )
+
+    networktype =knext.StringParameter(
+        label="Street network type", 
+        description="Type of street network ",
+        default_value="drive",
+        enum=["all_private", "all", "bike", "drive", "drive_service", "walk"],
+    )  
+
+
+    def configure(self, configure_context, input_schema_1):
+        # TODO Create combined schema
+        return None
+
+    def execute(self, exec_context: knext.ExecutionContext, input_1):
+        gdf = gp.GeoDataFrame(input_1.to_pandas(), geometry=self.geo_col)
+        gdf_union = gdf.to_crs(4326).unary_union
+        G=ox.graph.graph_from_polygon(gdf_union,self.networktype)
+        if self.networktype=="drive" :
+            # impute speed on all edges missing data
+            G = ox.add_edge_speeds(G)
+            # calculate travel time (seconds) for all edges
+            G = ox.add_edge_travel_times(G)
+        edges = ox.utils_graph.graph_to_gdfs(G, nodes=False)
+        objcolumn=edges.select_dtypes(include=['object']).columns.tolist()
+        edges[objcolumn]=edges[objcolumn].astype('string')
+        edges=edges.reset_index(drop=True)
+        return knext.Table.from_pandas(edges )
+
+############################################
+# OSM Geocode Boundary
+############################################
+@knext.node(
+    name="OSM GeoBoundary",
+    node_type=knext.NodeType.SOURCE,
+    icon_path=__NODE_ICON_PATH + "OSMboundary.png",
+    category=__category,
+)
+
+
+@knext.output_table(
+    name="OSM GeoBoundary data",
+    description="BOundary of places from the Open Street Map",
+)
+
+@knut.osm_node_description(
+    short_description="Get Boundary from the Open Street Map with Geocoding.",
+    description="This node get place boudnary  from OpenStreetMap by the geocoding place name."
+    + "If query argument is a list, then which_result should be either a single value or a list with the same length as query. . "
+    + "The queries you provide must be resolvable to places in the Nominatim database. "
+    + " The resulting GeoDataFrame’s geometry column contains place boundaries if they exist in OpenStreetMap.",
+    references={        
+        "osmnx.geocoder.geocode_to_gdf": "https://osmnx.readthedocs.io/en/stable/osmnx.html?highlight=geocode_to_gdf#module-osmnx.geocoder",  
+    },
+)
+class OSMGeoBoundaryNode:    
+
+    placename =knext.StringParameter(
+        label="Input Place Names", 
+        description="Hierachial place Names deliminated with commas, such as Cambridge, MA, USA ",
+        default_value="Cambridge, MA, USA",
+    )  
+
+
+    def configure(self, configure_context):
+        # TODO Create combined schema
+        return None
+
+    def execute(self, exec_context: knext.ExecutionContext):
+        gdf = ox.geocode_to_gdf(self.placename)        
+        gdf = gdf.reset_index(drop=True)
+        return knext.Table.from_pandas(gdf )
