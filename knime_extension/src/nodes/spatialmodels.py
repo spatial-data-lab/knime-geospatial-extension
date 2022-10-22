@@ -17,7 +17,8 @@ from libpysal.weights import W
 import spreg
 from io import StringIO
 import sys
-
+import pulp
+from shapely.geometry import  LineString
 
 __category = knext.category(
     path="/geo",
@@ -30,9 +31,6 @@ __category = knext.category(
 
 # Root path for all node icons in this file
 __NODE_ICON_PATH = "icons/icon/SpatialModel/"
-
-
-
 
 
 ############################################
@@ -491,7 +489,7 @@ class GeographicallyWeightedRegression:
     name="Geographically Weighted Regression Predictor",
     node_type=knext.NodeType.PREDICTOR,
     category=__category,
-    icon_path=__NODE_ICON_PATH + "SpatialWeight.png",
+    icon_path=__NODE_ICON_PATH + "GWR.png",
 )
 @knext.input_table(
     name="Input Table",
@@ -550,7 +548,7 @@ class GeographicallyWeightedRegressionPredictor:
     name="Multiscale Geographically Weighted Regression",
     node_type=knext.NodeType.LEARNER,
     category=__category,
-    icon_path=__NODE_ICON_PATH + "GWR.png",
+    icon_path=__NODE_ICON_PATH + "MGWR.png",
 )
 @knext.input_table(
     name="Input Table",
