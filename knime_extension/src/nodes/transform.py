@@ -13,7 +13,7 @@ LOGGER = logging.getLogger(__name__)
 category = knext.category(
     path="/geo",
     level_id="transform",
-    name="Geometry Transformation",
+    name="Spatial Transformation",
     description="Geospatial transformation nodes",
     # starting at the root folder of the extension_module parameter in the knime.yml file
     icon="icons/icon/TransformationCategory.png",
