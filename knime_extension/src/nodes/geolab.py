@@ -21,7 +21,7 @@ import io
 __category = knext.category(
     path="/geo",
     level_id="geolab",
-    name="Geospatial Lab",
+    name="Spatial Data Lab",
     description="Nodes that for testing and future exploration.",
     # starting at the root folder of the extension_module parameter in the knime.yml file
     icon="icons/icon/GeolabCategroy.png",
