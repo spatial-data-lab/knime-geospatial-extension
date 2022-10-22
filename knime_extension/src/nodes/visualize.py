@@ -14,7 +14,7 @@ LOGGER = logging.getLogger(__name__)
 category = knext.category(
     path="/geo",
     level_id="viz",
-    name="Views",#Spatial Visualization
+    name="Spatial Visualization",#Spatial Visualization
     description="Spatial view nodes",
     # starting at the root folder of the extension_module parameter in the knime.yml file
     icon="icons/icon/VisulizationCategory.png",
