@@ -16,7 +16,7 @@ category = knext.category(
 import nodes.calculation
 import nodes.conversion
 import nodes.opendata
-import nodes.overlay
+#import nodes.overlay
 import nodes.spatialstatistics
 import nodes.spatialtool
 import nodes.transform
