@@ -297,3 +297,148 @@ class CoordinatesNode:
         if self.add_z:
             gdf[self.col_z] = gs.z
         return knut.to_table(gdf, exec_context)
+    
+
+############################################
+# Bounding Box
+############################################
+
+
+@knext.node(
+    name="Bounding Box",
+    node_type=knext.NodeType.MANIPULATOR,
+    icon_path=__NODE_ICON_PATH + "BoundingBox.png",
+    category=__category,
+)
+@knext.input_table(
+    name="Geo table",
+    description="Table with geometry column to transform",
+)
+@knext.output_table(
+    name="Transformed geo table",
+    description="Transformed Geo input table",
+)
+class BoundingBoxNode:
+    """
+    This node generate rectangles representing the envelope of each geometry.
+    """
+
+    geo_col = knext.ColumnParameter(
+        "Geometry column",
+        "Select the geometry column to transform.",
+        # Allow only GeoValue compatible columns
+        column_filter=knut.is_geo,
+        include_row_key=False,
+        include_none_column=False,
+    )
+
+    def configure(self, configure_context, input_schema_1):
+        knut.column_exists(self.geo_col, input_schema_1)
+        return input_schema_1
+
+    def execute(self, exec_context: knext.ExecutionContext, input_1):
+        gdf = gp.GeoDataFrame(input_1.to_pandas(), geometry=self.geo_col)
+        exec_context.set_progress(
+            0.3, "Geo data frame loaded. Starting transformation..."
+        )
+        gdf["geometry"] = gdf.envelope
+        exec_context.set_progress(0.1, "Transformation done")
+        LOGGER.debug("Feature converted to BoundingBox")
+        return knext.Table.from_pandas(gdf)
+
+
+############################################
+# Convex Hull
+############################################
+
+
+@knext.node(
+    name="Convex Hull",
+    node_type=knext.NodeType.MANIPULATOR,
+    icon_path=__NODE_ICON_PATH + "ConvexHull.png",
+    category=__category,
+)
+@knext.input_table(
+    name="Geo table",
+    description="Table with geometry column to transform",
+)
+@knext.output_table(
+    name="Transformed geo table",
+    description="Transformed Geo input table",
+)
+class ConvexHullNode:
+    """
+    This node generate the smallest convex Polygon containing all the points in each geometry.
+    """
+
+    geo_col = knext.ColumnParameter(
+        "Geometry column",
+        "Select the geometry column to transform.",
+        # Allow only GeoValue compatible columns
+        column_filter=knut.is_geo,
+        include_row_key=False,
+        include_none_column=False,
+    )
+
+    def configure(self, configure_context, input_schema_1):
+        knut.column_exists(self.geo_col, input_schema_1)
+        return input_schema_1
+
+    def execute(self, exec_context: knext.ExecutionContext, input_1):
+        gdf = gp.GeoDataFrame(input_1.to_pandas(), geometry=self.geo_col)
+        exec_context.set_progress(
+            0.3, "Geo data frame loaded. Starting transformation..."
+        )
+        gdf["geometry"] = gdf.convex_hull
+        exec_context.set_progress(0.1, "Transformation done")
+        LOGGER.debug("Feature converted to ConvexHull")
+        return knext.Table.from_pandas(gdf)
+
+
+############################################
+# Unary Union
+############################################
+
+
+@knext.node(
+    name="Unary Union",
+    node_type=knext.NodeType.MANIPULATOR,
+    icon_path=__NODE_ICON_PATH + "UnaryUnion.png",
+    category=__category,
+)
+@knext.input_table(
+    name="Geo table",
+    description="Table with geometry column to transform",
+)
+@knext.output_table(
+    name="Transformed geo table",
+    description="Transformed Geo input table",
+)
+class UnaryUnionNode:
+    """
+    This node generate the smallest convex Polygon containing all the points in each geometry.
+    """
+
+    geo_col = knext.ColumnParameter(
+        "Geometry column",
+        "Select the geometry column to transform.",
+        # Allow only GeoValue compatible columns
+        column_filter=knut.is_geo,
+        include_row_key=False,
+        include_none_column=False,
+    )
+
+    def configure(self, configure_context, input_schema_1):
+        knut.column_exists(self.geo_col, input_schema_1)
+        return input_schema_1
+
+    def execute(self, exec_context: knext.ExecutionContext, input_1):
+        gdf = gp.GeoDataFrame(input_1.to_pandas(), geometry=self.geo_col)
+        exec_context.set_progress(
+            0.3, "Geo data frame loaded. Starting transformation..."
+        )
+        gdf_union = gdf.unary_union
+        gdfunion = gp.GeoDataFrame(geometry=gp.GeoSeries(gdf_union), crs=gdf.crs)
+        exec_context.set_progress(0.1, "Transformation done")
+        LOGGER.debug("Feature converted to ConvexHull")
+        return knext.Table.from_pandas(gdfunion)    
