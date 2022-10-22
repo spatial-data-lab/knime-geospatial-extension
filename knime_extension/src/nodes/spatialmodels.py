@@ -489,7 +489,7 @@ class GeographicallyWeightedRegression:
     name="Geographically Weighted Regression Predictor",
     node_type=knext.NodeType.PREDICTOR,
     category=__category,
-    icon_path=__NODE_ICON_PATH + "GWR.png",
+    icon_path=__NODE_ICON_PATH + "GWRp.png",
 )
 @knext.input_table(
     name="Input Table",
