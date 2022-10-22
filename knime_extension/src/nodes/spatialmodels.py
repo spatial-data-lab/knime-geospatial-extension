@@ -8,7 +8,7 @@ import numpy as np
 import libpysal
 import scipy.sparse
 from libpysal.weights import WSP
-from pysal.explore import esda
+import esda
 import pysal.lib as lps
 import pickle
 import seaborn as sbn
