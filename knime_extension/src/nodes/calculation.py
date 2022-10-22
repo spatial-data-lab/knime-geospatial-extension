@@ -8,7 +8,7 @@ import util.knime_utils as knut
 __category = knext.category(
     path="/geo",
     level_id="calculation",
-    name="Geometry Calculation",
+    name="Spatial Calculation",
     description="Nodes that calculate properties for given geometric objects.",
     # starting at the root folder of the extension_module parameter in the knime.yml file
     icon="icons/icon/CalculationCategory.png",
