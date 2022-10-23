@@ -8,10 +8,6 @@ import knime_extension as knext
 from sympy import content
 import util.knime_utils as knut
 import requests
-import osmnx as ox
-import pulp
-from shapely.geometry import  LineString
-from keplergl import KeplerGl
 from pandarallel import pandarallel
 from pyDataverse.api import NativeApi, DataAccessApi
 from pyDataverse.models import Dataverse
@@ -39,7 +35,7 @@ __NODE_ICON_PATH = "icons/icon/Geolab/"
     name="Spatial ML_Lag",
     node_type=knext.NodeType.LEARNER,
     category=__category,
-    icon_path=__NODE_ICON_PATH + "SpatialML_Lag.png",
+    icon_path=__NODE_ICON_PATH + "MLLag.png",
 )
 @knext.input_table(
     name="Input Table",
@@ -136,7 +132,7 @@ class SpatialML_Lag:
     name="Spatial ML_Error",
     node_type=knext.NodeType.LEARNER,
     category=__category,
-    icon_path=__NODE_ICON_PATH + "SpatialML_Error.png",
+    icon_path=__NODE_ICON_PATH + "MLErr.png",
 )
 @knext.input_table(
     name="Input Table",
@@ -229,7 +225,7 @@ class SpatialML_Error:
     name="Spatial GM_Error",
     node_type=knext.NodeType.LEARNER,
     category=__category,
-    icon_path=__NODE_ICON_PATH + "SpatialGM_Error.png",
+    icon_path=__NODE_ICON_PATH + "GMErr.png",
 )
 @knext.input_table(
     name="Input Table",
@@ -322,7 +318,7 @@ class SpatialGM_Error:
     name="Spatial GM_Error_Het",
     node_type=knext.NodeType.LEARNER,
     category=__category,
-    icon_path=__NODE_ICON_PATH + "SpatialGM_Error_Het.png",
+    icon_path=__NODE_ICON_PATH + "GMErrHet.png",
 )
 @knext.input_table(
     name="Input Table",
@@ -414,7 +410,7 @@ class SpatialGM_Error_Het:
     name="Spatial GM_Error_Hom",
     node_type=knext.NodeType.LEARNER,
     category=__category,
-    icon_path=__NODE_ICON_PATH + "SpatialGM_Error_Hom.png",
+    icon_path=__NODE_ICON_PATH + "GMErrHom.png",
 )
 @knext.input_table(
     name="Input Table",
@@ -508,7 +504,7 @@ class SpatialGM_Error_Hom:
     name="Spatial GM_Combo",
     node_type=knext.NodeType.LEARNER,
     category=__category,
-    icon_path=__NODE_ICON_PATH + "SpatialGM_Combo.png",
+    icon_path=__NODE_ICON_PATH + "GMcombo.png",
 )
 @knext.input_table(
     name="Input Table",
@@ -599,7 +595,7 @@ class SpatialGM_Combo:
     name="Spatial GM_Combo_Het",
     node_type=knext.NodeType.LEARNER,
     category=__category,
-    icon_path=__NODE_ICON_PATH + "SpatialGM_Combo_Het.png",
+    icon_path=__NODE_ICON_PATH + "GMcomboHet.png",
 )
 @knext.input_table(
     name="Input Table",
@@ -690,7 +686,7 @@ class SpatialGM_Combo_Het:
     name="Spatial GM_Combo_Hom",
     node_type=knext.NodeType.LEARNER,
     category=__category,
-    icon_path=__NODE_ICON_PATH + "SpatialGM_Combo_Hom.png",
+    icon_path=__NODE_ICON_PATH + "GMcomboHom.png",
 )
 @knext.input_table(
     name="Input Table",
@@ -781,7 +777,7 @@ class SpatialGM_Combo_Hom:
     name="Spatial GM_Endog_Error",
     node_type=knext.NodeType.LEARNER,
     category=__category,
-    icon_path=__NODE_ICON_PATH + "SpatialGM_Endog_Error.png",
+    icon_path=__NODE_ICON_PATH + "GMendogErr.png",
 )
 @knext.input_table(
     name="Input Table",
@@ -887,7 +883,7 @@ class SpatialGM_Endog_Error:
     name="Spatial GM_Endog_Error_Het",
     node_type=knext.NodeType.LEARNER,
     category=__category,
-    icon_path=__NODE_ICON_PATH + "SpatialGM_Endog_Error_Het.png",
+    icon_path=__NODE_ICON_PATH + "GMendogErrHet.png",
 )
 @knext.input_table(
     name="Input Table",
@@ -993,7 +989,7 @@ class SpatialGM_Endog_Error_Het:
     name="Spatial GM_Endog_Error_Hom",
     node_type=knext.NodeType.LEARNER,
     category=__category,
-    icon_path=__NODE_ICON_PATH + "SpatialGM_Endog_Error_Hom.png",
+    icon_path=__NODE_ICON_PATH + "GMendogErrHom.png",
 )
 @knext.input_table(
     name="Input Table",
@@ -1105,7 +1101,7 @@ class SpatialGM_Endog_Error_Hom:
     node_type=knext.NodeType.LEARNER,
     # node_type=knext.NodeType.MANIPULATOR,
     category=__category,
-    icon_path=__NODE_ICON_PATH + "BivariateGlobalMoran.png",
+    icon_path=__NODE_ICON_PATH + "BivariateGlobal.png",
 )
 @knext.input_table(
     name="Input Table",
@@ -1194,7 +1190,7 @@ class BivariateGlobalMoran:
     node_type=knext.NodeType.LEARNER,
     # node_type=knext.NodeType.MANIPULATOR,
     category=__category,
-    icon_path=__NODE_ICON_PATH + "BivariateLocalMoran.png",
+    icon_path=__NODE_ICON_PATH + "BivariateLocal.png",
 )
 @knext.input_table(
     name="Input Table",
@@ -1296,7 +1292,7 @@ class BivariateLocalMoran:
 @knext.node(
     name="Harvard DataVerse Search",
     node_type=knext.NodeType.SOURCE,
-    icon_path=__NODE_ICON_PATH + "UStiger.png",
+    icon_path=__NODE_ICON_PATH + "DvSearch.png",
     category=__category,
 )
 @knext.output_table(
@@ -1385,9 +1381,9 @@ class HarvardDataVerseSearch:
 ############################################
 
 @knext.node(
-    name="Harvard DataVerse Query Data Files Source",
+    name="Harvard DataVerse GlobalDOI Search",
     node_type=knext.NodeType.SOURCE,
-    icon_path=__NODE_ICON_PATH + "UStiger.png",
+    icon_path=__NODE_ICON_PATH + "DvDOIsource.png",
     category=__category,
 )
 @knext.output_table(
@@ -1429,9 +1425,9 @@ class HarvardDataVerseQueryDataFilesSource:
 ############################################
 
 @knext.node(
-    name="Harvard DataVerse Query Data Files ",
+    name="Harvard DataVerse GlobalDOI Link ",
     node_type=knext.NodeType.MANIPULATOR,
-    icon_path=__NODE_ICON_PATH + "UStiger.png",
+    icon_path=__NODE_ICON_PATH + "DvGlobalDOIlink.png",
     category=__category,
 )
 @knext.input_table(
@@ -1476,9 +1472,9 @@ class HarvardDataVerseQueryDataFiles:
 ############################################
 
 @knext.node(
-    name="Harvard DataVerse Read Data File",
+    name="Harvard DataVerse DataID Reader",
     node_type=knext.NodeType.MANIPULATOR,
-    icon_path=__NODE_ICON_PATH + "UStiger.png",
+    icon_path=__NODE_ICON_PATH + "DvFileReader.png",
     category=__category,
 )
 @knext.input_table(
