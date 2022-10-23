@@ -1,6 +1,6 @@
 group_id: sdl.harvard
 name: geospatial # Will be concatenated with the group_id to an ID
-author: Tobias Koetter,Xiaokang Fu,Lingbo Liu
+author: Lingbo Liu,Xiaokang Fu,Tobias Koetter
 vendor: SDL, Harvard, Cambridge US
 description: Geospatial Analytics Extension # Human readable bundle name / description
 long_description: KNIME nodes for processing, analyzing and visualizing Geospatial data.
