@@ -3,7 +3,7 @@ from typing import Callable
 from typing import List
 
 import geopandas as gp
-import geospatial_types as gt
+import knime.types.geospatial as gt
 import knime_extension as knext
 
 LOGGER = logging.getLogger(__name__)
@@ -16,6 +16,7 @@ LOGGER = logging.getLogger(__name__)
 __DEF_GEO_COL_LABEL = "Geometry column"
 __DEF_GEO_COL_DESC = "Select the Geometry column to use"
 
+__TYPE_GEO = "org.knime.geospatial.core.data.cell.Geo"
 __TYPE_POINT = "GeoPointCell"
 __TYPE_LINE = "GeoLineCell"
 __TYPE_POLYGON = "GeoPolygonCell"
@@ -121,10 +122,7 @@ def is_geo(column: knext.Column) -> bool:
     GeoPointCell, GeoLineCell, GeoPolygonCell, GeoMultiPointCell, GeoMultiLineCell, GeoMultiPolygonCell, ...
     @return: True if Column Type is GeoValue compatible
     """
-    return (
-        isinstance(column.ktype, knext.LogicalType)
-        and column.ktype.value_type == knext.logical(gt.GeoValue).value_type
-    )
+    return __is_type_x(column, __TYPE_GEO)
 
 
 def is_geo_point(column: knext.Column) -> bool:

@@ -9,7 +9,7 @@ import util.knime_utils as knut
 __category = knext.category(
     path="/geo",
     level_id="io",
-    name="GeoData IO",
+    name="Spatial IO",
     description="Nodes that for reading and writing Geodata.",
     # starting at the root folder of the extension_module parameter in the knime.yml file
     icon="icons/icon/IOCategory.png",

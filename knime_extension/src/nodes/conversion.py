@@ -11,7 +11,7 @@ from shapely.geometry import shape
 __category = knext.category(
     path="/geo",
     level_id="conversion",
-    name="Geometry Conversion",
+    name="Spatial Conversion",
     description="Nodes that perform conversions from/to geometric objects.",
     # starting at the root folder of the extension_module parameter in the knime.yml file
     icon="icons/icon/ConversionCategory.png",

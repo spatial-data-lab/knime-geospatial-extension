@@ -4,7 +4,7 @@ Everybody is welcome to contribute to this Geospatial extension. The repository 
 
 ## Submitting changes
 
-Please send a [GitHub Pull Request to KNIME Geospatial Extension](https://github.com/spatial-data-lab/knime-python-spatial-statistic-nodes/pull/new/master) with a clear list of what you've done (read more about [pull requests](http://help.github.com/pull-requests/)). When you send a pull request, please also include an example or testing workflow that demonstrates or tests the new functionality. We can always use more test coverage. Please follow our coding conventions (below) and make sure all of your commits are atomic (one feature per commit).
+Please send a [GitHub Pull Request to KNIME Geospatial Extension](https://github.com/spatial-data-lab/knime-geospatial-extension/pull/new/master) with a clear list of what you've done (read more about [pull requests](http://help.github.com/pull-requests/)). When you send a pull request, please also include an example or testing workflow that demonstrates or tests the new functionality. We can always use more test coverage. Please follow our coding conventions (below) and make sure all of your commits are atomic (one feature per commit).
 
 
 ## Coding Style + Formatting: black
@@ -47,7 +47,7 @@ This is a short step by step guide on how to setup your development environment 
 
 5. Clone this repository
    ```bash
-   git clone  https://github.com/spatial-data-lab/knime-python-spatial-statistic-nodes.git
+   git clone https://github.com/spatial-data-lab/knime-geospatial-extension.git
 
    ```
 
