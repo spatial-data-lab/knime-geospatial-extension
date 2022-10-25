@@ -56,7 +56,7 @@ This is a short step by step guide on how to setup your development environment 
    * KNIME -> File-> Preference> KNIME> Conda  Choose anaconda directory
    * KNIME -> File-> Preference> KNIME> Python(Labs) Choose geospatial_env
 
-7.  Reopen the KNIME Analytics Platform and you should see the Geospatial extension in your KNIME node repository.
+7.  Reopen the KNIME Analytics Platform and you should see the Geospatial Analytics extension in your KNIME node repository.
 
 8. If you do not see the extension have a look at the KNIME log file via View -> Open KNIME log.
 
