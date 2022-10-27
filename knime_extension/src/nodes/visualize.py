@@ -416,7 +416,7 @@ class ViewNodeStatic:
     color_col = knext.ColumnParameter(
         "Marker color column",
         "Select marker color column. The column must contain the color name e.g. red, green, blue, etc.",
-        column_filter=knut.is_numeric,
+        column_filter=knut.is_numeric_or_string,
         include_row_key=False,
         include_none_column=True,
     )
