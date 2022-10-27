@@ -266,13 +266,13 @@ class ViewNode:
     name_cols = knext.MultiColumnParameter(
         "Tooltip columns",
         "Select columns which should be shown in the marker tooltip.",
-        column_filter=knut.is_string,
+        column_filter=knut.is_numeric_or_string,
     )
 
     popup_cols = knext.MultiColumnParameter(
         "Popup columns",
         "Select columns which should be shown in the marker popup.",
-        column_filter=knut.is_string,
+        column_filter=knut.is_numeric_or_string,
     )
 
     plot_legend = knext.BoolParameter(
