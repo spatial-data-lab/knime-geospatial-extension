@@ -27,6 +27,7 @@ __category = knext.category(
     description="Spatial Models Nodes",
     # starting at the root folder of the extension_module parameter in the knime.yml file
     icon="icons/icon/SpatialModelCategory.png",
+    after="spatialstatistic",
 )
 
 # Root path for all node icons in this file

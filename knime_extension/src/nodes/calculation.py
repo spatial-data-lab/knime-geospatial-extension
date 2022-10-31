@@ -12,6 +12,7 @@ __category = knext.category(
     description="Nodes that calculate properties for given geometric objects.",
     # starting at the root folder of the extension_module parameter in the knime.yml file
     icon="icons/icon/CalculationCategory.png",
+    after="io",
 )
 
 # Root path for all node icons in this file

@@ -17,6 +17,7 @@ category = knext.category(
     description="Geospatial transformation nodes",
     # starting at the root folder of the extension_module parameter in the knime.yml file
     icon="icons/icon/TransformationCategory.png",
+    after="spatialtool",
 )
 
 ############################################

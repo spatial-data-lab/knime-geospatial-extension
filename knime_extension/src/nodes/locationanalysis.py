@@ -16,6 +16,7 @@ __category = knext.category(
     description="Location Analysis",
     # starting at the root folder of the extension_module parameter in the knime.yml file
     icon="icons/icon/LocationAnalysisCategory.png",
+    after="spatialmodels",
 )
 
 # Root path for all node icons in this file
