@@ -24,6 +24,7 @@ __NODE_ICON_PATH = "icons/icon/IO/"
 ############################################
 @knext.node(
     name="GeoFile Reader",
+    id="GeoFile Reader",
     node_type=knext.NodeType.SOURCE,
     icon_path=__NODE_ICON_PATH + "GeoFileReader.png",
     category=__category,
@@ -63,6 +64,7 @@ class GeoFileReaderNode:
 ############################################
 @knext.node(
     name="GeoFile Writer",
+    id="GeoFile Writer",
     node_type=knext.NodeType.SOURCE,
     icon_path=__NODE_ICON_PATH + "GeoFileWriter.png",
     category=__category,
@@ -124,6 +126,7 @@ class GeoFileWriterNode:
 ############################################
 @knext.node(
     name="GeoPackage Reader",
+    id="GeoPackage Reader",
     node_type=knext.NodeType.SOURCE,
     icon_path=__NODE_ICON_PATH + "GeoPackageReader.png",
     category=__category,
@@ -169,6 +172,7 @@ class GeoPackageReaderNode:
 ############################################
 @knext.node(
     name="GeoPackage Writer",
+    id="GeoPackage Writer",
     node_type=knext.NodeType.SOURCE,
     icon_path=__NODE_ICON_PATH + "GeoPackageWriter.png",
     category=__category,
