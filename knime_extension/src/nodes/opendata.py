@@ -23,7 +23,7 @@ __NODE_ICON_PATH = "icons/icon/OpenDataset/"
 # US2020 TIGER/Line for states
 ############################################
 @knext.node(
-    name="US2020 TIGER",
+    name="US2020 TIGER Map",
     node_type=knext.NodeType.SOURCE,
     icon_path=__NODE_ICON_PATH + "UStiger.png",
     category=__category,
@@ -115,7 +115,7 @@ class US2020TIGERNode:
 # US2020 Census Data
 ############################################
 @knext.node(
-    name="US2020 Census",
+    name="US2020 Census Data",
     node_type=knext.NodeType.SOURCE,
     icon_path=__NODE_ICON_PATH + "UScensus.png",
     category=__category,
@@ -187,7 +187,7 @@ class USCensus2020Node:
 # US Census ACS-5
 ############################################
 @knext.node(
-    name="US ACS-5",
+    name="US ACS 5-Year Estimates",
     node_type=knext.NodeType.SOURCE,
     icon_path=__NODE_ICON_PATH + "CensusACS.png",
     category=__category,
@@ -330,7 +330,7 @@ class OSMdataNode:
 # OSM Network
 ############################################
 @knext.node(
-    name="OSM Network",
+    name="OSM Road Network",
     node_type=knext.NodeType.SOURCE,
     icon_path=__NODE_ICON_PATH + "OSMnetwork.png",
     category=__category,
@@ -397,7 +397,7 @@ class OSMnetworkNode:
 # OSM Geocode Boundary
 ############################################
 @knext.node(
-    name="OSM GeoBoundary",
+    name="OSM Boundary Map",
     node_type=knext.NodeType.SOURCE,
     icon_path=__NODE_ICON_PATH + "OSMboundary.png",
     category=__category,
