@@ -483,7 +483,7 @@ class GlobalGearysC:
 ############################################
 
 @knext.node(
-    name="Global Getis-Ord",
+    name="Global Getis-Ord G",
     node_type=knext.NodeType.LEARNER,
     # node_type=knext.NodeType.MANIPULATOR,
     category=__category,
@@ -564,7 +564,7 @@ class GlobalGetisOrd:
 ############################################
 
 @knext.node(
-    name="Local Getis-Ord",
+    name="Local Getis-Ord G",
     node_type=knext.NodeType.LEARNER,
     # node_type=knext.NodeType.MANIPULATOR,
     category=__category,

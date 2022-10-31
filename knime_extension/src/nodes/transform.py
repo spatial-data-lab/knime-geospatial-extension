@@ -25,7 +25,7 @@ category = knext.category(
 
 
 @knext.node(
-    name="CRS Transformer",
+    name="Projection",
     node_type=knext.NodeType.MANIPULATOR,
     icon_path="icons/icon/GeometryTransformation/Projection.png",
     category=category,

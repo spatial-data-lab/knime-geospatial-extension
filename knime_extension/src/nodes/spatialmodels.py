@@ -37,7 +37,7 @@ __NODE_ICON_PATH = "icons/icon/SpatialModel/"
 # spatial 2SlS node
 ############################################
 @knext.node(
-    name="Spatial 2SLS",
+    name="2SLS with Spatial Test",
     node_type=knext.NodeType.LEARNER,
     # node_type=knext.NodeType.MANIPULATOR,
     category=__category,
@@ -165,7 +165,7 @@ class Spatial2SLSModel:
 ############################################################################################################
 
 @knext.node(
-    name="Spatial Lag Panel Model with Fixed Effects",
+    name="Spatial Lag Panel Model",
     node_type=knext.NodeType.LEARNER,
     category=__category,
     icon_path=__NODE_ICON_PATH + "SpatialLag.png",
@@ -259,7 +259,7 @@ class SpatialLagPanelModelwithFixedEffects:
 ############################################################################################################
 
 @knext.node(
-    name="Spatial Error Panel Model with Fixed Effects",
+    name="Spatial Error Panel Model",
     node_type=knext.NodeType.LEARNER,
     category=__category,
     icon_path=__NODE_ICON_PATH + "SpatialError.png",
@@ -351,7 +351,7 @@ class SpatialErrorPanelModelwithFixedEffects:
 ############################################################################################################
 
 @knext.node(
-    name="Geographically Weighted Regression",
+    name="GWR Model",
     node_type=knext.NodeType.LEARNER,
     category=__category,
     icon_path=__NODE_ICON_PATH + "GWR.png",
@@ -486,7 +486,7 @@ class GeographicallyWeightedRegression:
 # Geographically Weighted Regression Predictor Node
 #############################################################################################################
 @knext.node(
-    name="Geographically Weighted Regression Predictor",
+    name="GWR Predictor",
     node_type=knext.NodeType.PREDICTOR,
     category=__category,
     icon_path=__NODE_ICON_PATH + "GWRp.png",
@@ -545,7 +545,7 @@ class GeographicallyWeightedRegressionPredictor:
 ##############################################################################################################
 
 @knext.node(
-    name="Multiscale Geographically Weighted Regression",
+    name="MGWR Model",
     node_type=knext.NodeType.LEARNER,
     category=__category,
     icon_path=__NODE_ICON_PATH + "MGWR.png",
@@ -740,7 +740,7 @@ class MultiscaleGeographicallyWeightedRegression:
 ############################################
 
 @knext.node(
-    name="Spatial OLS",
+    name="OLS with Spatial Test",
     node_type=knext.NodeType.LEARNER,
     category=__category,
     icon_path=__NODE_ICON_PATH + "SpatialOLS.png",
@@ -1344,3 +1344,187 @@ class MCLPNode:
         gdf = gp.GeoDataFrame(DemandPt, geometry="geometry", crs=self.CRSinfo)
         return knext.Table.from_pandas(gdf)
 
+
+############################################
+# spatial ML_Lag node
+############################################
+
+@knext.node(
+    name="Spatial Lag Model",
+    node_type=knext.NodeType.LEARNER,
+    category=__category,
+    icon_path=__NODE_ICON_PATH + "MLLag.png",
+)
+@knext.input_table(
+    name="Input Table",
+    description="Input Table with dependent and independent variables for calculation of the spatial ML_Lag model.",
+)
+@knext.input_table(
+    name="Spatial Weights",
+    description="Input Table with spatial weights for calculation of the spatial ML_Lag model.",
+)
+@knext.output_table(
+    name="Output Table",
+    description="Description of the spatial ML_Lag model.",
+)
+@knext.output_table(
+    name="Variable and Coefficient Table",
+    description="Variable and Coefficient Table of the spatial ML_Lag model.",
+)
+@knext.output_view(
+    name="Model summary view",
+    description="Model summary view of the spatial ML_Lag model.",
+)
+class SpatialML_Lag:
+    """
+    Spatial ML_Lag
+    """
+
+    geo_col = knext.ColumnParameter(
+        "Geometry Column",
+        "The column containing the geometry of the input table.",
+        column_filter=knut.is_geo,
+        include_row_key=False,
+        include_none_column=False,
+    )
+
+    dependent_variable = knext.ColumnParameter(
+        "Dependent variable",
+        "The column containing the dependent variable to use for the calculation of the spatial ML_Lag model.",
+        column_filter=knut.is_numeric,
+        include_none_column=False,
+    )
+
+    independent_variables = knext.MultiColumnParameter(
+        "Independent variables",
+        "The columns containing the independent variables to use for the calculation of the spatial ML_Lag model.",
+        column_filter=knut.is_numeric
+    )
+
+    def configure(self, configure_context, input_schema, input_schema_2):
+        knut.columns_exist([self.geo_col], input_schema)
+
+        return None
+
+    def execute(self, exec_context:knext.ExecutionContext, input_1, input_2):
+        gdf = gp.GeoDataFrame(input_1.to_pandas(), geometry=self.geo_col)
+        adjust_list = input_2.to_pandas()
+        w = W.from_adjlist(adjust_list)
+        #Prepare Georgia dataset inputs
+        X = gdf[self.independent_variables].values
+        y = gdf[self.dependent_variable].values
+        
+        model = spreg.ML_Lag(y, X, w, method='ord')
+
+        results = pd.DataFrame([model.name_x, model.betas, model.std_err, model.z_stat] ).T
+        results.columns = ["Variable", "Coefficient", "Std.Error", "Z-Statistic"]
+        results.loc[:,"Coefficient"] = results.loc[:,"Coefficient"].map(lambda x: x[0])
+        results.loc[:,"Probability"] = results.loc[:,"Z-Statistic"].map(lambda x: x[1])
+        results.loc[:,"Z-Statistic"] = results.loc[:,"Z-Statistic"].map(lambda x: x[0])
+        # 
+        results.loc[:,"Coefficient"] = results.loc[:,"Coefficient"].map(lambda x: round(x,7))
+        results.loc[:,"Std.Error"] = results.loc[:,"Std.Error"].map(lambda x: round(x,7))
+        results.loc[:,"Z-Statistic"] = results.loc[:,"Z-Statistic"].map(lambda x: round(x,7))
+        results.loc[:,"Probability"] = results.loc[:,"Probability"].map(lambda x: round(x,7))
+        results =  results.dropna()
+
+        result2 = pd.DataFrame({"Pseudo R-squared ":model.pr2, "Spatial Pseudo R-squared":model.pr2_e, "Number of Observations":model.n, "Number of Variables":model.k}, index=[0])
+        result2 = result2.round(7)
+
+
+        html = """<p><pre>%s</pre>"""% model.summary.replace("\n", "<br/>")
+
+        return knext.Table.from_pandas(result2),knext.Table.from_pandas(results),knext.view_html(html)
+
+
+
+############################################
+# spatial ML_Error node
+############################################
+
+@knext.node(
+    name="Spatial Error Model",
+    node_type=knext.NodeType.LEARNER,
+    category=__category,
+    icon_path=__NODE_ICON_PATH + "MLErr.png",
+)
+@knext.input_table(
+    name="Input Table",
+    description="Input Table with dependent and independent variables for calculation of the spatial ML_Error model.",
+)
+@knext.input_table(
+    name="Spatial Weights",
+    description="Input Table with spatial weights for calculation of the spatial ML_Error model.",
+)
+@knext.output_table(
+    name="Output Table",
+    description="Description of the spatial ML_Error model.",
+)
+@knext.output_table(
+    name="Variable and Coefficient Table",
+    description="Variable and Coefficient Table of the spatial ML_Error model.",
+)
+@knext.output_view(
+    name="Model summary view",
+    description="Model summary view of the spatial ML_Error model.",
+)
+class SpatialML_Error:
+    """
+    Spatial ML_Error
+    """
+
+    geo_col = knext.ColumnParameter(
+        "Geometry Column",
+        "The column containing the geometry of the input table.",
+        column_filter=knut.is_geo,
+        include_row_key=False,
+        include_none_column=False,
+    )
+
+    dependent_variable = knext.ColumnParameter(
+        "Dependent variable",
+        "The column containing the dependent variable to use for the calculation of the spatial ML_Error model.",
+        column_filter=knut.is_numeric,
+        include_none_column=False,
+    )
+
+    independent_variables = knext.MultiColumnParameter(
+        "Independent variables",
+        "The columns containing the independent variables to use for the calculation of the spatial ML_Error model.",
+        column_filter=knut.is_numeric
+    )
+
+    def configure(self, configure_context, input_schema, input_schema_2):
+        knut.columns_exist([self.geo_col], input_schema)
+
+        return None
+
+    def execute(self, exec_context:knext.ExecutionContext, input_1, input_2):
+        gdf = gp.GeoDataFrame(input_1.to_pandas(), geometry=self.geo_col)
+        adjust_list = input_2.to_pandas()
+        w = W.from_adjlist(adjust_list)
+        #Prepare Georgia dataset inputs
+        X = gdf[self.independent_variables].values
+        y = gdf[self.dependent_variable].values
+        
+        model = spreg.ML_Error(y, X, w, method='ord')
+
+        results = pd.DataFrame([model.name_x, model.betas, model.std_err, model.z_stat] ).T
+        results.columns = ["Variable", "Coefficient", "Std.Error", "Z-Statistic"]
+        results.loc[:,"Coefficient"] = results.loc[:,"Coefficient"].map(lambda x: x[0])
+        results.loc[:,"Probability"] = results.loc[:,"Z-Statistic"].map(lambda x: x[1])
+        results.loc[:,"Z-Statistic"] = results.loc[:,"Z-Statistic"].map(lambda x: x[0])
+        # 
+        results.loc[:,"Coefficient"] = results.loc[:,"Coefficient"].map(lambda x: round(x,7))
+        results.loc[:,"Std.Error"] = results.loc[:,"Std.Error"].map(lambda x: round(x,7))
+        results.loc[:,"Z-Statistic"] = results.loc[:,"Z-Statistic"].map(lambda x: round(x,7))
+        results.loc[:, "Probability"] = results.loc[:, "Probability"].map(lambda x: round(x, 7))
+        results =  results.dropna()
+
+        result2 = pd.DataFrame({"Pseudo R-squared ":model.pr2, "Number of Observations":model.n, "Number of Variables":model.k}, index=[0])
+        result2 = result2.round(7)
+
+
+        html = """<p><pre>%s</pre>"""% model.summary.replace("\n", "<br/>")
+
+        return knext.Table.from_pandas(result2),knext.Table.from_pandas(results),knext.view_html(html)
