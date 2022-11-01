@@ -415,7 +415,7 @@ class ViewNodeStatic:
 
     color_col = knext.ColumnParameter(
         "Marker color column",
-        "Select one column to map to the marker color. If you select none, it will not map any column to color."
+        "Select one column to map to the marker color. If you select none, it will not map any column to color.",
         column_filter=knut.is_numeric_or_string,
         include_row_key=False,
         include_none_column=True,
