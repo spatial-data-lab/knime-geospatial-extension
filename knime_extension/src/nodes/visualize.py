@@ -415,7 +415,7 @@ class ViewNodeStatic:
 
     color_col = knext.ColumnParameter(
         "Marker color column",
-        "Select marker color column. The column must contain the color name e.g. red, green, blue, etc.",
+        "Select one column to map to the marker color. If you select none, it will not map any column to color."
         column_filter=knut.is_numeric_or_string,
         include_row_key=False,
         include_none_column=True,
@@ -423,7 +423,7 @@ class ViewNodeStatic:
 
     color = knext.StringParameter(
         "Marker color",
-        "Select marker color. The column must contain the color name e.g. red, green, blue, etc.",
+        "Select marker color. Can select none if you don't want to set a unified marker color ",
         default_value="none",
         enum=[
             "none",
@@ -458,7 +458,7 @@ class ViewNodeStatic:
 
     edge_color = knext.StringParameter(
         "Edge color",
-        "Select the edge color to use for the color column. See https://matplotlib.org/stable/tutorials/colors/colormaps.html",
+        "Set the edge color. See https://matplotlib.org/stable/tutorials/colors/colormaps.html",
         default_value="none",
         enum=[
             "none",
@@ -501,7 +501,7 @@ class ViewNodeStatic:
 
     line_width = knext.IntParameter(
         "Line width",
-        "Select the line width. The width is fixed by default. If a width column is selected, the width will be scaled by the values of the column.",
+        "Select a unified line width, can be set to none",
         default_value=1,
         min_value=1,
         max_value=10,
@@ -650,7 +650,7 @@ class ViewNodeStatic:
 
     legend_framealpha = knext.DoubleParameter(
         "Legend frame alpha",
-        "Select the alpha value for the legend frame.",
+        "Select the transparent value for the legend frame.",
         default_value=1.0,
         min_value=0.0,
         max_value=1.0,
