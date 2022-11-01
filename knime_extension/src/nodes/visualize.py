@@ -145,6 +145,12 @@ class ViewNode:
         ],
     )
 
+    stroke = knext.BoolParameter(
+        "Stroke",
+        "Whether to draw strokes along the polygon boundary.",
+        default_value=True,
+    )
+
     base_map = knext.StringParameter(
         "Base map",
         "Select the base map to use for the visualization. See [Folium base maps](https://python-visualization.github.io/folium/quickstart.html#Tiles).",
@@ -252,8 +258,6 @@ class ViewNode:
         column_filter=knut.is_numeric,
         include_none_column=True,
     )
-
-# TODO: add just for size
 
     size_scale = knext.IntParameter(
         "Size scale",
@@ -378,7 +382,11 @@ class ViewNode:
                 pass
             else:
                 kws["style_kwds"] = {"radius": self.size_scale}
-
+        if not self.stroke:
+            if "style_kwds" in kws:
+                kws["style_kwds"]["stroke"] = False
+            else:
+                kws["style_kwds"] = {"stroke":False}
         map = gdf.explore(**kws)
         # knut.check_canceled(exec_context)
         return knext.view(map)
