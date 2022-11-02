@@ -12,7 +12,8 @@ from pandarallel import pandarallel
 from pyDataverse.api import NativeApi, DataAccessApi
 from pyDataverse.models import Dataverse
 import io
-
+import numpy as np
+from shapely.geometry import Polygon
 
 __category = knext.category(
     path="/geo",
@@ -1758,3 +1759,74 @@ class HarvardDataVersePublish:
         api = NativeApi(base_url, self.API_TOKEN)
         api.publish_dataset(pid=self.dataset_doi, release_type="major")
         return None
+
+############################################
+# Create Grid Node
+############################################
+
+@knext.node(
+    name="Create Grid",
+    node_type=knext.NodeType.MANIPULATOR,
+    icon_path=__NODE_ICON_PATH + "CreateGrid.png",
+    category=__category,
+)
+@knext.input_table(
+    name="Input Table",
+    description="Input table of Create Grid",
+)
+@knext.output_table(
+    name="Output Table",
+    description="Output table of Create Grid",
+)
+class CreateGrid:
+    """
+    Create Grid
+    """
+
+    geo_col = knext.ColumnParameter(
+        "Geometry Column",
+        "The column containing the geometry of the dataset. ",
+        column_filter=knut.is_geo,
+        include_row_key=False,
+        include_none_column=False,
+    )
+
+    grid_length = knext.IntParameter(
+        "Grid Length",
+        "The length in meters of the grid. ",
+        default_value=100,
+    )
+
+    def configure(self, configure_context, input_schema):
+            
+            return None
+    
+    def execute(self, exec_context: knext.ExecutionContext, input_table):
+        
+        gdf = gp.GeoDataFrame(input_table.to_pandas(), geometry=self.geo_col)
+        
+        
+        
+        xmin,ymin,xmax,ymax =  gdf.total_bounds
+        width = self.grid_length
+        height = self.grid_length
+        rows = int(np.ceil((ymax-ymin) /  height))
+        cols = int(np.ceil((xmax-xmin) / width))
+        XleftOrigin = xmin
+        XrightOrigin = xmin + width
+        YtopOrigin = ymax
+        YbottomOrigin = ymax- height
+        polygons = []
+        for i in range(cols):
+            Ytop = YtopOrigin
+            Ybottom =YbottomOrigin
+            for j in range(rows):
+                polygons.append(Polygon([(XleftOrigin, Ytop), (XrightOrigin, Ytop), (XrightOrigin, Ybottom), (XleftOrigin, Ybottom)])) 
+                Ytop = Ytop - height
+                Ybottom = Ybottom - height
+            XleftOrigin = XleftOrigin + width
+            XrightOrigin = XrightOrigin + width
+
+        grid = gpd.GeoDataFrame({'geometry':polygons},crs = gdf.crs)
+
+        return knext.Table.from_pandas(grid)
