@@ -343,8 +343,29 @@ def to_table(
 __DEF_PLEASE_SELECT_COLUMN = "Please select a column"
 
 
+def column_exists_or_preset(
+    context: knext.ConfigurationContext,
+    column: str,
+    schema: knext.Schema,
+    func: Callable[[knext.Column], bool] = None,
+    none_msg: str = "No compatible column found in input table",
+) -> str:
+    """
+    Checks that the given column is not None and exists in the given schema. If none is selected it returns the
+    first column that is compatible with the provided function. If none is compatible it throws an exception.
+    """
+    if column is None:
+        for c in schema:
+            if func(c):
+                context.set_warning(f"Preset column to: {c.name}")
+                return c.name
+        raise knext.InvalidParametersError(none_msg)
+    __check_col_and_type(column, schema, func)
+    return column
+
+
 def geo_column_exists(
-    column: knext.Column,
+    column: str,
     schema: knext.Schema,
     none_msg: str = __DEF_PLEASE_SELECT_COLUMN,
 ) -> None:
@@ -355,7 +376,7 @@ def geo_column_exists(
 
 
 def column_exists(
-    column: knext.Column,
+    column: str,
     schema: knext.Schema,
     func: Callable[[knext.Column], bool] = None,
     none_msg: str = __DEF_PLEASE_SELECT_COLUMN,
@@ -365,10 +386,21 @@ def column_exists(
     """
     if column is None:
         raise knext.InvalidParametersError(none_msg)
+    __check_col_and_type(column, schema, func)
+
+
+def __check_col_and_type(
+    column: str,
+    schema: knext.Schema,
+    check_type: Callable[[knext.Column], bool] = None,
+) -> None:
+    """
+    Checks that the given column exists in the given schema and that it matches the given type_check function.
+    """
     # Check that the column exists in the schema and that it has a compatible type
     try:
         existing_column = schema[column]
-        if func is not None and not func(existing_column):
+        if check_type is not None and not check_type(existing_column):
             raise knext.InvalidParametersError(
                 f"Column '{str(column)}' has incompatible data type"
             )
@@ -379,7 +411,7 @@ def column_exists(
 
 
 def columns_exist(
-    columns: List[knext.Column],
+    columns: List[str],
     schema: knext.Schema,
     func: Callable[[knext.Column], bool] = lambda c: True,
     none_msg: str = __DEF_PLEASE_SELECT_COLUMN,
