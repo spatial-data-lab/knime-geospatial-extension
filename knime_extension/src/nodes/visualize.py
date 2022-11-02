@@ -1,14 +1,9 @@
-# from doctest import debug_script
-import logging
 from xml.etree.ElementInclude import include
 import geopandas as gp
 import knime_extension as knext
 import util.knime_utils as knut
 from keplergl import KeplerGl
 import json
-
-
-LOGGER = logging.getLogger(__name__)
 
 
 category = knext.category(
@@ -104,6 +99,18 @@ class ViewNode:
             "afmhot",
             "gist_heat",
             "copper",
+            "PiYG",
+            "PRGn",
+            "BrBG",
+            "PuOr",
+            "RdGy",
+            "RdBu",
+            "RdYlBu",
+            "RdYlGn",
+            "Spectral",
+            "coolwarm",
+            "bwr",
+            "seismic",
             "viridis_r",
             "plasma_r",
             "inferno_r",
@@ -143,6 +150,18 @@ class ViewNode:
             "afmhot_r",
             "gist_heat_r",
             "copper_r",
+            "PiYG_r",
+            "PRGn_r",
+            "BrBG_r",
+            "PuOr_r",
+            "RdGy_r",
+            "RdBu_r",
+            "RdYlBu_r",
+            "RdYlGn_r",
+            "Spectral_r",
+            "coolwarm_r",
+            "bwr_r",
+            "seismic",
         ],
     )
 
