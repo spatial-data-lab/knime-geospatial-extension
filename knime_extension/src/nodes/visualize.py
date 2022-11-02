@@ -1,5 +1,3 @@
-# from doctest import debug_script
-import logging
 from xml.etree.ElementInclude import include
 import geopandas as gp
 import knime_extension as knext
@@ -8,13 +6,10 @@ from keplergl import KeplerGl
 import json
 
 
-LOGGER = logging.getLogger(__name__)
-
-
 category = knext.category(
     path="/geo",
     level_id="viz",
-    name="Spatial Visualization",#Spatial Visualization
+    name="Spatial Visualization",  # Spatial Visualization
     description="Spatial view nodes",
     # starting at the root folder of the extension_module parameter in the knime.yml file
     icon="icons/icon/VisulizationCategory.png",
@@ -104,6 +99,18 @@ class ViewNode:
             "afmhot",
             "gist_heat",
             "copper",
+            "PiYG",
+            "PRGn",
+            "BrBG",
+            "PuOr",
+            "RdGy",
+            "RdBu",
+            "RdYlBu",
+            "RdYlGn",
+            "Spectral",
+            "coolwarm",
+            "bwr",
+            "seismic",
             "viridis_r",
             "plasma_r",
             "inferno_r",
@@ -143,6 +150,18 @@ class ViewNode:
             "afmhot_r",
             "gist_heat_r",
             "copper_r",
+            "PiYG_r",
+            "PRGn_r",
+            "BrBG_r",
+            "PuOr_r",
+            "RdGy_r",
+            "RdBu_r",
+            "RdYlBu_r",
+            "RdYlGn_r",
+            "Spectral_r",
+            "coolwarm_r",
+            "bwr_r",
+            "seismic",
         ],
     )
 
@@ -379,7 +398,7 @@ class ViewNode:
             geo_types = gdf["geometry"].geom_type.unique()
             if ("LineString" in geo_types) or ("MultiLineString" in geo_types):
                 kws["style_kwds"] = {"weight": self.size_scale}
-            elif  ("Polygon" in geo_types) or ("MultiPolygon" in geo_types):
+            elif ("Polygon" in geo_types) or ("MultiPolygon" in geo_types):
                 pass
             else:
                 kws["style_kwds"] = {"radius": self.size_scale}
@@ -387,7 +406,7 @@ class ViewNode:
             if "style_kwds" in kws:
                 kws["style_kwds"]["stroke"] = False
             else:
-                kws["style_kwds"] = {"stroke":False}
+                kws["style_kwds"] = {"stroke": False}
         map = gdf.explore(**kws)
         # knut.check_canceled(exec_context)
         return knext.view(map)
@@ -737,7 +756,7 @@ class ViewNodeStatic:
         else:
             legend_expand = None
 
-        kws = {"alpha": 1, "legend": self.plot_legend,"aspect": 1}
+        kws = {"alpha": 1, "legend": self.plot_legend, "aspect": 1}
 
         if "none" not in str(self.edge_color):
             kws["edgecolor"] = self.edge_color
