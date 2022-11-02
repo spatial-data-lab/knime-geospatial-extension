@@ -78,7 +78,9 @@ class BufferNode:
     )
 
     def configure(self, configure_context, input_schema_1):
-        knut.column_exists(self.geo_col, input_schema_1)
+        self.geo_col = knut.column_exists_or_preset(
+            configure_context, self.geo_col, input_schema_1, knut.is_geo
+        )
         return input_schema_1
 
     def execute(self, exec_context: knext.ExecutionContext, input_1):
@@ -135,7 +137,9 @@ class DissolveNode:
     )
 
     def configure(self, configure_context, input_schema_1):
-        knut.column_exists(self.geo_col, input_schema_1)
+        self.geo_col = knut.column_exists_or_preset(
+            configure_context, self.geo_col, input_schema_1, knut.is_geo
+        )
         return input_schema_1
 
     def execute(self, exec_context: knext.ExecutionContext, input_1):
@@ -266,8 +270,12 @@ class SpatialJoinNode:
     )
 
     def configure(self, configure_context, left_input_schema, right_input_schema):
-        knut.column_exists(self.left_geo_col, left_input_schema)
-        knut.column_exists(self.right_geo_col, left_input_schema)
+        self.left_geo_col = knut.column_exists_or_preset(
+            configure_context, self.left_geo_col, left_input_schema, knut.is_geo
+        )
+        self.right_geo_col = knut.column_exists_or_preset(
+            configure_context, self.right_geo_col, right_input_schema, knut.is_geo
+        )
         # TODO Create combined schema
         return None
 
@@ -360,8 +368,12 @@ class NearestJoinNode:
     )
 
     def configure(self, configure_context, left_input_schema, right_input_schema):
-        knut.column_exists(self.left_geo_col, left_input_schema)
-        knut.column_exists(self.right_geo_col, left_input_schema)
+        self.left_geo_col = knut.column_exists_or_preset(
+            configure_context, self.left_geo_col, left_input_schema, knut.is_geo
+        )
+        self.right_geo_col = knut.column_exists_or_preset(
+            configure_context, self.right_geo_col, right_input_schema, knut.is_geo
+        )
         # TODO Create combined schema
         return None
 
@@ -441,8 +453,12 @@ class ClipNode:
     )
 
     def configure(self, configure_context, left_input_schema, right_input_schema):
-        knut.column_exists(self.left_geo_col, left_input_schema)
-        knut.column_exists(self.right_geo_col, right_input_schema)
+        self.left_geo_col = knut.column_exists_or_preset(
+            configure_context, self.left_geo_col, left_input_schema, knut.is_geo
+        )
+        self.right_geo_col = knut.column_exists_or_preset(
+            configure_context, self.right_geo_col, right_input_schema, knut.is_geo
+        )
         # TODO Create combined schema
         return None
 
@@ -552,8 +568,12 @@ class OverlayNode:
     )
 
     def configure(self, configure_context, left_input_schema, right_input_schema):
-        knut.column_exists(self.left_geo_col, left_input_schema)
-        knut.column_exists(self.right_geo_col, left_input_schema)
+        self.left_geo_col = knut.column_exists_or_preset(
+            configure_context, self.left_geo_col, left_input_schema, knut.is_geo
+        )
+        self.right_geo_col = knut.column_exists_or_preset(
+            configure_context, self.right_geo_col, right_input_schema, knut.is_geo
+        )
         # TODO Create combined schema
         return None
 
@@ -624,8 +644,12 @@ class EuclideanDistanceNode:
     )
 
     def configure(self, configure_context, left_input_schema, right_input_schema):
-        knut.column_exists(self.left_geo_col, left_input_schema)
-        knut.column_exists(self.right_geo_col, left_input_schema)
+        self.left_geo_col = knut.column_exists_or_preset(
+            configure_context, self.left_geo_col, left_input_schema, knut.is_geo
+        )
+        self.right_geo_col = knut.column_exists_or_preset(
+            configure_context, self.right_geo_col, right_input_schema, knut.is_geo
+        )
         # TODO Create combined schema
         return None
 
@@ -704,7 +728,9 @@ class MultiRingBufferNode:
     )
 
     def configure(self, configure_context, input_schema_1):
-        knut.column_exists(self.geo_col, input_schema_1)
+        self.geo_col = knut.column_exists_or_preset(
+            configure_context, self.geo_col, input_schema_1, knut.is_geo
+        )
         # TODO Create combined schema
         return None
 
@@ -785,7 +811,9 @@ class SimplifyNode:
     )
 
     def configure(self, configure_context, input_schema_1):
-        knut.column_exists(self.geo_col, input_schema_1)
+        self.geo_col = knut.column_exists_or_preset(
+            configure_context, self.geo_col, input_schema_1, knut.is_geo
+        )
         return input_schema_1
 
     def execute(self, exec_context: knext.ExecutionContext, input_1):

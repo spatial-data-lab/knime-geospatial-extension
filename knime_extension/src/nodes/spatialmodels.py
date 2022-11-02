@@ -18,7 +18,7 @@ import spreg
 from io import StringIO
 import sys
 import pulp
-from shapely.geometry import  LineString
+from shapely.geometry import LineString
 
 __category = knext.category(
     path="/geo",
@@ -47,12 +47,10 @@ __NODE_ICON_PATH = "icons/icon/SpatialModel/"
 @knext.input_table(
     name="Input Table",
     description="Input table for calculation of Spatial 2SlS",
-
 )
 @knext.input_table(
     name="Spatial Weights",
     description="Spatial Weights table for calculation of Spatial 2SlS",
-
 )
 @knext.output_table(
     name="Model Description Table",
@@ -66,7 +64,6 @@ __NODE_ICON_PATH = "icons/icon/SpatialModel/"
     name="Model Summary View",
     description="Model Summary View of Spatial 2SlS",
 )
-
 class Spatial2SLSModel:
     """
     Spatial two stage least squares (S2SLS) with results and diagnostics; Anselin (1988)
@@ -80,7 +77,6 @@ class Spatial2SLSModel:
         include_row_key=False,
         include_none_column=False,
     )
-    
 
     dependent_variable = knext.ColumnParameter(
         "Dependent variable",
@@ -92,7 +88,7 @@ class Spatial2SLSModel:
     independent_variables = knext.MultiColumnParameter(
         "Independent variables",
         "The columns containing the independent variables to use for the calculation of Spatial 2SlS.",
-        column_filter=knut.is_numeric
+        column_filter=knut.is_numeric,
     )
 
     Orders_of_W = knext.IntParameter(
@@ -114,56 +110,92 @@ class Spatial2SLSModel:
         default_value="none",
     )
 
-
-
-
     def configure(self, configure_context, input_schema_1, input_schema_2):
-        knut.columns_exist([self.geo_col], input_schema_1)
+        self.geo_col = knut.column_exists_or_preset(
+            configure_context, self.geo_col, input_schema_1, knut.is_geo
+        )
         return None
-    
-    def execute(self, exec_context:knext.ExecutionContext, input_1, input_2):
-            
-            gdf = gp.GeoDataFrame(input_1.to_pandas(), geometry=self.geo_col)
-            adjust_list = input_2.to_pandas()
-            w = W.from_adjlist(adjust_list)
-    
-            y = gdf[self.dependent_variable].values
-            x = gdf[self.independent_variables].values
 
-            kws={"y":y, "x":x, "w":w, "w_lags":self.Orders_of_W, "spat_diag":self.Spatial_Diagnostics, 
-                "name_y":self.dependent_variable, "name_x":self.independent_variables, 
-                "name_w":"Spatial Weights", "name_ds":"Input Table"}
-            if "none" not in str(self.robust).lower():
-                kws["robust"] = self.robust
+    def execute(self, exec_context: knext.ExecutionContext, input_1, input_2):
 
-            model = spreg.GM_Lag(**kws)
-    
-            # model = spreg.GM_Lag(y, x, w=w,w_lags=self.Orders_of_W, robust= self.robust,
-            # name_y=self.dependent_variable, name_x=self.independent_variables, name_w="Spatial Weights", name_ds="Input Table")
-    
-            results = pd.DataFrame([model.name_x, model.betas, model.std_err, model.z_stat] ).T
-            results.columns = ["Variable", "Coefficient", "Std.Error", "z-Statistic"]
-            results.loc[:,"Coefficient"] = results.loc[:,"Coefficient"].map(lambda x: x[0])
-            results.loc[:,"Probability"] = results.loc[:,"z-Statistic"].map(lambda x: x[1])
-            results.loc[:,"z-Statistic"] = results.loc[:,"z-Statistic"].map(lambda x: x[0])
-            # 
-            results.loc[:,"Coefficient"] = results.loc[:,"Coefficient"].map(lambda x: round(x,7))
-            results.loc[:,"Std.Error"] = results.loc[:,"Std.Error"].map(lambda x: round(x,7))
-            results.loc[:,"z-Statistic"] = results.loc[:,"z-Statistic"].map(lambda x: round(x,7))
-            results.loc[:,"Probability"] = results.loc[:,"Probability"].map(lambda x: round(x,7))
-            results =  results.dropna()
+        gdf = gp.GeoDataFrame(input_1.to_pandas(), geometry=self.geo_col)
+        adjust_list = input_2.to_pandas()
+        w = W.from_adjlist(adjust_list)
 
-            result2 = pd.DataFrame({"Pseudo R-squared ":model.pr2, "Spatial Pseudo R-squared":model.pr2_e, "Number of Observations":model.n, "Number of Variables":model.k}, index=[0])
-            result2 = result2.round(7)
-    
-            
-            html = """<p><pre>%s</pre>"""% model.summary.replace("\n", "<br/>")
+        y = gdf[self.dependent_variable].values
+        x = gdf[self.independent_variables].values
 
-            return knext.Table.from_pandas(result2),knext.Table.from_pandas(results),knext.view_html(html)
+        kws = {
+            "y": y,
+            "x": x,
+            "w": w,
+            "w_lags": self.Orders_of_W,
+            "spat_diag": self.Spatial_Diagnostics,
+            "name_y": self.dependent_variable,
+            "name_x": self.independent_variables,
+            "name_w": "Spatial Weights",
+            "name_ds": "Input Table",
+        }
+        if "none" not in str(self.robust).lower():
+            kws["robust"] = self.robust
+
+        model = spreg.GM_Lag(**kws)
+
+        # model = spreg.GM_Lag(y, x, w=w,w_lags=self.Orders_of_W, robust= self.robust,
+        # name_y=self.dependent_variable, name_x=self.independent_variables, name_w="Spatial Weights", name_ds="Input Table")
+
+        results = pd.DataFrame(
+            [model.name_x, model.betas, model.std_err, model.z_stat]
+        ).T
+        results.columns = ["Variable", "Coefficient", "Std.Error", "z-Statistic"]
+        results.loc[:, "Coefficient"] = results.loc[:, "Coefficient"].map(
+            lambda x: x[0]
+        )
+        results.loc[:, "Probability"] = results.loc[:, "z-Statistic"].map(
+            lambda x: x[1]
+        )
+        results.loc[:, "z-Statistic"] = results.loc[:, "z-Statistic"].map(
+            lambda x: x[0]
+        )
+        #
+        results.loc[:, "Coefficient"] = results.loc[:, "Coefficient"].map(
+            lambda x: round(x, 7)
+        )
+        results.loc[:, "Std.Error"] = results.loc[:, "Std.Error"].map(
+            lambda x: round(x, 7)
+        )
+        results.loc[:, "z-Statistic"] = results.loc[:, "z-Statistic"].map(
+            lambda x: round(x, 7)
+        )
+        results.loc[:, "Probability"] = results.loc[:, "Probability"].map(
+            lambda x: round(x, 7)
+        )
+        results = results.dropna()
+
+        result2 = pd.DataFrame(
+            {
+                "Pseudo R-squared ": model.pr2,
+                "Spatial Pseudo R-squared": model.pr2_e,
+                "Number of Observations": model.n,
+                "Number of Variables": model.k,
+            },
+            index=[0],
+        )
+        result2 = result2.round(7)
+
+        html = """<p><pre>%s</pre>""" % model.summary.replace("\n", "<br/>")
+
+        return (
+            knext.Table.from_pandas(result2),
+            knext.Table.from_pandas(results),
+            knext.view_html(html),
+        )
+
 
 ############################################################################################################
 # Spatial Lag Panel Model with Fixed Effects node
 ############################################################################################################
+
 
 @knext.node(
     name="Spatial Lag Panel Model",
@@ -195,6 +227,7 @@ class SpatialLagPanelModelwithFixedEffects:
     """
     Spatial Lag Panel Model with Fixed Effects
     """
+
     geo_col = knext.ColumnParameter(
         "Geometry Column",
         "The column containing the geometry of the input table.",
@@ -212,52 +245,87 @@ class SpatialLagPanelModelwithFixedEffects:
     independent_variables = knext.MultiColumnParameter(
         "Independent variables",
         "The columns containing the independent variables to use for the calculation of Spatial Lag Panel Model with Fixed Effects.",
-        column_filter=knut.is_numeric
+        column_filter=knut.is_numeric,
     )
 
-
     def configure(self, configure_context, input_schema_1, input_schema_2):
-        knut.columns_exist([self.geo_col], input_schema_1)
+        self.geo_col = knut.column_exists_or_preset(
+            configure_context, self.geo_col, input_schema_1, knut.is_geo
+        )
         return None
-    
-    def execute(self, exec_context:knext.ExecutionContext, input_1, input_2):
-            
-            gdf = gp.GeoDataFrame(input_1.to_pandas(), geometry=self.geo_col)
-            adjust_list = input_2.to_pandas()
-            w = W.from_adjlist(adjust_list)
 
-            x = gdf[self.independent_variables].values
-            y = gdf[self.dependent_variable].values
+    def execute(self, exec_context: knext.ExecutionContext, input_1, input_2):
 
-            kws = {"y":y, "x":x, "w":w, "name_y":self.dependent_variable, 
-            "name_x":self.independent_variables, 
-            "name_w":"Spatial Weights", "name_ds":"Input Table"}
-            model = spreg.Panel_FE_Lag(**kws)
+        gdf = gp.GeoDataFrame(input_1.to_pandas(), geometry=self.geo_col)
+        adjust_list = input_2.to_pandas()
+        w = W.from_adjlist(adjust_list)
 
-            results = pd.DataFrame([model.name_x, model.betas, model.std_err, model.z_stat] ).T
-            results.columns = ["Variable", "Coefficient", "Std.Error", "z-Statistic"]
-            results.loc[:,"Coefficient"] = results.loc[:,"Coefficient"].map(lambda x: x[0])
-            results.loc[:,"Probability"] = results.loc[:,"z-Statistic"].map(lambda x: x[1])
-            results.loc[:,"z-Statistic"] = results.loc[:,"z-Statistic"].map(lambda x: x[0])
-            # 
-            results.loc[:,"Coefficient"] = results.loc[:,"Coefficient"].map(lambda x: round(x,7))
-            results.loc[:,"Std.Error"] = results.loc[:,"Std.Error"].map(lambda x: round(x,7))
-            results.loc[:,"z-Statistic"] = results.loc[:,"z-Statistic"].map(lambda x: round(x,7))
-            results.loc[:,"Probability"] = results.loc[:,"Probability"].map(lambda x: round(x,7))
-            results =  results.dropna()
-    
-            result2 = pd.DataFrame({"Pseudo R-squared ":model.pr2, "Spatial Pseudo R-squared":model.pr2_e, "Number of Observations":model.n, "Number of Variables":model.k}, index=[0])
-            result2 = result2.round(7)
+        x = gdf[self.independent_variables].values
+        y = gdf[self.dependent_variable].values
 
-            html = """<p><pre>%s</pre>"""% model.summary.replace("\n", "<br/>")
+        kws = {
+            "y": y,
+            "x": x,
+            "w": w,
+            "name_y": self.dependent_variable,
+            "name_x": self.independent_variables,
+            "name_w": "Spatial Weights",
+            "name_ds": "Input Table",
+        }
+        model = spreg.Panel_FE_Lag(**kws)
 
-            return knext.Table.from_pandas(result2),knext.Table.from_pandas(results),knext.view_html(html)
-        
+        results = pd.DataFrame(
+            [model.name_x, model.betas, model.std_err, model.z_stat]
+        ).T
+        results.columns = ["Variable", "Coefficient", "Std.Error", "z-Statistic"]
+        results.loc[:, "Coefficient"] = results.loc[:, "Coefficient"].map(
+            lambda x: x[0]
+        )
+        results.loc[:, "Probability"] = results.loc[:, "z-Statistic"].map(
+            lambda x: x[1]
+        )
+        results.loc[:, "z-Statistic"] = results.loc[:, "z-Statistic"].map(
+            lambda x: x[0]
+        )
+        #
+        results.loc[:, "Coefficient"] = results.loc[:, "Coefficient"].map(
+            lambda x: round(x, 7)
+        )
+        results.loc[:, "Std.Error"] = results.loc[:, "Std.Error"].map(
+            lambda x: round(x, 7)
+        )
+        results.loc[:, "z-Statistic"] = results.loc[:, "z-Statistic"].map(
+            lambda x: round(x, 7)
+        )
+        results.loc[:, "Probability"] = results.loc[:, "Probability"].map(
+            lambda x: round(x, 7)
+        )
+        results = results.dropna()
+
+        result2 = pd.DataFrame(
+            {
+                "Pseudo R-squared ": model.pr2,
+                "Spatial Pseudo R-squared": model.pr2_e,
+                "Number of Observations": model.n,
+                "Number of Variables": model.k,
+            },
+            index=[0],
+        )
+        result2 = result2.round(7)
+
+        html = """<p><pre>%s</pre>""" % model.summary.replace("\n", "<br/>")
+
+        return (
+            knext.Table.from_pandas(result2),
+            knext.Table.from_pandas(results),
+            knext.view_html(html),
+        )
 
 
 ############################################################################################################
 # Spatial Error Panel Model with Fixed Effects node
 ############################################################################################################
+
 
 @knext.node(
     name="Spatial Error Panel Model",
@@ -289,6 +357,7 @@ class SpatialErrorPanelModelwithFixedEffects:
     """
     Spatial Error Panel Model with Fixed Effects node
     """
+
     geo_col = knext.ColumnParameter(
         "Geometry Column",
         "The column containing the geometry of the input table.",
@@ -306,50 +375,86 @@ class SpatialErrorPanelModelwithFixedEffects:
     independent_variables = knext.MultiColumnParameter(
         "Independent variables",
         "The columns containing the independent variables to use for the calculation of Spatial Error Panel Model with Fixed Effects.",
-        column_filter=knut.is_numeric
+        column_filter=knut.is_numeric,
     )
 
-
     def configure(self, configure_context, input_schema_1, input_schema_2):
-        knut.columns_exist([self.geo_col], input_schema_1)
+        self.geo_col = knut.column_exists_or_preset(
+            configure_context, self.geo_col, input_schema_1, knut.is_geo
+        )
         return None
-    
-    def execute(self, exec_context:knext.ExecutionContext, input_1, input_2):
-            
-            gdf = gp.GeoDataFrame(input_1.to_pandas(), geometry=self.geo_col)
-            adjust_list = input_2.to_pandas()
-            w = W.from_adjlist(adjust_list)
 
-            x = gdf[self.independent_variables].values
-            y = gdf[self.dependent_variable].values
+    def execute(self, exec_context: knext.ExecutionContext, input_1, input_2):
 
-            kws = {"y":y, "x":x, "w":w, "name_y":self.dependent_variable, 
-            "name_x":self.independent_variables, 
-            "name_w":"Spatial Weights", "name_ds":"Input Table"}
-            model = spreg.Panel_FE_Error(**kws)
+        gdf = gp.GeoDataFrame(input_1.to_pandas(), geometry=self.geo_col)
+        adjust_list = input_2.to_pandas()
+        w = W.from_adjlist(adjust_list)
 
-            results = pd.DataFrame([model.name_x, model.betas, model.std_err, model.z_stat] ).T
-            results.columns = ["Variable", "Coefficient", "Std.Error", "z-Statistic"]
-            results.loc[:,"Coefficient"] = results.loc[:,"Coefficient"].map(lambda x: x[0])
-            results.loc[:,"Probability"] = results.loc[:,"z-Statistic"].map(lambda x: x[1])
-            results.loc[:,"z-Statistic"] = results.loc[:,"z-Statistic"].map(lambda x: x[0])
-            # 
-            results.loc[:,"Coefficient"] = results.loc[:,"Coefficient"].map(lambda x: round(x,7))
-            results.loc[:,"Std.Error"] = results.loc[:,"Std.Error"].map(lambda x: round(x,7))
-            results.loc[:,"z-Statistic"] = results.loc[:,"z-Statistic"].map(lambda x: round(x,7))
-            results.loc[:,"Probability"] = results.loc[:,"Probability"].map(lambda x: round(x,7))
-            results =  results.dropna()
-    
-            result2 = pd.DataFrame({"Pseudo R-squared ":model.pr2,  "Number of Observations":model.n, "Number of Variables":model.k}, index=[0])
-            result2 = result2.round(7)
+        x = gdf[self.independent_variables].values
+        y = gdf[self.dependent_variable].values
 
-            html = """<p><pre>%s</pre>"""% model.summary.replace("\n", "<br/>")
+        kws = {
+            "y": y,
+            "x": x,
+            "w": w,
+            "name_y": self.dependent_variable,
+            "name_x": self.independent_variables,
+            "name_w": "Spatial Weights",
+            "name_ds": "Input Table",
+        }
+        model = spreg.Panel_FE_Error(**kws)
 
-            return knext.Table.from_pandas(result2),knext.Table.from_pandas(results),knext.view_html(html)
-        
+        results = pd.DataFrame(
+            [model.name_x, model.betas, model.std_err, model.z_stat]
+        ).T
+        results.columns = ["Variable", "Coefficient", "Std.Error", "z-Statistic"]
+        results.loc[:, "Coefficient"] = results.loc[:, "Coefficient"].map(
+            lambda x: x[0]
+        )
+        results.loc[:, "Probability"] = results.loc[:, "z-Statistic"].map(
+            lambda x: x[1]
+        )
+        results.loc[:, "z-Statistic"] = results.loc[:, "z-Statistic"].map(
+            lambda x: x[0]
+        )
+        #
+        results.loc[:, "Coefficient"] = results.loc[:, "Coefficient"].map(
+            lambda x: round(x, 7)
+        )
+        results.loc[:, "Std.Error"] = results.loc[:, "Std.Error"].map(
+            lambda x: round(x, 7)
+        )
+        results.loc[:, "z-Statistic"] = results.loc[:, "z-Statistic"].map(
+            lambda x: round(x, 7)
+        )
+        results.loc[:, "Probability"] = results.loc[:, "Probability"].map(
+            lambda x: round(x, 7)
+        )
+        results = results.dropna()
+
+        result2 = pd.DataFrame(
+            {
+                "Pseudo R-squared ": model.pr2,
+                "Number of Observations": model.n,
+                "Number of Variables": model.k,
+            },
+            index=[0],
+        )
+        result2 = result2.round(7)
+
+        html = """<p><pre>%s</pre>""" % model.summary.replace("\n", "<br/>")
+
+        return (
+            knext.Table.from_pandas(result2),
+            knext.Table.from_pandas(results),
+            knext.view_html(html),
+        )
+
+
 ############################################################################################################
 # Geographically Weighted Regression (GWR) node
 ############################################################################################################
+
 
 @knext.node(
     name="GWR Model",
@@ -382,6 +487,7 @@ class GeographicallyWeightedRegression:
     """
     Geographically Weighted Regression node
     """
+
     geo_col = knext.ColumnParameter(
         "Geometry Column",
         "The column containing the geometry of the input table.",
@@ -399,7 +505,7 @@ class GeographicallyWeightedRegression:
     independent_variables = knext.MultiColumnParameter(
         "Independent variables",
         "The columns containing the independent variables to use for the calculation of Geographically Weighted Regression.",
-        column_filter=knut.is_numeric
+        column_filter=knut.is_numeric,
     )
 
     search_method = knext.StringParameter(
@@ -429,59 +535,66 @@ class GeographicallyWeightedRegression:
     )
 
     def configure(self, configure_context, input_schema):
-        knut.columns_exist([self.geo_col], input_schema)
+        self.geo_col = knut.column_exists_or_preset(
+            configure_context, self.geo_col, input_schema, knut.is_geo
+        )
         return None
-    
-    def execute(self, exec_context:knext.ExecutionContext, input_1):
-            
-            gdf = gp.GeoDataFrame(input_1.to_pandas(), geometry=self.geo_col)
-            #Prepare Georgia dataset inputs
-            g_y = gdf[self.dependent_variable].values.reshape((-1,1))
-            g_X = gdf[self.independent_variables].values
-            u = gdf['geometry'].x
-            v = gdf['geometry'].y
-            g_coords = list(zip(u,v))
-            # g_X = (g_X - g_X.mean(axis=0)) / g_X.std(axis=0)
-            g_y = g_y.reshape((-1,1))
-            # g_y = (g_y - g_y.mean(axis=0)) / g_y.std(axis=0)
 
-            #Calibrate GWR model
+    def execute(self, exec_context: knext.ExecutionContext, input_1):
 
-            gwr_selector = Sel_BW(g_coords, g_y, g_X)
-            gwr_bw = gwr_selector.search(bw_min=self.bandwith_min)
-            # gwr_bw = gwr_selector.search(bw_min=self.bandwith_min,search_method=self.search_method)
-            # print(gwr_bw)
-            gwr_model = GWR(g_coords, g_y, g_X, gwr_bw,fixed=False).fit()
+        gdf = gp.GeoDataFrame(input_1.to_pandas(), geometry=self.geo_col)
+        # Prepare Georgia dataset inputs
+        g_y = gdf[self.dependent_variable].values.reshape((-1, 1))
+        g_X = gdf[self.independent_variables].values
+        u = gdf["geometry"].x
+        v = gdf["geometry"].y
+        g_coords = list(zip(u, v))
+        # g_X = (g_X - g_X.mean(axis=0)) / g_X.std(axis=0)
+        g_y = g_y.reshape((-1, 1))
+        # g_y = (g_y - g_y.mean(axis=0)) / g_y.std(axis=0)
 
-            gdf.loc[:,'predy'] = gwr_model.predy
-            gdf.loc[:,'resid'] = gwr_model.resid_response.reshape(-1,1)
-            gdf.loc[:, ["Intercept_beta"] + ["%s_beta"%item for item in self.independent_variables]] = gwr_model.params
-            gdf.loc[:, ["Intercept_t"] + ["%s_t"%item for item in self.independent_variables]] = gwr_model.filter_tvals()
-            intervals = gwr_model.get_bws_intervals(gwr_selector)
-            intervals=np.asarray(intervals)
-            if gwr_bw.shape == ():
-                gdf.loc[:1,"bw"] = gwr_bw
-                gdf.loc[:1,["bw_lower","bw_upper"]] = intervals
-            else:
-                gdf.loc[:(gwr_bw.shape[0]),"bw"] = gwr_bw
-                gdf.loc[:(intervals.shape[0]),["bw_lower","bw_upper"]] = intervals
-            # gdf.loc[:,"localR2"] = results.localR2
-            # gdf.drop(columns=["<Row Key>"], inplace=True, axis=1)   
-            gdf.reset_index(drop=True, inplace=True)
-            
+        # Calibrate GWR model
 
-            buffer = StringIO()
-            sys.stdout = buffer
-            gwr_model.summary()
-            summary = buffer.getvalue()
-            sys.stdout = sys.__stdout__
+        gwr_selector = Sel_BW(g_coords, g_y, g_X)
+        gwr_bw = gwr_selector.search(bw_min=self.bandwith_min)
+        # gwr_bw = gwr_selector.search(bw_min=self.bandwith_min,search_method=self.search_method)
+        # print(gwr_bw)
+        gwr_model = GWR(g_coords, g_y, g_X, gwr_bw, fixed=False).fit()
 
-            html = """<p><pre>%s</pre>"""% summary.replace("\n", "<br/>")
+        gdf.loc[:, "predy"] = gwr_model.predy
+        gdf.loc[:, "resid"] = gwr_model.resid_response.reshape(-1, 1)
+        gdf.loc[
+            :,
+            ["Intercept_beta"]
+            + ["%s_beta" % item for item in self.independent_variables],
+        ] = gwr_model.params
+        gdf.loc[
+            :, ["Intercept_t"] + ["%s_t" % item for item in self.independent_variables]
+        ] = gwr_model.filter_tvals()
+        intervals = gwr_model.get_bws_intervals(gwr_selector)
+        intervals = np.asarray(intervals)
+        if gwr_bw.shape == ():
+            gdf.loc[:1, "bw"] = gwr_bw
+            gdf.loc[:1, ["bw_lower", "bw_upper"]] = intervals
+        else:
+            gdf.loc[: (gwr_bw.shape[0]), "bw"] = gwr_bw
+            gdf.loc[: (intervals.shape[0]), ["bw_lower", "bw_upper"]] = intervals
+        # gdf.loc[:,"localR2"] = results.localR2
+        # gdf.drop(columns=["<Row Key>"], inplace=True, axis=1)
+        gdf.reset_index(drop=True, inplace=True)
 
-            model_string = pickle.dumps(gwr_model)
+        buffer = StringIO()
+        sys.stdout = buffer
+        gwr_model.summary()
+        summary = buffer.getvalue()
+        sys.stdout = sys.__stdout__
 
+        html = """<p><pre>%s</pre>""" % summary.replace("\n", "<br/>")
 
-            return knext.Table.from_pandas(gdf),model_string ,knext.view_html(html)
+        model_string = pickle.dumps(gwr_model)
+
+        return knext.Table.from_pandas(gdf), model_string, knext.view_html(html)
+
 
 #############################################################################################################
 # Geographically Weighted Regression Predictor Node
@@ -499,7 +612,7 @@ class GeographicallyWeightedRegression:
 @knext.input_binary(
     name="Model",
     description="Model for Geographically Weighted Regression Predictor",
-    id = "mgwr.gwr.GWR",
+    id="mgwr.gwr.GWR",
 )
 @knext.output_table(
     name="Output Table",
@@ -509,6 +622,7 @@ class GeographicallyWeightedRegressionPredictor:
     """
     Geographically Weighted Regression Predictor node
     """
+
     geo_col = knext.ColumnParameter(
         "Geometry Column",
         "The column containing the geometry of the input table.",
@@ -520,30 +634,35 @@ class GeographicallyWeightedRegressionPredictor:
     independent_variables = knext.MultiColumnParameter(
         "Independent variables",
         "The columns containing the independent variables to use for the calculation of Geographically Weighted Regression.",
-        column_filter=knut.is_numeric
+        column_filter=knut.is_numeric,
     )
 
-    def configure(self, configure_context, input_schema,input_binary_schema):
-        knut.columns_exist([self.geo_col], input_schema)
+    def configure(self, configure_context, input_schema, input_binary_schema):
+        self.geo_col = knut.column_exists_or_preset(
+            configure_context, self.geo_col, input_schema, knut.is_geo
+        )
         return None
-    
-    def execute(self, exec_context:knext.ExecutionContext, input_1, model):
-            
-            gdf = gp.GeoDataFrame(input_1.to_pandas(), geometry=self.geo_col)
-            #Prepare Georgia dataset inputs
-            g_X = gdf[self.independent_variables].values
-            u = gdf['geometry'].x
-            v = gdf['geometry'].y
-            g_coords = np.array(list(zip(u,v)))
-            # g_X = (g_X - g_X.mean(axis=0)) / g_X.std(axis=0)
-            gwr_model = pickle.loads(model)
 
-            gdf.loc[:,'predy'] = gwr_model.model.predict(g_coords,g_X).predictions
-            gdf.reset_index(drop=True, inplace=True)
-            return knext.Table.from_pandas(gdf)
+    def execute(self, exec_context: knext.ExecutionContext, input_1, model):
+
+        gdf = gp.GeoDataFrame(input_1.to_pandas(), geometry=self.geo_col)
+        # Prepare Georgia dataset inputs
+        g_X = gdf[self.independent_variables].values
+        u = gdf["geometry"].x
+        v = gdf["geometry"].y
+        g_coords = np.array(list(zip(u, v)))
+        # g_X = (g_X - g_X.mean(axis=0)) / g_X.std(axis=0)
+        gwr_model = pickle.loads(model)
+
+        gdf.loc[:, "predy"] = gwr_model.model.predict(g_coords, g_X).predictions
+        gdf.reset_index(drop=True, inplace=True)
+        return knext.Table.from_pandas(gdf)
+
+
 ##############################################################################################################
 # Multiscale Geographically Weighted Regression (MGWR)
 ##############################################################################################################
+
 
 @knext.node(
     name="MGWR Model",
@@ -554,7 +673,6 @@ class GeographicallyWeightedRegressionPredictor:
 @knext.input_table(
     name="Input Table",
     description="The input table containing the data to use for the calculation of Multiscale Geographically Weighted Regression.",
-
 )
 @knext.output_table(
     name="Model Coefficients Table",
@@ -573,6 +691,7 @@ class MultiscaleGeographicallyWeightedRegression:
     """
     Multiscale Geographically Weighted Regression node
     """
+
     geo_col = knext.ColumnParameter(
         "Geometry Column",
         "The column containing the geometry of the input table.",
@@ -590,7 +709,7 @@ class MultiscaleGeographicallyWeightedRegression:
     independent_variables = knext.MultiColumnParameter(
         "Independent variables",
         "The columns containing the independent variables to use for the calculation of Multiscale Geographically Weighted Regression.",
-        column_filter=knut.is_numeric
+        column_filter=knut.is_numeric,
     )
 
     search_method = knext.StringParameter(
@@ -620,55 +739,72 @@ class MultiscaleGeographicallyWeightedRegression:
     )
 
     def configure(self, configure_context, input_schema):
-        knut.columns_exist([self.geo_col], input_schema)
+        self.geo_col = knut.column_exists_or_preset(
+            configure_context, self.geo_col, input_schema, knut.is_geo
+        )
         return None
-    
-    def execute(self, exec_context:knext.ExecutionContext, input_1):
-            
-            gdf = gp.GeoDataFrame(input_1.to_pandas(), geometry=self.geo_col)
-            #Prepare Georgia dataset inputs
-            g_y = gdf[self.dependent_variable].values.reshape((-1,1))
-            g_X = gdf[self.independent_variables].values
-            u = gdf['geometry'].x
-            v = gdf['geometry'].y
-            g_coords = list(zip(u,v))
-            # g_X = (g_X - g_X.mean(axis=0)) / g_X.std(axis=0)
-            g_y = g_y.reshape((-1,1))
-            # g_y = (g_y - g_y.mean(axis=0)) / g_y.std(axis=0)
 
-            #Calibrate MGWR model
-            mgwr_selector = Sel_BW(g_coords, g_y, g_X,multi=True)
-            mgwr_bw = mgwr_selector.search(multi_bw_min=[self.bandwith_min])
-            mgwr_model = MGWR(g_coords, g_y, g_X, mgwr_selector, fixed=False,sigma2_v1=True,kernel='bisquare').fit()
+    def execute(self, exec_context: knext.ExecutionContext, input_1):
 
-            gdf.loc[:,'predy'] = mgwr_model.predy
-            gdf.loc[:,'resid'] = mgwr_model.resid_response.reshape(-1,1)
-            gdf.loc[:, ["Intercept_beta"] + ["%s_beta"%item for item in self.independent_variables]] = mgwr_model.params
-            gdf.loc[:, ["Intercept_t"] + ["%s_t"%item for item in self.independent_variables]] = mgwr_model.filter_tvals()
-            intervals = mgwr_model.get_bws_intervals(mgwr_selector)
-            intervals=np.asarray(intervals)
-            if mgwr_bw.shape == ():
-                gdf.loc[:1,"bw"] = mgwr_bw
-                gdf.loc[:1,["bw_lower","bw_upper"]] = intervals
-            else:
-                gdf.loc[:(mgwr_bw.shape[0]),"bw"] = mgwr_bw.reshape(-1,1)
-                gdf.loc[:(intervals.shape[0]),["bw_lower","bw_upper"]] = intervals
-            # gdf.loc[:,"localR2"] = results.localR2
-            # gdf.drop(columns=["<Row Key>"], inplace=True, axis=1)
-            gdf.reset_index(drop=True, inplace=True)
+        gdf = gp.GeoDataFrame(input_1.to_pandas(), geometry=self.geo_col)
+        # Prepare Georgia dataset inputs
+        g_y = gdf[self.dependent_variable].values.reshape((-1, 1))
+        g_X = gdf[self.independent_variables].values
+        u = gdf["geometry"].x
+        v = gdf["geometry"].y
+        g_coords = list(zip(u, v))
+        # g_X = (g_X - g_X.mean(axis=0)) / g_X.std(axis=0)
+        g_y = g_y.reshape((-1, 1))
+        # g_y = (g_y - g_y.mean(axis=0)) / g_y.std(axis=0)
 
-            buffer = StringIO()
-            sys.stdout = buffer
-            mgwr_model.summary()
-            summary = buffer.getvalue()
-            sys.stdout = sys.__stdout__
+        # Calibrate MGWR model
+        mgwr_selector = Sel_BW(g_coords, g_y, g_X, multi=True)
+        mgwr_bw = mgwr_selector.search(multi_bw_min=[self.bandwith_min])
+        mgwr_model = MGWR(
+            g_coords,
+            g_y,
+            g_X,
+            mgwr_selector,
+            fixed=False,
+            sigma2_v1=True,
+            kernel="bisquare",
+        ).fit()
 
-            html = """<p><pre>%s</pre>"""% summary.replace("\n", "<br/>")
+        gdf.loc[:, "predy"] = mgwr_model.predy
+        gdf.loc[:, "resid"] = mgwr_model.resid_response.reshape(-1, 1)
+        gdf.loc[
+            :,
+            ["Intercept_beta"]
+            + ["%s_beta" % item for item in self.independent_variables],
+        ] = mgwr_model.params
+        gdf.loc[
+            :, ["Intercept_t"] + ["%s_t" % item for item in self.independent_variables]
+        ] = mgwr_model.filter_tvals()
+        intervals = mgwr_model.get_bws_intervals(mgwr_selector)
+        intervals = np.asarray(intervals)
+        if mgwr_bw.shape == ():
+            gdf.loc[:1, "bw"] = mgwr_bw
+            gdf.loc[:1, ["bw_lower", "bw_upper"]] = intervals
+        else:
+            gdf.loc[: (mgwr_bw.shape[0]), "bw"] = mgwr_bw.reshape(-1, 1)
+            gdf.loc[: (intervals.shape[0]), ["bw_lower", "bw_upper"]] = intervals
+        # gdf.loc[:,"localR2"] = results.localR2
+        # gdf.drop(columns=["<Row Key>"], inplace=True, axis=1)
+        gdf.reset_index(drop=True, inplace=True)
 
-            model_string = pickle.dumps(mgwr_model)
+        buffer = StringIO()
+        sys.stdout = buffer
+        mgwr_model.summary()
+        summary = buffer.getvalue()
+        sys.stdout = sys.__stdout__
 
-            return knext.Table.from_pandas(gdf),knext.view_html(html)
-            # return knext.Table.from_pandas(gdf),model_string,knext.view_html(html)
+        html = """<p><pre>%s</pre>""" % summary.replace("\n", "<br/>")
+
+        model_string = pickle.dumps(mgwr_model)
+
+        return knext.Table.from_pandas(gdf), knext.view_html(html)
+        # return knext.Table.from_pandas(gdf),model_string,knext.view_html(html)
+
 
 ##############################################################################################################
 # Multiscale Geographically Weighted Regression Predictor Node
@@ -715,11 +851,11 @@ class MultiscaleGeographicallyWeightedRegression:
 #     )
 
 #     def configure(self, configure_context, input_schema,input_schema_2):
-#         knut.columns_exist([self.geo_col], input_schema)
+#         self.geo_col = knut.column_exists_or_preset(configure_context, self.geo_col, input_schema, knut.is_geo)
 #         return None
-    
+
 #     def execute(self, exec_context:knext.ExecutionContext, input_1, model):
-            
+
 #             gdf = gp.GeoDataFrame(input_1.to_pandas(), geometry=self.geo_col)
 #             #Prepare Georgia dataset inputs
 #             g_X = gdf[self.independent_variables].values
@@ -734,11 +870,12 @@ class MultiscaleGeographicallyWeightedRegression:
 #             gdf.reset_index(drop=True, inplace=True)
 
 #             return knext.Table.from_pandas(gdf)
-            
+
 
 ############################################
 # spatial OLS node
 ############################################
+
 
 @knext.node(
     name="OLS with Spatial Test",
@@ -766,7 +903,7 @@ class MultiscaleGeographicallyWeightedRegression:
     name="Model summary view",
     description="Model summary view of the spatial OLS model.",
 )
-class SpatialOLS: 
+class SpatialOLS:
     """
     Spatial OLS
     """
@@ -789,48 +926,77 @@ class SpatialOLS:
     independent_variables = knext.MultiColumnParameter(
         "Independent variables",
         "The columns containing the independent variables to use for the calculation of the spatial OLS model.",
-        column_filter=knut.is_numeric
+        column_filter=knut.is_numeric,
     )
 
     def configure(self, configure_context, input_schema, input_schema_2):
-        knut.columns_exist([self.geo_col], input_schema)
+        self.geo_col = knut.column_exists_or_preset(
+            configure_context, self.geo_col, input_schema, knut.is_geo
+        )
 
         return None
 
-    def execute(self, exec_context:knext.ExecutionContext, input_1, input_2):
+    def execute(self, exec_context: knext.ExecutionContext, input_1, input_2):
         gdf = gp.GeoDataFrame(input_1.to_pandas(), geometry=self.geo_col)
         adjust_list = input_2.to_pandas()
         w = W.from_adjlist(adjust_list)
-        #Prepare Georgia dataset inputs
+        # Prepare Georgia dataset inputs
         X = gdf[self.independent_variables].values
         y = gdf[self.dependent_variable].values
-        
+
         model = spreg.OLS(y, X, w, spat_diag=True, moran=True, white_test=True)
 
-        results = pd.DataFrame([model.name_x, model.betas, model.std_err, model.t_stat] ).T
+        results = pd.DataFrame(
+            [model.name_x, model.betas, model.std_err, model.t_stat]
+        ).T
         results.columns = ["Variable", "Coefficient", "Std.Error", "t-Statistic"]
-        results.loc[:,"Coefficient"] = results.loc[:,"Coefficient"].map(lambda x: x[0])
-        results.loc[:,"Probability"] = results.loc[:,"t-Statistic"].map(lambda x: x[1])
-        results.loc[:,"t-Statistic"] = results.loc[:,"t-Statistic"].map(lambda x: x[0])
-        # 
-        results.loc[:,"Coefficient"] = results.loc[:,"Coefficient"].map(lambda x: round(x,7))
-        results.loc[:,"Std.Error"] = results.loc[:,"Std.Error"].map(lambda x: round(x,7))
-        results.loc[:,"t-Statistic"] = results.loc[:,"t-Statistic"].map(lambda x: round(x,7))
-        results.loc[:,"Probability"] = results.loc[:,"Probability"].map(lambda x: round(x,7))
-        results =  results.dropna()
+        results.loc[:, "Coefficient"] = results.loc[:, "Coefficient"].map(
+            lambda x: x[0]
+        )
+        results.loc[:, "Probability"] = results.loc[:, "t-Statistic"].map(
+            lambda x: x[1]
+        )
+        results.loc[:, "t-Statistic"] = results.loc[:, "t-Statistic"].map(
+            lambda x: x[0]
+        )
+        #
+        results.loc[:, "Coefficient"] = results.loc[:, "Coefficient"].map(
+            lambda x: round(x, 7)
+        )
+        results.loc[:, "Std.Error"] = results.loc[:, "Std.Error"].map(
+            lambda x: round(x, 7)
+        )
+        results.loc[:, "t-Statistic"] = results.loc[:, "t-Statistic"].map(
+            lambda x: round(x, 7)
+        )
+        results.loc[:, "Probability"] = results.loc[:, "Probability"].map(
+            lambda x: round(x, 7)
+        )
+        results = results.dropna()
 
-        result2 = pd.DataFrame({"R squared":model.r2,  "Number of Observations":model.n, "Number of Variables":model.k}, index=[0])
+        result2 = pd.DataFrame(
+            {
+                "R squared": model.r2,
+                "Number of Observations": model.n,
+                "Number of Variables": model.k,
+            },
+            index=[0],
+        )
         result2 = result2.round(7)
 
-        
-        html = """<p><pre>%s</pre>"""% model.summary.replace("\n", "<br/>")
+        html = """<p><pre>%s</pre>""" % model.summary.replace("\n", "<br/>")
 
-        return knext.Table.from_pandas(result2),knext.Table.from_pandas(results),knext.view_html(html)
+        return (
+            knext.Table.from_pandas(result2),
+            knext.Table.from_pandas(results),
+            knext.view_html(html),
+        )
 
 
 ############################################
 # spatial ML_Lag node
 ############################################
+
 
 @knext.node(
     name="Spatial Lag Model",
@@ -881,49 +1047,78 @@ class SpatialML_Lag:
     independent_variables = knext.MultiColumnParameter(
         "Independent variables",
         "The columns containing the independent variables to use for the calculation of the spatial ML_Lag model.",
-        column_filter=knut.is_numeric
+        column_filter=knut.is_numeric,
     )
 
     def configure(self, configure_context, input_schema, input_schema_2):
-        knut.columns_exist([self.geo_col], input_schema)
+        self.geo_col = knut.column_exists_or_preset(
+            configure_context, self.geo_col, input_schema, knut.is_geo
+        )
 
         return None
 
-    def execute(self, exec_context:knext.ExecutionContext, input_1, input_2):
+    def execute(self, exec_context: knext.ExecutionContext, input_1, input_2):
         gdf = gp.GeoDataFrame(input_1.to_pandas(), geometry=self.geo_col)
         adjust_list = input_2.to_pandas()
         w = W.from_adjlist(adjust_list)
-        #Prepare Georgia dataset inputs
+        # Prepare Georgia dataset inputs
         X = gdf[self.independent_variables].values
         y = gdf[self.dependent_variable].values
-        
-        model = spreg.ML_Lag(y, X, w, method='ord')
 
-        results = pd.DataFrame([model.name_x, model.betas, model.std_err, model.z_stat] ).T
+        model = spreg.ML_Lag(y, X, w, method="ord")
+
+        results = pd.DataFrame(
+            [model.name_x, model.betas, model.std_err, model.z_stat]
+        ).T
         results.columns = ["Variable", "Coefficient", "Std.Error", "Z-Statistic"]
-        results.loc[:,"Coefficient"] = results.loc[:,"Coefficient"].map(lambda x: x[0])
-        results.loc[:,"Probability"] = results.loc[:,"Z-Statistic"].map(lambda x: x[1])
-        results.loc[:,"Z-Statistic"] = results.loc[:,"Z-Statistic"].map(lambda x: x[0])
-        # 
-        results.loc[:,"Coefficient"] = results.loc[:,"Coefficient"].map(lambda x: round(x,7))
-        results.loc[:,"Std.Error"] = results.loc[:,"Std.Error"].map(lambda x: round(x,7))
-        results.loc[:,"Z-Statistic"] = results.loc[:,"Z-Statistic"].map(lambda x: round(x,7))
-        results.loc[:,"Probability"] = results.loc[:,"Probability"].map(lambda x: round(x,7))
-        results =  results.dropna()
+        results.loc[:, "Coefficient"] = results.loc[:, "Coefficient"].map(
+            lambda x: x[0]
+        )
+        results.loc[:, "Probability"] = results.loc[:, "Z-Statistic"].map(
+            lambda x: x[1]
+        )
+        results.loc[:, "Z-Statistic"] = results.loc[:, "Z-Statistic"].map(
+            lambda x: x[0]
+        )
+        #
+        results.loc[:, "Coefficient"] = results.loc[:, "Coefficient"].map(
+            lambda x: round(x, 7)
+        )
+        results.loc[:, "Std.Error"] = results.loc[:, "Std.Error"].map(
+            lambda x: round(x, 7)
+        )
+        results.loc[:, "Z-Statistic"] = results.loc[:, "Z-Statistic"].map(
+            lambda x: round(x, 7)
+        )
+        results.loc[:, "Probability"] = results.loc[:, "Probability"].map(
+            lambda x: round(x, 7)
+        )
+        results = results.dropna()
 
-        result2 = pd.DataFrame({"Pseudo R-squared ":model.pr2, "Spatial Pseudo R-squared":model.pr2_e, "Number of Observations":model.n, "Number of Variables":model.k}, index=[0])
+        result2 = pd.DataFrame(
+            {
+                "Pseudo R-squared ": model.pr2,
+                "Spatial Pseudo R-squared": model.pr2_e,
+                "Number of Observations": model.n,
+                "Number of Variables": model.k,
+            },
+            index=[0],
+        )
         result2 = result2.round(7)
 
+        html = """<p><pre>%s</pre>""" % model.summary.replace("\n", "<br/>")
 
-        html = """<p><pre>%s</pre>"""% model.summary.replace("\n", "<br/>")
-
-        return knext.Table.from_pandas(result2),knext.Table.from_pandas(results),knext.view_html(html)
-
+        return (
+            knext.Table.from_pandas(result2),
+            knext.Table.from_pandas(results),
+            knext.view_html(html),
+        )
 
 
 ############################################
 # spatial ML_Error node
 ############################################
+
 
 @knext.node(
     name="Spatial Error Model",
@@ -974,40 +1169,68 @@ class SpatialML_Error:
     independent_variables = knext.MultiColumnParameter(
         "Independent variables",
         "The columns containing the independent variables to use for the calculation of the spatial ML_Error model.",
-        column_filter=knut.is_numeric
+        column_filter=knut.is_numeric,
     )
 
     def configure(self, configure_context, input_schema, input_schema_2):
-        knut.columns_exist([self.geo_col], input_schema)
+        self.geo_col = knut.column_exists_or_preset(
+            configure_context, self.geo_col, input_schema, knut.is_geo
+        )
 
         return None
 
-    def execute(self, exec_context:knext.ExecutionContext, input_1, input_2):
+    def execute(self, exec_context: knext.ExecutionContext, input_1, input_2):
         gdf = gp.GeoDataFrame(input_1.to_pandas(), geometry=self.geo_col)
         adjust_list = input_2.to_pandas()
         w = W.from_adjlist(adjust_list)
-        #Prepare Georgia dataset inputs
+        # Prepare Georgia dataset inputs
         X = gdf[self.independent_variables].values
         y = gdf[self.dependent_variable].values
-        
-        model = spreg.ML_Error(y, X, w, method='ord')
 
-        results = pd.DataFrame([model.name_x, model.betas, model.std_err, model.z_stat] ).T
+        model = spreg.ML_Error(y, X, w, method="ord")
+
+        results = pd.DataFrame(
+            [model.name_x, model.betas, model.std_err, model.z_stat]
+        ).T
         results.columns = ["Variable", "Coefficient", "Std.Error", "Z-Statistic"]
-        results.loc[:,"Coefficient"] = results.loc[:,"Coefficient"].map(lambda x: x[0])
-        results.loc[:,"Probability"] = results.loc[:,"Z-Statistic"].map(lambda x: x[1])
-        results.loc[:,"Z-Statistic"] = results.loc[:,"Z-Statistic"].map(lambda x: x[0])
-        # 
-        results.loc[:,"Coefficient"] = results.loc[:,"Coefficient"].map(lambda x: round(x,7))
-        results.loc[:,"Std.Error"] = results.loc[:,"Std.Error"].map(lambda x: round(x,7))
-        results.loc[:,"Z-Statistic"] = results.loc[:,"Z-Statistic"].map(lambda x: round(x,7))
-        results.loc[:, "Probability"] = results.loc[:, "Probability"].map(lambda x: round(x, 7))
-        results =  results.dropna()
+        results.loc[:, "Coefficient"] = results.loc[:, "Coefficient"].map(
+            lambda x: x[0]
+        )
+        results.loc[:, "Probability"] = results.loc[:, "Z-Statistic"].map(
+            lambda x: x[1]
+        )
+        results.loc[:, "Z-Statistic"] = results.loc[:, "Z-Statistic"].map(
+            lambda x: x[0]
+        )
+        #
+        results.loc[:, "Coefficient"] = results.loc[:, "Coefficient"].map(
+            lambda x: round(x, 7)
+        )
+        results.loc[:, "Std.Error"] = results.loc[:, "Std.Error"].map(
+            lambda x: round(x, 7)
+        )
+        results.loc[:, "Z-Statistic"] = results.loc[:, "Z-Statistic"].map(
+            lambda x: round(x, 7)
+        )
+        results.loc[:, "Probability"] = results.loc[:, "Probability"].map(
+            lambda x: round(x, 7)
+        )
+        results = results.dropna()
 
-        result2 = pd.DataFrame({"Pseudo R-squared ":model.pr2, "Number of Observations":model.n, "Number of Variables":model.k}, index=[0])
+        result2 = pd.DataFrame(
+            {
+                "Pseudo R-squared ": model.pr2,
+                "Number of Observations": model.n,
+                "Number of Variables": model.k,
+            },
+            index=[0],
+        )
         result2 = result2.round(7)
 
+        html = """<p><pre>%s</pre>""" % model.summary.replace("\n", "<br/>")
 
-        html = """<p><pre>%s</pre>"""% model.summary.replace("\n", "<br/>")
-
-        return knext.Table.from_pandas(result2),knext.Table.from_pandas(results),knext.view_html(html)
+        return (
+            knext.Table.from_pandas(result2),
+            knext.Table.from_pandas(results),
+            knext.view_html(html),
+        )

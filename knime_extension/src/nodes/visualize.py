@@ -312,7 +312,9 @@ class ViewNode:
     )
 
     def configure(self, configure_context, input_schema):
-        knut.columns_exist([self.geo_col], input_schema)
+        self.geo_col = knut.column_exists_or_preset(
+            configure_context, self.geo_col, input_schema, knut.is_geo
+        )
         # if self.name_cols is None:
         #     self.name_cols = [c.name for c in input_schema if knut.is_string(c)]
         return None
@@ -723,7 +725,9 @@ class ViewNodeStatic:
     )
 
     def configure(self, configure_context, input_schema):
-        knut.columns_exist([self.geo_col], input_schema)
+        self.geo_col = knut.column_exists_or_preset(
+            configure_context, self.geo_col, input_schema, knut.is_geo
+        )
         # if self.name_cols is None:
         #     self.name_cols = [c.name for c in input_schema if knut.is_string(c)]
         return None
@@ -866,7 +870,9 @@ class ViewNodeKepler:
     )
 
     def configure(self, configure_context, input_schema):
-        knut.columns_exist([self.geo_col], input_schema)
+        self.geo_col = knut.column_exists_or_preset(
+            configure_context, self.geo_col, input_schema, knut.is_geo
+        )
         # if self.name_cols is None:
         #     self.name_cols = [c.name for c in input_schema if knut.is_string(c)]
         return None
