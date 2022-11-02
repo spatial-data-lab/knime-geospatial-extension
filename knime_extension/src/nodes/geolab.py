@@ -1524,3 +1524,118 @@ class HarvardDataVerseReadDataFile:
         else:            
             df = pd.read_csv(content_,encoding='utf8', sep="\t")
         return knext.Table.from_pandas(df)
+
+############################################
+# Harvard DataVerse Replace Data File Node
+############################################
+
+@knext.node(
+    name="Harvard DataVerse Data File Replacer",
+    node_type=knext.NodeType.SINK,
+    icon_path=__NODE_ICON_PATH + "DvFileReplacer.png",
+    category=__category,
+)
+@knext.input_table(
+    name="Input Table",
+    description="Input table of Harvard DataVerse Replace Data File",
+)
+class HarvardDataVerseReplaceDataFile:
+    """
+    Harvard DataVerse Replace Data File
+    """
+
+    # input parameters
+    dataFile_id_column = knext.ColumnParameter(
+        "DataFile ID Column",
+        "The column containing the DataFile ID of the dataset. ",
+    )
+
+    dataFile_name_column = knext.ColumnParameter(
+        "DataFile Name Column",
+        "The column containing the DataFile Name of the dataset. ",
+    )
+
+    upload_file_path = knext.StringParameter(
+        "Upload File Path",
+        "The path to the file to be uploaded. "
+    )
+
+    API_TOKEN = knext.StringParameter(
+        "API Token",
+        "The API Token for the Harvard DataVerse. "
+    )
+
+    def configure(self, configure_context, input_schema):
+                
+        return None
+
+    def execute(self, exec_context:knext.ExecutionContext, input_table):
+
+        base_url = 'https://dataverse.harvard.edu/'
+        api = NativeApi(base_url, self.API_TOKEN)
+        json_str = """{"description":"My description.","categories":["Data"],"forceReplace":true}"""
+
+
+        def check_need_replace(x,file_list):
+            a = False
+            if x.endswith(".tab"):
+                if x.split(".")[0] in file_list:
+                    a = True
+            return a
+        df = input_table.to_pandas()
+        file_list =  [file_name.split(".")[0] for file_name in os.listdir(self.upload_file_path)]
+        need_upload = df[df[self.dataFile_name_column].map(lambda x: check_need_replace(x,file_list) )]
+        
+            
+        for k,v in need_upload.iterrows():
+            remote_file_id = v["dataFile.id"]
+            local_file_path = input_path + v["dataFile.filename"].replace(".tab",".csv")
+            for i in range(60):
+                test = api.replace_datafile(remote_file_id, local_file_path,json_str,False)
+                if json.loads(test.content)["status"] != "ERROR":
+                    break
+                if json.loads(test.content)["message"]=='Error! You may not replace a file with a file that has duplicate content.':
+                    break
+                # print(json.loads(test.content))
+                time.sleep(1)
+                print("retry %d"%(i+1))
+
+        return None
+
+############################################
+# Harvard DataVerse Publish Node
+############################################
+
+@knext.node(
+    name="Harvard DataVerse Publish",
+    node_type=knext.NodeType.SINK,
+    icon_path=__NODE_ICON_PATH + "DvPublish.png",
+    category=__category,
+)
+
+class HarvardDataVersePublish:
+    """
+    Harvard DataVerse Publish
+    """
+
+    # input parameters
+    dataset_doi = knext.StringParameter(
+        "Dataset DOI",
+        "The DOI of the dataset to be published. ",
+    )
+        
+    API_TOKEN = knext.StringParameter(
+        "API Token",
+        "The API Token for the Harvard DataVerse. "
+    )
+
+    def configure(self, configure_context):
+                
+        return None
+
+    def execute(self, exec_context:knext.ExecutionContext):
+
+        base_url = 'https://dataverse.harvard.edu/'
+        api = NativeApi(base_url, self.API_TOKEN)
+        api.publish_dataset(pid=self.dataset_doi,release_type = "major")
+        return None
