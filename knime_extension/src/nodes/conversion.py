@@ -102,7 +102,9 @@ class _ToGeoConverter:
 
     def configure(self, configure_context, input_schema):
         # input_column and crs need to be defined in the child class
-        knut.column_exists(self.input_column, input_schema, self.column_type_check)
+        self.input_column = knut.column_exists_or_preset(
+            configure_context, self.input_column, input_schema, self.column_type_check
+        )
         # check that the output column does NOT exist to prevent overwriting
         knut.fail_if_column_exists(
             self.DEF_GEO_COL_NAME,
@@ -169,37 +171,38 @@ class WKTtoGeoNode(_ToGeoConverter):
 ############################################
 # WKB to Geometry
 ############################################
-@knext.node(
-    name="WKB to Geometry",
-    node_type=knext.NodeType.MANIPULATOR,
-    icon_path=__NODE_ICON_PATH + "WKBtoGeo.png",
-    category=__category,
-)
-@knut.geo_node_description(
-    short_description="Converts the input Well-known-binary (WKB) column to a geometry column.",
-    description="""This node converts the selected 
-    [Well-known-binary (WKB)](https://en.wikipedia.org/wiki/Well-known_text_representation_of_geometry) input column to 
-    a geometry column in the units of the provided CRS.
-    """,
-    references={
-        "From WKB": "https://geopandas.org/en/stable/docs/reference/api/geopandas.GeoSeries.from_wkb.html",
-        "CRS parser from pyproj": "https://pyproj4.github.io/pyproj/stable/api/crs/crs.html#pyproj.crs.CRS.from_user_input",
-    },
-)
-class WKBtoGeoNode(_ToGeoConverter):
+# binary data cells not supported yet in the KNIME Python Extension
+# @knext.node(
+#     name="WKB to Geometry",
+#     node_type=knext.NodeType.MANIPULATOR,
+#     icon_path=__NODE_ICON_PATH + "WKBtoGeo.png",
+#     category=__category,
+# )
+# @knut.geo_node_description(
+#     short_description="Converts the input Well-known-binary (WKB) column to a geometry column.",
+#     description="""This node converts the selected
+#     [Well-known-binary (WKB)](https://en.wikipedia.org/wiki/Well-known_text_representation_of_geometry) input column to
+#     a geometry column in the units of the provided CRS.
+#     """,
+#     references={
+#         "From WKB": "https://geopandas.org/en/stable/docs/reference/api/geopandas.GeoSeries.from_wkb.html",
+#         "CRS parser from pyproj": "https://pyproj4.github.io/pyproj/stable/api/crs/crs.html#pyproj.crs.CRS.from_user_input",
+#     },
+# )
+# class WKBtoGeoNode(_ToGeoConverter):
 
-    input_column = knext.ColumnParameter(
-        label="WKB Column",
-        description="[Well-known-binary (WKB)](https://en.wikipedia.org/wiki/Well-known_text_representation_of_geometry) column to convert",
-        column_filter=knut.is_binary,
-        include_row_key=False,
-        include_none_column=False,
-    )
+#     input_column = knext.ColumnParameter(
+#         label="WKB Column",
+#         description="[Well-known-binary (WKB)](https://en.wikipedia.org/wiki/Well-known_text_representation_of_geometry) column to convert",
+#         column_filter=knut.is_binary,
+#         include_row_key=False,
+#         include_none_column=False,
+#     )
 
-    crs = crs_input_parameter()
+#     crs = crs_input_parameter()
 
-    def __init__(self):
-        super().__init__(lambda df, col: gp.GeoSeries.from_wkb(df[col]), knut.is_binary)
+#     def __init__(self):
+#         super().__init__(lambda df, col: gp.GeoSeries.from_wkb(df[col]), knut.is_binary)
 
 
 ############################################
@@ -363,7 +366,9 @@ class _FromGeoConverter:
 
     def configure(self, configure_context, input_schema):
         # geo_column needs to be defined in the child class
-        knut.geo_column_exists(self.geo_column, input_schema)
+        self.geo_column = knut.column_exists_or_preset(
+            configure_context, self.geo_column, input_schema, knut.is_geo
+        )
         # check that the output column does NOT exist to prevent overwriting
         knut.fail_if_column_exists(
             self.column_name,
@@ -421,33 +426,34 @@ class GeoToWKTNode(_FromGeoConverter):
 ############################################
 # Geometry to WKB
 ############################################
-@knext.node(
-    name="Geometry to WKB",
-    node_type=knext.NodeType.MANIPULATOR,
-    icon_path=__NODE_ICON_PATH + "GeoToWKB.png",
-    category=__category,
-)
-@knut.geo_node_description(
-    short_description="Converts the input geometry column to a Well-known-binary (WKB) column.",
-    description="""This node converts the selected geometry column into a 
-    [Well-known-binary (WKB)](https://en.wikipedia.org/wiki/Well-known_text_representation_of_geometry) column.
-    """,
-    references={
-        "To WKB": "https://geopandas.org/en/stable/docs/reference/api/geopandas.GeoDataFrame.to_wkb.html"
-    },
-)
-class GeoToWKBNode(_FromGeoConverter):
+# binary data cells not supported yet in the KNIME Python Extension
+# @knext.node(
+#     name="Geometry to WKB",
+#     node_type=knext.NodeType.MANIPULATOR,
+#     icon_path=__NODE_ICON_PATH + "GeoToWKB.png",
+#     category=__category,
+# )
+# @knut.geo_node_description(
+#     short_description="Converts the input geometry column to a Well-known-binary (WKB) column.",
+#     description="""This node converts the selected geometry column into a
+#     [Well-known-binary (WKB)](https://en.wikipedia.org/wiki/Well-known_text_representation_of_geometry) column.
+#     """,
+#     references={
+#         "To WKB": "https://geopandas.org/en/stable/docs/reference/api/geopandas.GeoDataFrame.to_wkb.html"
+#     },
+# )
+# class GeoToWKBNode(_FromGeoConverter):
 
-    geo_column = knut.geo_col_parameter(
-        description="Geometry column to convert to [Well-known-binary (WKB)](https://en.wikipedia.org/wiki/Well-known_text_representation_of_geometry)"
-    )
+#     geo_column = knut.geo_col_parameter(
+#         description="Geometry column to convert to [Well-known-binary (WKB)](https://en.wikipedia.org/wiki/Well-known_text_representation_of_geometry)"
+#     )
 
-    def __init__(self):
-        super().__init__(
-            "WKB",
-            knext.blob(),
-            lambda gs: gs.to_wkb(),
-        )
+#     def __init__(self):
+#         super().__init__(
+#             "WKB",
+#             knext.blob(),
+#             lambda gs: gs.to_wkb(),
+#         )
 
 
 ############################################
@@ -533,7 +539,9 @@ class GeoToLatLongNode:
     col_lon = "lon"
 
     def configure(self, configure_context, input_schema_1):
-        knut.column_exists(self.geo_col, input_schema_1, knut.is_geo_point)
+        self.geo_col = knut.column_exists_or_preset(
+            configure_context, self.geo_col, input_schema_1, knut.is_geo_point
+        )
         knut.fail_if_column_exists(
             self.col_lat,
             input_schema_1,

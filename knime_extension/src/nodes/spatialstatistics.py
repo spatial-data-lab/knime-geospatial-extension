@@ -41,7 +41,6 @@ __NODE_ICON_PATH = "icons/icon/SpatialStatistics/"
     icon_path=__NODE_ICON_PATH + "SpatialWeight.png",
     category=__category,
 )
-
 @knext.input_table(name="Geo table", description="Table with geometry column")
 @knext.output_table(name="Spatial Weights", description="Spatial Weights")
 class spatialWeights:
@@ -129,7 +128,9 @@ class spatialWeights:
     # li = knext.ColumnParameter()
 
     def configure(self, configure_context, input_schema_1):
-        knut.column_exists(self.geo_col, input_schema_1)
+        self.geo_col = knut.column_exists_or_preset(
+            configure_context, self.geo_col, input_schema_1, knut.is_geo
+        )
         return input_schema_1
 
     def execute(self, exec_context: knext.ExecutionContext, input_1):
@@ -198,10 +199,12 @@ class spatialWeights:
 
         return knext.Table.from_pandas(out)
 
+
 ############################################
 # Global Moran's I node
 ############################################
-# 
+#
+
 
 @knext.node(
     name="Global Moran's I",
@@ -212,12 +215,10 @@ class spatialWeights:
 @knext.input_table(
     name="Input Table",
     description="Input table for calculation of Global Moran's I",
-
 )
 @knext.input_table(
     name="Spatial Weights",
     description="Spatial Weights table for calculation of Global Moran's I",
-
 )
 @knext.output_table(
     name="Output Table",
@@ -245,7 +246,6 @@ class GlobalMoransI:
         include_row_key=False,
         include_none_column=False,
     )
-    
 
     Field_col = knext.ColumnParameter(
         "Field column",
@@ -253,13 +253,14 @@ class GlobalMoransI:
         column_filter=knut.is_numeric,
         include_none_column=False,
     )
-   
 
     def configure(self, configure_context, input_schema_1, input_schema_2):
-        knut.columns_exist([self.geo_col], input_schema_1)
+        self.geo_col = knut.column_exists_or_preset(
+            configure_context, self.geo_col, input_schema_1, knut.is_geo
+        )
         return None
 
-    def execute(self, exec_context:knext.ExecutionContext, input_1, input_2):
+    def execute(self, exec_context: knext.ExecutionContext, input_1, input_2):
 
         gdf = gp.GeoDataFrame(input_1.to_pandas(), geometry=self.geo_col)
         adjust_list = input_2.to_pandas()
@@ -271,15 +272,13 @@ class GlobalMoransI:
         result = {"Moran's I": mi.I, "p-value": mi.p_norm, "z-score": mi.z_norm}
         out = pd.DataFrame(result, index=[0])
 
-        
         ax = sbn.kdeplot(mi.sim, shade=True)
-        plt.vlines(mi.I, 0, 1, color='r')
-        plt.vlines(mi.EI, 0,1)
+        plt.vlines(mi.I, 0, 1, color="r")
+        plt.vlines(mi.EI, 0, 1)
         plt.xlabel("Moran's I")
 
+        return knext.Table.from_pandas(out), knext.view_matplotlib(ax.get_figure())
 
-
-        return knext.Table.from_pandas(out),knext.view_matplotlib(ax.get_figure())
 
 ############################################
 # Local Moran's I node
@@ -296,12 +295,10 @@ class GlobalMoransI:
 @knext.input_table(
     name="Input Table",
     description="Input table for calculation of Local Moran's I",
-
 )
 @knext.input_table(
     name="Spatial Weights",
     description="Spatial Weights table for calculation of Local Moran's I",
-
 )
 @knext.output_table(
     name="Output Table",
@@ -329,7 +326,6 @@ class LocalMoransI:
         include_row_key=False,
         include_none_column=False,
     )
-    
 
     Field_col = knext.ColumnParameter(
         "Field column",
@@ -337,13 +333,14 @@ class LocalMoransI:
         column_filter=knut.is_numeric,
         include_none_column=False,
     )
-   
 
     def configure(self, configure_context, input_schema_1, input_schema_2):
-        knut.columns_exist([self.geo_col], input_schema_1)
+        self.geo_col = knut.column_exists_or_preset(
+            configure_context, self.geo_col, input_schema_1, knut.is_geo
+        )
         return None
 
-    def execute(self, exec_context:knext.ExecutionContext, input_1, input_2):
+    def execute(self, exec_context: knext.ExecutionContext, input_1, input_2):
 
         gdf = gp.GeoDataFrame(input_1.to_pandas(), geometry=self.geo_col)
         adjust_list = input_2.to_pandas()
@@ -353,54 +350,48 @@ class LocalMoransI:
         np.random.seed(12345)
         li = esda.moran.Moran_Local(y, w)
 
-
-
-
         # gdf.loc[:,"spots_type"] = gdf["spots_type"].fillna("Not Significant")
 
-        gdf.loc[:,"Moran's I"] = li.Is
-        gdf.loc[:,"p-value"] = li.p_sim
-        gdf.loc[:,"z-score"] = li.z_sim
-        gdf.loc[:,"spots"] = li.q
+        gdf.loc[:, "Moran's I"] = li.Is
+        gdf.loc[:, "p-value"] = li.p_sim
+        gdf.loc[:, "z-score"] = li.z_sim
+        gdf.loc[:, "spots"] = li.q
 
-        gdf.loc[:,"spots_type"] = gdf["spots"].replace({1: "HH", 2: "LL", 3: "LH", 4: "HL"})
-        gdf.loc[gdf["p-value"] < 0.05,"spots_type"] = "Not Significant"
+        gdf.loc[:, "spots_type"] = gdf["spots"].replace(
+            {1: "HH", 2: "LL", 3: "LH", 4: "HL"}
+        )
+        gdf.loc[gdf["p-value"] < 0.05, "spots_type"] = "Not Significant"
         # out = pd.merge(gdf, out, left_index=True, right_index=True)
-   
-
-
 
         lag_index = lps.weights.lag_spatial(w, gdf[self.Field_col])
         index_v = gdf[self.Field_col]
         b, a = np.polyfit(index_v, lag_index, 1)
         f, ax = plt.subplots(1, figsize=(9, 9))
 
-        plt.plot(index_v, lag_index, '.', color='firebrick')
+        plt.plot(index_v, lag_index, ".", color="firebrick")
 
         # dashed vert at mean of the index_v
-        plt.vlines(index_v.mean(), lag_index.min(), lag_index.max(), linestyle='--')
-        # dashed horizontal at mean of lagged index_v 
-        plt.hlines(lag_index.mean(), index_v.min(), index_v.max(), linestyle='--')
+        plt.vlines(index_v.mean(), lag_index.min(), lag_index.max(), linestyle="--")
+        # dashed horizontal at mean of lagged index_v
+        plt.hlines(lag_index.mean(), index_v.min(), index_v.max(), linestyle="--")
 
         # red line of best fit using global I as slope
-        plt.plot(index_v, a + b*index_v, 'r')
-        plt.title('Moran Scatterplot')
-        plt.ylabel('Spatial Lag of %s' % self.Field_col)
-        plt.xlabel('%s' % self.Field_col)
-        
+        plt.plot(index_v, a + b * index_v, "r")
+        plt.title("Moran Scatterplot")
+        plt.ylabel("Spatial Lag of %s" % self.Field_col)
+        plt.xlabel("%s" % self.Field_col)
+
         # out.drop(columns=[self.geo_col], inplace=True)
         # out.reset_index(inplace=True)
-        
-        
+
         # return knext.Table.from_pandas(out)
         return knext.Table.from_pandas(gdf), knext.view_matplotlib(f)
-  
-
 
 
 ############################################
 # Global  Geary’s C node
 ############################################
+
 
 @knext.node(
     name="Global Geary’s C",
@@ -412,12 +403,10 @@ class LocalMoransI:
 @knext.input_table(
     name="Input Table",
     description="Input table for calculation of Global Geary’s C",
-
 )
 @knext.input_table(
     name="Spatial Weights",
     description="Spatial Weights table for calculation of Global Geary’s C",
-
 )
 @knext.output_table(
     name="Output Table",
@@ -445,7 +434,6 @@ class GlobalGearysC:
         include_row_key=False,
         include_none_column=False,
     )
-    
 
     Field_col = knext.ColumnParameter(
         "Field column",
@@ -453,13 +441,14 @@ class GlobalGearysC:
         column_filter=knut.is_numeric,
         include_none_column=False,
     )
-   
 
     def configure(self, configure_context, input_schema_1, input_schema_2):
-        knut.columns_exist([self.geo_col], input_schema_1)
+        self.geo_col = knut.column_exists_or_preset(
+            configure_context, self.geo_col, input_schema_1, knut.is_geo
+        )
         return None
 
-    def execute(self, exec_context:knext.ExecutionContext, input_1, input_2):
+    def execute(self, exec_context: knext.ExecutionContext, input_1, input_2):
 
         gdf = gp.GeoDataFrame(input_1.to_pandas(), geometry=self.geo_col)
         adjust_list = input_2.to_pandas()
@@ -469,19 +458,23 @@ class GlobalGearysC:
         np.random.seed(12345)
         gc = esda.geary.Geary(y, w)
 
-        out = pd.DataFrame({"Geary's C": [gc.C], "p-value": [gc.p_sim], "z-score": [gc.z_sim]})        
+        out = pd.DataFrame(
+            {"Geary's C": [gc.C], "p-value": [gc.p_sim], "z-score": [gc.z_sim]}
+        )
         out.reset_index(inplace=True)
-        
+
         ax = sbn.kdeplot(gc.sim, shade=True)
         plt.vlines(gc.C, 0, 1, color="r")
         plt.vlines(gc.EC, 0, 1)
         plt.xlabel("Geary's C")
-        
-        return knext.Table.from_pandas(out),knext.view_matplotlib(ax.get_figure())
+
+        return knext.Table.from_pandas(out), knext.view_matplotlib(ax.get_figure())
+
 
 ############################################
 # Global Getis-Ord node
 ############################################
+
 
 @knext.node(
     name="Global Getis-Ord G",
@@ -493,12 +486,10 @@ class GlobalGearysC:
 @knext.input_table(
     name="Input Table",
     description="Input table for calculation of Global Getis-Ord",
-
 )
 @knext.input_table(
     name="Spatial Weights",
     description="Spatial Weights table for calculation of Global Getis-Ord",
-
 )
 @knext.output_table(
     name="Output Table",
@@ -526,7 +517,6 @@ class GlobalGetisOrd:
         include_row_key=False,
         include_none_column=False,
     )
-    
 
     Field_col = knext.ColumnParameter(
         "Field column",
@@ -534,13 +524,14 @@ class GlobalGetisOrd:
         column_filter=knut.is_numeric,
         include_none_column=False,
     )
-   
 
     def configure(self, configure_context, input_schema_1, input_schema_2):
-        knut.columns_exist([self.geo_col], input_schema_1)
+        self.geo_col = knut.column_exists_or_preset(
+            configure_context, self.geo_col, input_schema_1, knut.is_geo
+        )
         return None
 
-    def execute(self, exec_context:knext.ExecutionContext, input_1, input_2):
+    def execute(self, exec_context: knext.ExecutionContext, input_1, input_2):
 
         gdf = gp.GeoDataFrame(input_1.to_pandas(), geometry=self.geo_col)
         adjust_list = input_2.to_pandas()
@@ -550,19 +541,23 @@ class GlobalGetisOrd:
         np.random.seed(12345)
         go = esda.getisord.G(y, w)
 
-        out = pd.DataFrame({"Getis-Ord G": [go.G], "p-value": [go.p_sim], "z-score": [go.z_sim]})        
+        out = pd.DataFrame(
+            {"Getis-Ord G": [go.G], "p-value": [go.p_sim], "z-score": [go.z_sim]}
+        )
         out.reset_index(inplace=True)
-        
+
         ax = sbn.kdeplot(go.sim, shade=True)
         plt.vlines(go.G, 0, 1, color="r")
         plt.vlines(go.EG, 0, 1)
         plt.xlabel("Getis-Ord G")
-        
-        return knext.Table.from_pandas(out),knext.view_matplotlib(ax.get_figure())
+
+        return knext.Table.from_pandas(out), knext.view_matplotlib(ax.get_figure())
+
 
 ############################################
 # Local Getis-Ord node
 ############################################
+
 
 @knext.node(
     name="Local Getis-Ord G",
@@ -574,12 +569,10 @@ class GlobalGetisOrd:
 @knext.input_table(
     name="Input Table",
     description="Input table for calculation of Local Getis-Ord",
-
 )
 @knext.input_table(
     name="Spatial Weights",
     description="Spatial Weights table for calculation of Local Getis-Ord",
-
 )
 @knext.output_table(
     name="Output Table",
@@ -594,7 +587,6 @@ class GlobalGetisOrd:
     name="output view",
     description="Output view of Local Getis-Ord",
 )
-
 class LocalGetisOrd:
     """
     Local Getis-Ord
@@ -608,7 +600,6 @@ class LocalGetisOrd:
         include_row_key=False,
         include_none_column=False,
     )
-    
 
     Field_col = knext.ColumnParameter(
         "Field column",
@@ -616,13 +607,14 @@ class LocalGetisOrd:
         column_filter=knut.is_numeric,
         include_none_column=False,
     )
-   
 
     def configure(self, configure_context, input_schema_1, input_schema_2):
-        knut.columns_exist([self.geo_col], input_schema_1)
+        self.geo_col = knut.column_exists_or_preset(
+            configure_context, self.geo_col, input_schema_1, knut.is_geo
+        )
         return None
 
-    def execute(self, exec_context:knext.ExecutionContext, input_1, input_2):
+    def execute(self, exec_context: knext.ExecutionContext, input_1, input_2):
 
         gdf = gp.GeoDataFrame(input_1.to_pandas(), geometry=self.geo_col)
         adjust_list = input_2.to_pandas()
@@ -638,17 +630,16 @@ class LocalGetisOrd:
 
         lag_index = lps.weights.lag_spatial(w, gdf[self.Field_col])
         index_v = gdf[self.Field_col]
-        b,a = np.polyfit(index_v, lag_index, 1)
+        b, a = np.polyfit(index_v, lag_index, 1)
         f, ax = plt.subplots(1, figsize=(9, 9))
 
-        plt.plot(index_v, lag_index, '.', color='firebrick') 
-        plt.vlines(index_v.mean(), lag_index.min(), lag_index.max(),linestyle='--')
-        plt.hlines(lag_index.mean(), index_v.min(), index_v.max(),linestyle='--')
+        plt.plot(index_v, lag_index, ".", color="firebrick")
+        plt.vlines(index_v.mean(), lag_index.min(), lag_index.max(), linestyle="--")
+        plt.hlines(lag_index.mean(), index_v.min(), index_v.max(), linestyle="--")
 
-        plt.plot(index_v, a + b*index_v, 'r')
+        plt.plot(index_v, a + b * index_v, "r")
         plt.xlabel(self.Field_col)
         plt.ylabel("Spatial Lag of " + self.Field_col)
         plt.title("Local Getis-Ord G Scatterplot")
 
-        return knext.Table.from_pandas(gdf),knext.view_matplotlib(f)
-
+        return knext.Table.from_pandas(gdf), knext.view_matplotlib(f)

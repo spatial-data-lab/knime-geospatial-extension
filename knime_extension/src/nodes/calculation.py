@@ -57,7 +57,9 @@ class _SingleCalculator:
 
     def configure(self, configure_context, input_schema):
         # geo_col needs to be defined in the child class
-        knut.geo_column_exists(self.geo_col, input_schema)
+        self.geo_col = knut.column_exists_or_preset(
+            configure_context, self.geo_col, input_schema, knut.is_geo
+        )
         return input_schema.append(knext.Column(self.coltype, self.col_name))
 
     def execute(self, exec_context, input_table):
@@ -162,7 +164,9 @@ class BoundsNode:
     )
 
     def configure(self, configure_context, input_schema_1):
-        knut.geo_column_exists(self.geo_col, input_schema_1)
+        self.geo_col = knut.column_exists_or_preset(
+            configure_context, self.geo_col, input_schema_1, knut.is_geo
+        )
         return input_schema_1.append(
             [
                 knext.Column(knext.double(), "minx"),
@@ -215,7 +219,9 @@ class TotalBoundsNode:
     col_max_y = "maxy"
 
     def configure(self, configure_context, input_schema_1):
-        knut.geo_column_exists(self.geo_col, input_schema_1)
+        self.geo_col = knut.column_exists_or_preset(
+            configure_context, self.geo_col, input_schema_1, knut.is_geo
+        )
         return knext.Schema.from_columns(
             [
                 knext.Column(knext.double(), self.col_min_x),
@@ -279,7 +285,9 @@ class CoordinatesNode:
     col_z = "z"
 
     def configure(self, configure_context, input_schema_1):
-        knut.column_exists(self.geo_col, input_schema_1, knut.is_geo_point)
+        self.geo_col = knut.column_exists_or_preset(
+            configure_context, self.geo_col, input_schema_1, knut.is_geo_point
+        )
         result = input_schema_1.append(
             [
                 knext.Column(knext.double(), self.col_x),
@@ -298,7 +306,7 @@ class CoordinatesNode:
         if self.add_z:
             gdf[self.col_z] = gs.z
         return knut.to_table(gdf, exec_context)
-    
+
 
 ############################################
 # Bounding Box
@@ -334,7 +342,9 @@ class BoundingBoxNode:
     )
 
     def configure(self, configure_context, input_schema_1):
-        knut.column_exists(self.geo_col, input_schema_1)
+        self.geo_col = knut.column_exists_or_preset(
+            configure_context, self.geo_col, input_schema_1, knut.is_geo
+        )
         return input_schema_1
 
     def execute(self, exec_context: knext.ExecutionContext, input_1):
@@ -344,7 +354,6 @@ class BoundingBoxNode:
         )
         gdf["geometry"] = gdf.envelope
         exec_context.set_progress(0.1, "Transformation done")
-        LOGGER.debug("Feature converted to BoundingBox")
         return knext.Table.from_pandas(gdf)
 
 
@@ -382,7 +391,9 @@ class ConvexHullNode:
     )
 
     def configure(self, configure_context, input_schema_1):
-        knut.column_exists(self.geo_col, input_schema_1)
+        self.geo_col = knut.column_exists_or_preset(
+            configure_context, self.geo_col, input_schema_1, knut.is_geo
+        )
         return input_schema_1
 
     def execute(self, exec_context: knext.ExecutionContext, input_1):
@@ -392,7 +403,6 @@ class ConvexHullNode:
         )
         gdf["geometry"] = gdf.convex_hull
         exec_context.set_progress(0.1, "Transformation done")
-        LOGGER.debug("Feature converted to ConvexHull")
         return knext.Table.from_pandas(gdf)
 
 
@@ -430,7 +440,9 @@ class UnaryUnionNode:
     )
 
     def configure(self, configure_context, input_schema_1):
-        knut.column_exists(self.geo_col, input_schema_1)
+        self.geo_col = knut.column_exists_or_preset(
+            configure_context, self.geo_col, input_schema_1, knut.is_geo
+        )
         return input_schema_1
 
     def execute(self, exec_context: knext.ExecutionContext, input_1):
@@ -441,5 +453,4 @@ class UnaryUnionNode:
         gdf_union = gdf.unary_union
         gdfunion = gp.GeoDataFrame(geometry=gp.GeoSeries(gdf_union), crs=gdf.crs)
         exec_context.set_progress(0.1, "Transformation done")
-        LOGGER.debug("Feature converted to ConvexHull")
-        return knext.Table.from_pandas(gdfunion)    
+        return knext.Table.from_pandas(gdfunion)

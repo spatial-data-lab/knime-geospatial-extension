@@ -14,7 +14,7 @@ LOGGER = logging.getLogger(__name__)
 category = knext.category(
     path="/geo",
     level_id="viz",
-    name="Spatial Visualization",#Spatial Visualization
+    name="Spatial Visualization",  # Spatial Visualization
     description="Spatial view nodes",
     # starting at the root folder of the extension_module parameter in the knime.yml file
     icon="icons/icon/VisulizationCategory.png",
@@ -293,7 +293,9 @@ class ViewNode:
     )
 
     def configure(self, configure_context, input_schema):
-        knut.columns_exist([self.geo_col], input_schema)
+        self.geo_col = knut.column_exists_or_preset(
+            configure_context, self.geo_col, input_schema, knut.is_geo
+        )
         # if self.name_cols is None:
         #     self.name_cols = [c.name for c in input_schema if knut.is_string(c)]
         return None
@@ -379,7 +381,7 @@ class ViewNode:
             geo_types = gdf["geometry"].geom_type.unique()
             if ("LineString" in geo_types) or ("MultiLineString" in geo_types):
                 kws["style_kwds"] = {"weight": self.size_scale}
-            elif  ("Polygon" in geo_types) or ("MultiPolygon" in geo_types):
+            elif ("Polygon" in geo_types) or ("MultiPolygon" in geo_types):
                 pass
             else:
                 kws["style_kwds"] = {"radius": self.size_scale}
@@ -387,7 +389,7 @@ class ViewNode:
             if "style_kwds" in kws:
                 kws["style_kwds"]["stroke"] = False
             else:
-                kws["style_kwds"] = {"stroke":False}
+                kws["style_kwds"] = {"stroke": False}
         map = gdf.explore(**kws)
         # knut.check_canceled(exec_context)
         return knext.view(map)
@@ -704,7 +706,9 @@ class ViewNodeStatic:
     )
 
     def configure(self, configure_context, input_schema):
-        knut.columns_exist([self.geo_col], input_schema)
+        self.geo_col = knut.column_exists_or_preset(
+            configure_context, self.geo_col, input_schema, knut.is_geo
+        )
         # if self.name_cols is None:
         #     self.name_cols = [c.name for c in input_schema if knut.is_string(c)]
         return None
@@ -737,7 +741,7 @@ class ViewNodeStatic:
         else:
             legend_expand = None
 
-        kws = {"alpha": 1, "legend": self.plot_legend,"aspect": 1}
+        kws = {"alpha": 1, "legend": self.plot_legend, "aspect": 1}
 
         if "none" not in str(self.edge_color):
             kws["edgecolor"] = self.edge_color
@@ -847,7 +851,9 @@ class ViewNodeKepler:
     )
 
     def configure(self, configure_context, input_schema):
-        knut.columns_exist([self.geo_col], input_schema)
+        self.geo_col = knut.column_exists_or_preset(
+            configure_context, self.geo_col, input_schema, knut.is_geo
+        )
         # if self.name_cols is None:
         #     self.name_cols = [c.name for c in input_schema if knut.is_string(c)]
         return None
