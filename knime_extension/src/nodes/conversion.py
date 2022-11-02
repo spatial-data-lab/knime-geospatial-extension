@@ -15,6 +15,7 @@ __category = knext.category(
     description="Nodes that perform conversions from/to geometric objects.",
     # starting at the root folder of the extension_module parameter in the knime.yml file
     icon="icons/icon/ConversionCategory.png",
+    after="transform",
 )
 
 # Root path for all node icons in this file

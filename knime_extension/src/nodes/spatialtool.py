@@ -1,6 +1,7 @@
 # lingbo
 import logging
 from typing import Callable
+from typing_extensions import Self
 import pandas as pd
 import geopandas as gp
 import knime_extension as knext
@@ -16,10 +17,28 @@ __category = knext.category(
     path="/geo",
     level_id="spatialtool",
     name="Spatial Manipulation",
-    description="Geospatial Tool nodes",
+    description="Geospatial manipulation nodes",
     # starting at the root folder of the extension_module parameter in the knime.yml file
     icon="icons/icon/SpatialToolCategory.png",
+    after="calculation",
 )
+
+
+class _JoinModes(knext.EnumParameterOptions):
+    INNER = ("Inner", "Retains only matching rows from both input tables.")
+    LEFT = (
+        "Left",
+        "Retains all rows form the left and only matching rows from the right input tables.",
+    )
+    RIGHT = (
+        "Right",
+        "Retains all rows form the right and only matching rows from the left input tables.",
+    )
+
+    @classmethod
+    def get_default(cls):
+        return cls.INNER
+
 
 ############################################
 # Buffer
@@ -137,7 +156,7 @@ class DissolveNode:
 
 
 @knext.node(
-    name="SpatialJoin",
+    name="Spatial Join",
     node_type=knext.NodeType.MANIPULATOR,
     icon_path=__NODE_ICON_PATH + "SpatialJoin.png",
     category=__category,
@@ -154,12 +173,63 @@ class DissolveNode:
     name="Joined geo table",
     description="Joined geo table",
 )
+@knut.geo_node_description(
+    short_description="Merges the two input tables based on their spatial relationship.",
+    description="""This node will merge the left (top) and the right (bottom) table based on their spatial relationship 
+    of the two selected columns to one another.
+    Both layers must be in the same Coordinate Reference System (CRS),otherwise,the CRS of right table will be 
+    transformed to that of the left table.
+    """,
+    references={
+        "Spatial Joins": "https://geopandas.org/en/stable/gallery/spatial_joins.html",
+        "Merging Data": "https://geopandas.org/en/stable/docs/user_guide/mergingdata.html#binary-predicate-joins",
+        "sjoin": "https://geopandas.org/en/stable/docs/reference/api/geopandas.sjoin.html",
+        "Predicates": "https://shapely.readthedocs.io/en/latest/manual.html#binary-predicates",
+    },
+)
 class SpatialJoinNode:
-    """
-    This node will merge the left (top) and the right (bottom) table based on their spatial relationship of the two
-    selected columns to one another.
-    Both layers must be in the same Coordinate Reference System (CRS),otherwise,the CRS of right table will be tranformed to that of the left table.
-    """
+    class MatchModes(knext.EnumParameterOptions):
+        CONTAINS = (
+            "Contains",
+            """Matches if no points of the right object lies in the exterior of the left object and at least one point 
+            of the interior of right object lies in the interior of the left object.""",
+        )
+        CONTAINS_PROPERLY = (
+            "Contains properly",
+            "Matches if the right object is completely inside the left object, with no common boundary points.",
+        )
+        COVERS = (
+            "Covers",
+            "Matches if every point of the right object is a point on the interior or boundary of the left object.",
+        )
+        CROSSES = (
+            "Crosses",
+            """Matches if the interior of the left object intersects the interior of the right object but does not 
+            contain it, and the dimension of the intersection is less than the dimension of the one or the other.""",
+        )
+        INTERSECTS = (
+            "Intersects",
+            "Matches if the boundary or interior of the left object intersect in any way with those of the right object.",
+        )
+        OVERLAPS = (
+            "Overlaps",
+            """Matches if the geometries have more than one but not all points in common, have the same dimension, and 
+            the intersection of the interiors of the geometries has the same dimension as the geometries themselves.""",
+        )
+        TOUCHES = (
+            "Touches",
+            """Matches if the objects have at least one point in common and their interiors do not intersect with any 
+            part of the other.""",
+        )
+        WITHIN = (
+            "Within",
+            """Matches if the left object's boundary and interior intersect only with the interior of the right object 
+            (not its boundary or exterior).""",
+        )
+
+        @classmethod
+        def get_default(cls):
+            return cls.INTERSECTS
 
     left_geo_col = knext.ColumnParameter(
         "Left geometry column",
@@ -181,52 +251,18 @@ class SpatialJoinNode:
         include_none_column=False,
     )
 
-    join_mode = knext.StringParameter(
+    join_mode = knext.EnumParameter(
         label="Join mode",
-        description="""<p>Available join modes are: 
-<ul>
-<li><b>inner:</b> retains only matching rows from both input tables.</li>
-<li><b>left:</b> retains all rows form the left and only matching rows from the right input tables.</li>
-<li><b>right:</b> retains all rows form the right and only matching rows from the left input tables.</li>
-</ul></p>
-""",
-        default_value="inner",
-        enum=["inner", "left", "right"],
+        description="The join mode determines of which input table the rows should be retained.",
+        default_value=_JoinModes.get_default().name,
+        enum=_JoinModes,
     )
 
-    match_mode = knext.StringParameter(
+    match_mode = knext.EnumParameter(
         label="Match mode",
-        description="""<p>Available modes are: 
-<ul>
-<li><b>contains:</b> Matches if no points of the right object lies in the exterior of the left object and at least 
-one point of the interior of right object lies in the interior of the left object.</li>
-<li><b>contains_properly:</b> Matches if the right object is completely inside the left object, with no common boundary 
-points.</li>
-<li><b>covers:</b> Matches if every point of the right object is a point on the interior or boundary of the left 
-object.</li>
-<li><b>crosses:</b> Matches if the interior of the left object intersects the interior of the right object but does 
-not contain it, and the dimension of the intersection is less than the dimension of the one or the other.</li>
-<li><b>intersects:</b> Matches if the boundary or interior of the left object intersect in any way with those of the 
-right object.</li>
-<li><b>overlaps:</b> Matches if the geometries have more than one but not all points in common, have the same dimension, 
-and the intersection of the interiors of the geometries has the same dimension as the geometries themselves.</li>
-<li><b>touches:</b> Matches if the objects have at least one point in common and their interiors do not intersect with 
-any part of the other.</li>
-<li><b>within:</b> Matches if the left object's boundary and interior intersect only with the interior of the right 
-object (not its boundary or exterior).</li>
-</ul></p>
-""",
-        default_value="intersects",
-        enum=[
-            "contains",
-            "contains_properly",
-            "covers",
-            "crosses",
-            "intersects",
-            "overlaps",
-            "touches",
-            "within",
-        ],
+        description="Defines which predicate is used for matching.",
+        default_value=MatchModes.get_default().name,
+        enum=MatchModes,
     )
 
     def configure(self, configure_context, left_input_schema, right_input_schema):
@@ -242,8 +278,13 @@ object (not its boundary or exterior).</li>
         )
         knut.check_canceled(exec_context)
         right_gdf = right_gdf.to_crs(left_gdf.crs)
-        gdf = left_gdf.sjoin(right_gdf, how=self.join_mode, predicate=self.match_mode)
-        gdf = gdf.reset_index(drop=True).drop(columns="index_right")
+        gdf = left_gdf.sjoin(
+            right_gdf, how=self.join_mode.lower(), predicate=self.match_mode.lower()
+        )
+        # reset the index since it might contain duplicates after joining
+        gdf.reset_index(drop=True, inplace=True)
+        # drop additional index columns if they exist
+        gdf.drop(["index_right", "index_left"], axis=1, errors="ignore", inplace=True)
         return knext.Table.from_pandas(gdf)
 
 
@@ -253,7 +294,7 @@ object (not its boundary or exterior).</li>
 
 
 @knext.node(
-    name="NearestJoin",
+    name="Nearest Join",
     node_type=knext.NodeType.MANIPULATOR,
     icon_path=__NODE_ICON_PATH + "NearestJoin.png",
     category=__category,
@@ -270,12 +311,20 @@ object (not its boundary or exterior).</li>
     name="Joined geo table",
     description="Joined geo table",
 )
+@knut.geo_node_description(
+    short_description="Merges the two input tables based on their spatial relationship.",
+    description="""This node will merge the left (top) and the right (bottom) table based on  the distance between 
+    their geometries of the two selected columns to one another. Distance is calculated in CRS units and is returned 
+    in the column NearDist. Both layers must be in the same Coordinate Reference System (CRS), otherwise, the CRS of
+    right table will be transformed to that of the left table.
+    """,
+    references={
+        "Spatial joins": "https://geopandas.org/en/stable/gallery/spatial_joins.html",
+        "Merging data": "https://geopandas.org/en/stable/docs/user_guide/mergingdata.html#nearest-joins",
+        "sjoin_nearest": "https://geopandas.org/en/stable/docs/reference/api/geopandas.sjoin_nearest.html",
+    },
+)
 class NearestJoinNode:
-    """
-    This node will merge the left (top) and the right (bottom) table based on  the distance between their geometries of the two
-    selected columns to one another. Distance is calculated in CRS units and is returned in the column NearDist.
-    Both layers must be in the same Coordinate Reference System (CRS),otherwise,the CRS of right table will be tranformed to that of the left table.
-    """
 
     left_geo_col = knext.ColumnParameter(
         "Left geometry column",
@@ -297,17 +346,11 @@ class NearestJoinNode:
         include_none_column=False,
     )
 
-    join_mode = knext.StringParameter(
+    join_mode = knext.EnumParameter(
         label="Join mode",
-        description="""<p>Available join modes are: 
-<ul>
-<li><b>inner:</b> use intersection of keys from both dfs; retain only left_df geometry column.</li>
-<li><b>left:</b> use keys from left_df; retain only left_df geometry column.</li>
-<li><b>right:</b> use keys from right_df; retain only right_df geometry column.</li>
-</ul></p>
-""",
-        default_value="inner",
-        enum=["inner", "left", "right"],
+        description="The join mode determines of which input table the rows should be retained.",
+        default_value=_JoinModes.get_default().name,
+        enum=_JoinModes,
     )
 
     maxdist = knext.DoubleParameter(
@@ -332,13 +375,16 @@ class NearestJoinNode:
         gdf = gp.sjoin_nearest(
             left_gdf,
             right_gdf,
-            how=self.join_mode,
+            how=self.join_mode.lower(),
             max_distance=self.maxdist,
             distance_col="NearDist",
             lsuffix="1",
             rsuffix="2",
         )
-        gdf = gdf.reset_index(drop=True).drop(columns="index_2")
+        # reset the index since it might contain duplicates after joining
+        gdf.reset_index(drop=True, inplace=True)
+        # drop additional index columns if they exist
+        gdf.drop(["index_1", "index_2"], axis=1, errors="ignore", inplace=True)
         return knext.Table.from_pandas(gdf)
 
 
@@ -368,9 +414,10 @@ class NearestJoinNode:
 class ClipNode:
     """
     This node will clip target geometries to the mask extent.
-    Both layers must be in the same Coordinate Reference System (CRS),otherwise, the CRS of right table will be tranformed to that of the left table.
-    The gdf will be clipped to the full extent of the clip object.
-    If there are multiple polygons in Mask geometry, data from Target geometry will be clipped to the total boundary of all polygons in Mask.
+    Both layers must be in the same Coordinate Reference System (CRS),otherwise, the CRS of right table will be
+    transformed to that of the left table. The gdf will be clipped to the full extent of the clip object.
+    If there are multiple polygons in Mask geometry, data from Target geometry will be clipped to the total boundary
+    of all polygons in Mask.
     """
 
     left_geo_col = knext.ColumnParameter(
@@ -436,13 +483,46 @@ class ClipNode:
     name="Joined geo table",
     description="Joined geo table",
 )
-class OverlayNode:
-    """
-    This node will perform spatial overlay between two geometries.
+@knut.geo_node_description(
+    short_description="Performs spatial overlay between two geometries.",
+    description="""This node will perform spatial overlay between two geometries.
     Currently only supports data GeoDataFrames with uniform geometry types,
     i.e. containing only (Multi)Polygons, or only (Multi)Points, or a combination of (Multi)LineString and LinearRing shapes.
     Implements several methods that are all effectively subsets of the union.
-    """
+    """,
+    references={
+        "Set-Operations with Overlay": "https://geopandas.org/en/stable/docs/user_guide/set_operations.html",
+        "overlay": "https://geopandas.org/en/stable/docs/reference/api/geopandas.overlay.html",
+    },
+)
+class OverlayNode:
+    class OverlayModes(knext.EnumParameterOptions):
+        INTERSECTION = (
+            "Intersection",
+            "Returns a representation of the intersection of the two geometries.",
+        )
+        UNION = (
+            "Union",
+            """Returns a combination of the subset geometry in the left input table not in the right one, and the 
+            intersection geometry of the two input tables.""",
+        )
+        IDENTITY = (
+            "Identity",
+            "Retains all rows form the right and only matching rows from the left input tables.",
+        )
+        SYMMETRIC_DIFFERENCE = (
+            "Symmetric difference",
+            """Returns a combination of the subset geometry in the left input table not in the right one, and the subset 
+            geometry in the right one not in the left one.""",
+        )
+        DIFFERENCE = (
+            "Difference",
+            "Returns the subset geometry in the left input table not in the right one.",
+        )
+
+        @classmethod
+        def get_default(cls):
+            return cls.INTERSECTION
 
     left_geo_col = knext.ColumnParameter(
         "Left geometry column",
@@ -464,25 +544,11 @@ class OverlayNode:
         include_none_column=False,
     )
 
-    overlay_mode = knext.StringParameter(
+    overlay_mode = knext.EnumParameter(
         label="Overlay mode",
-        description="""<p>Available overlay modes are: 
-<ul>
-<li><b>intersection:</b> returns a representation of the intersection of the two geometries</li>
-<li><b>union:</b> returns a combiantion of the subset geometry in the left input table not in the right one, and the intersection geometry of the two input tables.</li>
-<li><b>identity:</b> retains all rows form the right and only matching rows from the left input tables.</li>
-<li><b>symmetric_difference:</b> returns a combiantion of the subset geometry in the left input table not in the right one, and the subset geometry in the right one not in the left one.</li>
-<li><b>difference:</b> returns the subset geometry in the left input table not in the right one.</li>
-</ul></p>
-""",
-        default_value="intersection",
-        enum=[
-            "intersection",
-            "union",
-            "identity",
-            "symmetric_difference",
-            "difference",
-        ],
+        description="Determines the overlay mode to use.",
+        default_value=OverlayModes.get_default().name,
+        enum=OverlayModes,
     )
 
     def configure(self, configure_context, left_input_schema, right_input_schema):
@@ -498,8 +564,8 @@ class OverlayNode:
         )
         knut.check_canceled(exec_context)
         right_gdf = right_gdf.to_crs(left_gdf.crs)
-        gdf = gp.overlay(left_gdf, right_gdf, how=self.overlay_mode)
-        gdf = gdf.reset_index(drop=True)
+        gdf = gp.overlay(left_gdf, right_gdf, how=self.overlay_mode.lower())
+        gdf.reset_index(drop=True, inplace=True)
         return knext.Table.from_pandas(gdf)
 
 
@@ -533,7 +599,7 @@ class EuclideanDistanceNode:
 
     left_geo_col = knext.ColumnParameter(
         "Left geometry column",
-        "Select the geometry column from the left (top) input table to calcualte.",
+        "Select the geometry column from the left (top) input table to calculate.",
         # Allow only GeoValue compatible columns
         port_index=0,
         column_filter=knut.is_geo,
@@ -543,7 +609,7 @@ class EuclideanDistanceNode:
 
     right_geo_col = knext.ColumnParameter(
         "Right  geometry column",
-        "Select the geometry column from the right (bottom) input table to calcualte.",
+        "Select the geometry column from the right (bottom) input table to calculate.",
         # Allow only GeoValue compatible columns
         port_index=1,
         column_filter=knut.is_geo,
@@ -552,7 +618,7 @@ class EuclideanDistanceNode:
     )
 
     crs_info = knext.StringParameter(
-        label="CRS for ditance calculation",
+        label="CRS for distance calculation",
         description="Input the CRS to use",
         default_value="EPSG:3857",
     )
@@ -632,7 +698,7 @@ class MultiRingBufferNode:
     )
 
     crs_info = knext.StringParameter(
-        label="CRS for buffering ditance calculation",
+        label="CRS for buffering distance calculation",
         description="Input the CRS to use",
         default_value="EPSG:3857",
     )
@@ -671,10 +737,12 @@ class MultiRingBufferNode:
         gdf0 = gdf0.reset_index(drop=True)
         exec_context.set_progress(0.1, "Buffering done")
         return knext.Table.from_pandas(gdf0)
-    
+
+
 ############################################
 # Simplify
 ############################################
+
 
 @knext.node(
     name="Simplify",
@@ -705,8 +773,8 @@ class SimplifyNode:
     )
 
     simplifydist = knext.DoubleParameter(
-        label="Simplification tolerance", 
-        description="The simplification tolerance distances for geometry ", 
+        label="Simplification tolerance",
+        description="The simplification tolerance distances for geometry ",
         default_value="1",
     )
 
@@ -727,7 +795,7 @@ class SimplifyNode:
             0.3, "Geo data frame loaded. Starting transformation..."
         )
         gdf["geometry"] = gdf.geometry.simplify(self.simplifydist)
-        gdf=gdf.reset_index(drop=True)
+        gdf = gdf.reset_index(drop=True)
         exec_context.set_progress(0.1, "Transformation done")
         LOGGER.debug("Feature Simplified")
         return knext.Table.from_pandas(gdf)
