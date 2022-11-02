@@ -1642,7 +1642,7 @@ class HarvardDataVerseReadDataFile:
 @knext.node(
     name="Harvard DataVerse Data File Replacer",
     node_type=knext.NodeType.SINK,
-    icon_path=__NODE_ICON_PATH + "DvFileReplacer.png",
+    icon_path=__NODE_ICON_PATH + "DvReplace.png",
     category=__category,
 )
 @knext.input_table(
@@ -1760,9 +1760,11 @@ class HarvardDataVersePublish:
         api.publish_dataset(pid=self.dataset_doi, release_type="major")
         return None
 
+
 ############################################
 # Create Grid Node
 ############################################
+
 
 @knext.node(
     name="Create Grid",
@@ -1798,35 +1800,42 @@ class CreateGrid:
     )
 
     def configure(self, configure_context, input_schema):
-            
-            return None
-    
+
+        return None
+
     def execute(self, exec_context: knext.ExecutionContext, input_table):
-        
+
         gdf = gp.GeoDataFrame(input_table.to_pandas(), geometry=self.geo_col)
-        
-        
-        
-        xmin,ymin,xmax,ymax =  gdf.total_bounds
+
+        xmin, ymin, xmax, ymax = gdf.total_bounds
         width = self.grid_length
         height = self.grid_length
-        rows = int(np.ceil((ymax-ymin) /  height))
-        cols = int(np.ceil((xmax-xmin) / width))
+        rows = int(np.ceil((ymax - ymin) / height))
+        cols = int(np.ceil((xmax - xmin) / width))
         XleftOrigin = xmin
         XrightOrigin = xmin + width
         YtopOrigin = ymax
-        YbottomOrigin = ymax- height
+        YbottomOrigin = ymax - height
         polygons = []
         for i in range(cols):
             Ytop = YtopOrigin
-            Ybottom =YbottomOrigin
+            Ybottom = YbottomOrigin
             for j in range(rows):
-                polygons.append(Polygon([(XleftOrigin, Ytop), (XrightOrigin, Ytop), (XrightOrigin, Ybottom), (XleftOrigin, Ybottom)])) 
+                polygons.append(
+                    Polygon(
+                        [
+                            (XleftOrigin, Ytop),
+                            (XrightOrigin, Ytop),
+                            (XrightOrigin, Ybottom),
+                            (XleftOrigin, Ybottom),
+                        ]
+                    )
+                )
                 Ytop = Ytop - height
                 Ybottom = Ybottom - height
             XleftOrigin = XleftOrigin + width
             XrightOrigin = XrightOrigin + width
 
-        grid = gp.GeoDataFrame({'geometry':polygons},crs = gdf.crs)
+        grid = gp.GeoDataFrame({"geometry": polygons}, crs=gdf.crs)
 
         return knext.Table.from_pandas(grid)
