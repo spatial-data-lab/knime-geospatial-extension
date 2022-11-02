@@ -161,7 +161,7 @@ class ViewNode:
             "Spectral_r",
             "coolwarm_r",
             "bwr_r",
-            "seismic",
+            "seismic_r",
         ],
     )
 
