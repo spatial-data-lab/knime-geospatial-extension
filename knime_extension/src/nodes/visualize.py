@@ -1,9 +1,10 @@
-from xml.etree.ElementInclude import include
 import geopandas as gp
 import knime_extension as knext
 import util.knime_utils as knut
 from keplergl import KeplerGl
 import json
+from folium import plugins
+import folium
 
 
 category = knext.category(
@@ -904,3 +905,95 @@ class ViewNodeKepler:
         # cx.add_basemap(map, crs=gdf.crs.to_string(), source=cx.providers.flatten()[self.base_map])
 
         return knext.view_html(html)
+
+
+############################################
+# heatmap node
+############################################
+
+
+@knext.node(
+    name="Heatmap",
+    node_type=knext.NodeType.VISUALIZER,
+    icon_path=__NODE_ICON_PATH + "Heatmap.png",
+    category=category,
+)
+@knext.input_table(
+    name="Table to visualize",
+    description="Table with data to visualize",
+)
+@knext.output_view(name="Heatmap view", description="Showing a heatmap with the data")
+class ViewNodeHeatmap:
+    """
+    This node will visualize the given data on a heatmap.
+    """
+
+    geo_col = knext.ColumnParameter(
+        "Geometry column",
+        "Select the geometry column to visualize.",
+        column_filter=knut.is_geo,
+        include_row_key=False,
+        include_none_column=False,
+    )
+
+    weight_col = knext.ColumnParameter(
+        "Weight column",
+        "Select the weight column to visualize.",
+        column_filter=knut.is_numeric,
+        include_row_key=False,
+        include_none_column=True,
+    )
+
+    min_opacity = knext.DoubleParameter(
+        "Minimum opacity",
+        "The minimum opacity the heat will start at.",
+        default_value=0.5,
+    )
+
+    max_zoom = knext.IntParameter(
+        "Maximum zoom",
+        "Zoom level where the points reach maximum intensity (as intensity scales with zoom), equals maxZoom of the map by default",
+        default_value=18,
+    )
+
+    radius = knext.IntParameter(
+        "Radius",
+        "Radius of each “point” of the heatmap",
+        default_value=25,
+    )
+
+    blur = knext.IntParameter(
+        "Blur",
+        "Amount of blur",
+        default_value=15,
+    )
+
+    def configure(self, configure_context, input_schema):
+
+        return None
+
+    def execute(self, exec_context: knext.ExecutionContext, input_table):
+
+        gdf = gp.GeoDataFrame(input_table.to_pandas(), geometry=self.geo_col)
+
+        map = gdf.explore()
+        gdf["lon"] = gdf.geometry.centroid.x
+        gdf["lat"] = gdf.geometry.centroid.y
+
+        if "none" not in str(self.weight_col).lower():
+            heat_data = gdf[["lat", "lon", self.weight_col]]
+        else:
+            heat_data = gdf[["lat", "lon"]]
+
+        plugins.HeatMap(
+            heat_data,
+            name="heatmap",
+            min_opacity=self.min_opacity,
+            max_zoom=self.max_zoom,
+            radius=self.radius,
+            blur=self.blur,
+        ).add_to(map)
+
+        folium.LayerControl().add_to(map)
+
+        return knext.view(map)
