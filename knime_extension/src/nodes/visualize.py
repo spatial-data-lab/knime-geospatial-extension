@@ -366,7 +366,7 @@ class ViewNode:
 
             # check whether is line
             # FIXME: change it to use utlis.is_line
-            geo_types = gdf["geometry"].geom_type.unique()
+            geo_types = gdf[self.geo_col].geom_type.unique()
             if ("LineString" in geo_types) or ("MultiLineString" in geo_types):
                 max_size = 8
                 kws["style_kwds"] = {
@@ -386,7 +386,7 @@ class ViewNode:
                     }
                 }
                 kws["m"] = gdf.explore(tiles=self.base_map)
-                gdf["geometry"] = gdf.centroid
+                gdf[self.geo_col] = gdf.centroid
 
             else:
                 max_size = 30
@@ -398,7 +398,7 @@ class ViewNode:
                     }
                 }
         if "none" not in str(self.size_scale).lower():
-            geo_types = gdf["geometry"].geom_type.unique()
+            geo_types = gdf[self.geo_col].geom_type.unique()
             if ("LineString" in geo_types) or ("MultiLineString" in geo_types):
                 kws["style_kwds"] = {"weight": self.size_scale}
             elif ("Polygon" in geo_types) or ("MultiPolygon" in geo_types):
@@ -804,7 +804,7 @@ class ViewNodeStatic:
                     "pad": self.legend_colorbar_pad,
                 }
 
-        geo_types = gdf["geometry"].geom_type.unique()
+        geo_types = gdf[self.geo_col].geom_type.unique()
         if not (("LineString" in geo_types) or ("MultiLineString" in geo_types)):
             if "none" not in str(self.size_col).lower():
                 max_point_size = 2000
@@ -879,8 +879,10 @@ class ViewNodeKepler:
         return None
 
     def execute(self, exec_context: knext.ExecutionContext, input_table):
-        gdf = gp.GeoDataFrame(input_table.to_pandas(), geometry=self.geo_col)
-
+        df = input_table.to_pandas()
+        df.rename(columns={self.geo_col: "geometry"}, inplace=True)
+        gdf = gp.GeoDataFrame(df, geometry="geometry")
+        
         map_1 = KeplerGl(show_docs=False)
         map_1.add_data(data=gdf.copy(), name="state")
         config = {}
