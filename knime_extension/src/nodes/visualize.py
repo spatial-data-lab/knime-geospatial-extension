@@ -928,7 +928,7 @@ class ViewNodeKepler:
 @knext.output_view(name="Heatmap view", description="Showing a heatmap with the data")
 class ViewNodeHeatmap:
     """
-    This node will visualize the given data on a heatmap.
+    This node will visualize the given data on a heatmap. More details about heatmap [here](https://www.gislounge.com/heat-maps-in-gis/).
     """
 
     geo_col = knext.ColumnParameter(
