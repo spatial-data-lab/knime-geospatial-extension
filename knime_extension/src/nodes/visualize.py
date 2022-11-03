@@ -738,7 +738,8 @@ class ViewNodeStatic:
 
         # check legend caption
         if (self.legend_caption is None) or (self.legend_caption == ""):
-            self.legend_caption = self.color_col
+            if "none" not in str(self.color_col).lower():
+                self.legend_caption = self.color_col
 
         #  set legend location
         if self.legend_location == "outside_top":
