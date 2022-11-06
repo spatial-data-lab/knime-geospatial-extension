@@ -363,6 +363,12 @@ class NearestJoinNode:
         1000.0,
     )
 
+    crs_info = knext.StringParameter(
+        label="CRS for distance calculation",
+        description="Input the CRS to use",
+        default_value="EPSG:3857",
+    )
+
     def configure(self, configure_context, left_input_schema, right_input_schema):
         self.left_geo_col = knut.column_exists_or_preset(
             configure_context, self.left_geo_col, left_input_schema, knut.is_geo
@@ -379,7 +385,8 @@ class NearestJoinNode:
             right_input.to_pandas(), geometry=self.right_geo_col
         )
         knut.check_canceled(exec_context)
-        right_gdf = right_gdf.to_crs(left_gdf.crs)
+        left_gdf = left_gdf.to_crs(self.crs_info)
+        right_gdf = right_gdf.to_crs(self.crs_info)
         gdf = gp.sjoin_nearest(
             left_gdf,
             right_gdf,
