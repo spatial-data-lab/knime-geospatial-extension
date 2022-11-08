@@ -1850,7 +1850,7 @@ class CreateGrid:
 @knext.node(
     name="Haversine Distance",
     node_type=knext.NodeType.MANIPULATOR,
-    icon_path=__NODE_ICON_PATH + "CreateGrid.png",
+    icon_path=__NODE_ICON_PATH + "HaversineDist.png",
     category=__category,
 )
 @knext.input_table(
