@@ -9,10 +9,10 @@ from sympy import content
 import util.knime_utils as knut
 import requests
 from pandarallel import pandarallel
-from pyDataverse.api import NativeApi, DataAccessApi
-from pyDataverse.models import Dataverse
 import io
-
+import numpy as np
+from shapely.geometry import Polygon
+from math import radians, cos, sin, asin, sqrt  # For Haversine Distance
 
 __category = knext.category(
     path="/geo",
@@ -21,205 +21,16 @@ __category = knext.category(
     description="Nodes that for testing and future exploration.",
     # starting at the root folder of the extension_module parameter in the knime.yml file
     icon="icons/icon/GeolabCategroy.png",
+    after="opendataset",
 )
 
 # Root path for all node icons in this file
 __NODE_ICON_PATH = "icons/icon/Geolab/"
 
-
-############################################
-# spatial ML_Lag node
-############################################
-
-@knext.node(
-    name="Spatial ML_Lag",
-    node_type=knext.NodeType.LEARNER,
-    category=__category,
-    icon_path=__NODE_ICON_PATH + "MLLag.png",
-)
-@knext.input_table(
-    name="Input Table",
-    description="Input Table with dependent and independent variables for calculation of the spatial ML_Lag model.",
-)
-@knext.input_table(
-    name="Spatial Weights",
-    description="Input Table with spatial weights for calculation of the spatial ML_Lag model.",
-)
-@knext.output_table(
-    name="Output Table",
-    description="Description of the spatial ML_Lag model.",
-)
-@knext.output_table(
-    name="Variable and Coefficient Table",
-    description="Variable and Coefficient Table of the spatial ML_Lag model.",
-)
-@knext.output_view(
-    name="Model summary view",
-    description="Model summary view of the spatial ML_Lag model.",
-)
-class SpatialML_Lag:
-    """
-    Spatial ML_Lag
-    """
-
-    geo_col = knext.ColumnParameter(
-        "Geometry Column",
-        "The column containing the geometry of the input table.",
-        column_filter=knut.is_geo,
-        include_row_key=False,
-        include_none_column=False,
-    )
-
-    dependent_variable = knext.ColumnParameter(
-        "Dependent variable",
-        "The column containing the dependent variable to use for the calculation of the spatial ML_Lag model.",
-        column_filter=knut.is_numeric,
-        include_none_column=False,
-    )
-
-    independent_variables = knext.MultiColumnParameter(
-        "Independent variables",
-        "The columns containing the independent variables to use for the calculation of the spatial ML_Lag model.",
-        column_filter=knut.is_numeric
-    )
-
-    def configure(self, configure_context, input_schema, input_schema_2):
-        knut.columns_exist([self.geo_col], input_schema)
-
-        return None
-
-    def execute(self, exec_context:knext.ExecutionContext, input_1, input_2):
-        gdf = gp.GeoDataFrame(input_1.to_pandas(), geometry=self.geo_col)
-        adjust_list = input_2.to_pandas()
-        w = W.from_adjlist(adjust_list)
-        #Prepare Georgia dataset inputs
-        X = gdf[self.independent_variables].values
-        y = gdf[self.dependent_variable].values
-        
-        model = spreg.ML_Lag(y, X, w, method='ord')
-
-        results = pd.DataFrame([model.name_x, model.betas, model.std_err, model.z_stat] ).T
-        results.columns = ["Variable", "Coefficient", "Std.Error", "Z-Statistic"]
-        results.loc[:,"Coefficient"] = results.loc[:,"Coefficient"].map(lambda x: x[0])
-        results.loc[:,"Probability"] = results.loc[:,"Z-Statistic"].map(lambda x: x[1])
-        results.loc[:,"Z-Statistic"] = results.loc[:,"Z-Statistic"].map(lambda x: x[0])
-        # 
-        results.loc[:,"Coefficient"] = results.loc[:,"Coefficient"].map(lambda x: round(x,7))
-        results.loc[:,"Std.Error"] = results.loc[:,"Std.Error"].map(lambda x: round(x,7))
-        results.loc[:,"Z-Statistic"] = results.loc[:,"Z-Statistic"].map(lambda x: round(x,7))
-        results.loc[:,"Probability"] = results.loc[:,"Probability"].map(lambda x: round(x,7))
-        results =  results.dropna()
-
-        result2 = pd.DataFrame({"Pseudo R-squared ":model.pr2, "Spatial Pseudo R-squared":model.pr2_e, "Number of Observations":model.n, "Number of Variables":model.k}, index=[0])
-        result2 = result2.round(7)
-
-
-        html = """<p><pre>%s</pre>"""% model.summary.replace("\n", "<br/>")
-
-        return knext.Table.from_pandas(result2),knext.Table.from_pandas(results),knext.view_html(html)
-
-
-
-
-
-
-
-############################################
-# spatial ML_Error node
-############################################
-
-@knext.node(
-    name="Spatial ML_Error",
-    node_type=knext.NodeType.LEARNER,
-    category=__category,
-    icon_path=__NODE_ICON_PATH + "MLErr.png",
-)
-@knext.input_table(
-    name="Input Table",
-    description="Input Table with dependent and independent variables for calculation of the spatial ML_Error model.",
-)
-@knext.input_table(
-    name="Spatial Weights",
-    description="Input Table with spatial weights for calculation of the spatial ML_Error model.",
-)
-@knext.output_table(
-    name="Output Table",
-    description="Description of the spatial ML_Error model.",
-)
-@knext.output_table(
-    name="Variable and Coefficient Table",
-    description="Variable and Coefficient Table of the spatial ML_Error model.",
-)
-@knext.output_view(
-    name="Model summary view",
-    description="Model summary view of the spatial ML_Error model.",
-)
-class SpatialML_Error:
-    """
-    Spatial ML_Error
-    """
-
-    geo_col = knext.ColumnParameter(
-        "Geometry Column",
-        "The column containing the geometry of the input table.",
-        column_filter=knut.is_geo,
-        include_row_key=False,
-        include_none_column=False,
-    )
-
-    dependent_variable = knext.ColumnParameter(
-        "Dependent variable",
-        "The column containing the dependent variable to use for the calculation of the spatial ML_Error model.",
-        column_filter=knut.is_numeric,
-        include_none_column=False,
-    )
-
-    independent_variables = knext.MultiColumnParameter(
-        "Independent variables",
-        "The columns containing the independent variables to use for the calculation of the spatial ML_Error model.",
-        column_filter=knut.is_numeric
-    )
-
-    def configure(self, configure_context, input_schema, input_schema_2):
-        knut.columns_exist([self.geo_col], input_schema)
-
-        return None
-
-    def execute(self, exec_context:knext.ExecutionContext, input_1, input_2):
-        gdf = gp.GeoDataFrame(input_1.to_pandas(), geometry=self.geo_col)
-        adjust_list = input_2.to_pandas()
-        w = W.from_adjlist(adjust_list)
-        #Prepare Georgia dataset inputs
-        X = gdf[self.independent_variables].values
-        y = gdf[self.dependent_variable].values
-        
-        model = spreg.ML_Error(y, X, w, method='ord')
-
-        results = pd.DataFrame([model.name_x, model.betas, model.std_err, model.z_stat] ).T
-        results.columns = ["Variable", "Coefficient", "Std.Error", "Z-Statistic"]
-        results.loc[:,"Coefficient"] = results.loc[:,"Coefficient"].map(lambda x: x[0])
-        results.loc[:,"Probability"] = results.loc[:,"Z-Statistic"].map(lambda x: x[1])
-        results.loc[:,"Z-Statistic"] = results.loc[:,"Z-Statistic"].map(lambda x: x[0])
-        # 
-        results.loc[:,"Coefficient"] = results.loc[:,"Coefficient"].map(lambda x: round(x,7))
-        results.loc[:,"Std.Error"] = results.loc[:,"Std.Error"].map(lambda x: round(x,7))
-        results.loc[:,"Z-Statistic"] = results.loc[:,"Z-Statistic"].map(lambda x: round(x,7))
-        results.loc[:, "Probability"] = results.loc[:, "Probability"].map(lambda x: round(x, 7))
-        results =  results.dropna()
-
-        result2 = pd.DataFrame({"Pseudo R-squared ":model.pr2, "Number of Observations":model.n, "Number of Variables":model.k}, index=[0])
-        result2 = result2.round(7)
-
-
-        html = """<p><pre>%s</pre>"""% model.summary.replace("\n", "<br/>")
-
-        return knext.Table.from_pandas(result2),knext.Table.from_pandas(results),knext.view_html(html)
-
-
-
 ############################################
 # spatial GM_Error node
 ############################################
+
 
 @knext.node(
     name="Spatial GM_Error",
@@ -270,49 +81,78 @@ class SpatialGM_Error:
     independent_variables = knext.MultiColumnParameter(
         "Independent variables",
         "The columns containing the independent variables to use for the calculation of the spatial GM_Error model.",
-        column_filter=knut.is_numeric
+        column_filter=knut.is_numeric,
     )
 
     def configure(self, configure_context, input_schema, input_schema_2):
-        knut.columns_exist([self.geo_col], input_schema)
+        self.geo_col = knut.column_exists_or_preset(
+            configure_context, self.geo_col, input_schema, knut.is_geo
+        )
 
         return None
 
-    def execute(self, exec_context:knext.ExecutionContext, input_1, input_2):
+    def execute(self, exec_context: knext.ExecutionContext, input_1, input_2):
         gdf = gp.GeoDataFrame(input_1.to_pandas(), geometry=self.geo_col)
         adjust_list = input_2.to_pandas()
         w = W.from_adjlist(adjust_list)
-        #Prepare Georgia dataset inputs
+        # Prepare Georgia dataset inputs
         X = gdf[self.independent_variables].values
         y = gdf[self.dependent_variable].values
-        
+
         model = spreg.GM_Error(y, X, w)
 
-        results = pd.DataFrame([model.name_x, model.betas, model.std_err, model.z_stat] ).T
+        results = pd.DataFrame(
+            [model.name_x, model.betas, model.std_err, model.z_stat]
+        ).T
         results.columns = ["Variable", "Coefficient", "Std.Error", "Z-Statistic"]
-        results =  results.dropna()
-        results.loc[:,"Coefficient"] = results.loc[:,"Coefficient"].map(lambda x: x[0])
-        results.loc[:,"Probability"] = results.loc[:,"Z-Statistic"].map(lambda x: x[1])
-        results.loc[:,"Z-Statistic"] = results.loc[:,"Z-Statistic"].map(lambda x: x[0])
-        # # 
-        results.loc[:,"Coefficient"] = results.loc[:,"Coefficient"].map(lambda x: round(x,7))
-        results.loc[:,"Std.Error"] = results.loc[:,"Std.Error"].map(lambda x: round(x,7))
-        results.loc[:,"Z-Statistic"] = results.loc[:,"Z-Statistic"].map(lambda x: round(x,7))
-        results.loc[:, "Probability"] = results.loc[:, "Probability"].map(lambda x: round(x, 7))
+        results = results.dropna()
+        results.loc[:, "Coefficient"] = results.loc[:, "Coefficient"].map(
+            lambda x: x[0]
+        )
+        results.loc[:, "Probability"] = results.loc[:, "Z-Statistic"].map(
+            lambda x: x[1]
+        )
+        results.loc[:, "Z-Statistic"] = results.loc[:, "Z-Statistic"].map(
+            lambda x: x[0]
+        )
+        # #
+        results.loc[:, "Coefficient"] = results.loc[:, "Coefficient"].map(
+            lambda x: round(x, 7)
+        )
+        results.loc[:, "Std.Error"] = results.loc[:, "Std.Error"].map(
+            lambda x: round(x, 7)
+        )
+        results.loc[:, "Z-Statistic"] = results.loc[:, "Z-Statistic"].map(
+            lambda x: round(x, 7)
+        )
+        results.loc[:, "Probability"] = results.loc[:, "Probability"].map(
+            lambda x: round(x, 7)
+        )
         # results =  results.dropna()
 
-        result2 = pd.DataFrame({"Pseudo R-squared ":model.pr2, "Number of Observations":model.n, "Number of Variables":model.k}, index=[0])
+        result2 = pd.DataFrame(
+            {
+                "Pseudo R-squared ": model.pr2,
+                "Number of Observations": model.n,
+                "Number of Variables": model.k,
+            },
+            index=[0],
+        )
         result2 = result2.round(7)
-        
-        html = """<p><pre>%s</pre>"""% model.summary.replace("\n", "<br/>")
 
-        return knext.Table.from_pandas(result2),knext.Table.from_pandas(results),knext.view_html(html)
+        html = """<p><pre>%s</pre>""" % model.summary.replace("\n", "<br/>")
 
+        return (
+            knext.Table.from_pandas(result2),
+            knext.Table.from_pandas(results),
+            knext.view_html(html),
+        )
 
 
 ############################################
 # spatial GM_Error_Het node
 ############################################
+
 
 @knext.node(
     name="Spatial GM_Error_Het",
@@ -363,48 +203,78 @@ class SpatialGM_Error_Het:
     independent_variables = knext.MultiColumnParameter(
         "Independent variables",
         "The columns containing the independent variables to use for the calculation of the spatial GM_Error_Het model.",
-        column_filter=knut.is_numeric
+        column_filter=knut.is_numeric,
     )
 
     def configure(self, configure_context, input_schema, input_schema_2):
-        knut.columns_exist([self.geo_col], input_schema)
+        self.geo_col = knut.column_exists_or_preset(
+            configure_context, self.geo_col, input_schema, knut.is_geo
+        )
 
         return None
 
-    def execute(self, exec_context:knext.ExecutionContext, input_1, input_2):
+    def execute(self, exec_context: knext.ExecutionContext, input_1, input_2):
         gdf = gp.GeoDataFrame(input_1.to_pandas(), geometry=self.geo_col)
         adjust_list = input_2.to_pandas()
         w = W.from_adjlist(adjust_list)
-        #Prepare Georgia dataset inputs
+        # Prepare Georgia dataset inputs
         X = gdf[self.independent_variables].values
         y = gdf[self.dependent_variable].values
-        
+
         model = spreg.GM_Error_Het(y, X, w)
 
-        results = pd.DataFrame([model.name_x, model.betas, model.std_err, model.z_stat] ).T
+        results = pd.DataFrame(
+            [model.name_x, model.betas, model.std_err, model.z_stat]
+        ).T
         results.columns = ["Variable", "Coefficient", "Std.Error", "Z-Statistic"]
-        results =  results.dropna()
-        results.loc[:,"Coefficient"] = results.loc[:,"Coefficient"].map(lambda x: x[0])
-        results.loc[:,"Probability"] = results.loc[:,"Z-Statistic"].map(lambda x: x[1])
-        results.loc[:,"Z-Statistic"] = results.loc[:,"Z-Statistic"].map(lambda x: x[0])
-        # # 
-        results.loc[:,"Coefficient"] = results.loc[:,"Coefficient"].map(lambda x: round(x,7))
-        results.loc[:,"Std.Error"] = results.loc[:,"Std.Error"].map(lambda x: round(x,7))
-        results.loc[:,"Z-Statistic"] = results.loc[:,"Z-Statistic"].map(lambda x: round(x,7))
-        results.loc[:, "Probability"] = results.loc[:, "Probability"].map(lambda x: round(x, 7))
+        results = results.dropna()
+        results.loc[:, "Coefficient"] = results.loc[:, "Coefficient"].map(
+            lambda x: x[0]
+        )
+        results.loc[:, "Probability"] = results.loc[:, "Z-Statistic"].map(
+            lambda x: x[1]
+        )
+        results.loc[:, "Z-Statistic"] = results.loc[:, "Z-Statistic"].map(
+            lambda x: x[0]
+        )
+        # #
+        results.loc[:, "Coefficient"] = results.loc[:, "Coefficient"].map(
+            lambda x: round(x, 7)
+        )
+        results.loc[:, "Std.Error"] = results.loc[:, "Std.Error"].map(
+            lambda x: round(x, 7)
+        )
+        results.loc[:, "Z-Statistic"] = results.loc[:, "Z-Statistic"].map(
+            lambda x: round(x, 7)
+        )
+        results.loc[:, "Probability"] = results.loc[:, "Probability"].map(
+            lambda x: round(x, 7)
+        )
         # results =  results.dropna()
 
-        result2 = pd.DataFrame({"Pseudo R-squared ":model.pr2, "Number of Observations":model.n, "Number of Variables":model.k}, index=[0])
+        result2 = pd.DataFrame(
+            {
+                "Pseudo R-squared ": model.pr2,
+                "Number of Observations": model.n,
+                "Number of Variables": model.k,
+            },
+            index=[0],
+        )
         result2 = result2.round(7)
 
-        html = """<p><pre>%s</pre>"""% model.summary.replace("\n", "<br/>")
+        html = """<p><pre>%s</pre>""" % model.summary.replace("\n", "<br/>")
 
-        return knext.Table.from_pandas(result2),knext.Table.from_pandas(results),knext.view_html(html)
+        return (
+            knext.Table.from_pandas(result2),
+            knext.Table.from_pandas(results),
+            knext.view_html(html),
+        )
 
-        
+
 ############################################
 # spatial GM_Error_Hom node
 ############################################
+
 
 @knext.node(
     name="Spatial GM_Error_Hom",
@@ -455,50 +325,78 @@ class SpatialGM_Error_Hom:
     independent_variables = knext.MultiColumnParameter(
         "Independent variables",
         "The columns containing the independent variables to use for the calculation of the spatial GM_Error_Hom model.",
-        column_filter=knut.is_numeric
+        column_filter=knut.is_numeric,
     )
 
     def configure(self, configure_context, input_schema, input_schema_2):
-        knut.columns_exist([self.geo_col], input_schema)
+        self.geo_col = knut.column_exists_or_preset(
+            configure_context, self.geo_col, input_schema, knut.is_geo
+        )
 
         return None
 
-    def execute(self, exec_context:knext.ExecutionContext, input_1, input_2):
+    def execute(self, exec_context: knext.ExecutionContext, input_1, input_2):
         gdf = gp.GeoDataFrame(input_1.to_pandas(), geometry=self.geo_col)
         adjust_list = input_2.to_pandas()
         w = W.from_adjlist(adjust_list)
-        #Prepare Georgia dataset inputs
+        # Prepare Georgia dataset inputs
         X = gdf[self.independent_variables].values
         y = gdf[self.dependent_variable].values
-        
+
         model = spreg.GM_Error_Hom(y, X, w)
 
-        results = pd.DataFrame([model.name_x, model.betas, model.std_err, model.z_stat] ).T
+        results = pd.DataFrame(
+            [model.name_x, model.betas, model.std_err, model.z_stat]
+        ).T
         results.columns = ["Variable", "Coefficient", "Std.Error", "Z-Statistic"]
-        results =  results.dropna()
-        results.loc[:,"Coefficient"] = results.loc[:,"Coefficient"].map(lambda x: x[0])
-        results.loc[:,"Probability"] = results.loc[:,"Z-Statistic"].map(lambda x: x[1])
-        results.loc[:,"Z-Statistic"] = results.loc[:,"Z-Statistic"].map(lambda x: x[0])
-        # # 
-        results.loc[:,"Coefficient"] = results.loc[:,"Coefficient"].map(lambda x: round(x,7))
-        results.loc[:,"Std.Error"] = results.loc[:,"Std.Error"].map(lambda x: round(x,7))
-        results.loc[:,"Z-Statistic"] = results.loc[:,"Z-Statistic"].map(lambda x: round(x,7))
-        results.loc[:, "Probability"] = results.loc[:, "Probability"].map(lambda x: round(x, 7))
+        results = results.dropna()
+        results.loc[:, "Coefficient"] = results.loc[:, "Coefficient"].map(
+            lambda x: x[0]
+        )
+        results.loc[:, "Probability"] = results.loc[:, "Z-Statistic"].map(
+            lambda x: x[1]
+        )
+        results.loc[:, "Z-Statistic"] = results.loc[:, "Z-Statistic"].map(
+            lambda x: x[0]
+        )
+        # #
+        results.loc[:, "Coefficient"] = results.loc[:, "Coefficient"].map(
+            lambda x: round(x, 7)
+        )
+        results.loc[:, "Std.Error"] = results.loc[:, "Std.Error"].map(
+            lambda x: round(x, 7)
+        )
+        results.loc[:, "Z-Statistic"] = results.loc[:, "Z-Statistic"].map(
+            lambda x: round(x, 7)
+        )
+        results.loc[:, "Probability"] = results.loc[:, "Probability"].map(
+            lambda x: round(x, 7)
+        )
         # results =  results.dropna()
 
-        result2 = pd.DataFrame({"Pseudo R-squared ":model.pr2, "Number of Observations":model.n, "Number of Variables":model.k}, index=[0])
+        result2 = pd.DataFrame(
+            {
+                "Pseudo R-squared ": model.pr2,
+                "Number of Observations": model.n,
+                "Number of Variables": model.k,
+            },
+            index=[0],
+        )
         result2 = result2.round(7)
 
-        html = """<p><pre>%s</pre>"""% model.summary.replace("\n", "<br/>")
+        html = """<p><pre>%s</pre>""" % model.summary.replace("\n", "<br/>")
 
-        return knext.Table.from_pandas(result2),knext.Table.from_pandas(results),knext.view_html(html)
-
-
+        return (
+            knext.Table.from_pandas(result2),
+            knext.Table.from_pandas(results),
+            knext.view_html(html),
+        )
 
 
 ############################################
 # spatial GM_Combo node
 ############################################
+
 
 @knext.node(
     name="Spatial GM_Combo",
@@ -549,47 +447,78 @@ class SpatialGM_Combo:
     independent_variables = knext.MultiColumnParameter(
         "Independent variables",
         "The columns containing the independent variables to use for the calculation of the spatial GM_Combo model.",
-        column_filter=knut.is_numeric
+        column_filter=knut.is_numeric,
     )
 
     def configure(self, configure_context, input_schema, input_schema_2):
-        knut.columns_exist([self.geo_col], input_schema)
+        self.geo_col = knut.column_exists_or_preset(
+            configure_context, self.geo_col, input_schema, knut.is_geo
+        )
 
         return None
 
-    def execute(self, exec_context:knext.ExecutionContext, input_1, input_2):
+    def execute(self, exec_context: knext.ExecutionContext, input_1, input_2):
         gdf = gp.GeoDataFrame(input_1.to_pandas(), geometry=self.geo_col)
         adjust_list = input_2.to_pandas()
         w = W.from_adjlist(adjust_list)
-        #Prepare Georgia dataset inputs
+        # Prepare Georgia dataset inputs
         X = gdf[self.independent_variables].values
         y = gdf[self.dependent_variable].values
-        
+
         model = spreg.GM_Combo(y=y, x=X, w=w)
 
-        results = pd.DataFrame([model.name_x, model.betas, model.std_err, model.z_stat] ).T
+        results = pd.DataFrame(
+            [model.name_x, model.betas, model.std_err, model.z_stat]
+        ).T
         results.columns = ["Variable", "Coefficient", "Std.Error", "Z-Statistic"]
-        results =  results.dropna()
-        results.loc[:,"Coefficient"] = results.loc[:,"Coefficient"].map(lambda x: x[0])
-        results.loc[:,"Probability"] = results.loc[:,"Z-Statistic"].map(lambda x: x[1])
-        results.loc[:,"Z-Statistic"] = results.loc[:,"Z-Statistic"].map(lambda x: x[0])
-        # # 
-        results.loc[:,"Coefficient"] = results.loc[:,"Coefficient"].map(lambda x: round(x,7))
-        results.loc[:,"Std.Error"] = results.loc[:,"Std.Error"].map(lambda x: round(x,7))
-        results.loc[:,"Z-Statistic"] = results.loc[:,"Z-Statistic"].map(lambda x: round(x,7))
-        results.loc[:, "Probability"] = results.loc[:, "Probability"].map(lambda x: round(x, 7))
+        results = results.dropna()
+        results.loc[:, "Coefficient"] = results.loc[:, "Coefficient"].map(
+            lambda x: x[0]
+        )
+        results.loc[:, "Probability"] = results.loc[:, "Z-Statistic"].map(
+            lambda x: x[1]
+        )
+        results.loc[:, "Z-Statistic"] = results.loc[:, "Z-Statistic"].map(
+            lambda x: x[0]
+        )
+        # #
+        results.loc[:, "Coefficient"] = results.loc[:, "Coefficient"].map(
+            lambda x: round(x, 7)
+        )
+        results.loc[:, "Std.Error"] = results.loc[:, "Std.Error"].map(
+            lambda x: round(x, 7)
+        )
+        results.loc[:, "Z-Statistic"] = results.loc[:, "Z-Statistic"].map(
+            lambda x: round(x, 7)
+        )
+        results.loc[:, "Probability"] = results.loc[:, "Probability"].map(
+            lambda x: round(x, 7)
+        )
 
-        result2 = pd.DataFrame({"Pseudo R-squared ":model.pr2, "Spatial Pseudo R-squared ":model.pr2_e, "Number of Observations":model.n, "Number of Variables":model.k}, index=[0])
+        result2 = pd.DataFrame(
+            {
+                "Pseudo R-squared ": model.pr2,
+                "Spatial Pseudo R-squared ": model.pr2_e,
+                "Number of Observations": model.n,
+                "Number of Variables": model.k,
+            },
+            index=[0],
+        )
         result2 = result2.round(7)
 
-        html = """<p><pre>%s</pre>"""% model.summary.replace("\n", "<br/>")
+        html = """<p><pre>%s</pre>""" % model.summary.replace("\n", "<br/>")
 
-        return knext.Table.from_pandas(result2),knext.Table.from_pandas(results),knext.view_html(html)
+        return (
+            knext.Table.from_pandas(result2),
+            knext.Table.from_pandas(results),
+            knext.view_html(html),
+        )
 
 
 ############################################
 # spatial GM_Combo_Het node
 ############################################
+
 
 @knext.node(
     name="Spatial GM_Combo_Het",
@@ -640,47 +569,78 @@ class SpatialGM_Combo_Het:
     independent_variables = knext.MultiColumnParameter(
         "Independent variables",
         "The columns containing the independent variables to use for the calculation of the spatial GM_Combo_Het model.",
-        column_filter=knut.is_numeric
+        column_filter=knut.is_numeric,
     )
 
     def configure(self, configure_context, input_schema, input_schema_2):
-        knut.columns_exist([self.geo_col], input_schema)
+        self.geo_col = knut.column_exists_or_preset(
+            configure_context, self.geo_col, input_schema, knut.is_geo
+        )
 
         return None
 
-    def execute(self, exec_context:knext.ExecutionContext, input_1, input_2):
+    def execute(self, exec_context: knext.ExecutionContext, input_1, input_2):
         gdf = gp.GeoDataFrame(input_1.to_pandas(), geometry=self.geo_col)
         adjust_list = input_2.to_pandas()
         w = W.from_adjlist(adjust_list)
-        #Prepare Georgia dataset inputs
+        # Prepare Georgia dataset inputs
         X = gdf[self.independent_variables].values
         y = gdf[self.dependent_variable].values
-        
+
         model = spreg.GM_Combo_Het(y=y, x=X, w=w)
 
-        results = pd.DataFrame([model.name_x, model.betas, model.std_err, model.z_stat] ).T
+        results = pd.DataFrame(
+            [model.name_x, model.betas, model.std_err, model.z_stat]
+        ).T
         results.columns = ["Variable", "Coefficient", "Std.Error", "Z-Statistic"]
-        results =  results.dropna()
-        results.loc[:,"Coefficient"] = results.loc[:,"Coefficient"].map(lambda x: x[0])
-        results.loc[:,"Probability"] = results.loc[:,"Z-Statistic"].map(lambda x: x[1])
-        results.loc[:,"Z-Statistic"] = results.loc[:,"Z-Statistic"].map(lambda x: x[0])
-        # # 
-        results.loc[:,"Coefficient"] = results.loc[:,"Coefficient"].map(lambda x: round(x,7))
-        results.loc[:,"Std.Error"] = results.loc[:,"Std.Error"].map(lambda x: round(x,7))
-        results.loc[:,"Z-Statistic"] = results.loc[:,"Z-Statistic"].map(lambda x: round(x,7))
-        results.loc[:, "Probability"] = results.loc[:, "Probability"].map(lambda x: round(x, 7))
+        results = results.dropna()
+        results.loc[:, "Coefficient"] = results.loc[:, "Coefficient"].map(
+            lambda x: x[0]
+        )
+        results.loc[:, "Probability"] = results.loc[:, "Z-Statistic"].map(
+            lambda x: x[1]
+        )
+        results.loc[:, "Z-Statistic"] = results.loc[:, "Z-Statistic"].map(
+            lambda x: x[0]
+        )
+        # #
+        results.loc[:, "Coefficient"] = results.loc[:, "Coefficient"].map(
+            lambda x: round(x, 7)
+        )
+        results.loc[:, "Std.Error"] = results.loc[:, "Std.Error"].map(
+            lambda x: round(x, 7)
+        )
+        results.loc[:, "Z-Statistic"] = results.loc[:, "Z-Statistic"].map(
+            lambda x: round(x, 7)
+        )
+        results.loc[:, "Probability"] = results.loc[:, "Probability"].map(
+            lambda x: round(x, 7)
+        )
 
-        result2 = pd.DataFrame({"Pseudo R-squared ":model.pr2, "Spatial Pseudo R-squared ":model.pr2_e, "Number of Observations":model.n, "Number of Variables":model.k}, index=[0])
+        result2 = pd.DataFrame(
+            {
+                "Pseudo R-squared ": model.pr2,
+                "Spatial Pseudo R-squared ": model.pr2_e,
+                "Number of Observations": model.n,
+                "Number of Variables": model.k,
+            },
+            index=[0],
+        )
         result2 = result2.round(7)
 
-        html = """<p><pre>%s</pre>"""% model.summary.replace("\n", "<br/>")
+        html = """<p><pre>%s</pre>""" % model.summary.replace("\n", "<br/>")
 
-        return knext.Table.from_pandas(result2),knext.Table.from_pandas(results),knext.view_html(html)
+        return (
+            knext.Table.from_pandas(result2),
+            knext.Table.from_pandas(results),
+            knext.view_html(html),
+        )
 
 
 ############################################
 # spatial GM_Combo_Hom node
 ############################################
+
 
 @knext.node(
     name="Spatial GM_Combo_Hom",
@@ -731,42 +691,71 @@ class SpatialGM_Combo_Hom:
     independent_variables = knext.MultiColumnParameter(
         "Independent variables",
         "The columns containing the independent variables to use for the calculation of the spatial GM_Combo_Hom model.",
-        column_filter=knut.is_numeric
+        column_filter=knut.is_numeric,
     )
 
     def configure(self, configure_context, input_schema, input_schema_2):
-        knut.columns_exist([self.geo_col], input_schema)
+        self.geo_col = knut.column_exists_or_preset(
+            configure_context, self.geo_col, input_schema, knut.is_geo
+        )
 
         return None
 
-    def execute(self, exec_context:knext.ExecutionContext, input_1, input_2):
+    def execute(self, exec_context: knext.ExecutionContext, input_1, input_2):
         gdf = gp.GeoDataFrame(input_1.to_pandas(), geometry=self.geo_col)
         adjust_list = input_2.to_pandas()
         w = W.from_adjlist(adjust_list)
-        #Prepare Georgia dataset inputs
+        # Prepare Georgia dataset inputs
         X = gdf[self.independent_variables].values
         y = gdf[self.dependent_variable].values
-        
+
         model = spreg.GM_Combo_Hom(y=y, x=X, w=w)
 
-        results = pd.DataFrame([model.name_x, model.betas, model.std_err, model.z_stat] ).T
+        results = pd.DataFrame(
+            [model.name_x, model.betas, model.std_err, model.z_stat]
+        ).T
         results.columns = ["Variable", "Coefficient", "Std.Error", "Z-Statistic"]
-        results =  results.dropna()
-        results.loc[:,"Coefficient"] = results.loc[:,"Coefficient"].map(lambda x: x[0])
-        results.loc[:,"Probability"] = results.loc[:,"Z-Statistic"].map(lambda x: x[1])
-        results.loc[:,"Z-Statistic"] = results.loc[:,"Z-Statistic"].map(lambda x: x[0])
-        # # 
-        results.loc[:,"Coefficient"] = results.loc[:,"Coefficient"].map(lambda x: round(x,7))
-        results.loc[:,"Std.Error"] = results.loc[:,"Std.Error"].map(lambda x: round(x,7))
-        results.loc[:,"Z-Statistic"] = results.loc[:,"Z-Statistic"].map(lambda x: round(x,7))
-        results.loc[:, "Probability"] = results.loc[:, "Probability"].map(lambda x: round(x, 7))
+        results = results.dropna()
+        results.loc[:, "Coefficient"] = results.loc[:, "Coefficient"].map(
+            lambda x: x[0]
+        )
+        results.loc[:, "Probability"] = results.loc[:, "Z-Statistic"].map(
+            lambda x: x[1]
+        )
+        results.loc[:, "Z-Statistic"] = results.loc[:, "Z-Statistic"].map(
+            lambda x: x[0]
+        )
+        # #
+        results.loc[:, "Coefficient"] = results.loc[:, "Coefficient"].map(
+            lambda x: round(x, 7)
+        )
+        results.loc[:, "Std.Error"] = results.loc[:, "Std.Error"].map(
+            lambda x: round(x, 7)
+        )
+        results.loc[:, "Z-Statistic"] = results.loc[:, "Z-Statistic"].map(
+            lambda x: round(x, 7)
+        )
+        results.loc[:, "Probability"] = results.loc[:, "Probability"].map(
+            lambda x: round(x, 7)
+        )
 
-        result2 = pd.DataFrame({"Pseudo R-squared ":model.pr2, "Number of Observations":model.n, "Number of Variables":model.k}, index=[0])
+        result2 = pd.DataFrame(
+            {
+                "Pseudo R-squared ": model.pr2,
+                "Number of Observations": model.n,
+                "Number of Variables": model.k,
+            },
+            index=[0],
+        )
         result2 = result2.round(7)
 
-        html = """<p><pre>%s</pre>"""% model.summary.replace("\n", "<br/>")
+        html = """<p><pre>%s</pre>""" % model.summary.replace("\n", "<br/>")
 
-        return knext.Table.from_pandas(result2),knext.Table.from_pandas(results),knext.view_html(html)
+        return (
+            knext.Table.from_pandas(result2),
+            knext.Table.from_pandas(results),
+            knext.view_html(html),
+        )
 
 
 ############################################
@@ -822,7 +811,7 @@ class SpatialGM_Endog_Error:
     independent_variables = knext.MultiColumnParameter(
         "Independent variables",
         "The columns containing the independent variables to use for the calculation of the spatial GM_Endog_Error model.",
-        column_filter=knut.is_numeric
+        column_filter=knut.is_numeric,
     )
 
     yend = knext.ColumnParameter(
@@ -840,39 +829,68 @@ class SpatialGM_Endog_Error:
     )
 
     def configure(self, configure_context, input_schema, input_schema_2):
-        knut.columns_exist([self.geo_col], input_schema)
+        self.geo_col = knut.column_exists_or_preset(
+            configure_context, self.geo_col, input_schema, knut.is_geo
+        )
 
         return None
 
-    def execute(self, exec_context:knext.ExecutionContext, input_1, input_2):
+    def execute(self, exec_context: knext.ExecutionContext, input_1, input_2):
         gdf = gp.GeoDataFrame(input_1.to_pandas(), geometry=self.geo_col)
         adjust_list = input_2.to_pandas()
         w = W.from_adjlist(adjust_list)
-        #Prepare Georgia dataset inputs
+        # Prepare Georgia dataset inputs
         X = gdf[self.independent_variables].values
         y = gdf[self.dependent_variable].values
         yend = gdf[self.yend].values
         q = gdf[self.q].values
-        model = spreg.GM_Endog_Error(y=y, x=X, w=w,yend=yend,q=q)
+        model = spreg.GM_Endog_Error(y=y, x=X, w=w, yend=yend, q=q)
 
-        results = pd.DataFrame([model.name_x, model.betas, model.std_err, model.z_stat] ).T
+        results = pd.DataFrame(
+            [model.name_x, model.betas, model.std_err, model.z_stat]
+        ).T
         results.columns = ["Variable", "Coefficient", "Std.Error", "Z-Statistic"]
-        results =  results.dropna()
-        results.loc[:,"Coefficient"] = results.loc[:,"Coefficient"].map(lambda x: x[0])
-        results.loc[:,"Probability"] = results.loc[:,"Z-Statistic"].map(lambda x: x[1])
-        results.loc[:,"Z-Statistic"] = results.loc[:,"Z-Statistic"].map(lambda x: x[0])
-        # # 
-        results.loc[:,"Coefficient"] = results.loc[:,"Coefficient"].map(lambda x: round(x,7))
-        results.loc[:,"Std.Error"] = results.loc[:,"Std.Error"].map(lambda x: round(x,7))
-        results.loc[:,"Z-Statistic"] = results.loc[:,"Z-Statistic"].map(lambda x: round(x,7))
-        results.loc[:, "Probability"] = results.loc[:, "Probability"].map(lambda x: round(x, 7))
+        results = results.dropna()
+        results.loc[:, "Coefficient"] = results.loc[:, "Coefficient"].map(
+            lambda x: x[0]
+        )
+        results.loc[:, "Probability"] = results.loc[:, "Z-Statistic"].map(
+            lambda x: x[1]
+        )
+        results.loc[:, "Z-Statistic"] = results.loc[:, "Z-Statistic"].map(
+            lambda x: x[0]
+        )
+        # #
+        results.loc[:, "Coefficient"] = results.loc[:, "Coefficient"].map(
+            lambda x: round(x, 7)
+        )
+        results.loc[:, "Std.Error"] = results.loc[:, "Std.Error"].map(
+            lambda x: round(x, 7)
+        )
+        results.loc[:, "Z-Statistic"] = results.loc[:, "Z-Statistic"].map(
+            lambda x: round(x, 7)
+        )
+        results.loc[:, "Probability"] = results.loc[:, "Probability"].map(
+            lambda x: round(x, 7)
+        )
 
-        result2 = pd.DataFrame({"Pseudo R-squared ":model.pr2, "Number of Observations":model.n, "Number of Variables":model.k}, index=[0])
+        result2 = pd.DataFrame(
+            {
+                "Pseudo R-squared ": model.pr2,
+                "Number of Observations": model.n,
+                "Number of Variables": model.k,
+            },
+            index=[0],
+        )
         result2 = result2.round(7)
 
-        html = """<p><pre>%s</pre>"""% model.summary.replace("\n", "<br/>")
+        html = """<p><pre>%s</pre>""" % model.summary.replace("\n", "<br/>")
 
-        return knext.Table.from_pandas(result2),knext.Table.from_pandas(results),knext.view_html(html)
+        return (
+            knext.Table.from_pandas(result2),
+            knext.Table.from_pandas(results),
+            knext.view_html(html),
+        )
 
 
 ############################################
@@ -928,7 +946,7 @@ class SpatialGM_Endog_Error_Het:
     independent_variables = knext.MultiColumnParameter(
         "Independent variables",
         "The columns containing the independent variables to use for the calculation of the spatial GM_Endog_Error_Het model.",
-        column_filter=knut.is_numeric
+        column_filter=knut.is_numeric,
     )
 
     yend = knext.ColumnParameter(
@@ -946,45 +964,75 @@ class SpatialGM_Endog_Error_Het:
     )
 
     def configure(self, configure_context, input_schema, input_schema_2):
-        knut.columns_exist([self.geo_col], input_schema)
+        self.geo_col = knut.column_exists_or_preset(
+            configure_context, self.geo_col, input_schema, knut.is_geo
+        )
 
         return None
 
-    def execute(self, exec_context:knext.ExecutionContext, input_1, input_2):
+    def execute(self, exec_context: knext.ExecutionContext, input_1, input_2):
         gdf = gp.GeoDataFrame(input_1.to_pandas(), geometry=self.geo_col)
         adjust_list = input_2.to_pandas()
         w = W.from_adjlist(adjust_list)
-        #Prepare Georgia dataset inputs
+        # Prepare Georgia dataset inputs
         X = gdf[self.independent_variables].values
         y = gdf[self.dependent_variable].values
         yend = gdf[self.yend].values
         q = gdf[self.q].values
-        
-        model = spreg.GM_Endog_Error_Het(y=y, x=X, w=w,yend=yend,q=q)
 
-        results = pd.DataFrame([model.name_x, model.betas, model.std_err, model.z_stat] ).T
+        model = spreg.GM_Endog_Error_Het(y=y, x=X, w=w, yend=yend, q=q)
+
+        results = pd.DataFrame(
+            [model.name_x, model.betas, model.std_err, model.z_stat]
+        ).T
         results.columns = ["Variable", "Coefficient", "Std.Error", "Z-Statistic"]
-        results =  results.dropna()
-        results.loc[:,"Coefficient"] = results.loc[:,"Coefficient"].map(lambda x: x[0])
-        results.loc[:,"Probability"] = results.loc[:,"Z-Statistic"].map(lambda x: x[1])
-        results.loc[:,"Z-Statistic"] = results.loc[:,"Z-Statistic"].map(lambda x: x[0])
-        # # 
-        results.loc[:,"Coefficient"] = results.loc[:,"Coefficient"].map(lambda x: round(x,7))
-        results.loc[:,"Std.Error"] = results.loc[:,"Std.Error"].map(lambda x: round(x,7))
-        results.loc[:,"Z-Statistic"] = results.loc[:,"Z-Statistic"].map(lambda x: round(x,7))
-        results.loc[:, "Probability"] = results.loc[:, "Probability"].map(lambda x: round(x, 7))
+        results = results.dropna()
+        results.loc[:, "Coefficient"] = results.loc[:, "Coefficient"].map(
+            lambda x: x[0]
+        )
+        results.loc[:, "Probability"] = results.loc[:, "Z-Statistic"].map(
+            lambda x: x[1]
+        )
+        results.loc[:, "Z-Statistic"] = results.loc[:, "Z-Statistic"].map(
+            lambda x: x[0]
+        )
+        # #
+        results.loc[:, "Coefficient"] = results.loc[:, "Coefficient"].map(
+            lambda x: round(x, 7)
+        )
+        results.loc[:, "Std.Error"] = results.loc[:, "Std.Error"].map(
+            lambda x: round(x, 7)
+        )
+        results.loc[:, "Z-Statistic"] = results.loc[:, "Z-Statistic"].map(
+            lambda x: round(x, 7)
+        )
+        results.loc[:, "Probability"] = results.loc[:, "Probability"].map(
+            lambda x: round(x, 7)
+        )
 
-        result2 = pd.DataFrame({"Pseudo R-squared ":model.pr2, "Number of Observations":model.n, "Number of Variables":model.k}, index=[0])
+        result2 = pd.DataFrame(
+            {
+                "Pseudo R-squared ": model.pr2,
+                "Number of Observations": model.n,
+                "Number of Variables": model.k,
+            },
+            index=[0],
+        )
         result2 = result2.round(7)
 
-        html = """<p><pre>%s</pre>"""% model.summary.replace("\n", "<br/>")
+        html = """<p><pre>%s</pre>""" % model.summary.replace("\n", "<br/>")
 
-        return knext.Table.from_pandas(result2),knext.Table.from_pandas(results),knext.view_html(html)
+        return (
+            knext.Table.from_pandas(result2),
+            knext.Table.from_pandas(results),
+            knext.view_html(html),
+        )
+
 
 ############################################
 # spatial GM_Endog_Error_Hom node
 ############################################
-# FIXME: add another two parameters 
+# FIXME: add another two parameters
 @knext.node(
     name="Spatial GM_Endog_Error_Hom",
     node_type=knext.NodeType.LEARNER,
@@ -1034,7 +1082,7 @@ class SpatialGM_Endog_Error_Hom:
     independent_variables = knext.MultiColumnParameter(
         "Independent variables",
         "The columns containing the independent variables to use for the calculation of the spatial GM_Endog_Error_Hom model.",
-        column_filter=knut.is_numeric
+        column_filter=knut.is_numeric,
     )
 
     yend = knext.ColumnParameter(
@@ -1051,45 +1099,70 @@ class SpatialGM_Endog_Error_Hom:
         include_none_column=False,
     )
 
-
     def configure(self, configure_context, input_schema, input_schema_2):
-        knut.columns_exist([self.geo_col], input_schema)
+        self.geo_col = knut.column_exists_or_preset(
+            configure_context, self.geo_col, input_schema, knut.is_geo
+        )
 
         return None
 
-    def execute(self, exec_context:knext.ExecutionContext, input_1, input_2):
+    def execute(self, exec_context: knext.ExecutionContext, input_1, input_2):
         gdf = gp.GeoDataFrame(input_1.to_pandas(), geometry=self.geo_col)
         adjust_list = input_2.to_pandas()
         w = W.from_adjlist(adjust_list)
-        #Prepare Georgia dataset inputs
+        # Prepare Georgia dataset inputs
         X = gdf[self.independent_variables].values
         y = gdf[self.dependent_variable].values
         yend = gdf[self.yend].values
         q = gdf[self.q].values
 
-        
-        model = spreg.GM_Endog_Error_Hom(y=y, x=X, w=w,yend=yend,q=q)
+        model = spreg.GM_Endog_Error_Hom(y=y, x=X, w=w, yend=yend, q=q)
 
-        results = pd.DataFrame([model.name_x, model.betas, model.std_err, model.z_stat] ).T
+        results = pd.DataFrame(
+            [model.name_x, model.betas, model.std_err, model.z_stat]
+        ).T
         results.columns = ["Variable", "Coefficient", "Std.Error", "Z-Statistic"]
-        results =  results.dropna()
-        results.loc[:,"Coefficient"] = results.loc[:,"Coefficient"].map(lambda x: x[0])
-        results.loc[:,"Probability"] = results.loc[:,"Z-Statistic"].map(lambda x: x[1])
-        results.loc[:,"Z-Statistic"] = results.loc[:,"Z-Statistic"].map(lambda x: x[0])
-        # # 
-        results.loc[:,"Coefficient"] = results.loc[:,"Coefficient"].map(lambda x: round(x,7))
-        results.loc[:,"Std.Error"] = results.loc[:,"Std.Error"].map(lambda x: round(x,7))
-        results.loc[:,"Z-Statistic"] = results.loc[:,"Z-Statistic"].map(lambda x: round(x,7))
-        results.loc[:, "Probability"] = results.loc[:, "Probability"].map(lambda x: round(x, 7))
+        results = results.dropna()
+        results.loc[:, "Coefficient"] = results.loc[:, "Coefficient"].map(
+            lambda x: x[0]
+        )
+        results.loc[:, "Probability"] = results.loc[:, "Z-Statistic"].map(
+            lambda x: x[1]
+        )
+        results.loc[:, "Z-Statistic"] = results.loc[:, "Z-Statistic"].map(
+            lambda x: x[0]
+        )
+        # #
+        results.loc[:, "Coefficient"] = results.loc[:, "Coefficient"].map(
+            lambda x: round(x, 7)
+        )
+        results.loc[:, "Std.Error"] = results.loc[:, "Std.Error"].map(
+            lambda x: round(x, 7)
+        )
+        results.loc[:, "Z-Statistic"] = results.loc[:, "Z-Statistic"].map(
+            lambda x: round(x, 7)
+        )
+        results.loc[:, "Probability"] = results.loc[:, "Probability"].map(
+            lambda x: round(x, 7)
+        )
 
-        result2 = pd.DataFrame({"Pseudo R-squared ":model.pr2, "Number of Observations":model.n, "Number of Variables":model.k}, index=[0])
+        result2 = pd.DataFrame(
+            {
+                "Pseudo R-squared ": model.pr2,
+                "Number of Observations": model.n,
+                "Number of Variables": model.k,
+            },
+            index=[0],
+        )
         result2 = result2.round(7)
 
-        html = """<p><pre>%s</pre>"""% model.summary.replace("\n", "<br/>")
+        html = """<p><pre>%s</pre>""" % model.summary.replace("\n", "<br/>")
 
-        return knext.Table.from_pandas(result2),knext.Table.from_pandas(results),knext.view_html(html)
-
-
+        return (
+            knext.Table.from_pandas(result2),
+            knext.Table.from_pandas(results),
+            knext.view_html(html),
+        )
 
 
 ############################################
@@ -1106,12 +1179,10 @@ class SpatialGM_Endog_Error_Hom:
 @knext.input_table(
     name="Input Table",
     description="Input table for calculation of Bivariate Global Moran’s I",
-
 )
 @knext.input_table(
     name="Spatial Weights",
     description="Spatial Weights table for calculation of Bivariate Global Moran’s I",
-
 )
 @knext.output_table(
     name="Output Table",
@@ -1139,7 +1210,6 @@ class BivariateGlobalMoran:
         include_row_key=False,
         include_none_column=False,
     )
-    
 
     Field_col1 = knext.ColumnParameter(
         "Field column 1",
@@ -1156,29 +1226,37 @@ class BivariateGlobalMoran:
     )
 
     def configure(self, configure_context, input_schema_1, input_schema_2):
-        knut.columns_exist([self.geo_col], input_schema_1)
+        self.geo_col = knut.column_exists_or_preset(
+            configure_context, self.geo_col, input_schema_1, knut.is_geo
+        )
         return None
 
-    def execute(self, exec_context:knext.ExecutionContext, input_1, input_2):
+    def execute(self, exec_context: knext.ExecutionContext, input_1, input_2):
 
         gdf = gp.GeoDataFrame(input_1.to_pandas(), geometry=self.geo_col)
         adjust_list = input_2.to_pandas()
         w = W.from_adjlist(adjust_list)
-        
+
         x = gdf[self.Field_col1]
         y = gdf[self.Field_col2]
         np.random.seed(12345)
-        bi = esda.moran.Moran_BV(x,y, w)
+        bi = esda.moran.Moran_BV(x, y, w)
 
-        out = pd.DataFrame({"Bivariate Moran’s I": [bi.I], "p-value": [bi.p_sim], "z-score": [bi.z_sim]})        
+        out = pd.DataFrame(
+            {
+                "Bivariate Moran’s I": [bi.I],
+                "p-value": [bi.p_sim],
+                "z-score": [bi.z_sim],
+            }
+        )
         out.reset_index(inplace=True)
-        
+
         ax = sbn.kdeplot(bi.sim, shade=True)
         plt.vlines(bi.I, 0, 1, color="r")
         # plt.vlines(bi.EI, 0, 1)
         plt.xlabel("Bivariate Moran’s I")
-        
-        return knext.Table.from_pandas(out),knext.view_matplotlib(ax.get_figure())
+
+        return knext.Table.from_pandas(out), knext.view_matplotlib(ax.get_figure())
 
 
 ############################################
@@ -1195,12 +1273,10 @@ class BivariateGlobalMoran:
 @knext.input_table(
     name="Input Table",
     description="Input table for calculation of Bivariate Local Moran Statistics",
-
 )
 @knext.input_table(
     name="Spatial Weights",
     description="Spatial Weights table for calculation of Bivariate Local Moran Statistics",
-
 )
 @knext.output_table(
     name="Output Table",
@@ -1228,7 +1304,6 @@ class BivariateLocalMoran:
         include_row_key=False,
         include_none_column=False,
     )
-    
 
     Field_col1 = knext.ColumnParameter(
         "Field column 1",
@@ -1245,282 +1320,210 @@ class BivariateLocalMoran:
     )
 
     def configure(self, configure_context, input_schema_1, input_schema_2):
-        knut.columns_exist([self.geo_col], input_schema_1)
+        self.geo_col = knut.column_exists_or_preset(
+            configure_context, self.geo_col, input_schema_1, knut.is_geo
+        )
         return None
 
-    def execute(self, exec_context:knext.ExecutionContext, input_1, input_2):
+    def execute(self, exec_context: knext.ExecutionContext, input_1, input_2):
 
         gdf = gp.GeoDataFrame(input_1.to_pandas(), geometry=self.geo_col)
         adjust_list = input_2.to_pandas()
         w = W.from_adjlist(adjust_list)
-        
+
         x = gdf[self.Field_col1]
         y = gdf[self.Field_col2]
         np.random.seed(12345)
-        bi = esda.moran.Moran_Local_BV(x,y, w)
+        bi = esda.moran.Moran_Local_BV(x, y, w)
 
         gdf.loc[:, "Bivariate Local Moran’s I"] = bi.Is
         gdf.loc[:, "p-value"] = bi.p_sim
         gdf.loc[:, "z-score"] = bi.z_sim
-        gdf.loc[:,"spots"] = bi.q
+        gdf.loc[:, "spots"] = bi.q
 
-        gdf.loc[:,"spots_type"] = gdf["spots"].replace({1: "HH", 2: "LL", 3: "LH", 4: "HL"})
-        gdf.loc[gdf["p-value"] < 0.05,"spots_type"] = "Not Significant"
+        gdf.loc[:, "spots_type"] = gdf["spots"].replace(
+            {1: "HH", 2: "LL", 3: "LH", 4: "HL"}
+        )
+        gdf.loc[gdf["p-value"] < 0.05, "spots_type"] = "Not Significant"
 
         lag_index = lps.weights.lag_spatial(w, gdf[self.Field_col1])
         index_v = gdf[self.Field_col1]
-        b,a = np.polyfit(index_v, lag_index, 1)
+        b, a = np.polyfit(index_v, lag_index, 1)
         f, ax = plt.subplots(1, figsize=(9, 9))
 
-        plt.plot(index_v, lag_index, '.', color='firebrick') 
-        plt.vlines(index_v.mean(), lag_index.min(), lag_index.max(),linestyle='--')
-        plt.hlines(lag_index.mean(), index_v.min(), index_v.max(),linestyle='--')
+        plt.plot(index_v, lag_index, ".", color="firebrick")
+        plt.vlines(index_v.mean(), lag_index.min(), lag_index.max(), linestyle="--")
+        plt.hlines(lag_index.mean(), index_v.min(), index_v.max(), linestyle="--")
 
-        plt.plot(index_v, a + b*index_v, 'r')
-        plt.title('Moran Scatterplot')
-        plt.ylabel('Spatial Lag of %s' % self.Field_col1)
-        plt.xlabel('%s' % self.Field_col1)
+        plt.plot(index_v, a + b * index_v, "r")
+        plt.title("Moran Scatterplot")
+        plt.ylabel("Spatial Lag of %s" % self.Field_col1)
+        plt.xlabel("%s" % self.Field_col1)
 
-        return knext.Table.from_pandas(gdf),knext.view_matplotlib(f)
+        return knext.Table.from_pandas(gdf), knext.view_matplotlib(f)
+
 
 
 ############################################
-# Harvard DataVerse Search Node
+# Create Grid Node
 ############################################
 
 
 @knext.node(
-    name="Harvard DataVerse Search",
-    node_type=knext.NodeType.SOURCE,
-    icon_path=__NODE_ICON_PATH + "DvSearch.png",
-    category=__category,
-)
-@knext.output_table(
-    name="Output Table",
-    description="Output table of Harvard DataVerse Search",
-)
-class HarvardDataVerseSearch:
-    """
-    Harvard DataVerse Search
-    """
-
-    # input parameters
-    search_term = knext.StringParameter(
-        "Search Term",
-        "The search term or terms. Using “title:data” will search only the “title” field. “*” can be used as a wildcard either alone or adjacent to a term (i.e. “bird*”). ",
-        default_value="mobility",
-    )
-
-    search_type = knext.StringParameter(
-        "Search Type",
-        "Can be either “Dataverse”, “dataset”, or “file”. ",
-        enum=["dataset", "file", "dataverse", "all"],
-        default_value="dataset",
-    )
-
-    def configure(self, configure_context):
-
-        return None
-
-    def execute(self, exec_context:knext.ExecutionContext):
-        # get the search term
-        pandarallel.initialize(progress_bar=False,nb_workers=15)
-
-        search_term = self.search_term
-        
-        start = 0
-        type_ = self.search_type
-        per_page = 1000
-        url = 'https://dataverse.harvard.edu/api/search?q=%s&start=%d&type=%s&per_page=%d'%(search_term, start, type_, per_page)
-        r = requests.get(url)
-        data = r.json()
-        pages = data["data"]["total_count"] // per_page + 1
-
-        # Get the data all pages from the API and save it to a dataframe
-
-        urls = []
-        for start in range(pages):
-            temp = {}
-            url = 'https://dataverse.harvard.edu/api/search?q=%s&start=%d&type=%s&per_page=%d'%(search_term, start, type_, per_page)
-            temp["url"] = url
-            temp["query"] = search_term
-            urls.append(temp)
-        urls = pd.DataFrame(urls)
-
-
-        def get_data(url):
-            import requests
-            import pandas as pd
-            r = requests.get(url)
-            data = r.json()
-            return pd.DataFrame(data["data"]["items"])
-
-        urls["data"] = urls["url"].parallel_apply(get_data)
-        df = pd.concat(urls["data"].values, ignore_index=True)
-
-        def float_list(x):
-            try:
-                f = ";".join([str(i) for i in x])
-                return f
-            except:
-                return x
-
-        df[[ 'subjects','contacts', 'authors',
-            'keywords',  'producers', 'relatedMaterial',
-            'geographicCoverage', 'dataSources']] = df[[  'subjects','contacts', 'authors',
-            'keywords',  'producers', 'relatedMaterial',
-            'geographicCoverage', 'dataSources']].applymap(float_list)
-        df.drop("publications",axis=1,inplace=True)
-
-
-        # return the results as a table
-        return knext.Table.from_pandas(df)
-
-############################################
-# Harvard DataVerse Query Data Files Source Node
-############################################
-
-@knext.node(
-    name="Harvard DataVerse GlobalDOI Search",
-    node_type=knext.NodeType.SOURCE,
-    icon_path=__NODE_ICON_PATH + "DvDOIsource.png",
-    category=__category,
-)
-@knext.output_table(
-    name="Output Table",
-    description="Output table of Harvard DataVerse Query Data Files",
-)
-class HarvardDataVerseQueryDataFilesSource:
-    """
-    Harvard DataVerse Query Data Files
-    """
-
-    # input parameters
-    global_doi = knext.StringParameter(
-        "Global DOI",
-        "The global DOI of the dataset. ",
-        default_value="doi:10.7910/DVN/ZAKKCE",
-    )
-
-    def configure(self, configure_context):
-            
-            return None
-    
-    def execute(self, exec_context:knext.ExecutionContext):
-
-        base_url = 'https://dataverse.harvard.edu/'
-        global_doi = self.global_doi
-        api = NativeApi(base_url)
-        data_api = DataAccessApi(base_url)
-        dataset = api.get_dataset(global_doi)
-        files_list = dataset.json()['data']['latestVersion']['files']
-        df = pd.json_normalize(files_list)
-        df = df.fillna(method = "bfill")
-
-        return knext.Table.from_pandas(df)
-
-
-############################################
-# Harvard DataVerse Query Data Files Node
-############################################
-
-@knext.node(
-    name="Harvard DataVerse GlobalDOI Link ",
+    name="Create Grid",
     node_type=knext.NodeType.MANIPULATOR,
-    icon_path=__NODE_ICON_PATH + "DvGlobalDOIlink.png",
+    icon_path=__NODE_ICON_PATH + "CreateGrid.png",
     category=__category,
 )
 @knext.input_table(
     name="Input Table",
-    description="Input table of Harvard DataVerse Query Data Files",
+    description="Input table of Create Grid",
 )
 @knext.output_table(
     name="Output Table",
-    description="Output table of Harvard DataVerse Query Data Files",
+    description="Output table of Create Grid",
 )
-class HarvardDataVerseQueryDataFiles:
+class CreateGrid:
     """
-    Harvard DataVerse Query Data Files
+    Create Grid
     """
 
-    # input parameters
-    global_doi_column = knext.ColumnParameter(
-        "Global DOI Column",
-        "The column containing the global DOI of the dataset. ",
+    geo_col = knext.ColumnParameter(
+        "Geometry Column",
+        "The column containing the geometry of the dataset. ",
+        column_filter=knut.is_geo,
+        include_row_key=False,
+        include_none_column=False,
     )
 
+    grid_length = knext.IntParameter(
+        "Grid Length",
+        "The length in meters of the grid. ",
+        default_value=100,
+    )
 
     def configure(self, configure_context, input_schema):
-            
-            return None
-    
-    def execute(self, exec_context:knext.ExecutionContext, input_table):
 
-        base_url = 'https://dataverse.harvard.edu/'
-        global_doi = input_table.to_pandas()[self.global_doi_column].values[0]
-        api = NativeApi(base_url)
-        data_api = DataAccessApi(base_url)
-        dataset = api.get_dataset(global_doi)
-        files_list = dataset.json()['data']['latestVersion']['files']
-        df = pd.json_normalize(files_list)
-        df = df.fillna(method = "bfill")
+        return None
 
-        return knext.Table.from_pandas(df)
+    def execute(self, exec_context: knext.ExecutionContext, input_table):
+
+        gdf = gp.GeoDataFrame(input_table.to_pandas(), geometry=self.geo_col)
+
+        xmin, ymin, xmax, ymax = gdf.total_bounds
+        width = self.grid_length
+        height = self.grid_length
+        rows = int(np.ceil((ymax - ymin) / height))
+        cols = int(np.ceil((xmax - xmin) / width))
+        XleftOrigin = xmin
+        XrightOrigin = xmin + width
+        YtopOrigin = ymax
+        YbottomOrigin = ymax - height
+        polygons = []
+        for i in range(cols):
+            Ytop = YtopOrigin
+            Ybottom = YbottomOrigin
+            for j in range(rows):
+                polygons.append(
+                    Polygon(
+                        [
+                            (XleftOrigin, Ytop),
+                            (XrightOrigin, Ytop),
+                            (XrightOrigin, Ybottom),
+                            (XleftOrigin, Ybottom),
+                        ]
+                    )
+                )
+                Ytop = Ytop - height
+                Ybottom = Ybottom - height
+            XleftOrigin = XleftOrigin + width
+            XrightOrigin = XrightOrigin + width
+
+        grid = gp.GeoDataFrame({"geometry": polygons}, crs=gdf.crs)
+
+        return knext.Table.from_pandas(grid)
+
 
 ############################################
-# Harvard DataVerse Read Data File Node
+# Get Geodesic Distance
 ############################################
+
 
 @knext.node(
-    name="Harvard DataVerse DataID Reader",
+    name="Haversine Distance",
     node_type=knext.NodeType.MANIPULATOR,
-    icon_path=__NODE_ICON_PATH + "DvFileReader.png",
+    icon_path=__NODE_ICON_PATH + "HaversineDist.png",
     category=__category,
 )
 @knext.input_table(
     name="Input Table",
-    description="Input table of Harvard DataVerse Read Data File",
+    description="Input table for haversine distance calculation",
 )
 @knext.output_table(
     name="Output Table",
-    description="Output table of Harvard DataVerse Read Data File",
+    description="Output table containing haversine distance",
 )
-class HarvardDataVerseReadDataFile:
+class HaversineDistGrid:
     """
-    Harvard DataVerse Read Data File
+    Calculation Haversine Distance
     """
 
-    # input parameters
-    dataFile_id_column = knext.ColumnParameter(
-        "DataFile ID Column",
-        "The column containing the DataFile ID of the dataset. ",
+    Lon1 = knext.ColumnParameter(
+        "The First Longitude Column",
+        "The column containing the first longitude coordinates. ",
+        column_filter=knut.is_numeric,
+        include_row_key=False,
+        include_none_column=False,
     )
 
-    is_geo = knext.BoolParameter(
-        "Is Geo",
-        "Is the file a geo file?",
-        default_value=False,
+    Lat1 = knext.ColumnParameter(
+        "The First Latitude Column",
+        "The column containing the first Latitude coordinates. ",
+        column_filter=knut.is_numeric,
+        include_row_key=False,
+        include_none_column=False,
     )
 
+    Lon2 = knext.ColumnParameter(
+        "The Second Longitude Column",
+        "The column containing the second  longitude coordinates. ",
+        column_filter=knut.is_numeric,
+        include_row_key=False,
+        include_none_column=False,
+    )
+
+    Lat2 = knext.ColumnParameter(
+        "The Second Latitude Column",
+        "The column containing the second  Latitude coordinates. ",
+        column_filter=knut.is_numeric,
+        include_row_key=False,
+        include_none_column=False,
+    )
 
     def configure(self, configure_context, input_schema):
-                
-        return None
+        return input_schema.append(knext.Column(knext.double(), name="HDist"))
 
-    def execute(self, exec_context:knext.ExecutionContext, input_table):
+    def execute(self, exec_context: knext.ExecutionContext, input_table):
+        def HaversineDist(x1, y1, x2, y2):
+            x1 = radians(x1)
+            x2 = radians(x2)
+            y1 = radians(y1)
+            y2 = radians(y2)
+            # Haversine formula
+            Dx = x2 - x1
+            Dy = y2 - y1
+            P = sin(Dy / 2) ** 2 + cos(y1) * cos(y2) * sin(Dx / 2) ** 2
+            Q = 2 * asin(sqrt(P))
+            # The earth's radius in kilometers.
+            EarthR_km = 6371
+            # Then we'll compute the outcome.
+            return Q * EarthR_km
 
-        base_url = 'https://dataverse.harvard.edu/'
-        api = NativeApi(base_url)
-        data_api = DataAccessApi(base_url)
-
-        file_id = input_table.to_pandas()[self.dataFile_id_column].values[0]
-        response = data_api.get_datafile(file_id)
-        content_ = io.BytesIO(response.content)
-
-        if self.is_geo:
-            df = gp.read_file(content_)
-            df.reset_index(inplace=True,drop=True)
-            
-        else:            
-            df = pd.read_csv(content_,encoding='utf8', sep="\t")
+        df = input_table.to_pandas()
+        df["HDist"] = df.apply(
+            lambda x: HaversineDist(
+                x[self.Lon1], x[self.Lat1], x[self.Lon2], x[self.Lat2]
+            ),
+            axis=1,
+        )
         return knext.Table.from_pandas(df)

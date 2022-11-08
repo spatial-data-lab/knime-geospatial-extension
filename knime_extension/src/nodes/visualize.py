@@ -1,23 +1,20 @@
-# from doctest import debug_script
-import logging
-from xml.etree.ElementInclude import include
 import geopandas as gp
 import knime_extension as knext
 import util.knime_utils as knut
 from keplergl import KeplerGl
 import json
-
-
-LOGGER = logging.getLogger(__name__)
+from folium import plugins
+import folium
 
 
 category = knext.category(
     path="/geo",
     level_id="viz",
-    name="Spatial Visualization",#Spatial Visualization
+    name="Spatial Visualization",  # Spatial Visualization
     description="Spatial view nodes",
     # starting at the root folder of the extension_module parameter in the knime.yml file
     icon="icons/icon/VisulizationCategory.png",
+    after="conversion",
 )
 # Root path for all node icons in this file
 __NODE_ICON_PATH = "icons/icon/Visulization/"
@@ -103,6 +100,18 @@ class ViewNode:
             "afmhot",
             "gist_heat",
             "copper",
+            "PiYG",
+            "PRGn",
+            "BrBG",
+            "PuOr",
+            "RdGy",
+            "RdBu",
+            "RdYlBu",
+            "RdYlGn",
+            "Spectral",
+            "coolwarm",
+            "bwr",
+            "seismic",
             "viridis_r",
             "plasma_r",
             "inferno_r",
@@ -142,7 +151,25 @@ class ViewNode:
             "afmhot_r",
             "gist_heat_r",
             "copper_r",
+            "PiYG_r",
+            "PRGn_r",
+            "BrBG_r",
+            "PuOr_r",
+            "RdGy_r",
+            "RdBu_r",
+            "RdYlBu_r",
+            "RdYlGn_r",
+            "Spectral_r",
+            "coolwarm_r",
+            "bwr_r",
+            "seismic_r",
         ],
+    )
+
+    stroke = knext.BoolParameter(
+        "Stroke",
+        "Whether to draw strokes along the polygon boundary.",
+        default_value=True,
     )
 
     base_map = knext.StringParameter(
@@ -253,8 +280,6 @@ class ViewNode:
         include_none_column=True,
     )
 
-# TODO: add just for size
-
     size_scale = knext.IntParameter(
         "Size scale",
         "Select the size scale of the markers.",
@@ -266,13 +291,13 @@ class ViewNode:
     name_cols = knext.MultiColumnParameter(
         "Tooltip columns",
         "Select columns which should be shown in the marker tooltip.",
-        column_filter=knut.is_string,
+        column_filter=knut.is_numeric_or_string,
     )
 
     popup_cols = knext.MultiColumnParameter(
         "Popup columns",
         "Select columns which should be shown in the marker popup.",
-        column_filter=knut.is_string,
+        column_filter=knut.is_numeric_or_string,
     )
 
     plot_legend = knext.BoolParameter(
@@ -288,7 +313,9 @@ class ViewNode:
     )
 
     def configure(self, configure_context, input_schema):
-        knut.columns_exist([self.geo_col], input_schema)
+        self.geo_col = knut.column_exists_or_preset(
+            configure_context, self.geo_col, input_schema, knut.is_geo
+        )
         # if self.name_cols is None:
         #     self.name_cols = [c.name for c in input_schema if knut.is_string(c)]
         return None
@@ -339,7 +366,7 @@ class ViewNode:
 
             # check whether is line
             # FIXME: change it to use utlis.is_line
-            geo_types = gdf["geometry"].geom_type.unique()
+            geo_types = gdf[self.geo_col].geom_type.unique()
             if ("LineString" in geo_types) or ("MultiLineString" in geo_types):
                 max_size = 8
                 kws["style_kwds"] = {
@@ -359,7 +386,7 @@ class ViewNode:
                     }
                 }
                 kws["m"] = gdf.explore(tiles=self.base_map)
-                gdf["geometry"] = gdf.centroid
+                gdf[self.geo_col] = gdf.centroid
 
             else:
                 max_size = 30
@@ -371,14 +398,18 @@ class ViewNode:
                     }
                 }
         if "none" not in str(self.size_scale).lower():
-            geo_types = gdf["geometry"].geom_type.unique()
+            geo_types = gdf[self.geo_col].geom_type.unique()
             if ("LineString" in geo_types) or ("MultiLineString" in geo_types):
                 kws["style_kwds"] = {"weight": self.size_scale}
-            elif  ("Polygon" in geo_types) or ("MultiPolygon" in geo_types):
+            elif ("Polygon" in geo_types) or ("MultiPolygon" in geo_types):
                 pass
             else:
                 kws["style_kwds"] = {"radius": self.size_scale}
-
+        if not self.stroke:
+            if "style_kwds" in kws:
+                kws["style_kwds"]["stroke"] = False
+            else:
+                kws["style_kwds"] = {"stroke": False}
         map = gdf.explore(**kws)
         # knut.check_canceled(exec_context)
         return knext.view(map)
@@ -415,15 +446,15 @@ class ViewNodeStatic:
 
     color_col = knext.ColumnParameter(
         "Marker color column",
-        "Select marker color column. The column must contain the color name e.g. red, green, blue, etc.",
-        column_filter=knut.is_numeric,
+        "Select one column to map to the marker color. If you select none, it will not map any column to color.",
+        column_filter=knut.is_numeric_or_string,
         include_row_key=False,
         include_none_column=True,
     )
 
     color = knext.StringParameter(
         "Marker color",
-        "Select marker color. The column must contain the color name e.g. red, green, blue, etc.",
+        "Select marker color. Can select none if you don't want to set a unified marker color ",
         default_value="none",
         enum=[
             "none",
@@ -458,7 +489,7 @@ class ViewNodeStatic:
 
     edge_color = knext.StringParameter(
         "Edge color",
-        "Select the edge color to use for the color column. See https://matplotlib.org/stable/tutorials/colors/colormaps.html",
+        "Set the edge color. See https://matplotlib.org/stable/tutorials/colors/colormaps.html",
         default_value="none",
         enum=[
             "none",
@@ -501,7 +532,7 @@ class ViewNodeStatic:
 
     line_width = knext.IntParameter(
         "Line width",
-        "Select the line width. The width is fixed by default. If a width column is selected, the width will be scaled by the values of the column.",
+        "Select a unified line width, can be set to none",
         default_value=1,
         min_value=1,
         max_value=10,
@@ -650,7 +681,7 @@ class ViewNodeStatic:
 
     legend_framealpha = knext.DoubleParameter(
         "Legend frame alpha",
-        "Select the alpha value for the legend frame.",
+        "Select the transparent value for the legend frame.",
         default_value=1.0,
         min_value=0.0,
         max_value=1.0,
@@ -695,7 +726,9 @@ class ViewNodeStatic:
     )
 
     def configure(self, configure_context, input_schema):
-        knut.columns_exist([self.geo_col], input_schema)
+        self.geo_col = knut.column_exists_or_preset(
+            configure_context, self.geo_col, input_schema, knut.is_geo
+        )
         # if self.name_cols is None:
         #     self.name_cols = [c.name for c in input_schema if knut.is_string(c)]
         return None
@@ -705,7 +738,8 @@ class ViewNodeStatic:
 
         # check legend caption
         if (self.legend_caption is None) or (self.legend_caption == ""):
-            self.legend_caption = self.color_col
+            if "none" not in str(self.color_col).lower():
+                self.legend_caption = self.color_col
 
         #  set legend location
         if self.legend_location == "outside_top":
@@ -728,7 +762,7 @@ class ViewNodeStatic:
         else:
             legend_expand = None
 
-        kws = {"alpha": 1, "legend": self.plot_legend,"aspect": 1}
+        kws = {"alpha": 1, "legend": self.plot_legend, "aspect": 1}
 
         if "none" not in str(self.edge_color):
             kws["edgecolor"] = self.edge_color
@@ -771,7 +805,7 @@ class ViewNodeStatic:
                     "pad": self.legend_colorbar_pad,
                 }
 
-        geo_types = gdf["geometry"].geom_type.unique()
+        geo_types = gdf[self.geo_col].geom_type.unique()
         if not (("LineString" in geo_types) or ("MultiLineString" in geo_types)):
             if "none" not in str(self.size_col).lower():
                 max_point_size = 2000
@@ -838,14 +872,18 @@ class ViewNodeKepler:
     )
 
     def configure(self, configure_context, input_schema):
-        knut.columns_exist([self.geo_col], input_schema)
+        self.geo_col = knut.column_exists_or_preset(
+            configure_context, self.geo_col, input_schema, knut.is_geo
+        )
         # if self.name_cols is None:
         #     self.name_cols = [c.name for c in input_schema if knut.is_string(c)]
         return None
 
     def execute(self, exec_context: knext.ExecutionContext, input_table):
-        gdf = gp.GeoDataFrame(input_table.to_pandas(), geometry=self.geo_col)
-
+        df = input_table.to_pandas()
+        df.rename(columns={self.geo_col: "geometry"}, inplace=True)
+        gdf = gp.GeoDataFrame(df, geometry="geometry")
+        
         map_1 = KeplerGl(show_docs=False)
         map_1.add_data(data=gdf.copy(), name="state")
         config = {}
@@ -870,3 +908,95 @@ class ViewNodeKepler:
         # cx.add_basemap(map, crs=gdf.crs.to_string(), source=cx.providers.flatten()[self.base_map])
 
         return knext.view_html(html)
+
+
+############################################
+# heatmap node
+############################################
+
+
+@knext.node(
+    name="Heatmap",
+    node_type=knext.NodeType.VISUALIZER,
+    icon_path=__NODE_ICON_PATH + "Heatmap.png",
+    category=category,
+)
+@knext.input_table(
+    name="Table to visualize",
+    description="Table with data to visualize",
+)
+@knext.output_view(name="Heatmap view", description="Showing a heatmap with the data")
+class ViewNodeHeatmap:
+    """
+    This node will visualize the given data on a heatmap. More details about heatmap [here](https://www.gislounge.com/heat-maps-in-gis/).
+    """
+
+    geo_col = knext.ColumnParameter(
+        "Geometry column",
+        "Select the geometry column to visualize.",
+        column_filter=knut.is_geo,
+        include_row_key=False,
+        include_none_column=False,
+    )
+
+    weight_col = knext.ColumnParameter(
+        "Weight column",
+        "Select the weight column to visualize.",
+        column_filter=knut.is_numeric,
+        include_row_key=False,
+        include_none_column=True,
+    )
+
+    min_opacity = knext.DoubleParameter(
+        "Minimum opacity",
+        "The minimum opacity the heat will start at.",
+        default_value=0.5,
+    )
+
+    max_zoom = knext.IntParameter(
+        "Maximum zoom",
+        "Zoom level where the points reach maximum intensity (as intensity scales with zoom), equals maxZoom of the map by default",
+        default_value=18,
+    )
+
+    radius = knext.IntParameter(
+        "Radius",
+        "Radius of each “point” of the heatmap",
+        default_value=25,
+    )
+
+    blur = knext.IntParameter(
+        "Blur",
+        "Amount of blur",
+        default_value=15,
+    )
+
+    def configure(self, configure_context, input_schema):
+
+        return None
+
+    def execute(self, exec_context: knext.ExecutionContext, input_table):
+
+        gdf = gp.GeoDataFrame(input_table.to_pandas(), geometry=self.geo_col)
+
+        map = gdf.explore()
+        gdf["lon"] = gdf.geometry.centroid.x
+        gdf["lat"] = gdf.geometry.centroid.y
+
+        if "none" not in str(self.weight_col).lower():
+            heat_data = gdf[["lat", "lon", self.weight_col]]
+        else:
+            heat_data = gdf[["lat", "lon"]]
+
+        plugins.HeatMap(
+            heat_data,
+            name="heatmap",
+            min_opacity=self.min_opacity,
+            max_zoom=self.max_zoom,
+            radius=self.radius,
+            blur=self.blur,
+        ).add_to(map)
+
+        folium.LayerControl().add_to(map)
+
+        return knext.view(map)
