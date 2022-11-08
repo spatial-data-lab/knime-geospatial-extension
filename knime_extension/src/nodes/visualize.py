@@ -53,7 +53,7 @@ class ViewNode:
         "Select marker color column to be plotted.",
         column_filter=knut.is_numeric_or_string,
         include_row_key=False,
-        include_none_column=False,
+        include_none_column=True,
     )
 
     color_map = knext.StringParameter(
