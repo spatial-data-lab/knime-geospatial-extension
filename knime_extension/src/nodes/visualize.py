@@ -1,9 +1,10 @@
-from xml.etree.ElementInclude import include
 import geopandas as gp
 import knime_extension as knext
 import util.knime_utils as knut
 from keplergl import KeplerGl
 import json
+from folium import plugins
+import folium
 
 
 category = knext.category(
@@ -365,7 +366,7 @@ class ViewNode:
 
             # check whether is line
             # FIXME: change it to use utlis.is_line
-            geo_types = gdf["geometry"].geom_type.unique()
+            geo_types = gdf[self.geo_col].geom_type.unique()
             if ("LineString" in geo_types) or ("MultiLineString" in geo_types):
                 max_size = 8
                 kws["style_kwds"] = {
@@ -385,7 +386,7 @@ class ViewNode:
                     }
                 }
                 kws["m"] = gdf.explore(tiles=self.base_map)
-                gdf["geometry"] = gdf.centroid
+                gdf[self.geo_col] = gdf.centroid
 
             else:
                 max_size = 30
@@ -397,7 +398,7 @@ class ViewNode:
                     }
                 }
         if "none" not in str(self.size_scale).lower():
-            geo_types = gdf["geometry"].geom_type.unique()
+            geo_types = gdf[self.geo_col].geom_type.unique()
             if ("LineString" in geo_types) or ("MultiLineString" in geo_types):
                 kws["style_kwds"] = {"weight": self.size_scale}
             elif ("Polygon" in geo_types) or ("MultiPolygon" in geo_types):
@@ -737,7 +738,8 @@ class ViewNodeStatic:
 
         # check legend caption
         if (self.legend_caption is None) or (self.legend_caption == ""):
-            self.legend_caption = self.color_col
+            if "none" not in str(self.color_col).lower():
+                self.legend_caption = self.color_col
 
         #  set legend location
         if self.legend_location == "outside_top":
@@ -803,7 +805,7 @@ class ViewNodeStatic:
                     "pad": self.legend_colorbar_pad,
                 }
 
-        geo_types = gdf["geometry"].geom_type.unique()
+        geo_types = gdf[self.geo_col].geom_type.unique()
         if not (("LineString" in geo_types) or ("MultiLineString" in geo_types)):
             if "none" not in str(self.size_col).lower():
                 max_point_size = 2000
@@ -878,8 +880,10 @@ class ViewNodeKepler:
         return None
 
     def execute(self, exec_context: knext.ExecutionContext, input_table):
-        gdf = gp.GeoDataFrame(input_table.to_pandas(), geometry=self.geo_col)
-
+        df = input_table.to_pandas()
+        df.rename(columns={self.geo_col: "geometry"}, inplace=True)
+        gdf = gp.GeoDataFrame(df, geometry="geometry")
+        
         map_1 = KeplerGl(show_docs=False)
         map_1.add_data(data=gdf.copy(), name="state")
         config = {}
@@ -904,3 +908,95 @@ class ViewNodeKepler:
         # cx.add_basemap(map, crs=gdf.crs.to_string(), source=cx.providers.flatten()[self.base_map])
 
         return knext.view_html(html)
+
+
+############################################
+# heatmap node
+############################################
+
+
+@knext.node(
+    name="Heatmap",
+    node_type=knext.NodeType.VISUALIZER,
+    icon_path=__NODE_ICON_PATH + "Heatmap.png",
+    category=category,
+)
+@knext.input_table(
+    name="Table to visualize",
+    description="Table with data to visualize",
+)
+@knext.output_view(name="Heatmap view", description="Showing a heatmap with the data")
+class ViewNodeHeatmap:
+    """
+    This node will visualize the given data on a heatmap. More details about heatmap [here](https://www.gislounge.com/heat-maps-in-gis/).
+    """
+
+    geo_col = knext.ColumnParameter(
+        "Geometry column",
+        "Select the geometry column to visualize.",
+        column_filter=knut.is_geo,
+        include_row_key=False,
+        include_none_column=False,
+    )
+
+    weight_col = knext.ColumnParameter(
+        "Weight column",
+        "Select the weight column to visualize.",
+        column_filter=knut.is_numeric,
+        include_row_key=False,
+        include_none_column=True,
+    )
+
+    min_opacity = knext.DoubleParameter(
+        "Minimum opacity",
+        "The minimum opacity the heat will start at.",
+        default_value=0.5,
+    )
+
+    max_zoom = knext.IntParameter(
+        "Maximum zoom",
+        "Zoom level where the points reach maximum intensity (as intensity scales with zoom), equals maxZoom of the map by default",
+        default_value=18,
+    )
+
+    radius = knext.IntParameter(
+        "Radius",
+        "Radius of each “point” of the heatmap",
+        default_value=25,
+    )
+
+    blur = knext.IntParameter(
+        "Blur",
+        "Amount of blur",
+        default_value=15,
+    )
+
+    def configure(self, configure_context, input_schema):
+
+        return None
+
+    def execute(self, exec_context: knext.ExecutionContext, input_table):
+
+        gdf = gp.GeoDataFrame(input_table.to_pandas(), geometry=self.geo_col)
+
+        map = gdf.explore()
+        gdf["lon"] = gdf.geometry.centroid.x
+        gdf["lat"] = gdf.geometry.centroid.y
+
+        if "none" not in str(self.weight_col).lower():
+            heat_data = gdf[["lat", "lon", self.weight_col]]
+        else:
+            heat_data = gdf[["lat", "lon"]]
+
+        plugins.HeatMap(
+            heat_data,
+            name="heatmap",
+            min_opacity=self.min_opacity,
+            max_zoom=self.max_zoom,
+            radius=self.radius,
+            blur=self.blur,
+        ).add_to(map)
+
+        folium.LayerControl().add_to(map)
+
+        return knext.view(map)
