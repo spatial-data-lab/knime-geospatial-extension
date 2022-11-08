@@ -73,7 +73,7 @@ class GeoFileReaderNode:
 )
 @knut.geo_node_description(
     short_description="Write single layer GeoFile.",
-    description="This node write the Shapefile,  or Geojson with geopandas.to_file().",
+    description="This node write the data in the format of Shapefile,  or Geojson with geopandas.to_file().",
     references={
         "Reading Spatial Data": "https://geopandas.org/en/stable/docs/user_guide/io.html",
     },
@@ -90,7 +90,7 @@ class GeoFileWriterNode:
 
     data_url = knext.StringParameter(
         "Output file path and file name",
-        "The file path for writing data ended with .shp or .geo",
+        "The file path for writing data without the file format or extension",
         "",
     )
 
