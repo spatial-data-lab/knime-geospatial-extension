@@ -12,7 +12,6 @@ from pandarallel import pandarallel
 import io
 import numpy as np
 from shapely.geometry import Polygon
-from math import radians, cos, sin, asin, sqrt  # For Haversine Distance
 
 __category = knext.category(
     path="/geo",
