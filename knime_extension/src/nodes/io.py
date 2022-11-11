@@ -54,6 +54,8 @@ class GeoFileReaderNode:
     def execute(self, exec_context: knext.ExecutionContext):
         gdf = gp.read_file(self.data_url)
         gdf = gdf.reset_index(drop=True)
+        if "<Row Key>" in gdf.columns:
+            gdf = gdf.drop(columns="<Row Key>")
         return knext.Table.from_pandas(gdf)
 
 
