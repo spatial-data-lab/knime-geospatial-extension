@@ -1065,7 +1065,7 @@ class SpatialML_Lag:
         X = gdf[self.independent_variables].values
         y = gdf[self.dependent_variable].values
 
-        model = spreg.ML_Lag(y, X, w, method="ord")
+        model = spreg.ML_Lag(y, X, w=w, method="ord",name_x=self.independent_variables,name_y=self.dependent_variable)
 
         results = pd.DataFrame(
             [model.name_x, model.betas, model.std_err, model.z_stat]
@@ -1187,7 +1187,7 @@ class SpatialML_Error:
         X = gdf[self.independent_variables].values
         y = gdf[self.dependent_variable].values
 
-        model = spreg.ML_Error(y, X, w, method="ord")
+        model = spreg.ML_Error(y, X, w=w, method="ord",name_x=self.independent_variables,name_y=self.dependent_variable)
 
         results = pd.DataFrame(
             [model.name_x, model.betas, model.std_err, model.z_stat]
