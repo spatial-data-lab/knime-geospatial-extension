@@ -20,6 +20,30 @@ category = knext.category(
 __NODE_ICON_PATH = "icons/icon/Visulization/"
 
 
+# helper class for geoview
+# TODO: add this class 
+# class __GeoView:
+#     def __init__(self, geo_df, color_col, color_map, geo_col):
+#         self.geo_df = geo_df
+#         self.color_col = color_col
+#         self.color_map = color_map
+#         self.geo_col = geo_col
+
+#     def __repr__(self):
+#         return self.geo_df.to_json()
+
+#     def __str__(self):
+#         return self.geo_df.to_json()
+
+#     def _repr_html_(self):
+#         return self.geo_df._repr_html_()
+
+#     def _repr_mimebundle_(self, include=None, exclude=None):
+#         return self.geo_df._repr_mimebundle_(include, exclude)
+
+
+
+
 @knext.node(
     name="Geospatial View",
     node_type=knext.NodeType.VISUALIZER,
