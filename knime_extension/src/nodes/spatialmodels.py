@@ -944,7 +944,7 @@ class SpatialOLS:
         X = gdf[self.independent_variables].values
         y = gdf[self.dependent_variable].values
 
-        model = spreg.OLS(y, X, w, spat_diag=True, moran=True, white_test=True)
+        model = spreg.OLS(y, X,w=w, spat_diag=True, moran=True, white_test=True,name_y=self.dependent_variable,name_x=self.independent_variables)
 
         results = pd.DataFrame(
             [model.name_x, model.betas, model.std_err, model.t_stat]
