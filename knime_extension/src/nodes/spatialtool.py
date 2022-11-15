@@ -7,6 +7,8 @@ import geopandas as gp
 import knime_extension as knext
 import util.knime_utils as knut
 import numpy as np
+from math import radians, cos, sin, asin, sqrt  # For Haversine Distance
+from shapely.geometry import Polygon # For Grid
 
 LOGGER = logging.getLogger(__name__)
 
@@ -363,6 +365,12 @@ class NearestJoinNode:
         1000.0,
     )
 
+    crs_info = knext.StringParameter(
+        label="CRS for distance calculation",
+        description="Input the CRS to use",
+        default_value="EPSG:3857",
+    )
+
     def configure(self, configure_context, left_input_schema, right_input_schema):
         self.left_geo_col = knut.column_exists_or_preset(
             configure_context, self.left_geo_col, left_input_schema, knut.is_geo
@@ -379,7 +387,8 @@ class NearestJoinNode:
             right_input.to_pandas(), geometry=self.right_geo_col
         )
         knut.check_canceled(exec_context)
-        right_gdf = right_gdf.to_crs(left_gdf.crs)
+        left_gdf = left_gdf.to_crs(self.crs_info)
+        right_gdf = right_gdf.to_crs(self.crs_info)
         gdf = gp.sjoin_nearest(
             left_gdf,
             right_gdf,
@@ -823,3 +832,166 @@ class SimplifyNode:
         exec_context.set_progress(0.1, "Transformation done")
         LOGGER.debug("Feature Simplified")
         return knext.Table.from_pandas(gdf)
+
+
+############################################
+# Create Grid Node
+############################################
+
+
+@knext.node(
+    name="Create Grid",
+    node_type=knext.NodeType.MANIPULATOR,
+    icon_path=__NODE_ICON_PATH + "CreateGrid.png",
+    category=__category,
+)
+@knext.input_table(
+    name="Input Table",
+    description="Input table of Create Grid",
+)
+@knext.output_table(
+    name="Output Table",
+    description="Output table of Create Grid",
+)
+class CreateGrid:
+    """
+    Create Grid
+    """
+
+    geo_col = knext.ColumnParameter(
+        "Geometry Column",
+        "The column containing the geometry of the dataset. ",
+        column_filter=knut.is_geo,
+        include_row_key=False,
+        include_none_column=False,
+    )
+
+    grid_length = knext.IntParameter(
+        "Grid Length",
+        "The length in meters of the grid. ",
+        default_value=100,
+    )
+
+    def configure(self, configure_context, input_schema):
+
+        return None
+
+    def execute(self, exec_context: knext.ExecutionContext, input_table):
+
+        gdf = gp.GeoDataFrame(input_table.to_pandas(), geometry=self.geo_col)
+
+        xmin, ymin, xmax, ymax = gdf.total_bounds
+        width = self.grid_length
+        height = self.grid_length
+        rows = int(np.ceil((ymax - ymin) / height))
+        cols = int(np.ceil((xmax - xmin) / width))
+        XleftOrigin = xmin
+        XrightOrigin = xmin + width
+        YtopOrigin = ymax
+        YbottomOrigin = ymax - height
+        polygons = []
+        for i in range(cols):
+            Ytop = YtopOrigin
+            Ybottom = YbottomOrigin
+            for j in range(rows):
+                polygons.append(
+                    Polygon(
+                        [
+                            (XleftOrigin, Ytop),
+                            (XrightOrigin, Ytop),
+                            (XrightOrigin, Ybottom),
+                            (XleftOrigin, Ybottom),
+                        ]
+                    )
+                )
+                Ytop = Ytop - height
+                Ybottom = Ybottom - height
+            XleftOrigin = XleftOrigin + width
+            XrightOrigin = XrightOrigin + width
+
+        grid = gp.GeoDataFrame({"geometry": polygons}, crs=gdf.crs)
+
+        return knext.Table.from_pandas(grid)
+
+
+############################################
+# Get Geodesic Haversine Distance
+############################################
+@knext.node(
+    name="Haversine Distance",
+    node_type=knext.NodeType.MANIPULATOR,
+    icon_path=__NODE_ICON_PATH + "HaversineDist.png",
+    category=__category,
+)
+@knext.input_table(
+    name="Input Table",
+    description="Input table for haversine distance calculation",
+)
+@knext.output_table(
+    name="Output Table",
+    description="Output table containing haversine distance",
+)
+class HaversineDistGrid:
+    """
+    Calculation Haversine Distance
+    """
+
+    Lon1 = knext.ColumnParameter(
+        "The First Longitude Column",
+        "The column containing the first longitude coordinates. ",
+        column_filter=knut.is_numeric,
+        include_row_key=False,
+        include_none_column=False,
+    )
+
+    Lat1 = knext.ColumnParameter(
+        "The First Latitude Column",
+        "The column containing the first Latitude coordinates. ",
+        column_filter=knut.is_numeric,
+        include_row_key=False,
+        include_none_column=False,
+    )
+
+    Lon2 = knext.ColumnParameter(
+        "The Second Longitude Column",
+        "The column containing the second  longitude coordinates. ",
+        column_filter=knut.is_numeric,
+        include_row_key=False,
+        include_none_column=False,
+    )
+
+    Lat2 = knext.ColumnParameter(
+        "The Second Latitude Column",
+        "The column containing the second  Latitude coordinates. ",
+        column_filter=knut.is_numeric,
+        include_row_key=False,
+        include_none_column=False,
+    )
+
+    def configure(self, configure_context, input_schema):
+        return input_schema.append(knext.Column(knext.double(), name="HDist"))
+
+    def execute(self, exec_context: knext.ExecutionContext, input_table):
+        def HaversineDist(x1, y1, x2, y2):
+            x1 = radians(x1)
+            x2 = radians(x2)
+            y1 = radians(y1)
+            y2 = radians(y2)
+            # Haversine formula
+            Dx = x2 - x1
+            Dy = y2 - y1
+            P = sin(Dy / 2) ** 2 + cos(y1) * cos(y2) * sin(Dx / 2) ** 2
+            Q = 2 * asin(sqrt(P))
+            # The earth's radius in kilometers.
+            EarthR_km = 6371
+            # Then we'll compute the outcome.
+            return Q * EarthR_km
+
+        df = input_table.to_pandas()
+        df["HDist"] = df.apply(
+            lambda x: HaversineDist(
+                x[self.Lon1], x[self.Lat1], x[self.Lon2], x[self.Lat2]
+            ),
+            axis=1,
+        )
+        return knext.Table.from_pandas(df)

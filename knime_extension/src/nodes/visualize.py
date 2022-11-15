@@ -77,7 +77,7 @@ class ViewNode:
         "Select marker color column to be plotted.",
         column_filter=knut.is_numeric_or_string,
         include_row_key=False,
-        include_none_column=False,
+        include_none_column=True,
     )
 
     color_map = knext.StringParameter(
@@ -907,7 +907,7 @@ class ViewNodeKepler:
         df = input_table.to_pandas()
         df.rename(columns={self.geo_col: "geometry"}, inplace=True)
         gdf = gp.GeoDataFrame(df, geometry="geometry")
-        
+
         map_1 = KeplerGl(show_docs=False)
         map_1.add_data(data=gdf.copy(), name="state")
         config = {}
@@ -935,14 +935,14 @@ class ViewNodeKepler:
 
 
 ############################################
-# heatmap node
+# Spatial heatmap node
 ############################################
 
 
 @knext.node(
-    name="Heatmap",
+    name="Spatial Heatmap",
     node_type=knext.NodeType.VISUALIZER,
-    icon_path=__NODE_ICON_PATH + "Heatmap.png",
+    icon_path=__NODE_ICON_PATH + "SpatialHeatmap.png",
     category=category,
 )
 @knext.input_table(
