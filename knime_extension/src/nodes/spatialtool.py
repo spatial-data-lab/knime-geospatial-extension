@@ -8,6 +8,7 @@ import knime_extension as knext
 import util.knime_utils as knut
 import numpy as np
 from math import radians, cos, sin, asin, sqrt  # For Haversine Distance
+from shapely.geometry import Polygon # For Grid
 
 LOGGER = logging.getLogger(__name__)
 
