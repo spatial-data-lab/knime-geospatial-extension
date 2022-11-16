@@ -421,7 +421,7 @@ class ViewNode:
                         * max_size
                     }
                 }
-        if "none" not in str(self.size_scale).lower():
+        elif "none" not in str(self.size_scale).lower():
             geo_types = gdf[self.geo_col].geom_type.unique()
             if ("LineString" in geo_types) or ("MultiLineString" in geo_types):
                 kws["style_kwds"] = {"weight": self.size_scale}
