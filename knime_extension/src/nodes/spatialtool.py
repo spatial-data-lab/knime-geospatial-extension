@@ -58,14 +58,24 @@ class _JoinModes(knext.EnumParameterOptions):
     description="Table with geometry column to transform",
 )
 @knext.output_table(
-    name="Transformed geo table",
-    description="Transformed Geo input table",
+    name="Transformed geodata",
+    description="Transformed geodata",
+)
+
+@knut.geo_node_description(
+    short_description="Generate buffer zone based on a given distance.",
+    description="""This node generates polygons representing all points within a given distance of each geometric object.
+    The node is based on geopandas.GeoSeries.buffer() with default parameters (resolution=16), which derives from Shapley object.buffer.
+    """,
+    references={
+        "GeoSeries.buffer": "https://geopandas.org/en/stable/docs/reference/api/geopandas.GeoSeries.buffer.html",
+        "Shapley object.buffer": "https://shapely.readthedocs.io/en/latest/manual.html#object.buffer",
+    },
 )
 class BufferNode:
     """
-    This node generate polygons representing all points within a given distance of each geometric object.
-    """
-
+    This node aggregate generate buffer zone based on a given distance.
+    """   
     geo_col = knext.ColumnParameter(
         "Geometry column",
         "Select the geometry column to transform.",
@@ -789,11 +799,24 @@ class MultiRingBufferNode:
     name="Transformed geo table",
     description="Transformed Geo input table",
 )
+@knut.geo_node_description(
+    short_description="Simolify the geometry",
+    description="""This node returns a gemetry feature containing a simplified representation of each geometry with geopandas.simplify().
+    The algorithm (Douglas-Peucker) recursively splits the original line into smaller parts and connects these parts’ 
+    endpoints by a straight line. Then, it removes all points whose distance to the straight line is smaller than tolerance. 
+    It does not move any points and it always preserves endpoints of the original line or polygon.
+    The crs is designated only for simiplification.The output data will keep its original CRS .
+    """,
+    references={
+        "GeoSeries.simplify": "https://geopandas.org/en/stable/docs/reference/api/geopandas.GeoSeries.simplify.html",
+        "Shapely object.simplify": "http://shapely.readthedocs.io/en/latest/manual.html#object.simplify",
+        "Coordinate Reference System (CRS) EPSG:3857": "https://epsg.io/3857",
+    },
+)
 class SimplifyNode:
     """
-    This node generate the smallest convex Polygon containing all the points in each geometry.
+    This node greturns a gemetry feature containing a simplified representation of each geometr.
     """
-
     geo_col = knext.ColumnParameter(
         "Geometry column",
         "Select the geometry column to transform.",
@@ -805,13 +828,19 @@ class SimplifyNode:
 
     simplifydist = knext.DoubleParameter(
         label="Simplification tolerance",
-        description="The simplification tolerance distances for geometry ",
-        default_value="1",
+        description="""The simplification tolerance distances for geometry.
+        All parts of a simplified geometry will be no more than tolerance distance from the original. 
+        It has the same units as the coordinate reference system of the GeoSeries. 
+        For example, using tolerance=100 in a projected CRS with meters as units means a distance of 100 meters in reality. 
+        """,
+        default_value=1.0,
     )
 
     crs_info = knext.StringParameter(
         label="CRS for simplification ",
-        description="Input the CRS to use",
+        description="""Input the Coordinate Reference System (CRS) for data projection and simplification tolerance.
+        If leaving it blank or empty, it will use the orginal CRS of the input data.
+        """,
         default_value="EPSG:3857",
     )
 
@@ -823,15 +852,24 @@ class SimplifyNode:
 
     def execute(self, exec_context: knext.ExecutionContext, input_1):
         gdf = gp.GeoDataFrame(input_1.to_pandas(), geometry=self.geo_col)
-        gdf = gdf.to_crs(self.crs_info)
-        exec_context.set_progress(
-            0.3, "Geo data frame loaded. Starting transformation..."
-        )
-        gdf["geometry"] = gdf.geometry.simplify(self.simplifydist)
-        gdf = gdf.reset_index(drop=True)
+        gdf1 =gdf 
+        try:
+            gdf1 = gdf.to_crs(self.crs_info)            
+        except:
+            print("Unclear CRS parameter,Using defualt CRS information")
+        else:
+            gdf1 = gdf.to_crs(self.crs_info) 
+        try:
+            gdf1["geometry"] = gdf1.geometry.simplify(self.simplifydist)
+        except:
+            print("Something wrong with Simplification tolerance")
+        else:
+            gdf1["geometry"] = gdf1.geometry.simplify(self.simplifydist)
+        gdf1 = gdf1.reset_index(drop=True)
+        gdf1 = gdf1.to_crs(gdf.crs)     
         exec_context.set_progress(0.1, "Transformation done")
         LOGGER.debug("Feature Simplified")
-        return knext.Table.from_pandas(gdf)
+        return knext.Table.from_pandas(gdf1)
 
 
 ############################################
