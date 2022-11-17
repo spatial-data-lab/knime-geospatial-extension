@@ -204,7 +204,7 @@ def geo_node_description(short_description: str, description: str, references: d
         s = f"{short_description}\n"
         s += f"{description}\n\n"
         # s += "___\n\n"  # separator line between description and general part
-        s += "The node is based on the [GeoPandas](https://geopandas.org/) project and uses the following function and related information"
+        s += "The node is based on the [GeoPandas](https://geopandas.org/) project and uses the following related information and function"
         if references is not None:
             if len(references) > 1:
                 s += "s"

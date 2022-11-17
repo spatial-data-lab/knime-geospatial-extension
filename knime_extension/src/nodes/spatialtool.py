@@ -86,7 +86,7 @@ class BufferNode:
     )
 
     bufferdist = knext.DoubleParameter(
-        "Buffer Distance", "The buffer distance for geometry ", 1000.0
+        "Buffer Distance", "The buffer distance for geometry. ", 1000.0
     )
 
     def configure(self, configure_context, input_schema_1):
@@ -800,17 +800,15 @@ class MultiRingBufferNode:
     description="Transformed Geo input table",
 )
 @knut.geo_node_description(
-    short_description="Simolify the geometry",
+    short_description="Simplify the geometry",
     description="""This node returns a gemetry feature containing a simplified representation of each geometry with geopandas.simplify().
     The algorithm (Douglas-Peucker) recursively splits the original line into smaller parts and connects these parts’ 
     endpoints by a straight line. Then, it removes all points whose distance to the straight line is smaller than tolerance. 
     It does not move any points and it always preserves endpoints of the original line or polygon.
-    The crs is designated only for simiplification.The output data will keep its original CRS .
     """,
     references={
         "GeoSeries.simplify": "https://geopandas.org/en/stable/docs/reference/api/geopandas.GeoSeries.simplify.html",
         "Shapely object.simplify": "http://shapely.readthedocs.io/en/latest/manual.html#object.simplify",
-        "Coordinate Reference System (CRS) EPSG:3857": "https://epsg.io/3857",
     },
 )
 class SimplifyNode:
@@ -836,14 +834,6 @@ class SimplifyNode:
         default_value=1.0,
     )
 
-    crs_info = knext.StringParameter(
-        label="CRS for simplification ",
-        description="""Input the Coordinate Reference System (CRS) for data projection and simplification tolerance.
-        If leaving it blank or empty, it will use the orginal CRS of the input data.
-        """,
-        default_value="EPSG:3857",
-    )
-
     def configure(self, configure_context, input_schema_1):
         self.geo_col = knut.column_exists_or_preset(
             configure_context, self.geo_col, input_schema_1, knut.is_geo
@@ -852,24 +842,11 @@ class SimplifyNode:
 
     def execute(self, exec_context: knext.ExecutionContext, input_1):
         gdf = gp.GeoDataFrame(input_1.to_pandas(), geometry=self.geo_col)
-        gdf1 =gdf 
-        try:
-            gdf1 = gdf.to_crs(self.crs_info)            
-        except:
-            print("Unclear CRS parameter,Using defualt CRS information")
-        else:
-            gdf1 = gdf.to_crs(self.crs_info) 
-        try:
-            gdf1["geometry"] = gdf1.geometry.simplify(self.simplifydist)
-        except:
-            print("Something wrong with Simplification tolerance")
-        else:
-            gdf1["geometry"] = gdf1.geometry.simplify(self.simplifydist)
-        gdf1 = gdf1.reset_index(drop=True)
-        gdf1 = gdf1.to_crs(gdf.crs)     
+        gdf["geometry"] = gdf.geometry.simplify(self.simplifydist)
+        gdf = gdf.reset_index(drop=True)
         exec_context.set_progress(0.1, "Transformation done")
         LOGGER.debug("Feature Simplified")
-        return knext.Table.from_pandas(gdf1)
+        return knext.Table.from_pandas(gdf)
 
 
 ############################################

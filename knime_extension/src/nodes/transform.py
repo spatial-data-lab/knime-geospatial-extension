@@ -37,7 +37,20 @@ category = knext.category(
 )
 @knext.output_table(
     name="Transformed geo table",
-    description="Transformed Geo input table",
+    description="Transformed geo output table",
+)
+
+@knut.geo_node_description(
+    short_description="Projection Transformation",
+    description="""This node transfom the Coordinate Reference System (CRS) of geodata with the input parameter by geopandas.to_crs().
+    This method will transform all points in all objects. It has no notion or projecting entire geometries. 
+    All segments joining points are assumed to be lines in the current projection, not geodesics. 
+    Objects crossing the dateline (or other projection boundary) will have undesirable behavior.
+    """,
+    references={
+        "geopandas.GeoSeries.to_crs()": "https://geopandas.org/en/stable/docs/reference/api/geopandas.GeoSeries.to_crs.html",
+        "Coordinate Reference System (CRS) EPSG:3857": "https://epsg.io/3857",
+    },
 )
 class CrsTransformerNode:
     """
@@ -87,7 +100,7 @@ class CrsTransformerNode:
 )
 @knext.output_table(
     name="Transformed geo table",
-    description="Transformed Geo input table",
+    description="Transformed geo input table",
 )
 class GeometryToPointNode:
     """

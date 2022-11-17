@@ -31,13 +31,13 @@ __NODE_ICON_PATH = "icons/icon/IO/"
 )
 @knext.output_table(
     name="Geodata table",
-    description="Geodata from the input file path",
+    description="Geodata from the input file path.",
 )
 @knut.geo_node_description(
     short_description="Read single layer GeoFile.",
     description="""This node reads a single geofile from the path to the file or URL with geopandas.read_file(). 
     The support file formats contain the popular data type such as ESRI Shapefile (.shp), zipped Shapefiles(.zip),single-layer GeoPackage file, or GeoJSON.
-    The standard Lcoal File path in KNIME Explorer,e.g.,E:\KNIMEworkspace\test.geojson, can work as a file path.No quotaion marks are needed for the path .
+    The standard Lcoal File path in KNIME Explorer,e.g.,'E:\KNIMEworkspace\test.geojson', can work as a file path without quotaion marks.
     """,
     references={
         "Reading Spatial Data": "https://geopandas.org/en/stable/docs/user_guide/io.html",
@@ -46,7 +46,7 @@ __NODE_ICON_PATH = "icons/icon/IO/"
 class GeoFileReaderNode:
     data_url = knext.StringParameter(
         "Input File Path",
-        "The file path for reading data",
+        "The file path for reading data.",
         "",
     )
 
@@ -74,13 +74,13 @@ class GeoFileReaderNode:
 )
 @knext.input_table(
     name="Geodata table",
-    description="Geodata from the input portal",
+    description="Geodata from the input portal.",
 )
 @knut.geo_node_description(
     short_description="Write single layer GeoFile.",
     description="This node writes the data in the format of Shapefile or GeoJSON with geopandas.to_file().",
     references={
-        "Reading Spatial Data": "https://geopandas.org/en/stable/docs/user_guide/io.html",
+        "Writing Spatial Data": "https://geopandas.org/en/stable/docs/user_guide/io.html",
     },
 )
 class GeoFileWriterNode:
@@ -95,13 +95,13 @@ class GeoFileWriterNode:
 
     data_url = knext.StringParameter(
         "Output file path and file name",
-        "The file path for writing data without the file format or extension",
+        "The file path for writing data without the file format or extension.",
         "",
     )
 
     dataformat = knext.StringParameter(
         "Output File Format",
-        "The file path to save the data in the format of .shp or .geojson",
+        "The file path to save the data in the format of .shp or .geojson.",
         "Shapefile",
         enum=["Shapefile", "GeoJSON"],
     )
@@ -133,14 +133,14 @@ class GeoFileWriterNode:
 )
 @knext.output_table(
     name="Geodata table",
-    description="Geodata from the input file path",
+    description="Geodata from the input file path.",
 )
 @knext.output_table(
     name="Geodata Layer",
-    description="Layer information from the input file path",
+    description="Layer information from the input file path.",
 )
 @knut.geo_node_description(
-    short_description="Read GeoPackage layer.",
+    short_description="Read GeoPackage layer",
     description="""This node reads the GeoPackage, GeoDatabase(GDB) data with geopandas.read_file(). 
     Using this node needs to specify the layer name, if set empty or wrong, the node will read the first layer. 
     The number as a layer order can also be applied, such as 0, 1, or other integer numbers .
@@ -153,13 +153,13 @@ class GeoFileWriterNode:
 class GeoPackageReaderNode:
     data_url = knext.StringParameter(
         "Input File Path",
-        "The file path for reading data",
+        "The file path for reading data.",
         "",
     )
 
     data_layer = knext.StringParameter(
         "Input layer name or order for reading",
-        "The layer name in the multiple-layer data",
+        "The layer name in the multiple-layer data.",
         "",
     )
 
@@ -195,7 +195,7 @@ class GeoPackageReaderNode:
 )
 @knext.input_table(
     name="Geodata table",
-    description="Geodata from the input file path",
+    description="Geodata from the input file path.",
 )
 @knut.geo_node_description(
     short_description="Write GeoPackage layer.",
@@ -217,12 +217,12 @@ class GeoPackageWriterNode:
     )
 
     data_url = knext.StringParameter(
-        "Input File Path", "The file path for saving data", "",
+        "Input File Path", "The file path for saving data.", "",
     )
 
     data_layer = knext.StringParameter(
         "Input layer name for writing",
-        "The layer name in the GeoPackage data",
+        "The layer name in the GeoPackage data.",
         "new",
     )
 
