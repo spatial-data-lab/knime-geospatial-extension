@@ -35,9 +35,9 @@ __NODE_ICON_PATH = "icons/icon/IO/"
 )
 @knut.geo_node_description(
     short_description="Read single layer GeoFile.",
-    description="""This node read a single geofile from the path to the file or URL with geopandas.read_file(). 
+    description="""This node reads a single geofile from the path to the file or URL with geopandas.read_file(). 
     The support file formats contain the popular data type such as ESRI Shapefile (.shp), zipped Shapefiles(.zip),single-layer GeoPackage file, or GeoJSON.
-    The standard Lcoal File path in KNIME Explorer , e.g.,E:\KNIMEworkspace\test.geojson, can work as a file path.No quotaion marks are needed for the path .
+    The standard Lcoal File path in KNIME Explorer,e.g.,E:\KNIMEworkspace\test.geojson, can work as a file path.No quotaion marks are needed for the path .
     """,
     references={
         "Reading Spatial Data": "https://geopandas.org/en/stable/docs/user_guide/io.html",
@@ -101,7 +101,7 @@ class GeoFileWriterNode:
 
     dataformat = knext.StringParameter(
         "Output File Format",
-        "The file path for writing data ended with .shp or .geojson",
+        "The file path to save the data in the format of .shp or .geojson",
         "Shapefile",
         enum=["Shapefile", "GeoJSON"],
     )
