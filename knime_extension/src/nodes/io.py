@@ -35,7 +35,10 @@ __NODE_ICON_PATH = "icons/icon/IO/"
 )
 @knut.geo_node_description(
     short_description="Read single layer GeoFile.",
-    description="This node read the Shapefile, single-layer GeoPackage file, or zipped Shapefile or GeoJSON with geopandas.read_file().",
+    description="""This node read a single geofile from the path to the file or URL with geopandas.read_file(). 
+    The support file formats contain the popular data type such as ESRI Shapefile (.shp), zipped Shapefiles(.zip),single-layer GeoPackage file, or GeoJSON.
+    The standard Lcoal File path in KNIME Explorer , e.g.,E:\KNIMEworkspace\test.geojson, can work as a file path.No quotaion marks are needed for the path .
+    """,
     references={
         "Reading Spatial Data": "https://geopandas.org/en/stable/docs/user_guide/io.html",
     },
@@ -139,8 +142,9 @@ class GeoFileWriterNode:
 @knut.geo_node_description(
     short_description="Read GeoPackage layer.",
     description="""This node reads the GeoPackage, GeoDatabase(GDB) data with geopandas.read_file(). 
-    This node need to specify the layer name, if set empty or wrong, the node will read the default first layer. 
-    The number as a layer order can also be applied, such as 0, 1, or other integer numbers (no more than 1oo).
+    Using this node needs to specify the layer name, if set empty or wrong, the node will read the first layer. 
+    The number as a layer order can also be applied, such as 0, 1, or other integer numbers .
+    The node will export the  names of all layers as a table, which can be utilized to revise the name of target layer.
     """,
     references={
         "Reading Spatial Data": "https://geopandas.org/en/stable/docs/user_guide/io.html",
