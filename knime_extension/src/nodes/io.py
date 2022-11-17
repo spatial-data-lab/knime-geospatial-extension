@@ -44,7 +44,7 @@ class GeoFileReaderNode:
     data_url = knext.StringParameter(
         "Input File Path",
         "The file path for reading data",
-        "https://raw.githubusercontent.com/UrbanGISer/Test/main/JsonMap/countries.geojson",
+        "",
     )
 
     def configure(self, configure_context):
@@ -150,13 +150,13 @@ class GeoPackageReaderNode:
     data_url = knext.StringParameter(
         "Input File Path",
         "The file path for reading data",
-        "https://raw.githubusercontent.com/UrbanGISer/Test/main/JsonMap/countries.gpkg",
+        "",
     )
 
     data_layer = knext.StringParameter(
         "Input layer name or order for reading",
         "The layer name in the multiple-layer data",
-        "0",
+        "",
     )
 
     def configure(self, configure_context):
@@ -213,7 +213,7 @@ class GeoPackageWriterNode:
     )
 
     data_url = knext.StringParameter(
-        "Input File Path", "The file path for saving data", ""
+        "Input File Path", "The file path for saving data", "",
     )
 
     data_layer = knext.StringParameter(
