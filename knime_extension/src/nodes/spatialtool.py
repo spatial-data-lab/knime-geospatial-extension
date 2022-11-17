@@ -55,17 +55,17 @@ class _JoinModes(knext.EnumParameterOptions):
 )
 @knext.input_table(
     name="Geo table",
-    description="Table with geometry column to transform",
+    description="Table with geometry column.",
 )
 @knext.output_table(
-    name="Transformed geodata",
-    description="Transformed geodata",
+    name="Transformed geo table",
+    description="Table with transformed geodata",
 )
 
 @knut.geo_node_description(
     short_description="Generate buffer zone based on a given distance.",
-    description="""This node generates polygons representing all points within a given distance of each geometric object.
-    The node is based on geopandas.GeoSeries.buffer() with default parameters (resolution=16), which derives from Shapley object.buffer.
+    description="""This node generates polygons representing all points within a given distance of each geometric object 
+    based on geopandas.GeoSeries.buffer() with default parameters (resolution=16), which derives from Shapley object.buffer.
     """,
     references={
         "GeoSeries.buffer": "https://geopandas.org/en/stable/docs/reference/api/geopandas.GeoSeries.buffer.html",
@@ -117,12 +117,23 @@ class BufferNode:
 )
 @knext.input_table(
     name="Geo table",
-    description="Table with geometry column to transform",
+    description="Table with geometry column.",
 )
 @knext.output_table(
     name="Transformed geo table",
-    description="Transformed Geo input table",
+    description="Table with transformed geometry column.",
 )
+
+@knut.geo_node_description(
+    short_description="This node aggregate geometries based on group id (string column) and only keep the two column.",
+    description="""This node aggregate geometries based on group id (string column) and only keep the two column with GeoDataFrame.dissolve,
+    which only dissolve geometries here. For grouping attribute values of other than geometry, the GroupBy node in KNIME is a  complementary tool.
+    """,
+    references={
+        "GeoDataFrame.dissolve": "https://geopandas.org/en/stable/docs/reference/api/geopandas.GeoDataFrame.dissolve.html#geopandas.GeoDataFrame.dissolve",
+    },
+)
+
 class DissolveNode:
     """
     This node aggregate geometries based on group id (string column) and only keep the two column.
@@ -617,15 +628,15 @@ class OverlayNode:
 )
 @knext.input_table(
     name="Left geo table",
-    description="Left table with geometry column to join on",
+    description="Left table with geometry column. ",
 )
 @knext.input_table(
     name="Right geo table",
-    description="Right table with geometry column to join on",
+    description="Right table with geometry column.",
 )
 @knext.output_table(
     name="Geo table Distance",
-    description="Euclidean distance between objects",
+    description="Euclidean distance between geometry objects.",
 )
 class EuclideanDistanceNode:
     """

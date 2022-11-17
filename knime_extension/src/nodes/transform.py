@@ -33,16 +33,16 @@ category = knext.category(
 )
 @knext.input_table(
     name="Geo table",
-    description="Table with geometry column to transform",
+    description="Table with geometry column to transform.",
 )
 @knext.output_table(
     name="Transformed geo table",
-    description="Transformed geo output table",
+    description="Transformed geo output table.",
 )
 
 @knut.geo_node_description(
     short_description="Projection Transformation",
-    description="""This node transfom the Coordinate Reference System (CRS) of geodata with the input parameter by geopandas.to_crs().
+    description="""This node transfoms the Coordinate Reference System (CRS) of the geometry column  with the input parameter by geopandas.to_crs().
     This method will transform all points in all objects. It has no notion or projecting entire geometries. 
     All segments joining points are assumed to be lines in the current projection, not geodesics. 
     Objects crossing the dateline (or other projection boundary) will have undesirable behavior.
@@ -96,15 +96,27 @@ class CrsTransformerNode:
 )
 @knext.input_table(
     name="Geo table",
-    description="Table with geometry column to transform",
+    description="Table with geometry column.",
 )
 @knext.output_table(
     name="Transformed geo table",
-    description="Transformed geo input table",
+    description="Table with transformed geometry column.",
 )
+@knut.geo_node_description(
+    short_description="Returns a GeoSeries of points representing each geometry.",
+    description="""This node returns a GeoSeries of points representing each geometry.
+    There are two kinds of type of points, centroids and representative points. 
+    The latter guaranteed to be within each geometry.
+    """,
+    references={
+        "GeoSeries.representative_point": "https://geopandas.org/en/stable/docs/reference/api/geopandas.GeoSeries.representative_point.html",
+        "GeoSeries.centroid": "https://geopandas.org/en/stable/docs/reference/api/geopandas.GeoSeries.centroid.html",
+    },
+)
+
 class GeometryToPointNode:
     """
-    This node generate centroids of or respresentative points inside polygons,lines.
+    This node returns a GeoSeries of points representing each geometry.
     """
 
     geo_col = knext.ColumnParameter(
@@ -157,12 +169,23 @@ class GeometryToPointNode:
 )
 @knext.input_table(
     name="Geo table",
-    description="Table with geometry column to transform",
+    description="Table with geometry column.",
 )
 @knext.output_table(
     name="Transformed geo table",
-    description="Transformed Geo input table",
+    description="Table with transformed geometry column.",
 )
+@knut.geo_node_description(
+    short_description="Explode multi-part geometries into multiple single geometries.",
+    description="""This node Explode multi-part geometries into multiple single geometries.
+    Each row containing a multi-part geometry will be split into multiple rows with single geometries,
+    thereby increasing the vertical size of the GeoDataFrame.
+    """,
+    references={
+        "GeoDataFrame.explode": "https://geopandas.org/en/stable/docs/reference/api/geopandas.GeoDataFrame.explode.html",
+    },
+)
+
 class ExplodeNode:
     """
     This node dismantles the multiparts into single parts.
@@ -206,12 +229,23 @@ class ExplodeNode:
 )
 @knext.input_table(
     name="Geo table",
-    description="Table with geometry column to transform",
+    description="Table with geometry column. ",
 )
 @knext.output_table(
     name="Transformed geo table",
-    description="Transformed Geo input table",
+    description="Table with transformed geometry column. ",
 )
+
+@knut.geo_node_description(
+    short_description="Explode multi-part geometries into multiple single geometries.",
+    description="""This node return the boundaries of each polygon with geopandas.GeoSeries.boundary,
+    which Returns a GeoSeries of lower dimensional objects representing each geometry’s set-theoretic boundary.
+    """,
+    references={
+        "GeoSeries.boundary": "https://geopandas.org/en/stable/docs/reference/api/geopandas.GeoSeries.boundary.html",
+    },
+)
+
 class PolygonToLineNode:
     """
     This node generate lines from the boundaries of polygons.
@@ -252,12 +286,25 @@ class PolygonToLineNode:
 )
 @knext.input_table(
     name="Geo table",
-    description="Table with geometry column to transform",
+    description="Table with geometry column.",
 )
 @knext.output_table(
     name="Transformed geo table",
-    description="Transformed Geo input table",
+    description="Table with transformed geometry column.",
 )
+
+@knut.geo_node_description(
+    short_description="This node generate lines from points according to group id and serial label.",
+    description="""This node generate lines from points according to group id and serial label by Shapely.LineString().
+    The constructed LineString object represents one or more connected linear splines between the points. 
+    Repeated points in the ordered sequence are allowed, but may incur performance penalties and should be avoided. 
+    A LineString may cross itself.A LineString has zero area and non-zero length.
+    """,
+    references={
+        "Shapely.LineStrings": "https://shapely.readthedocs.io/en/stable/manual.html",
+    },
+)
+
 class PointsToLineNode:
     """
     This node generate lines from points according to group id and serial label.
@@ -329,15 +376,26 @@ class PointsToLineNode:
 )
 @knext.input_table(
     name="Geo table",
-    description="Table with geometry column to transform",
+    description="Table with geometry column.",
 )
 @knext.output_table(
     name="Transformed geo table",
-    description="Transformed Geo input table",
+    description="Table with transformed geometry column.",
 )
+
+@knut.geo_node_description(
+    short_description="This node generate points from the lines.",
+    description="""This node generate points from the lines.
+    The list of coordinates that describe a geometry are represented as the CoordinateSequence object in Shapely which is the dependence of GeoPandas. 
+    """,
+    references={
+        "Coordinate sequences": "https://shapely.readthedocs.io/en/stable/manual.html",
+    },
+)
+
 class GeometryToMultiPointNode:
     """
-    This node generate line from the boundary of polygons.
+    This node generate points from the lines.
     """
 
     geo_col = knext.ColumnParameter(
