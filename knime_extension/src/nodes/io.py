@@ -4,7 +4,7 @@ import pandas as pd
 import geopandas as gp
 import knime_extension as knext
 import util.knime_utils as knut
-
+import fiona
 
 __category = knext.category(
     path="/geo",
@@ -35,7 +35,7 @@ __NODE_ICON_PATH = "icons/icon/IO/"
 )
 @knut.geo_node_description(
     short_description="Read single layer GeoFile.",
-    description="This node read the Shapefile, zipped  Shapefile or Geojson with geopandas.read_file().",
+    description="This node read the Shapefile, single-layer GeoPackage file，zipped  Shapefile or Geojson with geopandas.read_file().",
     references={
         "Reading Spatial Data": "https://geopandas.org/en/stable/docs/user_guide/io.html",
     },
@@ -132,9 +132,16 @@ class GeoFileWriterNode:
     name="Geodata table",
     description="Geodata from the input file path",
 )
+@knext.output_table(
+    name="Geodata Layer",
+    description="Layer information from the input file path",
+)
 @knut.geo_node_description(
     short_description="Read GeoPackage layer.",
-    description="This node read the GeoPackage data with geopandas.read_file().",
+    description="""This node read the GeoPackage, GeoDatabase(GDB) data with geopandas.read_file().
+    This node need to specify the layer name , if set empty or wrong , the node will read the default first layer.
+    The number as a layer order can also be applied, such as 0, 1, or other integer number (no more than 1oo).
+    """,
     references={
         "Reading Spatial Data": "https://geopandas.org/en/stable/docs/user_guide/io.html",
     },
@@ -147,9 +154,8 @@ class GeoPackageReaderNode:
     )
 
     data_layer = knext.StringParameter(
-        "Input layer name for readng",
+        "Input layer name or order for reading",
         "The layer name in the GPKG data",
-        # TODO we need pre-read layer information
         "countries",
     )
 
@@ -158,9 +164,19 @@ class GeoPackageReaderNode:
         return None
 
     def execute(self, exec_context: knext.ExecutionContext):
-        gdf = gp.read_file(self.data_url, layer=self.data_layer)
+        layerlist=fiona.listlayers(self.data_url)
+        pnumber = pd.Series(range(0,100)).astype(str).to_list()
+        if self.data_layer in layerlist: 
+            gdf = gp.read_file(self.data_url, layer=self.data_layer)
+        elif self.data_layer in pnumber : 
+            nlayer=int(self.data_layer)
+            gdf = gp.read_file(self.data_url,layer=nlayer)       
+        else:
+            gdf = gp.read_file(self.data_url,layer=0)           
         gdf = gdf.reset_index(drop=True)
-        return knext.Table.from_pandas(gdf)
+        listtable = pd.DataFrame({'layerlist': layerlist})
+        return knext.Table.from_pandas(gdf), knext.Table.from_pandas(listtable)
+
 
 
 ############################################
