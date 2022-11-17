@@ -35,7 +35,7 @@ __NODE_ICON_PATH = "icons/icon/IO/"
 )
 @knut.geo_node_description(
     short_description="Read single layer GeoFile.",
-    description="This node read the Shapefile, single-layer GeoPackage file，zipped  Shapefile or Geojson with geopandas.read_file().",
+    description="This node read the Shapefile, single-layer GeoPackage file, or zipped Shapefile or GeoJSON with geopandas.read_file().",
     references={
         "Reading Spatial Data": "https://geopandas.org/en/stable/docs/user_guide/io.html",
     },
@@ -75,7 +75,7 @@ class GeoFileReaderNode:
 )
 @knut.geo_node_description(
     short_description="Write single layer GeoFile.",
-    description="This node write the data in the format of Shapefile,  or Geojson with geopandas.to_file().",
+    description="This node writes the data in the format of Shapefile or GeoJSON with geopandas.to_file().",
     references={
         "Reading Spatial Data": "https://geopandas.org/en/stable/docs/user_guide/io.html",
     },
@@ -97,8 +97,8 @@ class GeoFileWriterNode:
     )
 
     dataformat = knext.StringParameter(
-        "Output File Foramt",
-        "The file path for writing data ended with .shp or .geo",
+        "Output File Format",
+        "The file path for writing data ended with .shp or .geojson",
         "Shapefile",
         enum=["Shapefile", "GeoJSON"],
     )
@@ -138,9 +138,9 @@ class GeoFileWriterNode:
 )
 @knut.geo_node_description(
     short_description="Read GeoPackage layer.",
-    description="""This node read the GeoPackage, GeoDatabase(GDB) data with geopandas.read_file().
-    This node need to specify the layer name , if set empty or wrong , the node will read the default first layer.
-    The number as a layer order can also be applied, such as 0, 1, or other integer number (no more than 1oo).
+    description="""This node reads the GeoPackage, GeoDatabase(GDB) data with geopandas.read_file(). 
+    This node need to specify the layer name, if set empty or wrong, the node will read the default first layer. 
+    The number as a layer order can also be applied, such as 0, 1, or other integer numbers (no more than 1oo).
     """,
     references={
         "Reading Spatial Data": "https://geopandas.org/en/stable/docs/user_guide/io.html",
@@ -155,8 +155,8 @@ class GeoPackageReaderNode:
 
     data_layer = knext.StringParameter(
         "Input layer name or order for reading",
-        "The layer name in the GPKG data",
-        "countries",
+        "The layer name in the multiple-layer data",
+        "0",
     )
 
     def configure(self, configure_context):
@@ -195,9 +195,11 @@ class GeoPackageReaderNode:
 )
 @knut.geo_node_description(
     short_description="Write GeoPackage layer.",
-    description="This node write the GeoPackage data with geopandas.to_file().",
+    description="""This node writes the data as a layer into a GeoPackage data with geopandas.to_file().
+    If the layer is already in the GeoPackage data, the orginal data of the target layer will be written by the new data. 
+    """,
     references={
-        "Reading Spatial Data": "https://geopandas.org/en/stable/docs/user_guide/io.html",
+        "Writing Spatial Data": "https://geopandas.org/en/stable/docs/user_guide/io.html",
     },
 )
 class GeoPackageWriterNode:
@@ -211,14 +213,13 @@ class GeoPackageWriterNode:
     )
 
     data_url = knext.StringParameter(
-        "Input File Path", "The file path for reading data", ""
+        "Input File Path", "The file path for saving data", ""
     )
 
     data_layer = knext.StringParameter(
         "Input layer name for writing",
-        "The layer name in the GPKG data",
-        # TODO we need pre-read layer information and dectect layer conflict
-        "",
+        "The layer name in the GeoPackage data",
+        "new",
     )
 
     def configure(self, configure_context, input_schema_1):
