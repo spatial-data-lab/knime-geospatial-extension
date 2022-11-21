@@ -7,6 +7,8 @@ import geopandas as gp
 import knime_extension as knext
 import util.knime_utils as knut
 import numpy as np
+from math import radians, cos, sin, asin, sqrt  # For Haversine Distance
+from shapely.geometry import Polygon  # For Grid
 
 LOGGER = logging.getLogger(__name__)
 
@@ -53,28 +55,31 @@ class _JoinModes(knext.EnumParameterOptions):
 )
 @knext.input_table(
     name="Geo table",
-    description="Table with geometry column to transform",
+    description="Table with geometry column.",
 )
 @knext.output_table(
     name="Transformed geo table",
-    description="Transformed Geo input table",
+    description="Table with transformed geodata",
+)
+@knut.geo_node_description(
+    short_description="Generate buffer zone based on a given distance.",
+    description="""This node generates polygons representing all points within a given distance of each geometric object 
+    based on geopandas.GeoSeries.buffer() with default parameters (resolution=16), which derives from Shapley object.buffer.
+    """,
+    references={
+        "GeoSeries.buffer": "https://geopandas.org/en/stable/docs/reference/api/geopandas.GeoSeries.buffer.html",
+        "Shapley object.buffer": "https://shapely.readthedocs.io/en/latest/manual.html#object.buffer",
+    },
 )
 class BufferNode:
     """
-    This node generate polygons representing all points within a given distance of each geometric object.
+    This node aggregate generate buffer zone based on a given distance.
     """
 
-    geo_col = knext.ColumnParameter(
-        "Geometry column",
-        "Select the geometry column to transform.",
-        # Allow only GeoValue compatible columns
-        column_filter=knut.is_geo,
-        include_row_key=False,
-        include_none_column=False,
-    )
+    geo_col = knut.geo_col_parameter()
 
     bufferdist = knext.DoubleParameter(
-        "Buffer Distance", "The buffer distance for geometry ", 1000.0
+        "Buffer distance", "The buffer distance for geometry. ", 1000.0
     )
 
     def configure(self, configure_context, input_schema_1):
@@ -105,25 +110,28 @@ class BufferNode:
 )
 @knext.input_table(
     name="Geo table",
-    description="Table with geometry column to transform",
+    description="Table with geometry column.",
 )
 @knext.output_table(
     name="Transformed geo table",
-    description="Transformed Geo input table",
+    description="Table with transformed geometry column.",
+)
+@knut.geo_node_description(
+    short_description="This node aggregate geometries based on group id (string column) and only keep the two column.",
+    description="""This node aggregate geometries based on group id (string column) and only keep the two column with 
+    GeoDataFrame.dissolve, which only dissolve geometries here. For grouping attribute values of other than geometry, 
+    the [GroupBy node](https://kni.me/n/5stmXk6zY_ORA4bC) in KNIME is a complementary tool.
+    """,
+    references={
+        "GeoDataFrame.dissolve": "https://geopandas.org/en/stable/docs/reference/api/geopandas.GeoDataFrame.dissolve.html#geopandas.GeoDataFrame.dissolve",
+    },
 )
 class DissolveNode:
     """
-    This node aggregate geometries based on group id (string column) and only keep the two column.
+    This node aggregate geometries based on a group id (string column) and only keeps the id and geometry column.
     """
 
-    geo_col = knext.ColumnParameter(
-        "Geometry column",
-        "Select the geometry column to transform.",
-        # Allow only GeoValue compatible columns
-        column_filter=knut.is_geo,
-        include_row_key=False,
-        include_none_column=False,
-    )
+    geo_col = knut.geo_col_parameter()
 
     dissolve_col = knext.ColumnParameter(
         "Dissolve column",
@@ -242,7 +250,7 @@ class SpatialJoinNode:
     )
 
     right_geo_col = knext.ColumnParameter(
-        "Right  geometry column",
+        "Right geometry column",
         "Select the geometry column from the right (bottom) input table to join on.",
         # Allow only GeoValue compatible columns
         port_index=1,
@@ -317,7 +325,7 @@ class SpatialJoinNode:
 )
 @knut.geo_node_description(
     short_description="Merges the two input tables based on their spatial relationship.",
-    description="""This node will merge the left (top) and the right (bottom) table based on  the distance between 
+    description="""This node will merge the left (top) and the right (bottom) table based on the distance between 
     their geometries of the two selected columns to one another. Distance is calculated in CRS units and is returned 
     in the column NearDist. Both layers must be in the same Coordinate Reference System (CRS), otherwise, the CRS of
     right table will be transformed to that of the left table.
@@ -341,7 +349,7 @@ class NearestJoinNode:
     )
 
     right_geo_col = knext.ColumnParameter(
-        "Right  geometry column",
+        "Right geometry column",
         "Select the geometry column from the right (bottom) input table to join on.",
         # Allow only GeoValue compatible columns
         port_index=1,
@@ -358,14 +366,14 @@ class NearestJoinNode:
     )
 
     maxdist = knext.DoubleParameter(
-        "Maximum Distance",
+        "Maximum distance",
         "Maximum distance within which to query for nearest geometry. Must be greater than 0 ",
         1000.0,
     )
 
     crs_info = knext.StringParameter(
         label="CRS for distance calculation",
-        description="Input the CRS to use",
+        description=knut.DEF_CRS_DESCRIPTION,
         default_value="EPSG:3857",
     )
 
@@ -426,15 +434,19 @@ class NearestJoinNode:
     name="Joined geo table",
     description="Joined geo table",
 )
+@knut.geo_node_description(
+    short_description="This node will clip target geometries to the mask extent.",
+    description="""This node will clip target geometries to the mask extent.
+    Both layers must be in the same Coordinate Reference System (CRS),otherwise, the CRS of the right table will be
+    transformed to that of the left table. The geometries will be clipped to the full extent of the clip object.
+    If there are multiple polygons in the mask geometry column, the geometries in the target geometry column 
+    will be clipped to the total boundary of all mask polygons.
+    """,
+    references={
+        "Clip": "https://geopandas.org/en/stable/docs/reference/api/geopandas.clip.html",
+    },
+)
 class ClipNode:
-    """
-    This node will clip target geometries to the mask extent.
-    Both layers must be in the same Coordinate Reference System (CRS),otherwise, the CRS of right table will be
-    transformed to that of the left table. The gdf will be clipped to the full extent of the clip object.
-    If there are multiple polygons in Mask geometry, data from Target geometry will be clipped to the total boundary
-    of all polygons in Mask.
-    """
-
     left_geo_col = knext.ColumnParameter(
         "Target geometry column",
         "Select the geometry column to be clipped to mask.",
@@ -505,9 +517,9 @@ class ClipNode:
 @knut.geo_node_description(
     short_description="Performs spatial overlay between two geometries.",
     description="""This node will perform spatial overlay between two geometries.
-    Currently only supports data GeoDataFrames with uniform geometry types,
-    i.e. containing only (Multi)Polygons, or only (Multi)Points, or a combination of (Multi)LineString and LinearRing shapes.
-    Implements several methods that are all effectively subsets of the union.
+    Currently only supports input tables with uniform geometry types,
+    i.e. containing only (Multi)Polygons, or only (Multi)Points, or a combination of (Multi)LineString and 
+    LinearRing shapes. Implements several methods that are all effectively subsets of the union.
     """,
     references={
         "Set-Operations with Overlay": "https://geopandas.org/en/stable/docs/user_guide/set_operations.html",
@@ -554,7 +566,7 @@ class OverlayNode:
     )
 
     right_geo_col = knext.ColumnParameter(
-        "Right  geometry column",
+        "Right geometry column",
         "Select the geometry column from the right (bottom) input table to join on.",
         # Allow only GeoValue compatible columns
         port_index=1,
@@ -605,21 +617,25 @@ class OverlayNode:
 )
 @knext.input_table(
     name="Left geo table",
-    description="Left table with geometry column to join on",
+    description="Left table with geometry column. ",
 )
 @knext.input_table(
     name="Right geo table",
-    description="Right table with geometry column to join on",
+    description="Right table with geometry column.",
 )
 @knext.output_table(
-    name="Geo table Distance",
-    description="Euclidean distance between objects",
+    name="Geo table distance",
+    description="Euclidean distance between geometry objects.",
+)
+@knut.geo_node_description(
+    short_description="This node will calculate the Euclidean distance between two geometries.",
+    description="""This node will calculate the Euclidean distance between two geometries.
+    """,
+    references={
+        "Distance": "https://geopandas.org/en/stable/docs/reference/api/geopandas.GeoSeries.distance.html",
+    },
 )
 class EuclideanDistanceNode:
-    """
-    This node will calculate the distance between two geometries.
-    """
-
     left_geo_col = knext.ColumnParameter(
         "Left geometry column",
         "Select the geometry column from the left (top) input table to calculate.",
@@ -631,7 +647,7 @@ class EuclideanDistanceNode:
     )
 
     right_geo_col = knext.ColumnParameter(
-        "Right  geometry column",
+        "Right geometry column",
         "Select the geometry column from the right (bottom) input table to calculate.",
         # Allow only GeoValue compatible columns
         port_index=1,
@@ -642,7 +658,7 @@ class EuclideanDistanceNode:
 
     crs_info = knext.StringParameter(
         label="CRS for distance calculation",
-        description="Input the CRS to use",
+        description=knut.DEF_CRS_DESCRIPTION,
         default_value="EPSG:3857",
     )
 
@@ -693,28 +709,25 @@ class EuclideanDistanceNode:
     name="Transformed geo table",
     description="Transformed table by Multiple Ring Buffer",
 )
+@knut.geo_node_description(
+    short_description="This node generate multiple polygons with a series distances of each geometric object.",
+    description="""This node generate multiple polygons with a series distances of each geometric object.
+    """,
+    references={
+        "Buffer": "https://geopandas.org/en/stable/docs/reference/api/geopandas.GeoSeries.buffer.html",
+    },
+)
 class MultiRingBufferNode:
-    """
-    This node generate multiple polygons with a series  distances of each geometric object.
-    """
-
-    geo_col = knext.ColumnParameter(
-        "Geometry column",
-        "Select the geometry column to transform.",
-        # Allow only GeoValue compatible columns
-        column_filter=knut.is_geo,
-        include_row_key=False,
-        include_none_column=False,
-    )
+    geo_col = knut.geo_col_parameter()
 
     bufferdist = knext.StringParameter(
-        "Serial Buffer Distances with coma",
+        "Serial buffer distances with coma",
         "The buffer distances for geometry ",
         "10,20,30",
     )
 
     bufferunit = knext.StringParameter(
-        label="Serial Buffer Distances",
+        label="Serial buffer distances",
         description="The buffer distances for geometry ",
         default_value="Meter",
         enum=[
@@ -726,7 +739,7 @@ class MultiRingBufferNode:
 
     crs_info = knext.StringParameter(
         label="CRS for buffering distance calculation",
-        description="Input the CRS to use",
+        description=knut.DEF_CRS_DESCRIPTION,
         default_value="EPSG:3857",
     )
 
@@ -785,32 +798,36 @@ class MultiRingBufferNode:
 )
 @knext.output_table(
     name="Transformed geo table",
-    description="Transformed Geo input table",
+    description="Transformed geo input table",
+)
+@knut.geo_node_description(
+    short_description="Simplify the geometry",
+    description="""This node returns a geometry feature containing a simplified representation of each geometry 
+    with geopandas.simplify(). The algorithm (Douglas-Peucker) recursively splits the original line into smaller 
+    parts and connects these parts’ endpoints by a straight line. Then, it removes all points whose distance 
+    to the straight line is smaller than tolerance. It does not move any points and it always preserves endpoints 
+    of the original line or polygon.
+    """,
+    references={
+        "GeoSeries.simplify": "https://geopandas.org/en/stable/docs/reference/api/geopandas.GeoSeries.simplify.html",
+        "Shapely object.simplify": "http://shapely.readthedocs.io/en/latest/manual.html#object.simplify",
+    },
 )
 class SimplifyNode:
     """
-    This node generate the smallest convex Polygon containing all the points in each geometry.
+    This node returns a geometry feature containing a simplified representation of each geometry.
     """
 
-    geo_col = knext.ColumnParameter(
-        "Geometry column",
-        "Select the geometry column to transform.",
-        # Allow only GeoValue compatible columns
-        column_filter=knut.is_geo,
-        include_row_key=False,
-        include_none_column=False,
-    )
+    geo_col = knut.geo_col_parameter()
 
     simplifydist = knext.DoubleParameter(
         label="Simplification tolerance",
-        description="The simplification tolerance distances for geometry ",
-        default_value="1",
-    )
-
-    crs_info = knext.StringParameter(
-        label="CRS for simplification ",
-        description="Input the CRS to use",
-        default_value="EPSG:3857",
+        description="""The simplification tolerance distances for geometry.
+        All parts of a simplified geometry will be no more than tolerance distance from the original. 
+        It has the same units as the coordinate reference system of the GeoSeries. 
+        For example, using tolerance=100 in a projected CRS with meters as units means a distance of 100 meters in reality. 
+        """,
+        default_value=1.0,
     )
 
     def configure(self, configure_context, input_schema_1):
@@ -821,12 +838,165 @@ class SimplifyNode:
 
     def execute(self, exec_context: knext.ExecutionContext, input_1):
         gdf = gp.GeoDataFrame(input_1.to_pandas(), geometry=self.geo_col)
-        gdf = gdf.to_crs(self.crs_info)
-        exec_context.set_progress(
-            0.3, "Geo data frame loaded. Starting transformation..."
-        )
         gdf["geometry"] = gdf.geometry.simplify(self.simplifydist)
         gdf = gdf.reset_index(drop=True)
         exec_context.set_progress(0.1, "Transformation done")
         LOGGER.debug("Feature Simplified")
         return knext.Table.from_pandas(gdf)
+
+
+############################################
+# Create Grid Node
+############################################
+
+
+@knext.node(
+    name="Create Grid",
+    node_type=knext.NodeType.MANIPULATOR,
+    icon_path=__NODE_ICON_PATH + "CreateGrid.png",
+    category=__category,
+)
+@knext.input_table(
+    name="Input Table",
+    description="Input table of Create Grid",
+)
+@knext.output_table(
+    name="Output Table",
+    description="Output table of Create Grid",
+)
+class CreateGrid:
+    """
+    Create Grid
+    """
+
+    geo_col = knut.geo_col_parameter()
+
+    grid_length = knext.IntParameter(
+        "Grid Length",
+        "The length in meters of the grid. ",
+        default_value=100,
+    )
+
+    def configure(self, configure_context, input_schema):
+
+        return None
+
+    def execute(self, exec_context: knext.ExecutionContext, input_table):
+
+        gdf = gp.GeoDataFrame(input_table.to_pandas(), geometry=self.geo_col)
+
+        xmin, ymin, xmax, ymax = gdf.total_bounds
+        width = self.grid_length
+        height = self.grid_length
+        rows = int(np.ceil((ymax - ymin) / height))
+        cols = int(np.ceil((xmax - xmin) / width))
+        XleftOrigin = xmin
+        XrightOrigin = xmin + width
+        YtopOrigin = ymax
+        YbottomOrigin = ymax - height
+        polygons = []
+        for i in range(cols):
+            Ytop = YtopOrigin
+            Ybottom = YbottomOrigin
+            for j in range(rows):
+                polygons.append(
+                    Polygon(
+                        [
+                            (XleftOrigin, Ytop),
+                            (XrightOrigin, Ytop),
+                            (XrightOrigin, Ybottom),
+                            (XleftOrigin, Ybottom),
+                        ]
+                    )
+                )
+                Ytop = Ytop - height
+                Ybottom = Ybottom - height
+            XleftOrigin = XleftOrigin + width
+            XrightOrigin = XrightOrigin + width
+
+        grid = gp.GeoDataFrame({"geometry": polygons}, crs=gdf.crs)
+
+        return knext.Table.from_pandas(grid)
+
+
+############################################
+# Get Geodesic Haversine Distance
+############################################
+@knext.node(
+    name="Haversine Distance",
+    node_type=knext.NodeType.MANIPULATOR,
+    icon_path=__NODE_ICON_PATH + "HaversineDist.png",
+    category=__category,
+)
+@knext.input_table(
+    name="Input Table",
+    description="Input table for haversine distance calculation",
+)
+@knext.output_table(
+    name="Output Table",
+    description="Output table containing haversine distance",
+)
+class HaversineDistGrid:
+    """
+    Calculates the [Haversine Distance](https://en.wikipedia.org/wiki/Haversine_formula).
+    """
+
+    Lon1 = knext.ColumnParameter(
+        "The first longitude column",
+        "The column containing the first longitude coordinates. ",
+        column_filter=knut.is_numeric,
+        include_row_key=False,
+        include_none_column=False,
+    )
+
+    Lat1 = knext.ColumnParameter(
+        "The first latitude column",
+        "The column containing the first Latitude coordinates. ",
+        column_filter=knut.is_numeric,
+        include_row_key=False,
+        include_none_column=False,
+    )
+
+    Lon2 = knext.ColumnParameter(
+        "The second longitude column",
+        "The column containing the second  longitude coordinates. ",
+        column_filter=knut.is_numeric,
+        include_row_key=False,
+        include_none_column=False,
+    )
+
+    Lat2 = knext.ColumnParameter(
+        "The second latitude column",
+        "The column containing the second  Latitude coordinates. ",
+        column_filter=knut.is_numeric,
+        include_row_key=False,
+        include_none_column=False,
+    )
+
+    def configure(self, configure_context, input_schema):
+        return input_schema.append(knext.Column(knext.double(), name="HDist"))
+
+    def execute(self, exec_context: knext.ExecutionContext, input_table):
+        def HaversineDist(x1, y1, x2, y2):
+            x1 = radians(x1)
+            x2 = radians(x2)
+            y1 = radians(y1)
+            y2 = radians(y2)
+            # Haversine formula
+            Dx = x2 - x1
+            Dy = y2 - y1
+            P = sin(Dy / 2) ** 2 + cos(y1) * cos(y2) * sin(Dx / 2) ** 2
+            Q = 2 * asin(sqrt(P))
+            # The earth's radius in kilometers.
+            EarthR_km = 6371
+            # Then we'll compute the outcome.
+            return Q * EarthR_km
+
+        df = input_table.to_pandas()
+        df["HDist"] = df.apply(
+            lambda x: HaversineDist(
+                x[self.Lon1], x[self.Lat1], x[self.Lon2], x[self.Lat2]
+            ),
+            axis=1,
+        )
+        return knext.Table.from_pandas(df)

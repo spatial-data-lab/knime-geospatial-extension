@@ -327,18 +327,18 @@ class CoordinatesNode:
     name="Transformed geo table",
     description="Transformed Geo input table",
 )
+@knut.geo_node_description(
+    short_description="This node generate rectangles representing the envelope of each geometry.",
+    description="""This node generate rectangles representing the envelope of each geometry. 
+    That is, the point or smallest rectangular polygon (with sides parallel to the coordinate axes) 
+    that contains each of the geometries.""",
+    references={
+        "Envelop": "https://geopandas.org/en/stable/docs/reference/api/geopandas.GeoSeries.envelope.html",
+    },
+)
 class BoundingBoxNode:
-    """
-    This node generate rectangles representing the envelope of each geometry.
-    """
-
-    geo_col = knext.ColumnParameter(
-        "Geometry column",
-        "Select the geometry column to transform.",
-        # Allow only GeoValue compatible columns
-        column_filter=knut.is_geo,
-        include_row_key=False,
-        include_none_column=False,
+    geo_col = knut.geo_col_parameter(
+        description="Select the geometry column to compute the bounding box."
     )
 
     def configure(self, configure_context, input_schema_1):
@@ -373,21 +373,22 @@ class BoundingBoxNode:
     description="Table with geometry column to transform",
 )
 @knext.output_table(
-    name="Transformed geo table",
+    name="Transformed Geo table",
     description="Transformed Geo input table",
 )
+@knut.geo_node_description(
+    short_description="This node generate the smallest convex Polygon containing all the points in each geometry.",
+    description="""This node generate the smallest convex Polygon containing all the points in each geometry.
+    The convex hull of a geometry is the smallest convex Polygon containing all the points in each geometry, 
+    unless the number of points in the geometric object is less than three. For two points, the convex hull 
+    collapses to a LineString; for 1, a Point.""",
+    references={
+        "Convex hull": "https://geopandas.org/en/stable/docs/reference/api/geopandas.GeoSeries.convex_hull.html",
+    },
+)
 class ConvexHullNode:
-    """
-    This node generate the smallest convex Polygon containing all the points in each geometry.
-    """
-
-    geo_col = knext.ColumnParameter(
-        "Geometry column",
-        "Select the geometry column to transform.",
-        # Allow only GeoValue compatible columns
-        column_filter=knut.is_geo,
-        include_row_key=False,
-        include_none_column=False,
+    geo_col = knut.geo_col_parameter(
+        description="Select the geometry column to compute the convex hull."
     )
 
     def configure(self, configure_context, input_schema_1):
@@ -425,25 +426,23 @@ class ConvexHullNode:
     name="Transformed geo table",
     description="Transformed Geo input table",
 )
+@knut.geo_node_description(
+    short_description="This node returns a geometry containing the union of all geometries in the input column.",
+    description="This node returns a geometry containing the union of all geometries in the input column.",
+    references={
+        "Unary union": "https://geopandas.org/en/stable/docs/reference/api/geopandas.GeoSeries.unary_union.html",
+    },
+)
 class UnaryUnionNode:
-    """
-    This node generate the smallest convex Polygon containing all the points in each geometry.
-    """
-
-    geo_col = knext.ColumnParameter(
-        "Geometry column",
-        "Select the geometry column to transform.",
-        # Allow only GeoValue compatible columns
-        column_filter=knut.is_geo,
-        include_row_key=False,
-        include_none_column=False,
+    geo_col = knut.geo_col_parameter(
+        description="Select the geometry column to compute the unary union."
     )
 
     def configure(self, configure_context, input_schema_1):
         self.geo_col = knut.column_exists_or_preset(
             configure_context, self.geo_col, input_schema_1, knut.is_geo
         )
-        return input_schema_1
+        return None
 
     def execute(self, exec_context: knext.ExecutionContext, input_1):
         gdf = gp.GeoDataFrame(input_1.to_pandas(), geometry=self.geo_col)

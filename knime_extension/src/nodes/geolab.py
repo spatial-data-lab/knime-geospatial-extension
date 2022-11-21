@@ -12,7 +12,8 @@ from pandarallel import pandarallel
 import io
 import numpy as np
 from shapely.geometry import Polygon
-from math import radians, cos, sin, asin, sqrt  # For Haversine Distance
+import  requests # for OSRM
+import json # for OSRM
 
 __category = knext.category(
     path="/geo",
@@ -1363,167 +1364,123 @@ class BivariateLocalMoran:
         return knext.Table.from_pandas(gdf), knext.view_matplotlib(f)
 
 
-
 ############################################
-# Create Grid Node
+# OSRM
 ############################################
-
-
 @knext.node(
-    name="Create Grid",
-    node_type=knext.NodeType.MANIPULATOR,
-    icon_path=__NODE_ICON_PATH + "CreateGrid.png",
+    name="OSRM Drive Matrix",
+    node_type=knext.NodeType.LEARNER,
+    # node_type=knext.NodeType.MANIPULATOR,
     category=__category,
+    icon_path=__NODE_ICON_PATH + "BivariateLocal.png",
 )
 @knext.input_table(
     name="Input Table",
-    description="Input table of Create Grid",
+    description="Input table with startx,y,endx,y",
 )
+
 @knext.output_table(
     name="Output Table",
-    description="Output table of Create Grid",
+    description="Output table with travel Cost",
 )
-class CreateGrid:
+
+
+class OSRMDriveMatrix:
     """
-    Create Grid
+    OSRM Distance Matrix
     """
 
-    geo_col = knext.ColumnParameter(
-        "Geometry Column",
-        "The column containing the geometry of the dataset. ",
-        column_filter=knut.is_geo,
+    # input parameters
+    StartX = knext.ColumnParameter(
+        "Start X-Longitude",
+        "The column containing the value for longitude of start point.",
+        column_filter=knut.is_numeric,
         include_row_key=False,
         include_none_column=False,
     )
 
-    grid_length = knext.IntParameter(
-        "Grid Length",
-        "The length in meters of the grid. ",
-        default_value=100,
+    StartY = knext.ColumnParameter(
+        "Start Y-Latitude",
+        "The column containing the value for latitude of start point.",
+        column_filter=knut.is_numeric,
+        include_row_key=False,
+        include_none_column=False,
     )
 
-    def configure(self, configure_context, input_schema):
+    EndX = knext.ColumnParameter(
+        "End X-Longitude",
+        "The column containing the value for longitude of end point.",
+        column_filter=knut.is_numeric,
+        include_row_key=False,
+        include_none_column=False,
+    )
 
+    EndY = knext.ColumnParameter(
+        "End Y-Latitude",
+        "The column containing the value for latitude  of end point.",
+        column_filter=knut.is_numeric,
+        include_row_key=False,
+        include_none_column=False,
+    )
+
+    def configure(self, configure_context, input_schema_1):
         return None
 
-    def execute(self, exec_context: knext.ExecutionContext, input_table):
-
-        gdf = gp.GeoDataFrame(input_table.to_pandas(), geometry=self.geo_col)
-
-        xmin, ymin, xmax, ymax = gdf.total_bounds
-        width = self.grid_length
-        height = self.grid_length
-        rows = int(np.ceil((ymax - ymin) / height))
-        cols = int(np.ceil((xmax - xmin) / width))
-        XleftOrigin = xmin
-        XrightOrigin = xmin + width
-        YtopOrigin = ymax
-        YbottomOrigin = ymax - height
-        polygons = []
-        for i in range(cols):
-            Ytop = YtopOrigin
-            Ybottom = YbottomOrigin
-            for j in range(rows):
-                polygons.append(
-                    Polygon(
-                        [
-                            (XleftOrigin, Ytop),
-                            (XrightOrigin, Ytop),
-                            (XrightOrigin, Ybottom),
-                            (XleftOrigin, Ybottom),
-                        ]
-                    )
-                )
-                Ytop = Ytop - height
-                Ybottom = Ybottom - height
-            XleftOrigin = XleftOrigin + width
-            XrightOrigin = XrightOrigin + width
-
-        grid = gp.GeoDataFrame({"geometry": polygons}, crs=gdf.crs)
-
-        return knext.Table.from_pandas(grid)
-
-
-############################################
-# Get Geodesic Distance
-############################################
-
-
-@knext.node(
-    name="Haversine Distance",
-    node_type=knext.NodeType.MANIPULATOR,
-    icon_path=__NODE_ICON_PATH + "HaversineDist.png",
-    category=__category,
-)
-@knext.input_table(
-    name="Input Table",
-    description="Input table for haversine distance calculation",
-)
-@knext.output_table(
-    name="Output Table",
-    description="Output table containing haversine distance",
-)
-class HaversineDistGrid:
-    """
-    Calculation Haversine Distance
-    """
-
-    Lon1 = knext.ColumnParameter(
-        "The First Longitude Column",
-        "The column containing the first longitude coordinates. ",
-        column_filter=knut.is_numeric,
-        include_row_key=False,
-        include_none_column=False,
-    )
-
-    Lat1 = knext.ColumnParameter(
-        "The First Latitude Column",
-        "The column containing the first Latitude coordinates. ",
-        column_filter=knut.is_numeric,
-        include_row_key=False,
-        include_none_column=False,
-    )
-
-    Lon2 = knext.ColumnParameter(
-        "The Second Longitude Column",
-        "The column containing the second  longitude coordinates. ",
-        column_filter=knut.is_numeric,
-        include_row_key=False,
-        include_none_column=False,
-    )
-
-    Lat2 = knext.ColumnParameter(
-        "The Second Latitude Column",
-        "The column containing the second  Latitude coordinates. ",
-        column_filter=knut.is_numeric,
-        include_row_key=False,
-        include_none_column=False,
-    )
-
-    def configure(self, configure_context, input_schema):
-        return input_schema.append(knext.Column(knext.double(), name="HDist"))
-
-    def execute(self, exec_context: knext.ExecutionContext, input_table):
-        def HaversineDist(x1, y1, x2, y2):
-            x1 = radians(x1)
-            x2 = radians(x2)
-            y1 = radians(y1)
-            y2 = radians(y2)
-            # Haversine formula
-            Dx = x2 - x1
-            Dy = y2 - y1
-            P = sin(Dy / 2) ** 2 + cos(y1) * cos(y2) * sin(Dx / 2) ** 2
-            Q = 2 * asin(sqrt(P))
-            # The earth's radius in kilometers.
-            EarthR_km = 6371
-            # Then we'll compute the outcome.
-            return Q * EarthR_km
-
-        df = input_table.to_pandas()
-        df["HDist"] = df.apply(
-            lambda x: HaversineDist(
-                x[self.Lon1], x[self.Lat1], x[self.Lon2], x[self.Lat2]
-            ),
-            axis=1,
-        )
+    def execute(self, exec_context: knext.ExecutionContext, input_1):
+        df = gp.GeoDataFrame(input_1.to_pandas())
+        df = df.reset_index(drop=True)
+        # set minimun set
+        slnum=100
+        nlength=df.shape[0]
+        nloop=nlength//slnum
+        ntail=nlength%slnum
+        df['duration']=0.0
+        df['distance']=0.0
+        osrm_route_service="http://router.project-osrm.org/route/v1/driving/"
+        if nloop>=1:
+            for i in range(nloop):
+                ns=slnum*i
+                ne=ns+slnum-1
+                dfs=df.copy().loc[ns:ne]
+                dfs=dfs.rename(columns={self.StartX: "StartX", self.StartY: "StartY",self.EndX:"EndX", self.EndY: "EndY"})
+                dfs=dfs[['StartX','StartY','EndX','EndY']]
+                dfs=dfs.astype(str)
+                dfs["period"] = dfs["StartX"] +","+ dfs["StartY"]+";"+dfs["EndX"] +","+ dfs["EndY"]
+                Querylist = [';'.join(dfs['period'])]
+                address = osrm_route_service + Querylist[0]
+                try:
+                    r = requests.get(address, params={'continue_straight':'false'}, timeout=None)
+                    data = json.loads(r.text)
+                    if data['code']=='Ok':                        
+                        dfr = pd.DataFrame(data['routes'][0]['legs'])[['duration','distance']].iloc[::2]
+                        df.loc[ns:ne,"duration"]=dfr.duration.to_list()
+                        df.loc[ns:ne,"distance"]=dfr.distance.to_list()
+                    else:
+                        print("error from:{} to :{}".format(ns,ne))
+                except:
+                    print("error from:{} to :{}".format(ns,ne)) 
+        if ntail>0:
+            ns=slnum*nloop
+            ne=ns+ntail-1
+            dfs=df.copy().loc[ns:ne]
+            dfs=dfs.rename(columns={self.StartX: "StartX", self.StartY: "StartY",self.EndX:"EndX", self.EndY: "EndY"})
+            dfs=dfs[['StartX','StartY','EndX','EndY']]
+            dfs=dfs.astype(str)
+            dfs["period"] = dfs["StartX"] +","+ dfs["StartY"]+";"+dfs["EndX"] +","+ dfs["EndY"]
+            Querylist = [';'.join(dfs['period'])]
+            address = osrm_route_service + Querylist[0]
+            try:
+                r = requests.get(address, params={'continue_straight':'false'}, timeout=None)
+                data = json.loads(r.text)
+                if data['code']=='Ok':                    
+                    dfr = pd.DataFrame(data['routes'][0]['legs'])[['duration','distance']].iloc[::2]
+                    df.loc[ns:ne,"duration"]=dfr.duration.to_list()
+                    df.loc[ns:ne,"distance"]=dfr.distance.to_list()
+                else:
+                    print("error from:{} to :{}".format(ns,ne))
+            except:
+                print("error from:{} to :{}".format(ns,ne)) 
+            else:
+                print("error from:{} to :{}".format(ns,ne))
+      
         return knext.Table.from_pandas(df)

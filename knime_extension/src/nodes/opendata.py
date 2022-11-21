@@ -11,7 +11,7 @@ __category = knext.category(
     path="/geo",
     level_id="opendataset",
     name="Open Datasets",
-    description="Nodes for providing open geospatial dataset.",
+    description="Nodes for providing open geospatial datasets.",
     # starting at the root folder of the extension_module parameter in the knime.yml file
     icon="icons/icon/OpendatasetCategory.png",
     after="LocationAnalysis",
@@ -31,13 +31,13 @@ __NODE_ICON_PATH = "icons/icon/OpenDataset/"
 )
 @knext.output_table(
     name="TIGER Line Table ",
-    description="Retrieved geodata from www2.census.gov/geo/tiger/TIGER2020PL",
+    description="Retrieved geodata from the [United States Census Bureau](www2.census.gov/geo/tiger/TIGER2020PL)",
 )
 @knut.census_node_description(
     short_description="Retrieve geospatial data from US Census TIGER/Line",
-    description="This node Retrieve the specific geospatial boundaries for one specific state of United States."
-    + "The popular TIGER/Line are Block group, Roads, Blocks,Tracts."
-    + "While input the same State FIPS (2-digits) for County FIPS(3-digits), the geodata of all counties in the state will be retrieved,"
+    description="This node retrieves the specific geospatial boundaries for one specific state of the United States."
+    + "The popular TIGER/Line levels are Block group, Roads, Blocks,Tracts."
+    + "When the same State FIPS (2-digits) is used for County FIPS(3-digits), the geodata of all counties in the state will be retrieved,"
     + "county10/20 and state10/20 can only be applicable in this case. ",
     references={
         "TIGER/Line Shapefiles": "https://www.census.gov/geographies/mapping-files/time-series/geo/tiger-line-file.2020.html",
@@ -61,14 +61,13 @@ class US2020TIGERNode:
 
     geofile = knext.StringParameter(
         label="TIGER/Line data type",
-        description="""<p>Available TIGER/Line are: 
-<ul>
-<li><b>Block:</b> tabblock10,tabblock20, for US Census block (the minimun level) in 2010 and 2020.</li>
-<li><b>Block group:</b> bg10, bg20, for US Census block group in 2010 and 2020.</li>
-<li><b>Tract:</b> tract10,tract20, for US Census Tract in 2010 and 2020.</li>
-<li><b>County:</b> county10,county20, for US County in 2010 and 2020, only applicable for the setting when the input of County FIPs equals State FIPs.</li>
-<li><b>State:</b> state10,state20, for US State in 2010 and 2020,same as County.</li>
-</ul></p>
+        description="""Available TIGER/Line are: 
+        
+        - **Block:** tabblock10,tabblock20, for US Census block (the minimum level) in 2010 and 2020.
+        - **Block group:** bg10, bg20, for US Census block group in 2010 and 2020.
+        - **Tract:** tract10,tract20, for US Census Tract in 2010 and 2020.
+        - **County:** county10,county20, for US County in 2010 and 2020, only applicable for the setting when the input of County FIPs equals State FIPs.
+        - **State:** state10,state20, for US State in 2010 and 2020,same as County.
 """,
         default_value="bg20",
         enum=[
@@ -241,10 +240,10 @@ class US2020TIGERNode:
 @knut.census_node_description(
     short_description="Retrieve US 2020 Census Redistricting Data for one specific state of United States.",
     description="This node retrieve US 2020 Census Redistricting Data (Decennial Census P.L. 94-171 Redistricting Data)."
-    + "This node privde all variables such as population and household inforamtion in US Census 2020 data base."
-    + "The default variable names are GEO_ID (geography), ,P1_001N(Total Population),P1_003N(Population of one race:!!White alone),"
-    + "P1_004N(Black or African American alone),H1_001N(Total Housing Units),H1_002 (Total Occupied Housing Units)."
-    + "Only if county is choosed for geography, then * can be input in  State FIPS (2-digits) to retrieve all the county level data of all states."
+    + "This node provides all variables such as population and household information in US Census 2020 data base."
+    + "The default variable names are GEO_ID (geography), P1_001N(Total Population), P1_003N(Population of one race:!!White alone),"
+    + "P1_004N(Black or African American alone), H1_001N(Total Housing Units), H1_002 (Total Occupied Housing Units)."
+    + "Only if county is chosen for geography, then * can be input in  State FIPS (2-digits) to retrieve all the county level data of all states."
     + "Before using the node, user need to sign up and get a census api key first by clicking the following hyperlink",
     references={
         "Census API Key Sign Up": "https://api.census.gov/data/key_signup.html",
@@ -274,7 +273,7 @@ class USCensus2020Node:
     )
 
     censusapikey = knext.StringParameter(
-        "US Census APIkey", "The APIkey  to use", "Input Your Census APIkey "
+        "US Census APIkey", "The APIkey to use", "Input Your Census APIkey "
     )
 
     cols = knext.StringParameter(
@@ -285,7 +284,7 @@ class USCensus2020Node:
 
     geofile = knext.StringParameter(
         label="Geographic Level",
-        description=" Available geographic Level  for this node are Block,Block group,Tract and Couty",
+        description=" Available geographic Level  for this node are Block, Block group, Tract and County",
         default_value="block group",
         enum=["block group", "block", "tract", "county"],
     )
@@ -361,7 +360,7 @@ class UScensusACSNode:
     )
 
     censusapikey = knext.StringParameter(
-        "US Census APIkey", "The APIkey  to use", "Input Your Census APIkey "
+        "US Census APIkey", "The APIkey to use", "Input Your Census APIkey "
     )
 
     cols = knext.StringParameter(
@@ -372,7 +371,7 @@ class UScensusACSNode:
 
     geofile = knext.StringParameter(
         label="Geographic Level",
-        description=" Available geographic Level  for this node are Block,Block group,Tract and Couty",
+        description=" Available geographic Level for this node are Block, Block group, Tract and County",
         default_value="block group",
         enum=["block group", "tract", "county", "state"],
     )
@@ -424,7 +423,7 @@ class UScensusACSNode:
 )
 @knut.osm_node_description(
     short_description="Get Points of Interests(POIs) from the Open Street Map.",
-    description="This node Download geospatial entities’ geometries and attributes from OpenStreetMap."
+    description="This node downloads geospatial entities’ geometries and attributes from OpenStreetMap."
     + "Results returned are the union, not intersection of each individual tag. Each result matches at least one given tag. "
     + "The dict keys should be OSM tags, (e.g., building, landuse, highway, etc) and the dict values should be either True "
     + "to retrieve all items with the given tag, or a string to get a single tag-value combination, or a list of strings to get"
@@ -494,9 +493,9 @@ class OSMdataNode:
     description="Road Network Geodata from the Open Street Map",
 )
 @knut.osm_node_description(
-    short_description="Get Road Netwrok from the Open Street Map.",
-    description="This node Download geospatial network and its attributes from OpenStreetMap."
-    + "If the network type of drive is used for query, it will use the module add_edge_sppeds to append the speed information directly. "
+    short_description="Get Road Network from the Open Street Map.",
+    description="This node downloads a geospatial network and its attributes from OpenStreetMap."
+    + "If the network type of drive is used for query, it will use the module add_edge_speeds to append the speed information directly. "
     + "The total travel time for the segment will be calculated as well with the module add_edge_travel_times. ",
     references={
         "osmnx.graph.graph_from_polygon": "https://osmnx.readthedocs.io/en/stable/osmnx.html#module-osmnx.graph",
@@ -552,13 +551,13 @@ class OSMnetworkNode:
 )
 @knext.output_table(
     name="OSM GeoBoundary data",
-    description="BOundary of places from the Open Street Map",
+    description="Boundary of places from the Open Street Map",
 )
 @knut.osm_node_description(
     short_description="Get Boundary from the Open Street Map with Geocoding.",
-    description="This node get place boudnary  from OpenStreetMap by the geocoding place name."
-    + "If query argument is a list, then which_result should be either a single value or a list with the same length as query. . "
-    + "The queries you provide must be resolvable to places in the Nominatim database. "
+    description="This node gets place boundary from OpenStreetMap by the geocoding place name."
+    + "If the query argument is a list, then which_result should be either a single value or a list with the same length as the query."
+    + "The queries you provide must be resolvable to places in the [Nominatim database](https://nominatim.org/). "
     + " The resulting GeoDataFrame’s geometry column contains place boundaries if they exist in OpenStreetMap.",
     references={
         "osmnx.geocoder.geocode_to_gdf": "https://osmnx.readthedocs.io/en/stable/osmnx.html?highlight=geocode_to_gdf#module-osmnx.geocoder",
@@ -567,8 +566,8 @@ class OSMnetworkNode:
 class OSMGeoBoundaryNode:
 
     placename = knext.StringParameter(
-        label="Input Place Names",
-        description="Hierachial place Names deliminated with commas, such as Cambridge, MA, USA ",
+        label="Input place names",
+        description="Hierarchial place names delimitated with commas, such as Cambridge, MA, USA ",
         default_value="Cambridge, MA, USA",
     )
 

@@ -70,13 +70,7 @@ class Spatial2SLSModel:
     """
 
     # input parameters
-    geo_col = knext.ColumnParameter(
-        "Geometry column",
-        "The column containing the geometry to use for spatial 2SlS.",
-        column_filter=knut.is_geo,
-        include_row_key=False,
-        include_none_column=False,
-    )
+    geo_col = knut.geo_col_parameter()
 
     dependent_variable = knext.ColumnParameter(
         "Dependent variable",
@@ -93,19 +87,21 @@ class Spatial2SLSModel:
 
     Orders_of_W = knext.IntParameter(
         "Orders of W",
-        "Orders of W to include as instruments for the spatially lagged dependent variable. For example, w_lags=1, then instruments are WX; if w_lags=2, then WX, WWX; and so on.",
+        """Orders of W to include as instruments for the spatially lagged dependent variable. For example, w_lags=1, 
+        then instruments are WX; if w_lags=2, then WX, WWX; and so on.""",
         default_value=1,
     )
 
     Spatial_Diagnostics = knext.BoolParameter(
         "Spatial Diagnostics",
-        "If True, then compute Anselin-Kelejian test",
+        "If selected, the node computes the Anselin-Kelejian test",
         default_value=False,
     )
 
     robust = knext.StringParameter(
         "Robust",
-        "If ‘white’, then a White consistent estimator of the variance-covariance matrix is given. If ‘hac’, then a HAC consistent estimator of the variance-covariance matrix is given. Default set to None.",
+        """If ‘white’, then a White consistent estimator of the variance-covariance matrix is given. If ‘hac’, 
+        then a HAC consistent estimator of the variance-covariance matrix is given. Set to None for default.""",
         enum=["white", "hac", "none"],
         default_value="none",
     )
@@ -228,13 +224,7 @@ class SpatialLagPanelModelwithFixedEffects:
     Spatial Lag Panel Model with Fixed Effects
     """
 
-    geo_col = knext.ColumnParameter(
-        "Geometry Column",
-        "The column containing the geometry of the input table.",
-        column_filter=knut.is_geo,
-        include_row_key=False,
-        include_none_column=False,
-    )
+    geo_col = knut.geo_col_parameter()
 
     dependent_variable = knext.MultiColumnParameter(
         "Dependent variables",
@@ -358,13 +348,7 @@ class SpatialErrorPanelModelwithFixedEffects:
     Spatial Error Panel Model with Fixed Effects node
     """
 
-    geo_col = knext.ColumnParameter(
-        "Geometry Column",
-        "The column containing the geometry of the input table.",
-        column_filter=knut.is_geo,
-        include_row_key=False,
-        include_none_column=False,
-    )
+    geo_col = knut.geo_col_parameter()
 
     dependent_variable = knext.MultiColumnParameter(
         "Dependent variables",
@@ -488,13 +472,7 @@ class GeographicallyWeightedRegression:
     Geographically Weighted Regression node
     """
 
-    geo_col = knext.ColumnParameter(
-        "Geometry Column",
-        "The column containing the geometry of the input table.",
-        column_filter=knut.is_geo,
-        include_row_key=False,
-        include_none_column=False,
-    )
+    geo_col = knut.geo_col_parameter()
 
     dependent_variable = knext.ColumnParameter(
         "Dependent variable",
@@ -509,14 +487,14 @@ class GeographicallyWeightedRegression:
     )
 
     search_method = knext.StringParameter(
-        "Search Method",
+        "Search method",
         "bw search method: ‘golden’, ‘interval’",
         default_value="golden",
         enum=["golden", "interval"],
     )
 
     bandwith_min = knext.IntParameter(
-        "Bandwith Min",
+        "Bandwith min",
         "min value used in bandwidth search",
         default_value=2,
     )
@@ -623,13 +601,7 @@ class GeographicallyWeightedRegressionPredictor:
     Geographically Weighted Regression Predictor node
     """
 
-    geo_col = knext.ColumnParameter(
-        "Geometry Column",
-        "The column containing the geometry of the input table.",
-        column_filter=knut.is_geo,
-        include_row_key=False,
-        include_none_column=False,
-    )
+    geo_col = knut.geo_col_parameter()
 
     independent_variables = knext.MultiColumnParameter(
         "Independent variables",
@@ -692,13 +664,7 @@ class MultiscaleGeographicallyWeightedRegression:
     Multiscale Geographically Weighted Regression node
     """
 
-    geo_col = knext.ColumnParameter(
-        "Geometry Column",
-        "The column containing the geometry of the input table.",
-        column_filter=knut.is_geo,
-        include_row_key=False,
-        include_none_column=False,
-    )
+    geo_col = knut.geo_col_parameter()
 
     dependent_variable = knext.ColumnParameter(
         "Dependent variable",
@@ -713,14 +679,14 @@ class MultiscaleGeographicallyWeightedRegression:
     )
 
     search_method = knext.StringParameter(
-        "Search Method",
+        "Search method",
         "bw search method: ‘golden’, ‘interval’",
         default_value="golden",
         enum=["golden", "interval"],
     )
 
     bandwith_min = knext.IntParameter(
-        "Bandwith Min",
+        "Bandwith min",
         "min value used in bandwidth search",
         default_value=2,
     )
@@ -908,13 +874,7 @@ class SpatialOLS:
     Spatial OLS
     """
 
-    geo_col = knext.ColumnParameter(
-        "Geometry Column",
-        "The column containing the geometry of the input table.",
-        column_filter=knut.is_geo,
-        include_row_key=False,
-        include_none_column=False,
-    )
+    geo_col = knut.geo_col_parameter()
 
     dependent_variable = knext.ColumnParameter(
         "Dependent variable",
@@ -944,7 +904,16 @@ class SpatialOLS:
         X = gdf[self.independent_variables].values
         y = gdf[self.dependent_variable].values
 
-        model = spreg.OLS(y, X, w, spat_diag=True, moran=True, white_test=True)
+        model = spreg.OLS(
+            y,
+            X,
+            w=w,
+            spat_diag=True,
+            moran=True,
+            white_test=True,
+            name_y=self.dependent_variable,
+            name_x=self.independent_variables,
+        )
 
         results = pd.DataFrame(
             [model.name_x, model.betas, model.std_err, model.t_stat]
@@ -1029,13 +998,7 @@ class SpatialML_Lag:
     Spatial ML_Lag
     """
 
-    geo_col = knext.ColumnParameter(
-        "Geometry Column",
-        "The column containing the geometry of the input table.",
-        column_filter=knut.is_geo,
-        include_row_key=False,
-        include_none_column=False,
-    )
+    geo_col = knut.geo_col_parameter()
 
     dependent_variable = knext.ColumnParameter(
         "Dependent variable",
@@ -1065,7 +1028,14 @@ class SpatialML_Lag:
         X = gdf[self.independent_variables].values
         y = gdf[self.dependent_variable].values
 
-        model = spreg.ML_Lag(y, X, w, method="ord")
+        model = spreg.ML_Lag(
+            y,
+            X,
+            w=w,
+            method="ord",
+            name_x=self.independent_variables,
+            name_y=self.dependent_variable,
+        )
 
         results = pd.DataFrame(
             [model.name_x, model.betas, model.std_err, model.z_stat]
@@ -1151,13 +1121,7 @@ class SpatialML_Error:
     Spatial ML_Error
     """
 
-    geo_col = knext.ColumnParameter(
-        "Geometry Column",
-        "The column containing the geometry of the input table.",
-        column_filter=knut.is_geo,
-        include_row_key=False,
-        include_none_column=False,
-    )
+    geo_col = knut.geo_col_parameter()
 
     dependent_variable = knext.ColumnParameter(
         "Dependent variable",
@@ -1187,7 +1151,14 @@ class SpatialML_Error:
         X = gdf[self.independent_variables].values
         y = gdf[self.dependent_variable].values
 
-        model = spreg.ML_Error(y, X, w, method="ord")
+        model = spreg.ML_Error(
+            y,
+            X,
+            w=w,
+            method="ord",
+            name_x=self.independent_variables,
+            name_y=self.dependent_variable,
+        )
 
         results = pd.DataFrame(
             [model.name_x, model.betas, model.std_err, model.z_stat]

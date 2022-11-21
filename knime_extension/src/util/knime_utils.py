@@ -6,7 +6,47 @@ import geopandas as gp
 import knime.types.geospatial as gt
 import knime_extension as knext
 
+from shapely.geometry import Point
+from shapely.geometry import LineString
+from shapely.geometry import Polygon
+from shapely.geometry import MultiPoint
+from shapely.geometry import MultiLineString
+from shapely.geometry import MultiPolygon
+from shapely.geometry import GeometryCollection
+
+
 LOGGER = logging.getLogger(__name__)
+
+DEFAULT_CRS = "epsg:4326"
+"""Default coordinate reference system."""
+
+DEF_CRS_DESCRIPTION = """[Coordinate reference system (CRS)](https://en.wikipedia.org/wiki/Spatial_reference_system).
+        Supports the following input types:
+        
+        - An authority string [i.e. 'epsg:4326']
+        - An EPSG integer code [i.e. 4326]
+        - A tuple of ('auth_name': 'auth_code') [i.e ('epsg', '4326')]
+        - CRS WKT string
+        - PROJ string
+        - JSON string with PROJ parameters
+        """
+
+
+############################################
+# Geometry value types
+############################################
+
+# TYPE_GEO = knext.logical(gt.GeoValue)
+
+# TYPE_POINT = knext.logical(Point)
+# TYPE_LINE = knext.logical(LineString)
+# TYPE_POLYGON = knext.logical(Polygon)
+
+# TYPE_MULTI_POINT = knext.logical(MultiPoint)
+# TYPE_MULTI_LINE = knext.logical(MultiLineString)
+# TYPE_MULTI_POLYGON = knext.logical(MultiPolygon)
+
+# TYPE_GEO_COLLECTION = knext.logical(GeometryCollection)
 
 
 ############################################
@@ -14,7 +54,7 @@ LOGGER = logging.getLogger(__name__)
 ############################################
 
 __DEF_GEO_COL_LABEL = "Geometry column"
-__DEF_GEO_COL_DESC = "Select the Geometry column to use"
+__DEF_GEO_COL_DESC = "Select the geometry column to use"
 
 __TYPE_GEO = "org.knime.geospatial.core.data.cell.Geo"
 __TYPE_POINT = "GeoPointCell"
@@ -204,7 +244,7 @@ def geo_node_description(short_description: str, description: str, references: d
         s = f"{short_description}\n"
         s += f"{description}\n\n"
         # s += "___\n\n"  # separator line between description and general part
-        s += "The node is based on the [GeoPandas](https://geopandas.org/) project and uses the following function"
+        s += "The node is based on the [GeoPandas](https://geopandas.org/) project and uses the following related information and function"
         if references is not None:
             if len(references) > 1:
                 s += "s"
