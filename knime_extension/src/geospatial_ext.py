@@ -15,12 +15,13 @@ category = knext.category(
 # The different node files
 import nodes.calculation
 import nodes.conversion
+import nodes.io
+import nodes.locationanalysis
 import nodes.opendata
+import nodes.spatialmodels
 import nodes.spatialstatistics
 import nodes.spatialtool
 import nodes.transform
 import nodes.visualize
-import nodes.geolab
-import nodes.spatialmodels
-import nodes.io
-import nodes.locationanalysis
+
+# import nodes.geolab
