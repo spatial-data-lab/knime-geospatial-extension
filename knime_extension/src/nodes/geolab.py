@@ -12,6 +12,8 @@ from pandarallel import pandarallel
 import io
 import numpy as np
 from shapely.geometry import Polygon
+import  requests # for OSRM
+import json # for OSRM
 
 __category = knext.category(
     path="/geo",
@@ -1360,3 +1362,125 @@ class BivariateLocalMoran:
         plt.xlabel("%s" % self.Field_col1)
 
         return knext.Table.from_pandas(gdf), knext.view_matplotlib(f)
+
+
+############################################
+# OSRM
+############################################
+@knext.node(
+    name="OSRM Drive Matrix",
+    node_type=knext.NodeType.LEARNER,
+    # node_type=knext.NodeType.MANIPULATOR,
+    category=__category,
+    icon_path=__NODE_ICON_PATH + "BivariateLocal.png",
+)
+@knext.input_table(
+    name="Input Table",
+    description="Input table with startx,y,endx,y",
+)
+
+@knext.output_table(
+    name="Output Table",
+    description="Output table with travel Cost",
+)
+
+
+class OSRMDriveMatrix:
+    """
+    OSRM Distance Matrix
+    """
+
+    # input parameters
+    StartX = knext.ColumnParameter(
+        "Start X-Longitude",
+        "The column containing the value for longitude of start point.",
+        column_filter=knut.is_numeric,
+        include_row_key=False,
+        include_none_column=False,
+    )
+
+    StartY = knext.ColumnParameter(
+        "Start Y-Latitude",
+        "The column containing the value for latitude of start point.",
+        column_filter=knut.is_numeric,
+        include_row_key=False,
+        include_none_column=False,
+    )
+
+    EndX = knext.ColumnParameter(
+        "End X-Longitude",
+        "The column containing the value for longitude of end point.",
+        column_filter=knut.is_numeric,
+        include_row_key=False,
+        include_none_column=False,
+    )
+
+    EndY = knext.ColumnParameter(
+        "End Y-Latitude",
+        "The column containing the value for latitude  of end point.",
+        column_filter=knut.is_numeric,
+        include_row_key=False,
+        include_none_column=False,
+    )
+
+    def configure(self, configure_context, input_schema_1):
+        return None
+
+    def execute(self, exec_context: knext.ExecutionContext, input_1):
+        df = gp.GeoDataFrame(input_1.to_pandas())
+        df = df.reset_index(drop=True)
+        # set minimun set
+        slnum=100
+        nlength=df.shape[0]
+        nloop=nlength//slnum
+        ntail=nlength%slnum
+        df['duration']=0.0
+        df['distance']=0.0
+        osrm_route_service="http://router.project-osrm.org/route/v1/driving/"
+        if nloop>=1:
+            for i in range(nloop):
+                ns=slnum*i
+                ne=ns+slnum-1
+                dfs=df.copy().loc[ns:ne]
+                dfs=dfs.rename(columns={self.StartX: "StartX", self.StartY: "StartY",self.EndX:"EndX", self.EndY: "EndY"})
+                dfs=dfs[['StartX','StartY','EndX','EndY']]
+                dfs=dfs.astype(str)
+                dfs["period"] = dfs["StartX"] +","+ dfs["StartY"]+";"+dfs["EndX"] +","+ dfs["EndY"]
+                Querylist = [';'.join(dfs['period'])]
+                address = osrm_route_service + Querylist[0]
+                try:
+                    r = requests.get(address, params={'continue_straight':'false'}, timeout=None)
+                    data = json.loads(r.text)
+                    if data['code']=='Ok':                        
+                        dfr = pd.DataFrame(data['routes'][0]['legs'])[['duration','distance']].iloc[::2]
+                        df.loc[ns:ne,"duration"]=dfr.duration.to_list()
+                        df.loc[ns:ne,"distance"]=dfr.distance.to_list()
+                    else:
+                        print("error from:{} to :{}".format(ns,ne))
+                except:
+                    print("error from:{} to :{}".format(ns,ne)) 
+        if ntail>0:
+            ns=slnum*nloop
+            ne=ns+ntail-1
+            dfs=df.copy().loc[ns:ne]
+            dfs=dfs.rename(columns={self.StartX: "StartX", self.StartY: "StartY",self.EndX:"EndX", self.EndY: "EndY"})
+            dfs=dfs[['StartX','StartY','EndX','EndY']]
+            dfs=dfs.astype(str)
+            dfs["period"] = dfs["StartX"] +","+ dfs["StartY"]+";"+dfs["EndX"] +","+ dfs["EndY"]
+            Querylist = [';'.join(dfs['period'])]
+            address = osrm_route_service + Querylist[0]
+            try:
+                r = requests.get(address, params={'continue_straight':'false'}, timeout=None)
+                data = json.loads(r.text)
+                if data['code']=='Ok':                    
+                    dfr = pd.DataFrame(data['routes'][0]['legs'])[['duration','distance']].iloc[::2]
+                    df.loc[ns:ne,"duration"]=dfr.duration.to_list()
+                    df.loc[ns:ne,"distance"]=dfr.distance.to_list()
+                else:
+                    print("error from:{} to :{}".format(ns,ne))
+            except:
+                print("error from:{} to :{}".format(ns,ne)) 
+            else:
+                print("error from:{} to :{}".format(ns,ne))
+      
+        return knext.Table.from_pandas(df)
