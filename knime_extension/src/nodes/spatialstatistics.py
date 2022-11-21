@@ -50,17 +50,21 @@ class spatialWeights:
     """
 
     # FIXME:
-    geo_col = knext.ColumnParameter(
-        "Geometry column",
-        "Select the geometry column to transform.",
-        # Allow only GeoValue compatible columns
-        column_filter=knut.is_geo,
-        include_row_key=False,
-        include_none_column=False,
-    )
+    geo_col = knut.geo_col_parameter()
+
     category = knext.StringParameter(
         "Weights category",
-        "The default value is ‘Queen’ which will construct a queen contiguity weights matrix. Queen weights is more robust and more suitable for areal unit data. The queen criterion is somewhat more encompassing and defines neighbors as spatial units sharing a common edge or a common vertex. The rook criterion defines neighbors by the existence of a common edge between two spatial units. Therefore, the number of neighbors according to the queen criterion will always be at least as large as for the rook criterion. When choosing k-nearest, select the nearest number 'Nearest k' in the following options. When selecting Binary Distance Band, please select the distance threshold 'Threshold' in the following options. When selecting Inverse Distance, please select the distance threshold 'Threshold' and the corresponding power 'Power' in the following options. When 'Your own' is selected, please enter the path of the spatial weights matrix in CSV format in the following options. More details about spatial weights, please see the GeoDa center website: https://geodacenter.github.io/documentation.html",
+        """The default value is ‘Queen’ which will construct a queen contiguity weights matrix. Queen weights is more 
+        robust and more suitable for areal unit data. The queen criterion is somewhat more encompassing and defines 
+        neighbors as spatial units sharing a common edge or a common vertex. The rook criterion defines neighbors by 
+        the existence of a common edge between two spatial units. Therefore, the number of neighbors according to the 
+        queen criterion will always be at least as large as for the rook criterion. When choosing k-nearest, select 
+        the nearest number 'Nearest k' in the following options. When selecting Binary Distance Band, please select 
+        the distance threshold 'Threshold' in the following options. When selecting Inverse Distance, please select 
+        the distance threshold 'Threshold' and the corresponding power 'Power' in the following options. 
+        When 'Your own' is selected, please enter the path of the spatial weights matrix in CSV format in the 
+        following options. More details about spatial weights, please see the GeoDa center website: 
+        https://geodacenter.github.io/documentation.html""",
         "Queen",
         enum=[
             "Queen",
@@ -75,7 +79,8 @@ class spatialWeights:
     )
     order = knext.IntParameter(
         "Order",
-        "The order of the weight matrix is 1 by default. Users can change the order of the weights, higher order weights will treat further units as neighbors.",
+        """The order of the weight matrix is 1 by default. Users can change the order of the weights, higher order 
+        weights will treat further units as neighbors.""",
         1,
     )
 
@@ -87,12 +92,16 @@ class spatialWeights:
 
     Threshold = knext.IntParameter(
         "Threshold",
-        "Distance band weights are often used for point data. The weights within the threshold are 1 and otherwise 0. Inverse distance weights are often used for point data. The weights within the threshold are distance^-power, and otherwise 0. The distance is Euclidean distance.",
+        """Distance band weights are often used for point data. The weights within the threshold are 1 and otherwise 0. 
+        Inverse distance weights are often used for point data. The weights within the threshold are distance^-power, 
+        and otherwise 0. The distance is Euclidean distance.""",
         1,
     )
     Power = knext.IntParameter(
         "Power",
-        "Distance band weights are often used for point data. The weights within the threshold are 1 and otherwise 0. Inverse distance weights are often used for point data. The weights within the threshold are distance^-power, and otherwise 0. The distance is Euclidean distance.",
+        """Distance band weights are often used for point data. The weights within the threshold are 1 and otherwise 0. 
+        Inverse distance weights are often used for point data. The weights within the threshold are distance^-power, 
+        and otherwise 0. The distance is Euclidean distance.""",
         1,
     )
     Rows = knext.IntParameter(
@@ -103,7 +112,8 @@ class spatialWeights:
     )
     Your_own_matrix_local_path = knext.StringParameter(
         "Your own matrix local path",
-        "Please enter the path of the spatial weights matrix in CSV format in the following options. The weights matrix must be in matrix format and in the order of the samples.",
+        """Please enter the path of the spatial weights matrix in CSV format in the following options. 
+        The weights matrix must be in matrix format and in the order of the samples.""",
         "",
     )
     # FIXME:
@@ -230,7 +240,7 @@ class spatialWeights:
 #     id="pysal.esda.moran.Moran",
 # )
 @knext.output_view(
-    name="output view",
+    name="Output View",
     description="Output view of Global Moran's I",
 )
 class GlobalMoransI:
@@ -239,12 +249,8 @@ class GlobalMoransI:
     """
 
     # input parameters
-    geo_col = knext.ColumnParameter(
-        "Geometry column",
-        "The column containing the geometry to use for the spatial weights matrix.",
-        column_filter=knut.is_geo,
-        include_row_key=False,
-        include_none_column=False,
+    geo_col = knut.geo_col_parameter(
+        description="The column containing the geometry to use for the spatial weights matrix."
     )
 
     Field_col = knext.ColumnParameter(
@@ -310,7 +316,7 @@ class GlobalMoransI:
 #     id="pysal.esda.moran.Moran",
 # )
 @knext.output_view(
-    name="output view",
+    name="Output View",
     description="Output view of Local Moran's I",
 )
 class LocalMoransI:
@@ -319,12 +325,8 @@ class LocalMoransI:
     """
 
     # input parameters
-    geo_col = knext.ColumnParameter(
-        "Geometry column",
-        "The column containing the geometry to use for local Moran's I.",
-        column_filter=knut.is_geo,
-        include_row_key=False,
-        include_none_column=False,
+    geo_col = knut.geo_col_parameter(
+        description="The column containing the geometry to use for local Moran's I.",
     )
 
     Field_col = knext.ColumnParameter(
@@ -418,7 +420,7 @@ class LocalMoransI:
 #     id="pysal.esda.moran.Moran",
 # )
 @knext.output_view(
-    name="output view",
+    name="Output View",
     description="Output view of Global Geary’s C",
 )
 class GlobalGearysC:
@@ -427,12 +429,8 @@ class GlobalGearysC:
     """
 
     # input parameters
-    geo_col = knext.ColumnParameter(
-        "Geometry column",
-        "The column containing the geometry to use for global Geary’s C.",
-        column_filter=knut.is_geo,
-        include_row_key=False,
-        include_none_column=False,
+    geo_col = knut.geo_col_parameter(
+        description="The column containing the geometry to use for global Geary’s C.",
     )
 
     Field_col = knext.ColumnParameter(
@@ -501,7 +499,7 @@ class GlobalGearysC:
 #     id="pysal.esda.moran.Moran",
 # )
 @knext.output_view(
-    name="output view",
+    name="Output View",
     description="Output view of Global Getis-Ord",
 )
 class GlobalGetisOrd:
@@ -510,12 +508,8 @@ class GlobalGetisOrd:
     """
 
     # input parameters
-    geo_col = knext.ColumnParameter(
-        "Geometry column",
-        "The column containing the geometry to use for global Getis-Ord.",
-        column_filter=knut.is_geo,
-        include_row_key=False,
-        include_none_column=False,
+    geo_col = knut.geo_col_parameter(
+        description="The column containing the geometry to use for global Getis-Ord.",
     )
 
     Field_col = knext.ColumnParameter(
@@ -584,7 +578,7 @@ class GlobalGetisOrd:
 #     id="pysal.esda.moran.Moran",
 # )
 @knext.output_view(
-    name="output view",
+    name="Output View",
     description="Output view of Local Getis-Ord",
 )
 class LocalGetisOrd:
@@ -593,12 +587,8 @@ class LocalGetisOrd:
     """
 
     # input parameters
-    geo_col = knext.ColumnParameter(
-        "Geometry column",
-        "The column containing the geometry to use for local Getis-Ord.",
-        column_filter=knut.is_geo,
-        include_row_key=False,
-        include_none_column=False,
+    knut.geo_col_parameter(
+        description="The column containing the geometry to use for local Getis-Ord.",
     )
 
     Field_col = knext.ColumnParameter(

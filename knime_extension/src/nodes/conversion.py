@@ -25,30 +25,16 @@ __NODE_ICON_PATH = "icons/icon/GeometryConversion/"
 # Conversion helper methods
 ########################################################################################
 
-DEFAULT_CRS = "epsg:4326"
-"""Default coordinate reference system."""
-
-__DEF_CRS_DESCRIPTION = """[Coordinate reference system (CRS)](https://en.wikipedia.org/wiki/Spatial_reference_system) column
-        Supports the following input types:
-        
-        - PROJ string
-        - JSON string with PROJ parameters
-        - CRS WKT string
-        - An authority string [i.e. 'epsg:4326']
-        - An EPSG integer code [i.e. 4326]
-        - A tuple of ('auth_name': 'auth_code') [i.e ('epsg', '4326')]
-        """
-
 
 def crs_input_parameter(
     label: str = "CRS",
-    description: str = __DEF_CRS_DESCRIPTION,
+    description: str = knut.DEF_CRS_DESCRIPTION,
 ) -> knext.StringParameter:
     """Returns a CRS (coordinate reference system) string input parameter."""
     return knext.StringParameter(
         label=label,
         description=description,
-        default_value=DEFAULT_CRS,
+        default_value=knut.DEFAULT_CRS,
     )
 
 
@@ -153,7 +139,7 @@ class _ToGeoConverter:
 class WKTtoGeoNode(_ToGeoConverter):
 
     input_column = knext.ColumnParameter(
-        label="WKT Column",
+        label="WKT column",
         description="[Well-known-text (WKT)](https://en.wikipedia.org/wiki/Well-known_text_representation_of_geometry) column to convert",
         column_filter=knut.is_string,
         include_row_key=False,
@@ -192,7 +178,7 @@ class WKTtoGeoNode(_ToGeoConverter):
 # class WKBtoGeoNode(_ToGeoConverter):
 
 #     input_column = knext.ColumnParameter(
-#         label="WKB Column",
+#         label="WKB column",
 #         description="[Well-known-binary (WKB)](https://en.wikipedia.org/wiki/Well-known_text_representation_of_geometry) column to convert",
 #         column_filter=knut.is_binary,
 #         include_row_key=False,
@@ -227,7 +213,7 @@ class WKTtoGeoNode(_ToGeoConverter):
 class GeoJSONtoGeoNode(_ToGeoConverter):
 
     input_column = knext.ColumnParameter(
-        label="GeoJSON Column",
+        label="GeoJSON column",
         description="[GeoJSON](https://en.wikipedia.org/wiki/GeoJSON) column to convert",
         column_filter=knut.is_string,
         include_row_key=False,
@@ -308,6 +294,13 @@ class LatLongToGeoNode:
             f"Output column '{_ToGeoConverter.DEF_GEO_COL_NAME}'  exists in input table",
         )
         validate_crs(self.crs)
+        from shapely.geometry import Point
+
+        return input_schema_1.append(
+            knext.Column(
+                ktype=knext.logical(Point), name=_ToGeoConverter.DEF_GEO_COL_NAME
+            )
+        )
 
     def execute(self, exec_context: knext.ExecutionContext, input_table):
         # https://geopandas.org/en/stable/docs/user_guide/projections.html#the-axis-order-of-a-crs
@@ -564,6 +557,8 @@ class GeoToLatLongNode:
         gs = gdf.loc[:, self.geo_col]
         # https://geopandas.org/en/stable/docs/user_guide/projections.html#the-axis-order-of-a-crs
         # In GeoPandas the coordinates are always stored as (x, y), and thus as (lon, lat) order, regardless of the CRS
-        gdf[self.col_lon] = gs.x
+        # However the standard order for EPSG:4326 is latitude, longitude which is why we use this order in the output
+        # Also the ISO 6709 standard (https://en.wikipedia.org/wiki/ISO_6709) uses this order
         gdf[self.col_lat] = gs.y
+        gdf[self.col_lon] = gs.x
         return knut.to_table(gdf, exec_context)

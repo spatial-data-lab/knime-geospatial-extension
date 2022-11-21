@@ -71,7 +71,7 @@ class PmedianNode:
 
     DemandPopu = knext.ColumnParameter(
         "Column for demand population",
-        "The populaiton of demand",
+        "The population of demand",
         # port_index=2,
         column_filter=knut.is_numeric,
         include_row_key=False,
@@ -425,7 +425,7 @@ class LSCPNode:
 )
 @knext.input_table(
     name="Input OD list with geometries ",
-    description="Table with geometry information of demand and supply ",
+    description="Table with geometry information of demand and supply",
 )
 @knext.output_table(
     name="Demand table with MCLP result",
@@ -433,8 +433,8 @@ class LSCPNode:
 )
 @knut.pulp_node_description(
     short_description="Solve MCLP problem to Maximize Capacitated Coverage by setting an impedance cutoff.",
-    description="The MCLP model, maximum covering location problem (MCLP),  aims to Locate p facilities,"
-    + " and demand is covered ifit is within a specifieddistance (time) of a facility. "
+    description="The MCLP model, maximum covering location problem (MCLP), aims to Locate p facilities,"
+    + " and demand is covered if it is within a specified distance (time) of a facility. "
     + "The P-Median problem will be solved by PuLP package. ",
     references={
         "Pulp.Solver": "https://coin-or.github.io/pulp/guides/how_to_configure_solvers.html",
@@ -462,7 +462,7 @@ class MCLPNode:
 
     DemandPopu = knext.ColumnParameter(
         "Column for demand population",
-        "The populaiton of demand",
+        "The population of demand",
         # port_index=2,
         column_filter=knut.is_numeric,
         include_row_key=False,
