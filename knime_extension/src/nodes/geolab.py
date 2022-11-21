@@ -12,6 +12,8 @@ from pandarallel import pandarallel
 import io
 import numpy as np
 from shapely.geometry import Polygon
+import  requests # for OSRM
+import json # for OSRM
 
 __category = knext.category(
     path="/geo",
