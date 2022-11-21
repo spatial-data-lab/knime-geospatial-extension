@@ -103,11 +103,11 @@ class PmedianNode:
         include_row_key=False,
         include_none_column=False,
     )
-    CRSinfo = knext.StringParameter(
-        "Input CRSinfo for geometries of demand and supply",
-        "The CRS information for geometry columns",
-        "epsg:3857",
-    )
+    # CRSinfo = knext.StringParameter(
+    #     "Input CRSinfo for geometries of demand and supply",
+    #     "The CRS information for geometry columns",
+    #     "epsg:3857",
+    # )
     Pnumber = knext.IntParameter(
         "Input optimum p number of p-median", "The optimum p number of p-median", 5
     )
@@ -127,7 +127,7 @@ class PmedianNode:
         # ])
 
     def execute(self, exec_context: knext.ExecutionContext, input_1):
-        df = gp.GeoDataFrame(input_1.to_pandas())
+        df = gp.GeoDataFrame(input_1.to_pandas(),geometry=self.DemandGeometry)
         # Sort with DID and SID
         df = df.sort_values(by=[self.DemandID, self.SupplyID]).reset_index(drop=True)
 
@@ -147,9 +147,10 @@ class PmedianNode:
             .rename(columns={"index": self.SupplyID, self.SupplyGeometry: "geometry"})
         )
         DemandPt = gp.GeoDataFrame(DemandPt, geometry="geometry")
-        SupplyPt = gp.GeoDataFrame(SupplyPt, geometry="geometry")
-        DemandPt = DemandPt.set_crs(self.CRSinfo)
-        SupplyPt = SupplyPt.set_crs(self.CRSinfo)
+        SupplyPt = gp.GeoDataFrame(SupplyPt, geometry="geometry")        
+        DemandPt = DemandPt.set_crs(df.crs)
+        SupplyPt = SupplyPt.set_crs(df.crs)
+
 
         # calculate parameter for matrix
         num_trt = DemandPt.shape[0]
@@ -220,7 +221,7 @@ class PmedianNode:
         DemandPt = DemandPt.drop(columns=["linxy", "SIDcoord"])
         DemandPt = DemandPt.reset_index(drop=True)
         # DemandPt=DemandPt.rename(columns={'geometry':'DIDgeometry'})
-        gdf = gp.GeoDataFrame(DemandPt, geometry="geometry", crs=self.CRSinfo)
+        gdf = gp.GeoDataFrame(DemandPt, geometry="geometry", crs=df.crs)
         return knext.Table.from_pandas(gdf)
 
 
@@ -295,11 +296,11 @@ class LSCPNode:
         include_row_key=False,
         include_none_column=False,
     )
-    CRSinfo = knext.StringParameter(
-        "Input CRSinfo for geometries of demand and supply",
-        "The CRS information for geometry columns",
-        "epsg:3857",
-    )
+    # CRSinfo = knext.StringParameter(
+    #     "Input CRSinfo for geometries of demand and supply",
+    #     "The CRS information for geometry columns",
+    #     "epsg:3857",
+    # )
     threshold = knext.DoubleParameter(
         "Input critical spatial cost", "Critical spatial cost to supply point", 13
     )
@@ -319,7 +320,7 @@ class LSCPNode:
         # ])
 
     def execute(self, exec_context: knext.ExecutionContext, input_1):
-        df = gp.GeoDataFrame(input_1.to_pandas())
+        df = gp.GeoDataFrame(input_1.to_pandas(),geometry=self.DemandGeometry)
         # Sort with DID and SID
         df = df.sort_values(by=[self.DemandID, self.SupplyID]).reset_index(drop=True)
 
@@ -340,8 +341,8 @@ class LSCPNode:
         )
         DemandPt = gp.GeoDataFrame(DemandPt, geometry="geometry")
         SupplyPt = gp.GeoDataFrame(SupplyPt, geometry="geometry")
-        DemandPt = DemandPt.set_crs(self.CRSinfo)
-        SupplyPt = SupplyPt.set_crs(self.CRSinfo)
+        DemandPt = DemandPt.set_crs(df.crs)
+        SupplyPt = SupplyPt.set_crs(df.crs)
 
         # calculate parameter for matrix
         num_trt = DemandPt.shape[0]
@@ -409,7 +410,7 @@ class LSCPNode:
 
         DemandPt = DemandPt.drop(columns=["linxy", "SIDcoord"])
         DemandPt = DemandPt.reset_index(drop=True)
-        gdf = gp.GeoDataFrame(DemandPt, geometry="geometry", crs=self.CRSinfo)
+        gdf = gp.GeoDataFrame(DemandPt, geometry="geometry", crs=df.crs)
         return knext.Table.from_pandas(gdf)
 
 
@@ -493,11 +494,11 @@ class MCLPNode:
         include_row_key=False,
         include_none_column=False,
     )
-    CRSinfo = knext.StringParameter(
-        "Input CRSinfo for geometries of demand and supply",
-        "The CRS information for geometry columns",
-        "epsg:3857",
-    )
+    # CRSinfo = knext.StringParameter(
+    #     "Input CRSinfo for geometries of demand and supply",
+    #     "The CRS information for geometry columns",
+    #     "epsg:3857",
+    # )
     Pnumber = knext.IntParameter(
         "Input optimum p number ", "The optimum p number of facilities", 3
     )
@@ -520,7 +521,7 @@ class MCLPNode:
         # ])
 
     def execute(self, exec_context: knext.ExecutionContext, input_1):
-        df = gp.GeoDataFrame(input_1.to_pandas())
+        df = gp.GeoDataFrame(input_1.to_pandas(),geometry=self.DemandGeometry)
         # Sort with DID and SID
         df = df.sort_values(by=[self.DemandID, self.SupplyID]).reset_index(drop=True)
 
@@ -541,8 +542,8 @@ class MCLPNode:
         )
         DemandPt = gp.GeoDataFrame(DemandPt, geometry="geometry")
         SupplyPt = gp.GeoDataFrame(SupplyPt, geometry="geometry")
-        DemandPt = DemandPt.set_crs(self.CRSinfo)
-        SupplyPt = SupplyPt.set_crs(self.CRSinfo)
+        DemandPt = DemandPt.set_crs(df.crs)
+        SupplyPt = SupplyPt.set_crs(df.crs)
 
         # calculate parameter for matrix
         num_trt = DemandPt.shape[0]
@@ -614,5 +615,5 @@ class MCLPNode:
         DemandPt = DemandPt.drop(columns=["linxy", "SIDcoord"])
         DemandPt = DemandPt.reset_index(drop=True)
         # DemandPt=DemandPt.rename(columns={'geometry':'DIDgeometry'})
-        gdf = gp.GeoDataFrame(DemandPt, geometry="geometry", crs=self.CRSinfo)
+        gdf = gp.GeoDataFrame(DemandPt, geometry="geometry", crs=df.crs)
         return knext.Table.from_pandas(gdf)
