@@ -474,6 +474,19 @@ def fail_if_column_exists(
         raise knext.InvalidParametersError(msg)
 
 
+def get_unique_column_name(column_name: str, input_schema: knext.Schema) -> str:
+    """Checks if the column name exists in the given schema and if so appends a number to it to make it unique.
+    The unique name if returned or the original if it was already unique."""
+    if column_name is None:
+        raise knext.InvalidParametersError("Column name must not be None")
+    uniquifier = 1
+    result = column_name
+    while result in input_schema.column_names:
+        result = column_name + f"(#{uniquifier})"
+        uniquifier += 1
+    return result
+
+
 def check_canceled(exec_context: knext.ExecutionContext) -> None:
     """
     Checks if the user has canceled the execution and if so throws a RuntimeException
