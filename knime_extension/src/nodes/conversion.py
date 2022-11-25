@@ -5,7 +5,6 @@ import geopandas as gp
 import knime_extension as knext
 import util.knime_utils as knut
 import pyproj as pyp
-from shapely.geometry import shape
 
 
 __category = knext.category(
@@ -91,23 +90,27 @@ class _ToGeoConverter:
         self.input_column = knut.column_exists_or_preset(
             configure_context, self.input_column, input_schema, self.column_type_check
         )
-        # check that the output column does NOT exist to prevent overwriting
-        knut.fail_if_column_exists(
-            self.DEF_GEO_COL_NAME,
-            input_schema,
-            f"Output column '{self.DEF_GEO_COL_NAME}'  exists in input table",
-        )
         validate_crs(self.crs)
 
-        # we can not return a schema since we do not know the geometric type of the column without parsing all rows
+        import knime.types.geospatial as gt
+
+        return input_schema.append(
+            knext.Column(
+                ktype=knext.logical(gt.GeoValue),
+                name=knut.get_unique_column_name(self.DEF_GEO_COL_NAME, input_schema),
+            )
+        )
 
     def execute(self, exec_context, input_table):
         # create GeoDataFrame with the selected column as active geometry column
         df = input_table.to_pandas()
         try:
             # input_column and crs need to be defined in the child class
-            df[self.DEF_GEO_COL_NAME] = self.converter(df, self.input_column)
-            gdf = gp.GeoDataFrame(df, geometry=self.DEF_GEO_COL_NAME, crs=self.crs)
+            result_col_name = knut.get_unique_column_name(
+                self.DEF_GEO_COL_NAME, input_table.schema
+            )
+            df[result_col_name] = self.converter(df, self.input_column)
+            gdf = gp.GeoDataFrame(df, geometry=result_col_name, crs=self.crs)
         except Exception as error:
             raise RuntimeError(
                 f"Error converting '{self.input_column}' column to geometry: {str(error)}"
@@ -231,11 +234,16 @@ class GeoJSONtoGeoNode(_ToGeoConverter):
     def execute(self, exec_context, input_table):
         # create GeoDataFrame with the selected column as active geometry column
         df = input_table.to_pandas()
-        try:
-            # input_column and crs need to be defined in the child class
-            mygdf = gp.read_file(df[self.input_column][0], driver="GeoJSON")
 
-            gdf = gp.GeoDataFrame(df, geometry=self.DEF_GEO_COL_NAME, crs=self.crs)
+        result_col_name = knut.get_unique_column_name(
+            self.DEF_GEO_COL_NAME, input_table.schema
+        )
+        try:
+            # read each GeoJson cell and append the result to the table
+            df[result_col_name] = df[self.input_column].apply(
+                lambda row: gp.read_file(row, driver="GeoJSON").geometry
+            )
+            gdf = gp.GeoDataFrame(df, geometry=result_col_name, crs=self.crs)
         except Exception as error:
             raise RuntimeError(
                 f"Error converting '{self.input_column}' column to geometry: {str(error)}"
@@ -285,20 +293,24 @@ class LatLongToGeoNode:
 
     crs = crs_input_parameter()
 
-    def configure(self, configure_context, input_schema_1):
-        knut.column_exists(self.lat_col, input_schema_1, knut.is_numeric)
-        knut.column_exists(self.lon_col, input_schema_1, knut.is_numeric)
+    def configure(self, configure_context, input_schema):
+        knut.column_exists(self.lat_col, input_schema, knut.is_numeric)
+        knut.column_exists(self.lon_col, input_schema, knut.is_numeric)
         knut.fail_if_column_exists(
             _ToGeoConverter.DEF_GEO_COL_NAME,
-            input_schema_1,
+            input_schema,
             f"Output column '{_ToGeoConverter.DEF_GEO_COL_NAME}'  exists in input table",
         )
         validate_crs(self.crs)
+
         from shapely.geometry import Point
 
-        return input_schema_1.append(
+        return input_schema.append(
             knext.Column(
-                ktype=knext.logical(Point), name=_ToGeoConverter.DEF_GEO_COL_NAME
+                ktype=knext.logical(Point),
+                name=knut.get_unique_column_name(
+                    _ToGeoConverter.DEF_GEO_COL_NAME, input_schema
+                ),
             )
         )
 
@@ -306,14 +318,13 @@ class LatLongToGeoNode:
         # https://geopandas.org/en/stable/docs/user_guide/projections.html#the-axis-order-of-a-crs
         # In GeoPandas the coordinates are always stored as (x, y), and thus as (lon, lat) order, regardless of the CRS
         df = input_table.to_pandas()
+        result_col_name = knut.get_unique_column_name(
+            _ToGeoConverter.DEF_GEO_COL_NAME, input_table.schema
+        )
         try:
             # input_column and crs need to be defined in the child class
-            df[_ToGeoConverter.DEF_GEO_COL_NAME] = gp.points_from_xy(
-                df[self.lon_col], df[self.lat_col]
-            )
-            gdf = gp.GeoDataFrame(
-                df, geometry=_ToGeoConverter.DEF_GEO_COL_NAME, crs=self.crs
-            )
+            df[result_col_name] = gp.points_from_xy(df[self.lon_col], df[self.lat_col])
+            gdf = gp.GeoDataFrame(df, geometry=result_col_name, crs=self.crs)
         except Exception as error:
             raise RuntimeError(
                 f"Error converting '{self.lat_col}' and '{self.lon_col}' column to geometry: {str(error)}"
@@ -362,24 +373,26 @@ class _FromGeoConverter:
         self.geo_column = knut.column_exists_or_preset(
             configure_context, self.geo_column, input_schema, knut.is_geo
         )
-        # check that the output column does NOT exist to prevent overwriting
-        knut.fail_if_column_exists(
-            self.column_name,
-            input_schema,
-            f"Output column '{self.column_name}'  exists in input table",
+        return input_schema.append(
+            knext.Column(
+                self.column_type,
+                knut.get_unique_column_name(self.column_name, input_schema),
+            )
         )
-        return input_schema.append(knext.Column(self.column_type, self.column_name))
 
     def execute(self, exec_context, input_table):
         # create GeoDataFrame with the selected column as active geometry column
         gdf = knut.load_geo_data_frame(input_table, self.geo_column, exec_context)
         # execute the function and append the result
+        result_col_name = knut.get_unique_column_name(
+            self.column_name, input_table.schema
+        )
         try:
             result = self.converter(gdf[self.geo_column])
-            gdf[self.column_name] = result
+            gdf[result_col_name] = result
         except Exception as error:
             raise knext.InvalidParametersError(
-                f"Error converting to {self.column_name}: {str(error)}"
+                f"Error converting to {result_col_name}: {str(error)}"
             )
         return knut.to_table(gdf, exec_context)
 
@@ -485,13 +498,16 @@ class GeoToGeoJSONNode(_FromGeoConverter):
         # create GeoDataFrame with the selected column as active geometry column
         gdf = knut.load_geo_data_frame(input_table, self.geo_column, exec_context)
         # execute the function and append the result
+        result_col_name = knut.get_unique_column_name(
+            self.column_name, input_table.schema
+        )
         try:
-            gdf[self.column_name] = gdf[self.geo_column].apply(
+            gdf[result_col_name] = gdf[self.geo_column].apply(
                 lambda e: gp.GeoSeries(e).to_json()
             )
         except Exception as error:
             raise knext.InvalidParametersError(
-                f"Error converting to {self.column_name}: {str(error)}"
+                f"Error converting to {result_col_name}: {str(error)}"
             )
         return knut.to_table(gdf, exec_context)
 
@@ -531,34 +547,30 @@ class GeoToLatLongNode:
     col_lat = "lat"
     col_lon = "lon"
 
-    def configure(self, configure_context, input_schema_1):
+    def configure(self, configure_context, input_schema):
         self.geo_col = knut.column_exists_or_preset(
-            configure_context, self.geo_col, input_schema_1, knut.is_geo_point
+            configure_context, self.geo_col, input_schema, knut.is_geo_point
         )
-        knut.fail_if_column_exists(
-            self.col_lat,
-            input_schema_1,
-            f"Output column '{self.col_lat}'  exists in input table",
-        )
-        knut.fail_if_column_exists(
-            self.col_lon,
-            input_schema_1,
-            f"Output column '{self.col_lon}'  exists in input table",
-        )
-        return input_schema_1.append(
+        return input_schema.append(
             [
-                knext.Column(knext.double(), self.col_lat),
-                knext.Column(knext.double(), self.col_lon),
+                knext.Column(
+                    knext.double(),
+                    knut.get_unique_column_name(self.col_lat, input_schema),
+                ),
+                knext.Column(
+                    knext.double(),
+                    knut.get_unique_column_name(self.col_lon, input_schema),
+                ),
             ]
         )
 
-    def execute(self, exec_context: knext.ExecutionContext, input_1):
-        gdf = knut.load_geo_data_frame(input_1, self.geo_col, exec_context)
+    def execute(self, exec_context: knext.ExecutionContext, input):
+        gdf = knut.load_geo_data_frame(input, self.geo_col, exec_context)
         gs = gdf.loc[:, self.geo_col]
         # https://geopandas.org/en/stable/docs/user_guide/projections.html#the-axis-order-of-a-crs
         # In GeoPandas the coordinates are always stored as (x, y), and thus as (lon, lat) order, regardless of the CRS
         # However the standard order for EPSG:4326 is latitude, longitude which is why we use this order in the output
         # Also the ISO 6709 standard (https://en.wikipedia.org/wiki/ISO_6709) uses this order
-        gdf[self.col_lat] = gs.y
-        gdf[self.col_lon] = gs.x
+        gdf[knut.get_unique_column_name(self.col_lat, input.schema)] = gs.y
+        gdf[knut.get_unique_column_name(self.col_lon, input.schema)] = gs.x
         return knut.to_table(gdf, exec_context)
