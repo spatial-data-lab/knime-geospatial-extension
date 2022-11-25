@@ -69,13 +69,12 @@ class CrsTransformerNode:
         )
         return input_schema_1
 
-    def execute(self, exec_context: knext.ExecutionContext, input_1):
-        gdf = gp.GeoDataFrame(input_1.to_pandas(), geometry=self.geo_col)
-        exec_context.set_progress(0.3, "Geo data frame loaded. Starting projection...")
+    def execute(self, exec_context: knext.ExecutionContext, input_table):
+        gdf = knut.load_geo_data_frame(input_table, self.geo_col, exec_context)
         gdf = gdf.to_crs(self.new_crs)
-        exec_context.set_progress(0.1, "Projection done")
+        crs = gdf.crs
         LOGGER.debug("CRS converted to " + self.new_crs)
-        return knext.Table.from_pandas(gdf)
+        return knut.to_table(gdf, exec_context)
 
 
 ############################################
