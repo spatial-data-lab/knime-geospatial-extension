@@ -50,13 +50,13 @@ class US2020TIGERNode:
     StateFips = knext.StringParameter(
         label="State FIPS (2-digits)",
         description="The State to use",
-        default_value="25",
+        default_value="",
     )
 
     County3Fips = knext.StringParameter(
         "County FIPS(3-digits)/ or State FIPS ",
         "The County/State FIPS code to use",
-        "017",
+        "",
     )
 
     geofile = knext.StringParameter(
@@ -70,7 +70,7 @@ class US2020TIGERNode:
 <li><b>State:</b> state10,state20, for US State in 2010 and 2020,same as County.</li>
 </ul></p>
 """,
-        default_value="bg20",
+        default_value="",
         enum=[
             "bg10",
             "bg20",
@@ -212,7 +212,7 @@ class US2020TIGERNode:
 
         base_url = "https://www2.census.gov/geo/tiger/TIGER2020PL/STATE/"
 
-        if self.StateFips != self.County3Fips:
+        if self.StateFips != self.County3Fips and self.County3Fips != "*":
             data_url = f"{base_url}{Statepath}/{County5Fips}/tl_2020_{County5Fips}_{self.geofile}.zip"
         else:
             County5Fips = self.StateFips
