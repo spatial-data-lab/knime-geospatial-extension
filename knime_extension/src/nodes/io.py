@@ -31,21 +31,23 @@ __NODE_ICON_PATH = "icons/icon/IO/"
 )
 @knext.output_table(
     name="Geodata table",
-    description="Geodata from the input file path.",
+    description="Geodata from the input file.",
 )
 @knut.geo_node_description(
     short_description="Read single layer GeoFile.",
-    description="""This node reads a single geofile from the path to the file or URL with geopandas.read_file(). 
-    The support file formats contain the popular data type such as ESRI Shapefile (.shp), zipped Shapefiles(.zip),single-layer GeoPackage file, or GeoJSON.
-    The standard Lcoal File path in KNIME Explorer,e.g.,'E:\KNIMEworkspace\test.geojson', can work as a file path without quotaion marks.
+    description="""This node reads a single geospatial file from the path to the file or URL. 
+    The supported file formats are the popular data types such as ESRI Shapefile (.shp), zipped Shapefiles(.zip),
+    single-layer GeoPackage file, or GeoJSON.
+    Example of a standard local file path would be *C:/KNIMEworkspace/test.geojson*.
     """,
     references={
         "Reading Spatial Data": "https://geopandas.org/en/stable/docs/user_guide/io.html",
+        "Read file": "https://geopandas.org/en/stable/docs/reference/api/geopandas.read_file.html",
     },
 )
 class GeoFileReaderNode:
     data_url = knext.StringParameter(
-        "Input File Path",
+        "Input file path",
         "The file path for reading data.",
         "",
     )
@@ -78,9 +80,11 @@ class GeoFileReaderNode:
 )
 @knut.geo_node_description(
     short_description="Write single layer GeoFile.",
-    description="This node writes the data in the format of Shapefile or GeoJSON with geopandas.to_file().",
+    description="""This node writes the data in the format of Shapefile or GeoJSON. 
+    Example of a standard local file path would be *C:/KNIMEworkspace/test.geojson*.""",
     references={
         "Writing Spatial Data": "https://geopandas.org/en/stable/docs/user_guide/io.html",
+        "To file": "https://geopandas.org/en/stable/docs/reference/api/geopandas.GeoDataFrame.to_file.html",
     },
 )
 class GeoFileWriterNode:
@@ -94,13 +98,13 @@ class GeoFileWriterNode:
     )
 
     data_url = knext.StringParameter(
-        "Output file path and file name",
+        "Output file path",
         "The file path for writing data without the file format or extension.",
         "",
     )
 
     dataformat = knext.StringParameter(
-        "Output File Format",
+        "Output file format",
         "The file path to save the data in the format of .shp or .geojson.",
         "Shapefile",
         enum=["Shapefile", "GeoJSON"],
@@ -141,18 +145,19 @@ class GeoFileWriterNode:
 )
 @knut.geo_node_description(
     short_description="Read GeoPackage layer",
-    description="""This node reads the GeoPackage, GeoDatabase(GDB) data with geopandas.read_file(). 
+    description="""This node reads the GeoPackage, GeoDatabase(GDB) data. 
     Using this node needs to specify the layer name, if set empty or wrong, the node will read the first layer. 
     The number as a layer order can also be applied, such as 0, 1, or other integer numbers .
     The node will export the  names of all layers as a table, which can be utilized to revise the name of target layer.
     """,
     references={
         "Reading Spatial Data": "https://geopandas.org/en/stable/docs/user_guide/io.html",
+        "Read file": "https://geopandas.org/en/stable/docs/reference/api/geopandas.read_file.html",
     },
 )
 class GeoPackageReaderNode:
     data_url = knext.StringParameter(
-        "Input File Path",
+        "Input file path",
         "The file path for reading data.",
         "",
     )
@@ -168,19 +173,18 @@ class GeoPackageReaderNode:
         return None
 
     def execute(self, exec_context: knext.ExecutionContext):
-        layerlist=fiona.listlayers(self.data_url)
-        pnumber = pd.Series(range(0,100)).astype(str).to_list()
-        if self.data_layer in layerlist: 
+        layerlist = fiona.listlayers(self.data_url)
+        pnumber = pd.Series(range(0, 100)).astype(str).to_list()
+        if self.data_layer in layerlist:
             gdf = gp.read_file(self.data_url, layer=self.data_layer)
-        elif self.data_layer in pnumber : 
-            nlayer=int(self.data_layer)
-            gdf = gp.read_file(self.data_url,layer=nlayer)       
+        elif self.data_layer in pnumber:
+            nlayer = int(self.data_layer)
+            gdf = gp.read_file(self.data_url, layer=nlayer)
         else:
-            gdf = gp.read_file(self.data_url,layer=0)           
+            gdf = gp.read_file(self.data_url, layer=0)
         gdf = gdf.reset_index(drop=True)
-        listtable = pd.DataFrame({'layerlist': layerlist})
+        listtable = pd.DataFrame({"layerlist": layerlist})
         return knext.Table.from_pandas(gdf), knext.Table.from_pandas(listtable)
-
 
 
 ############################################
@@ -199,11 +203,12 @@ class GeoPackageReaderNode:
 )
 @knut.geo_node_description(
     short_description="Write GeoPackage layer.",
-    description="""This node writes the data as a layer into a GeoPackage data with geopandas.to_file().
-    If the layer is already in the GeoPackage data, the orginal data of the target layer will be written by the new data. 
+    description="""This node writes the data as a layer into a GeoPackage data.
+    If the layer is already in the GeoPackage data, the original data of the target layer will be written by the new data. 
     """,
     references={
         "Writing Spatial Data": "https://geopandas.org/en/stable/docs/user_guide/io.html",
+        "To file": "https://geopandas.org/en/stable/docs/reference/api/geopandas.GeoDataFrame.to_file.html",
     },
 )
 class GeoPackageWriterNode:
@@ -217,7 +222,9 @@ class GeoPackageWriterNode:
     )
 
     data_url = knext.StringParameter(
-        "Input File Path", "The file path for saving data.", "",
+        "Input file path",
+        "The file path for saving data.",
+        "",
     )
 
     data_layer = knext.StringParameter(

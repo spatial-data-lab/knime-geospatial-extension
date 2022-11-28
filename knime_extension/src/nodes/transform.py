@@ -39,17 +39,17 @@ category = knext.category(
     name="Transformed geo table",
     description="Transformed geo output table.",
 )
-
 @knut.geo_node_description(
     short_description="Projection Transformation",
-    description="""This node transfoms the Coordinate Reference System (CRS) of the geometry column  with the input parameter by geopandas.to_crs().
-    This method will transform all points in all objects. It has no notion or projecting entire geometries. 
+    description="""This node transforms the Coordinate Reference System (CRS) of the geometry column  with the input 
+    parameter by geopandas.to_crs(). This method will transform all points in all objects. 
+    It has no notion or projecting entire geometries. 
     All segments joining points are assumed to be lines in the current projection, not geodesics. 
     Objects crossing the dateline (or other projection boundary) will have undesirable behavior.
     """,
     references={
         "geopandas.GeoSeries.to_crs()": "https://geopandas.org/en/stable/docs/reference/api/geopandas.GeoSeries.to_crs.html",
-        "Coordinate Reference System (CRS) EPSG:3857": "https://epsg.io/3857",
+        "Coordinate Reference System (CRS) EPSG:4326": "https://epsg.io/4326",
     },
 )
 class CrsTransformerNode:
@@ -57,16 +57,11 @@ class CrsTransformerNode:
     This node projects the data from its original CRS to the entered CRS.
     """
 
-    geo_col = knext.ColumnParameter(
-        "Geometry column",
-        "Select the geometry column to transform.",
-        # Allow only GeoValue compatible columns
-        column_filter=knut.is_geo,
-        include_row_key=False,
-        include_none_column=False,
-    )
+    geo_col = knut.geo_col_parameter()
 
-    new_crs = knext.StringParameter("New CRS", "The new CRS system to use", "EPSG:4326")
+    new_crs = knext.StringParameter(
+        "New CRS", knut.DEF_CRS_DESCRIPTION, knut.DEFAULT_CRS
+    )
 
     def configure(self, configure_context, input_schema_1):
         self.geo_col = knut.column_exists_or_preset(
@@ -74,13 +69,12 @@ class CrsTransformerNode:
         )
         return input_schema_1
 
-    def execute(self, exec_context: knext.ExecutionContext, input_1):
-        gdf = gp.GeoDataFrame(input_1.to_pandas(), geometry=self.geo_col)
-        exec_context.set_progress(0.3, "Geo data frame loaded. Starting projection...")
+    def execute(self, exec_context: knext.ExecutionContext, input_table):
+        gdf = knut.load_geo_data_frame(input_table, self.geo_col, exec_context)
         gdf = gdf.to_crs(self.new_crs)
-        exec_context.set_progress(0.1, "Projection done")
+        crs = gdf.crs
         LOGGER.debug("CRS converted to " + self.new_crs)
-        return knext.Table.from_pandas(gdf)
+        return knut.to_table(gdf, exec_context)
 
 
 ############################################
@@ -105,28 +99,20 @@ class CrsTransformerNode:
 @knut.geo_node_description(
     short_description="Returns a GeoSeries of points representing each geometry.",
     description="""This node returns a GeoSeries of points representing each geometry.
-    There are two kinds of type of points, centroids and representative points. 
-    The latter guaranteed to be within each geometry.
+    There are two types of points, centroids and representative points. 
+    The latter is guaranteed to be within each geometry.
     """,
     references={
         "GeoSeries.representative_point": "https://geopandas.org/en/stable/docs/reference/api/geopandas.GeoSeries.representative_point.html",
         "GeoSeries.centroid": "https://geopandas.org/en/stable/docs/reference/api/geopandas.GeoSeries.centroid.html",
     },
 )
-
 class GeometryToPointNode:
     """
     This node returns a GeoSeries of points representing each geometry.
     """
 
-    geo_col = knext.ColumnParameter(
-        "Geometry column",
-        "Select the geometry column to transform.",
-        # Allow only GeoValue compatible columns
-        column_filter=knut.is_geo,
-        include_row_key=False,
-        include_none_column=False,
-    )
+    geo_col = knut.geo_col_parameter()
 
     pointtype = knext.StringParameter(
         "Selection",
@@ -177,28 +163,20 @@ class GeometryToPointNode:
 )
 @knut.geo_node_description(
     short_description="Explode multi-part geometries into multiple single geometries.",
-    description="""This node Explode multi-part geometries into multiple single geometries.
+    description="""This node explodes multi-part geometries into multiple single geometries.
     Each row containing a multi-part geometry will be split into multiple rows with single geometries,
-    thereby increasing the vertical size of the GeoDataFrame.
+    thereby increasing the number rows in the output table.
     """,
     references={
         "GeoDataFrame.explode": "https://geopandas.org/en/stable/docs/reference/api/geopandas.GeoDataFrame.explode.html",
     },
 )
-
 class ExplodeNode:
     """
     This node dismantles the multiparts into single parts.
     """
 
-    geo_col = knext.ColumnParameter(
-        "Geometry column",
-        "Select the geometry column to transform.",
-        # Allow only GeoValue compatible columns
-        column_filter=knut.is_geo,
-        include_row_key=False,
-        include_none_column=False,
-    )
+    geo_col = knut.geo_col_parameter()
 
     def configure(self, configure_context, input_schema_1):
         self.geo_col = knut.column_exists_or_preset(
@@ -235,9 +213,8 @@ class ExplodeNode:
     name="Transformed geo table",
     description="Table with transformed geometry column. ",
 )
-
 @knut.geo_node_description(
-    short_description="Explode multi-part geometries into multiple single geometries.",
+    short_description="Returns the boundaries of each polygon.",
     description="""This node return the boundaries of each polygon with geopandas.GeoSeries.boundary,
     which Returns a GeoSeries of lower dimensional objects representing each geometry’s set-theoretic boundary.
     """,
@@ -245,7 +222,6 @@ class ExplodeNode:
         "GeoSeries.boundary": "https://geopandas.org/en/stable/docs/reference/api/geopandas.GeoSeries.boundary.html",
     },
 )
-
 class PolygonToLineNode:
     """
     This node generate lines from the boundaries of polygons.
@@ -292,7 +268,6 @@ class PolygonToLineNode:
     name="Transformed geo table",
     description="Table with transformed geometry column.",
 )
-
 @knut.geo_node_description(
     short_description="This node generate lines from points according to group id and serial label.",
     description="""This node generate lines from points according to group id and serial label by Shapely.LineString().
@@ -304,20 +279,12 @@ class PolygonToLineNode:
         "Shapely.LineStrings": "https://shapely.readthedocs.io/en/stable/manual.html",
     },
 )
-
 class PointsToLineNode:
     """
     This node generate lines from points according to group id and serial label.
     """
 
-    geo_col = knext.ColumnParameter(
-        "Geometry column",
-        "Select the geometry column to transform.",
-        # Allow only GeoValue compatible columns
-        column_filter=knut.is_geo_point,
-        include_row_key=False,
-        include_none_column=False,
-    )
+    geo_col = knut.geo_point_col_parameter()
 
     group_col = knext.ColumnParameter(
         "Group column",
@@ -382,17 +349,16 @@ class PointsToLineNode:
     name="Transformed geo table",
     description="Table with transformed geometry column.",
 )
-
 @knut.geo_node_description(
     short_description="This node generate points from the lines.",
     description="""This node generate points from the lines.
-    The list of coordinates that describe a geometry are represented as the CoordinateSequence object in Shapely which is the dependence of GeoPandas. 
+    The list of coordinates that describe a geometry are represented as the CoordinateSequence object in Shapely 
+    which is the dependence of GeoPandas. 
     """,
     references={
         "Coordinate sequences": "https://shapely.readthedocs.io/en/stable/manual.html",
     },
 )
-
 class GeometryToMultiPointNode:
     """
     This node generate points from the lines.
