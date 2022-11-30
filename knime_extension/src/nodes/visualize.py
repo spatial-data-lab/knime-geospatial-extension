@@ -241,7 +241,7 @@ class LegendSettings:
     description="Showing a interactive map with the geospatial data",
 )
 class ViewNode:
-    """
+    """Creates an interactive map view based on the selected geometric elements of the input table.
     This node creates an interactive map view based on the selected geometric elements of the input table.
     """
 
@@ -557,7 +557,7 @@ class StaticColorSettings:
         min_value=1,
         max_value=50,
     )
-    
+
     edge_color = knext.StringParameter(
         "Edge color",
         "Set the edge color. See [Colormaps in Matplotlib](https://matplotlib.org/stable/tutorials/colors/colormaps.html).",
@@ -586,7 +586,6 @@ class StaticColorSettings:
             "lightgray",
         ],
     )
-
 
 
 @knext.parameter_group(label="Legend Settings")
@@ -735,7 +734,7 @@ class StaticLegendSettings:
     name="Geospatial View", description="Showing a map with the geospatial data"
 )
 class ViewNodeStatic:
-    """
+    """Creates a static map of the given geometric elements.
     This node will visualize the given geometric elements on a static map.
     """
 
@@ -927,8 +926,9 @@ class ViewNodeStatic:
     name="Geospatial View", description="Showing a map with the geospatial data"
 )
 class ViewNodeKepler:
-    """
-    This node will visualize the given geometric elements on a map.
+    """This node will visualize the given geometric elements on a map.
+    This node will visualize the given geometric elements on a map using the [kepler.gl](https://kepler.gl/)
+    visualization framework.
     """
 
     geo_col = knext.ColumnParameter(
@@ -1007,7 +1007,7 @@ class ViewNodeKepler:
 )
 @knext.output_view(name="Heatmap View", description="Showing a heatmap with the data")
 class ViewNodeHeatmap:
-    """
+    """This node will visualize the given data on a heatmap.
     This node will visualize the given data on a heatmap.
     Please find more information about the heatmap [here](https://www.gislounge.com/heat-maps-in-gis/).
     """

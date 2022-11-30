@@ -65,8 +65,8 @@ __NODE_ICON_PATH = "icons/icon/SpatialModel/"
     description="Model Summary View of Spatial 2SlS",
 )
 class Spatial2SLSModel:
-    """
-    Spatial two stage least squares (S2SLS) with results and diagnostics; Anselin (1988)
+    """Spatial two stage least squares (S2SLS) with results and diagnostics.
+    Spatial two stage least squares (S2SLS) with results and diagnostics; Anselin (1988).
     """
 
     # input parameters
@@ -220,8 +220,8 @@ class Spatial2SLSModel:
     description="Model Summary for Spatial Lag Panel Model with Fixed Effects",
 )
 class SpatialLagPanelModelwithFixedEffects:
-    """
-    Spatial Lag Panel Model with Fixed Effects
+    """Spatial Lag Panel Model with Fixed Effects.
+    Spatial Lag Panel Model with Fixed Effects.
     """
 
     geo_col = knut.geo_col_parameter()
@@ -344,8 +344,8 @@ class SpatialLagPanelModelwithFixedEffects:
     description="Model Summary for Spatial Error Panel Model with Fixed Effects",
 )
 class SpatialErrorPanelModelwithFixedEffects:
-    """
-    Spatial Error Panel Model with Fixed Effects node
+    """Spatial Error Panel Model with Fixed Effects node.
+    Spatial Error Panel Model with Fixed Effects node.
     """
 
     geo_col = knut.geo_col_parameter()
@@ -468,8 +468,8 @@ class SpatialErrorPanelModelwithFixedEffects:
     description="Model Summary for Geographically Weighted Regression",
 )
 class GeographicallyWeightedRegression:
-    """
-    Geographically Weighted Regression node
+    """Geographically Weighted Regression node.
+    Geographically Weighted Regression node.
     """
 
     geo_col = knut.geo_col_parameter()
@@ -597,8 +597,8 @@ class GeographicallyWeightedRegression:
     description="Output table for Geographically Weighted Regression Predictor",
 )
 class GeographicallyWeightedRegressionPredictor:
-    """
-    Geographically Weighted Regression Predictor node
+    """Geographically Weighted Regression Predictor node.
+    Geographically Weighted Regression Predictor node.
     """
 
     geo_col = knut.geo_col_parameter()
@@ -660,8 +660,8 @@ class GeographicallyWeightedRegressionPredictor:
     description="Model Summary for Multiscale Geographically Weighted Regression",
 )
 class MultiscaleGeographicallyWeightedRegression:
-    """
-    Multiscale Geographically Weighted Regression node
+    """Multiscale Geographically Weighted Regression node.
+    Multiscale Geographically Weighted Regression node.
     """
 
     geo_col = knut.geo_col_parameter()
@@ -870,8 +870,8 @@ class MultiscaleGeographicallyWeightedRegression:
     description="Model summary view of the spatial OLS model.",
 )
 class SpatialOLS:
-    """
-    Spatial OLS
+    """Spatial OLS node.
+    Spatial OLS node.
     """
 
     geo_col = knut.geo_col_parameter()
@@ -994,8 +994,8 @@ class SpatialOLS:
     description="Model summary view of the spatial ML_Lag model.",
 )
 class SpatialML_Lag:
-    """
-    Spatial ML_Lag
+    """Spatial ML_Lag.
+    Spatial ML_Lag.
     """
 
     geo_col = knut.geo_col_parameter()
@@ -1117,8 +1117,8 @@ class SpatialML_Lag:
     description="Model summary view of the spatial ML_Error model.",
 )
 class SpatialML_Error:
-    """
-    Spatial ML_Error
+    """Spatial ML_Error.
+    Spatial ML_Error.
     """
 
     geo_col = knut.geo_col_parameter()

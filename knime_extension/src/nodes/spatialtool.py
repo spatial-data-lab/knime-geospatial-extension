@@ -865,8 +865,8 @@ class SimplifyNode:
     description="Output table of Create Grid",
 )
 class CreateGrid:
-    """
-    Create Grid
+    """Create Grid node.
+    This node creates an even grid like geospatial object.
     """
 
     geo_col = knut.geo_col_parameter()
@@ -937,7 +937,7 @@ class CreateGrid:
     description="Output table containing haversine distance",
 )
 class HaversineDistGrid:
-    """
+    """Calculates the Haversine Distance.
     Calculates the [Haversine Distance](https://en.wikipedia.org/wiki/Haversine_formula).
     """
 

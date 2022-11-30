@@ -44,8 +44,7 @@ __NODE_ICON_PATH = "icons/icon/SpatialStatistics/"
 @knext.input_table(name="Geo table", description="Table with geometry column")
 @knext.output_table(name="Spatial Weights", description="Spatial Weights")
 class spatialWeights:
-    """
-
+    """This node constructs a contiguity spatial weights matrix from the input data.
     This node constructs a contiguity spatial weights matrix from the input data.
     """
 
@@ -244,8 +243,8 @@ class spatialWeights:
     description="Output view of Global Moran's I",
 )
 class GlobalMoransI:
-    """
-    Global Moran's I
+    """Global Moran's I.
+    Global Moran's I.
     """
 
     # input parameters
@@ -320,8 +319,8 @@ class GlobalMoransI:
     description="Output view of Local Moran's I",
 )
 class LocalMoransI:
-    """
-    Local Moran's I
+    """Local Moran's I.
+    Local Moran's I.
     """
 
     # input parameters
@@ -424,8 +423,8 @@ class LocalMoransI:
     description="Output view of Global Geary’s C",
 )
 class GlobalGearysC:
-    """
-    Global Geary’s C
+    """Global Geary’s C.
+    Global Geary’s C.
     """
 
     # input parameters
@@ -503,8 +502,8 @@ class GlobalGearysC:
     description="Output view of Global Getis-Ord",
 )
 class GlobalGetisOrd:
-    """
-    Global Getis-Ord
+    """Global Getis-Ord.
+    Global Getis-Ord.
     """
 
     # input parameters
@@ -582,8 +581,8 @@ class GlobalGetisOrd:
     description="Output view of Local Getis-Ord",
 )
 class LocalGetisOrd:
-    """
-    Local Getis-Ord
+    """Local Getis-Ord.
+    Local Getis-Ord.
     """
 
     # input parameters
