@@ -36,17 +36,17 @@ DEF_CRS_DESCRIPTION = """[Coordinate reference system (CRS)](https://en.wikipedi
 # Geometry value types
 ############################################
 
-# TYPE_GEO = knext.logical(gt.GeoValue)
+TYPE_GEO = knext.logical(gt.GeoValue)
 
-# TYPE_POINT = knext.logical(Point)
-# TYPE_LINE = knext.logical(LineString)
-# TYPE_POLYGON = knext.logical(Polygon)
+TYPE_POINT = knext.logical(Point)
+TYPE_LINE = knext.logical(LineString)
+TYPE_POLYGON = knext.logical(Polygon)
 
-# TYPE_MULTI_POINT = knext.logical(MultiPoint)
-# TYPE_MULTI_LINE = knext.logical(MultiLineString)
-# TYPE_MULTI_POLYGON = knext.logical(MultiPolygon)
+TYPE_MULTI_POINT = knext.logical(MultiPoint)
+TYPE_MULTI_LINE = knext.logical(MultiLineString)
+TYPE_MULTI_POLYGON = knext.logical(MultiPolygon)
 
-# TYPE_GEO_COLLECTION = knext.logical(GeometryCollection)
+TYPE_GEO_COLLECTION = knext.logical(GeometryCollection)
 
 
 ############################################
@@ -56,14 +56,14 @@ DEF_CRS_DESCRIPTION = """[Coordinate reference system (CRS)](https://en.wikipedi
 __DEF_GEO_COL_LABEL = "Geometry column"
 __DEF_GEO_COL_DESC = "Select the geometry column to use"
 
-__TYPE_GEO = "org.knime.geospatial.core.data.cell.Geo"
-__TYPE_POINT = "GeoPointCell"
-__TYPE_LINE = "GeoLineCell"
-__TYPE_POLYGON = "GeoPolygonCell"
-__TYPE_COLLECTION = "GeoCollectionCell"
-__TYPE_MULTI_POINT = "GeoMultiPointCell"
-__TYPE_MULTI_LINE = "GeoMultiLineCell"
-__TYPE_MULTI_POLYGON = "GeoMultiPolygonCell"
+__CELL_TYPE_GEO = "org.knime.geospatial.core.data.cell.Geo"
+__CELL_TYPE_POINT = "GeoPointCell"
+__CELL_TYPE_LINE = "GeoLineCell"
+__CELL_TYPE_POLYGON = "GeoPolygonCell"
+__CELL_TYPE_COLLECTION = "GeoCollectionCell"
+__CELL_TYPE_MULTI_POINT = "GeoMultiPointCell"
+__CELL_TYPE_MULTI_LINE = "GeoMultiLineCell"
+__CELL_TYPE_MULTI_POLYGON = "GeoMultiPolygonCell"
 
 
 def geo_point_col_parameter(
@@ -162,7 +162,7 @@ def is_geo(column: knext.Column) -> bool:
     GeoPointCell, GeoLineCell, GeoPolygonCell, GeoMultiPointCell, GeoMultiLineCell, GeoMultiPolygonCell, ...
     @return: True if Column Type is GeoValue compatible
     """
-    return __is_type_x(column, __TYPE_GEO)
+    return __is_type_x(column, __CELL_TYPE_GEO)
 
 
 def is_geo_point(column: knext.Column) -> bool:
@@ -170,7 +170,7 @@ def is_geo_point(column: knext.Column) -> bool:
     Checks if column is a GeoPointCell.
     @return: True if Column Type is a GeoPointCell
     """
-    return __is_type_x(column, __TYPE_POINT)
+    return __is_type_x(column, __CELL_TYPE_POINT)
 
 
 def is_geo_line(column: knext.Column) -> bool:
@@ -178,7 +178,7 @@ def is_geo_line(column: knext.Column) -> bool:
     Checks if column is a GeoLineCell.
     @return: True if Column Type is a GeoLineCell
     """
-    return __is_type_x(column, __TYPE_LINE)
+    return __is_type_x(column, __CELL_TYPE_LINE)
 
 
 def is_geo_polygon(column: knext.Column) -> bool:
@@ -186,7 +186,7 @@ def is_geo_polygon(column: knext.Column) -> bool:
     Checks if column is a GeoPolygonCell.
     @return: True if Column Type is a GeoPolygonCell
     """
-    return __is_type_x(column, __TYPE_POLYGON)
+    return __is_type_x(column, __CELL_TYPE_POLYGON)
 
 
 def is_geo_collection(column: knext.Column) -> bool:
@@ -194,7 +194,7 @@ def is_geo_collection(column: knext.Column) -> bool:
     Checks if column is a GeoCollectionCell.
     @return: True if Column Type is a GeoCollectionCell
     """
-    return __is_type_x(column, __TYPE_COLLECTION)
+    return __is_type_x(column, __CELL_TYPE_COLLECTION)
 
 
 def is_geo_multi_point(column: knext.Column) -> bool:
@@ -202,7 +202,7 @@ def is_geo_multi_point(column: knext.Column) -> bool:
     Checks if column is a GeoMultiPointCell.
     @return: True if Column Type is a GeoMultiPointCell
     """
-    return __is_type_x(column, __TYPE_MULTI_POINT)
+    return __is_type_x(column, __CELL_TYPE_MULTI_POINT)
 
 
 def is_geo_multi_line(column: knext.Column) -> bool:
@@ -210,7 +210,7 @@ def is_geo_multi_line(column: knext.Column) -> bool:
     Checks if column is a GeoMultiLineCell.
     @return: True if Column Type is a GeoMultiLineCell
     """
-    return __is_type_x(column, __TYPE_MULTI_LINE)
+    return __is_type_x(column, __CELL_TYPE_MULTI_LINE)
 
 
 def is_geo_multi_polygon(column: knext.Column) -> bool:
@@ -218,7 +218,7 @@ def is_geo_multi_polygon(column: knext.Column) -> bool:
     Checks if column is a GeoMultiPolygonCell.
     @return: True if Column Type is a GeoMultiPolygonCell
     """
-    return __is_type_x(column, __TYPE_MULTI_POLYGON)
+    return __is_type_x(column, __CELL_TYPE_MULTI_POLYGON)
 
 
 def __is_type_x(column: knext.Column, type: str) -> bool:

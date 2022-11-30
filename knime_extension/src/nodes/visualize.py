@@ -42,6 +42,31 @@ __NODE_ICON_PATH = "icons/icon/Visulization/"
 #         return self.geo_df._repr_mimebundle_(include, exclude)
 
 
+def replace_external_js_css_paths(
+    replacement: str,
+    html: str,
+    regex_patter: str = '(<script src="|<link( rel="stylesheet")? href=")https?[^"]*\/([^"]*)"( rel="stylesheet")?',
+) -> str:
+    """
+    Uses a regular expression to find all script and stylesheet tags in a given html page.
+    The first matching group is either the script ar stylesheet part up until the opening " of the
+    URL. The second matching group is the file name.
+    The method will also add the closing ".
+
+    For example if the html code is <script src="https://cdn.jsdelivr.net/npm/leaflet@1.6.0/dist/leaflet.js">
+    the first group is <script src=" and the second group is leaflet.js so using the following replacement
+    r'\1./libs/kepler/2.5.5/\3\"\4' will lead to this URL: <script src="./libs/leaflet/1.6.0/leaflet.js">.
+    """
+    import re
+
+    result = re.sub(
+        regex_patter,
+        replacement,
+        html,
+    )
+    return result
+
+
 @knext.parameter_group(label="Coloring Settings")
 class ColorSettings:
     """
@@ -239,6 +264,7 @@ class LegendSettings:
 @knext.output_view(
     name="Geospatial View",
     description="Showing a interactive map with the geospatial data",
+    static_resources="libs/leaflet/1.6.0",
 )
 class ViewNode:
     """Creates an interactive map view based on the selected geometric elements of the input table.
@@ -461,8 +487,15 @@ class ViewNode:
             else:
                 kws["style_kwds"] = {"stroke": False}
         map = gdf.explore(**kws)
-        # knut.check_canceled(exec_context)
-        return knext.view(map)
+
+        # replace css and JavaScript paths
+        html = map.get_root().render()
+        html = replace_external_js_css_paths(
+            r"\1./libs/leaflet/1.6.0/\3\"\4",
+            html,
+        )
+
+        return knext.view(html)
 
 
 # geo view static
@@ -923,12 +956,21 @@ class ViewNodeStatic:
     description="Table with geospatial data to visualize",
 )
 @knext.output_view(
-    name="Geospatial View", description="Showing a map with the geospatial data"
+    name="Geospatial View",
+    description="Showing a map with the geospatial data",
+    static_resources="libs/kepler/2.5.5",
 )
 class ViewNodeKepler:
     """This node will visualize the given geometric elements on a map.
     This node will visualize the given geometric elements on a map using the [kepler.gl](https://kepler.gl/)
-    visualization framework.
+    visualization framework. This view is highly interactive and allows you to change various aspects of the view
+    within the visualization itself e.g. adding [layers](https://docs.kepler.gl/docs/user-guides/c-types-of-layers)
+    and [filters](https://docs.kepler.gl/docs/user-guides/e-filters). It also allows you to create a filter that
+    creates and animation for a given timeseries column. For more information about the supported interactions
+    see the [kepler.gl user guides](https://docs.kepler.gl/docs/user-guides).
+
+    This node uses the [Mapbox GL JS API](https://www.mapbox.com/pricing#map-loads-for-web) which for commercial
+    usage might require an [access token](https://docs.mapbox.com/help/glossary/access-token/).
     """
 
     geo_col = knext.ColumnParameter(
@@ -980,12 +1022,35 @@ class ViewNodeKepler:
                 config = json.loads(f.read())
         map_1.config = config
 
-        # map_1.add_data(data=data.copy(), name="haha")
         html = map_1._repr_html_()
         html = html.decode("utf-8")
-        # knext.view_html(html)
-        # knut.check_canceled(exec_context)
-        # cx.add_basemap(map, crs=gdf.crs.to_string(), source=cx.providers.flatten()[self.base_map])
+
+        # replace css and JavaScript paths
+        html = replace_external_js_css_paths(
+            r"\1./libs/kepler/2.5.5/\3\"\4",
+            html,
+        )
+        # replace any stylesheet links that are dynamically created
+        html = replace_external_js_css_paths(
+            r"\1./libs/kepler/2.5.5/\2\3",
+            html,
+            """(createElement\("link",\{rel:"stylesheet",href:")[^"']*\/([^"']*)("\}\))""",
+        )
+
+        # remove all Google Analytics scripts to prevent sending any information
+        html = replace_external_js_css_paths(
+            "", html, "<script>[^<]*www\.google-analytics\.com[^<]*<\/script>"
+        )
+        html = replace_external_js_css_paths(
+            "",
+            html,
+            """s\.a\.createElement\("script"[^)]*googletagmanager\.com[^\)]*\),""",
+        )
+        html = replace_external_js_css_paths(
+            "",
+            html,
+            """s\.a\.createElement\("script",null,"[^"]*gtag\([^"]*"\)""",
+        )
 
         return knext.view_html(html)
 
@@ -1005,7 +1070,11 @@ class ViewNodeKepler:
     name="Table to Visualize",
     description="Table with data to visualize",
 )
-@knext.output_view(name="Heatmap View", description="Showing a heatmap with the data")
+@knext.output_view(
+    name="Heatmap View",
+    description="Showing a heatmap with the data",
+    static_resources="libs/leaflet/1.6.0",
+)
 class ViewNodeHeatmap:
     """This node will visualize the given data on a heatmap.
     This node will visualize the given data on a heatmap.
@@ -1081,4 +1150,11 @@ class ViewNodeHeatmap:
 
         folium.LayerControl().add_to(map)
 
-        return knext.view(map)
+        # replace css and JavaScript paths
+        html = map.get_root().render()
+        html = replace_external_js_css_paths(
+            r"\1./libs/leaflet/1.6.0/\3\"\4",
+            html,
+        )
+
+        return knext.view(html)

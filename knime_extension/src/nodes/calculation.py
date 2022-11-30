@@ -178,7 +178,7 @@ class BoundingBoxNode(_SingleCalculator):
     )
 
     def __init__(self):
-        super().__init__(lambda gdf: gdf.envelope, "box", None)
+        super().__init__(lambda gdf: gdf.envelope, "box", knut.TYPE_GEO)
 
 
 ############################################
@@ -215,7 +215,7 @@ class ConvexHullNode(_SingleCalculator):
     )
 
     def __init__(self):
-        super().__init__(lambda gdf: gdf.convex_hull, "hull", None)
+        super().__init__(lambda gdf: gdf.convex_hull, "hull", knut.TYPE_GEO)
 
 
 ############################################
@@ -469,14 +469,14 @@ class UnaryUnionNode:
         description="Select the geometry column to compute the unary union."
     )
 
-    def configure(self, configure_context, input_schema_1):
+    def configure(self, configure_context, input_schema):
         self.geo_col = knut.column_exists_or_preset(
-            configure_context, self.geo_col, input_schema_1, knut.is_geo
+            configure_context, self.geo_col, input_schema, knut.is_geo
         )
         return None
 
-    def execute(self, exec_context: knext.ExecutionContext, input_1):
-        gdf = gp.GeoDataFrame(input_1.to_pandas(), geometry=self.geo_col)
+    def execute(self, exec_context: knext.ExecutionContext, input):
+        gdf = gp.GeoDataFrame(input.to_pandas(), geometry=self.geo_col)
         exec_context.set_progress(
             0.3, "Geo data frame loaded. Starting transformation..."
         )
