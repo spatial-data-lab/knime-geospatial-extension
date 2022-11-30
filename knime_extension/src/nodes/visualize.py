@@ -1037,6 +1037,21 @@ class ViewNodeKepler:
             """(createElement\("link",\{rel:"stylesheet",href:")[^"']*\/([^"']*)("\}\))""",
         )
 
+        # remove all Google Analytics scripts to prevent sending any information
+        html = replace_external_js_css_paths(
+            "", html, "<script>[^<]*www\.google-analytics\.com[^<]*<\/script>"
+        )
+        html = replace_external_js_css_paths(
+            "",
+            html,
+            """s\.a\.createElement\("script"[^)]*googletagmanager\.com[^\)]*\),""",
+        )
+        html = replace_external_js_css_paths(
+            "",
+            html,
+            """s\.a\.createElement\("script",null,"[^"]*gtag\([^"]*"\)""",
+        )
+
         return knext.view_html(html)
 
 
