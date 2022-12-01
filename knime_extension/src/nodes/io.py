@@ -13,7 +13,6 @@ __category = knext.category(
     description="Nodes that for reading and writing Geodata.",
     # starting at the root folder of the extension_module parameter in the knime.yml file
     icon="icons/icon/IOCategory.png",
-    after="",
 )
 
 # Root path for all node icons in this file
@@ -27,7 +26,6 @@ __NODE_ICON_PATH = "icons/icon/IO/"
     node_type=knext.NodeType.SOURCE,
     icon_path=__NODE_ICON_PATH + "GeoFileReader.png",
     category=__category,
-    after="",
 )
 @knext.output_table(
     name="Geodata table",
@@ -72,7 +70,6 @@ class GeoFileReaderNode:
     node_type=knext.NodeType.SOURCE,
     icon_path=__NODE_ICON_PATH + "GeoFileWriter.png",
     category=__category,
-    after="GeoPackage Reader",
 )
 @knext.input_table(
     name="Geodata table",
@@ -133,7 +130,6 @@ class GeoFileWriterNode:
     node_type=knext.NodeType.SOURCE,
     icon_path=__NODE_ICON_PATH + "GeoPackageReader.png",
     category=__category,
-    after="GeoFile Reader",
 )
 @knext.output_table(
     name="Geodata table",
@@ -195,7 +191,6 @@ class GeoPackageReaderNode:
     node_type=knext.NodeType.SOURCE,
     icon_path=__NODE_ICON_PATH + "GeoPackageWriter.png",
     category=__category,
-    after="GeoFile Writer",
 )
 @knext.input_table(
     name="Geodata table",
