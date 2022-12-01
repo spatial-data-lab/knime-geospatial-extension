@@ -21,6 +21,14 @@ DEFAULT_CRS = "epsg:4326"
 """Default coordinate reference system."""
 
 DEF_CRS_DESCRIPTION = """[Coordinate reference system (CRS)](https://en.wikipedia.org/wiki/Spatial_reference_system).
+        Common EPSG codes for world map are 
+        [4326](https://epsg.io/4326) ( WGS 84, latitude/longitude coordinate system  based on the Earth's center of mass; 
+        used by the Global Positioning System among others; unit: degree;), 
+        [3857](https://epsg.io/3857) (Web Mercator projection used for display by many web-based mapping tools,
+        including Google Maps and OpenStreetMap. unit: meter). 
+        There are corresponding EPSG codes for specific regions , such as 
+        [4269(NAD83,degree)](https://epsg.io/4326)  and [26918(NAD83 18N, meter)](https://epsg.io/4326) for North America, 
+        [4490(CGCS2000,degree)](https://epsg.io/4490) and [4479 (CGCS2000,meter)](https://epsg.io/4479  for China, 
         Supports the following input types:
         
         - An authority string [i.e. 'epsg:4326']
