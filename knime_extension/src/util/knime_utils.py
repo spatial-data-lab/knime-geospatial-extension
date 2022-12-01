@@ -274,7 +274,7 @@ def census_node_description(short_description: str, description: str, references
         s = f"{short_description}\n"
         s += f"{description}\n\n"
         # s += "___\n\n"  # separator line between description and general part
-        s += "The node is based on the data from [US Census](https://www.census.gov/)  and here are related data sources and references"
+        s += "The node is based on the data from [US Census](https://www.census.gov/) and [FIPS code](https://www.census.gov/library/reference/code-lists/ansi.html) and here are related data sources and references"
         if references is not None:
             if len(references) > 1:
                 s += "s"

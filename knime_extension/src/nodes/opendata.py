@@ -44,6 +44,7 @@ __NODE_ICON_PATH = "icons/icon/OpenDataset/"
         "TIGER/Line Shapefiles": "https://www.census.gov/geographies/mapping-files/time-series/geo/tiger-line-file.2020.html",
         "FTP Archive by State": "https://www2.census.gov/geo/tiger/TIGER2020PL/STATE/",
         "FTP Archive by Layer": "https://www2.census.gov/geo/tiger/TIGER2020PL/LAYER/",
+        "FIPS code list": "https://transition.fcc.gov/oet/info/maps/census/fips/fips.txt",
     },
 )
 class US2020TIGERNode:
@@ -254,6 +255,7 @@ class US2020TIGERNode:
         "Geography": "https://api.census.gov/data/2020/dec/pl/geography.html",
         "Variables": "https://api.census.gov/data/2020/dec/pl/variables.html",
         "Census API examples": "https://api.census.gov/data/2020/dec/pl/examples.html",
+        "FIPS code list": "https://transition.fcc.gov/oet/info/maps/census/fips/fips.txt",
     },
 )
 class USCensus2020Node:
@@ -342,6 +344,7 @@ class USCensus2020Node:
         "Geography": "https://api.census.gov/data/2020/acs/acs5/geography.html",
         "Variables": "https://api.census.gov/data/2020/acs/acs5/variables.html",
         "Census API examples": "https://api.census.gov/data/2020/acs/acs5/subject/examples.html",
+        "FIPS code list": "https://transition.fcc.gov/oet/info/maps/census/fips/fips.txt",
     },
 )
 class UScensusACSNode:
