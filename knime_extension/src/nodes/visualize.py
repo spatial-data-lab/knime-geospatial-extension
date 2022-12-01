@@ -963,6 +963,9 @@ class ViewNodeStatic:
 )
 class ViewNodeKepler:
     """This node will visualize the given geometric elements on a map.
+    The geometry column must be required.
+    By default, it takes all column information that is included inside the input table.
+    If you want to limit the amount of information you should use the filter node before.
     This node will visualize the given geometric elements on a map using the [kepler.gl](https://kepler.gl/)
     visualization framework. This view is highly interactive and allows you to change various aspects of the view
     within the visualization itself e.g. adding [layers](https://docs.kepler.gl/docs/user-guides/c-types-of-layers)
@@ -972,11 +975,7 @@ class ViewNodeKepler:
 
     This node uses the [Mapbox GL JS API](https://www.mapbox.com/pricing#map-loads-for-web) which for commercial
     usage might require an [access token](https://docs.mapbox.com/help/glossary/access-token/).
-    """
-    This node will visualize the given geometric elements on a map.
-    The geometry column must be required.
-    By default, it takes all column information that is included inside the input table.
-    If you want to limit the amount of information you should use the filter node before.
+
     If you want to use a different base map, you can configure it inside the interactive
     view with Kepler.gl's UI. You can also configure the Mapbox style you want to use and
     the access token there.
