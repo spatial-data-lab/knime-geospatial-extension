@@ -6,7 +6,47 @@ import geopandas as gp
 import knime.types.geospatial as gt
 import knime_extension as knext
 
+from shapely.geometry import Point
+from shapely.geometry import LineString
+from shapely.geometry import Polygon
+from shapely.geometry import MultiPoint
+from shapely.geometry import MultiLineString
+from shapely.geometry import MultiPolygon
+from shapely.geometry import GeometryCollection
+
+
 LOGGER = logging.getLogger(__name__)
+
+DEFAULT_CRS = "epsg:4326"
+"""Default coordinate reference system."""
+
+DEF_CRS_DESCRIPTION = """[Coordinate reference system (CRS)](https://en.wikipedia.org/wiki/Spatial_reference_system).
+        Supports the following input types:
+        
+        - An authority string [i.e. 'epsg:4326']
+        - An EPSG integer code [i.e. 4326]
+        - A tuple of ('auth_name': 'auth_code') [i.e ('epsg', '4326')]
+        - CRS WKT string
+        - PROJ string
+        - JSON string with PROJ parameters
+        """
+
+
+############################################
+# Geometry value types
+############################################
+
+TYPE_GEO = knext.logical(gt.GeoValue)
+
+TYPE_POINT = knext.logical(Point)
+TYPE_LINE = knext.logical(LineString)
+TYPE_POLYGON = knext.logical(Polygon)
+
+TYPE_MULTI_POINT = knext.logical(MultiPoint)
+TYPE_MULTI_LINE = knext.logical(MultiLineString)
+TYPE_MULTI_POLYGON = knext.logical(MultiPolygon)
+
+TYPE_GEO_COLLECTION = knext.logical(GeometryCollection)
 
 
 ############################################
@@ -14,16 +54,16 @@ LOGGER = logging.getLogger(__name__)
 ############################################
 
 __DEF_GEO_COL_LABEL = "Geometry column"
-__DEF_GEO_COL_DESC = "Select the Geometry column to use"
+__DEF_GEO_COL_DESC = "Select the geometry column to use"
 
-__TYPE_GEO = "org.knime.geospatial.core.data.cell.Geo"
-__TYPE_POINT = "GeoPointCell"
-__TYPE_LINE = "GeoLineCell"
-__TYPE_POLYGON = "GeoPolygonCell"
-__TYPE_COLLECTION = "GeoCollectionCell"
-__TYPE_MULTI_POINT = "GeoMultiPointCell"
-__TYPE_MULTI_LINE = "GeoMultiLineCell"
-__TYPE_MULTI_POLYGON = "GeoMultiPolygonCell"
+__CELL_TYPE_GEO = "org.knime.geospatial.core.data.cell.Geo"
+__CELL_TYPE_POINT = "GeoPointCell"
+__CELL_TYPE_LINE = "GeoLineCell"
+__CELL_TYPE_POLYGON = "GeoPolygonCell"
+__CELL_TYPE_COLLECTION = "GeoCollectionCell"
+__CELL_TYPE_MULTI_POINT = "GeoMultiPointCell"
+__CELL_TYPE_MULTI_LINE = "GeoMultiLineCell"
+__CELL_TYPE_MULTI_POLYGON = "GeoMultiPolygonCell"
 
 
 def geo_point_col_parameter(
@@ -122,7 +162,7 @@ def is_geo(column: knext.Column) -> bool:
     GeoPointCell, GeoLineCell, GeoPolygonCell, GeoMultiPointCell, GeoMultiLineCell, GeoMultiPolygonCell, ...
     @return: True if Column Type is GeoValue compatible
     """
-    return __is_type_x(column, __TYPE_GEO)
+    return __is_type_x(column, __CELL_TYPE_GEO)
 
 
 def is_geo_point(column: knext.Column) -> bool:
@@ -130,7 +170,7 @@ def is_geo_point(column: knext.Column) -> bool:
     Checks if column is a GeoPointCell.
     @return: True if Column Type is a GeoPointCell
     """
-    return __is_type_x(column, __TYPE_POINT)
+    return __is_type_x(column, __CELL_TYPE_POINT)
 
 
 def is_geo_line(column: knext.Column) -> bool:
@@ -138,7 +178,7 @@ def is_geo_line(column: knext.Column) -> bool:
     Checks if column is a GeoLineCell.
     @return: True if Column Type is a GeoLineCell
     """
-    return __is_type_x(column, __TYPE_LINE)
+    return __is_type_x(column, __CELL_TYPE_LINE)
 
 
 def is_geo_polygon(column: knext.Column) -> bool:
@@ -146,7 +186,7 @@ def is_geo_polygon(column: knext.Column) -> bool:
     Checks if column is a GeoPolygonCell.
     @return: True if Column Type is a GeoPolygonCell
     """
-    return __is_type_x(column, __TYPE_POLYGON)
+    return __is_type_x(column, __CELL_TYPE_POLYGON)
 
 
 def is_geo_collection(column: knext.Column) -> bool:
@@ -154,7 +194,7 @@ def is_geo_collection(column: knext.Column) -> bool:
     Checks if column is a GeoCollectionCell.
     @return: True if Column Type is a GeoCollectionCell
     """
-    return __is_type_x(column, __TYPE_COLLECTION)
+    return __is_type_x(column, __CELL_TYPE_COLLECTION)
 
 
 def is_geo_multi_point(column: knext.Column) -> bool:
@@ -162,7 +202,7 @@ def is_geo_multi_point(column: knext.Column) -> bool:
     Checks if column is a GeoMultiPointCell.
     @return: True if Column Type is a GeoMultiPointCell
     """
-    return __is_type_x(column, __TYPE_MULTI_POINT)
+    return __is_type_x(column, __CELL_TYPE_MULTI_POINT)
 
 
 def is_geo_multi_line(column: knext.Column) -> bool:
@@ -170,7 +210,7 @@ def is_geo_multi_line(column: knext.Column) -> bool:
     Checks if column is a GeoMultiLineCell.
     @return: True if Column Type is a GeoMultiLineCell
     """
-    return __is_type_x(column, __TYPE_MULTI_LINE)
+    return __is_type_x(column, __CELL_TYPE_MULTI_LINE)
 
 
 def is_geo_multi_polygon(column: knext.Column) -> bool:
@@ -178,7 +218,7 @@ def is_geo_multi_polygon(column: knext.Column) -> bool:
     Checks if column is a GeoMultiPolygonCell.
     @return: True if Column Type is a GeoMultiPolygonCell
     """
-    return __is_type_x(column, __TYPE_MULTI_POLYGON)
+    return __is_type_x(column, __CELL_TYPE_MULTI_POLYGON)
 
 
 def __is_type_x(column: knext.Column, type: str) -> bool:
@@ -204,7 +244,7 @@ def geo_node_description(short_description: str, description: str, references: d
         s = f"{short_description}\n"
         s += f"{description}\n\n"
         # s += "___\n\n"  # separator line between description and general part
-        s += "The node is based on the [GeoPandas](https://geopandas.org/) project and uses the following function"
+        s += "The node is based on the [GeoPandas](https://geopandas.org/) project and uses the following related information and function"
         if references is not None:
             if len(references) > 1:
                 s += "s"
@@ -432,6 +472,19 @@ def fail_if_column_exists(
         if msg is None:
             msg = f"Column '{column_name}' exists"
         raise knext.InvalidParametersError(msg)
+
+
+def get_unique_column_name(column_name: str, input_schema: knext.Schema) -> str:
+    """Checks if the column name exists in the given schema and if so appends a number to it to make it unique.
+    The unique name if returned or the original if it was already unique."""
+    if column_name is None:
+        raise knext.InvalidParametersError("Column name must not be None")
+    uniquifier = 1
+    result = column_name
+    while result in input_schema.column_names:
+        result = column_name + f"(#{uniquifier})"
+        uniquifier += 1
+    return result
 
 
 def check_canceled(exec_context: knext.ExecutionContext) -> None:

@@ -22,6 +22,7 @@ __NODE_ICON_PATH = "icons/icon/Visulization/"
 
 # helper class for geoview
 # TODO: add this class
+# TODO: add this class
 # class __GeoView:
 #     def __init__(self, geo_df, color_col, color_map, geo_col):
 #         self.geo_df = geo_df
@@ -42,37 +43,42 @@ __NODE_ICON_PATH = "icons/icon/Visulization/"
 #         return self.geo_df._repr_mimebundle_(include, exclude)
 
 
-@knext.node(
-    name="Geospatial View",
-    node_type=knext.NodeType.VISUALIZER,
-    icon_path=__NODE_ICON_PATH + "InteractiveMap.png",
-    category=category,
-)
-@knext.input_table(
-    name="Geospatial table to visualize",
-    description="Table with geospatial data to visualize",
-)
-@knext.output_view(
-    name="Geospatial view",
-    description="Showing a interactive map with the geospatial data",
-)
-class ViewNode:
+def replace_external_js_css_paths(
+    replacement: str,
+    html: str,
+    regex_patter: str = '(<script src="|<link( rel="stylesheet")? href=")https?[^"]*\/([^"]*)"( rel="stylesheet")?',
+) -> str:
     """
-    This node cteates a interative map view based on the selected geometric elements of the input table.
-    """
+    Uses a regular expression to find all script and stylesheet tags in a given html page.
+    The first matching group is either the script ar stylesheet part up until the opening " of the
+    URL. The second matching group is the file name.
+    The method will also add the closing ".
 
-    geo_col = knext.ColumnParameter(
-        "Geometry column",
-        "Select the geometry column to visualize.",
-        # "geometry",
-        column_filter=knut.is_geo,  # Allows all geo columns
-        include_row_key=False,
-        include_none_column=False,  # must contains a geometry column
+    For example if the html code is <script src="https://cdn.jsdelivr.net/npm/leaflet@1.6.0/dist/leaflet.js">
+    the first group is <script src=" and the second group is leaflet.js so using the following replacement
+    r'\1./libs/kepler/2.5.5/\3\"\4' will lead to this URL: <script src="./libs/leaflet/1.6.0/leaflet.js">.
+    """
+    import re
+
+    result = re.sub(
+        regex_patter,
+        replacement,
+        html,
     )
+    return result
+
+
+@knext.parameter_group(label="Coloring Settings")
+class ColorSettings:
+    """
+    Group of settings that define coloring of the geometric objects. The color column can be either nominal or numerical.
+    If a numerical column is selected the values need to be classified prior assigning a color to each class using
+    the color map information.
+    """
 
     color_col = knext.ColumnParameter(
         "Marker color column",
-        "Select marker color column to be plotted.",
+        "Select marker color column to be plotted. If numerical adapt the classification settings accordingly.",
         column_filter=knut.is_numeric_or_string,
         include_row_key=False,
         include_none_column=True,
@@ -80,7 +86,8 @@ class ViewNode:
 
     color_map = knext.StringParameter(
         "Color map",
-        "Select the color map to use for the color column. `xxx_r` mean reverse of the `xxx` colormap. See [Colormaps in Matplotlib](https://matplotlib.org/stable/tutorials/colors/colormaps.html)",
+        """Select the color map to use for the color column. `xxx_r` mean reverse of the `xxx` colormap. 
+        See [Colormaps in Matplotlib](https://matplotlib.org/stable/tutorials/colors/colormaps.html)""",
         default_value="viridis",
         enum=[
             "viridis",
@@ -188,15 +195,96 @@ class ViewNode:
         ],
     )
 
-    stroke = knext.BoolParameter(
-        "Stroke",
-        "Whether to draw strokes along the polygon boundary.",
+    use_classify = knext.BoolParameter(
+        "Use classification",
+        """If checked, the color column will be classified using the selected classification method. 
+        The `Number of classes` will be used to determine the number of classes.""",
         default_value=True,
+    )
+
+    classification_method = knext.StringParameter(
+        "Classification method",
+        "Select the classification method to use for the numerical color column.",
+        default_value="EqualInterval",
+        enum=[
+            "BoxPlot",
+            "EqualInterval",
+            "FisherJenks",
+            "FisherJenksSampled",
+            "HeadTailBreaks",
+            "JenksCaspall",
+            "JenksCaspallForced",
+            "JenksCaspallSampled",
+            "MaxP",
+            "MaximumBreaks",
+            "NaturalBreaks",
+            "Quantiles",
+            "Percentiles",
+            "StdMean",
+        ],
+    )
+
+    classification_bins = knext.IntParameter(
+        "Number of classes",
+        "Select the number of classes of the classification method.",
+        default_value=5,
+        min_value=1,
+        max_value=50,
+    )
+
+
+@knext.parameter_group(label="Legend Settings")
+class LegendSettings:
+    """
+    Group of settings that define if a legend is shown on the map and if so how it should be formatted.
+    """
+
+    plot = knext.BoolParameter(
+        "Show legend",
+        "If checked, a legend will be shown in the plot.",
+        default_value=True,
+    )
+
+    caption = knext.StringParameter(
+        "Legend caption",
+        "Set the caption for the legend. By default, the caption is the name of the selected color column.",
+        default_value="",
+    )
+
+
+@knext.node(
+    name="Geospatial View",
+    node_type=knext.NodeType.VISUALIZER,
+    icon_path=__NODE_ICON_PATH + "InteractiveMap.png",
+    category=category,
+)
+@knext.input_table(
+    name="Geospatial Table to Visualize",
+    description="Table with geospatial data to visualize",
+)
+@knext.output_view(
+    name="Geospatial View",
+    description="Showing a interactive map with the geospatial data",
+    static_resources="libs/leaflet/1.6.0",
+)
+class ViewNode:
+    """Creates an interactive map view based on the selected geometric elements of the input table.
+    This node creates an interactive map view based on the selected geometric elements of the input table.
+    """
+
+    geo_col = knext.ColumnParameter(
+        "Geometry column",
+        "Select the geometry column to visualize.",
+        # "geometry",
+        column_filter=knut.is_geo,  # Allows all geo columns
+        include_row_key=False,
+        include_none_column=False,  # must contains a geometry column
     )
 
     base_map = knext.StringParameter(
         "Base map",
-        "Select the base map to use for the visualization. See [Folium base maps](https://python-visualization.github.io/folium/quickstart.html#Tiles).",
+        """Select the base map to use for the visualization. 
+        See [Folium base maps](https://python-visualization.github.io/folium/quickstart.html#Tiles).""",
         default_value="OpenStreetMap",
         enum=[
             "OpenStreetMap",
@@ -259,45 +347,18 @@ class ViewNode:
         ],
     )
 
-    use_classify = knext.BoolParameter(
-        "Use classification",
-        "If checked, the color column will be classified using the selected classification method. The `Number of classes` will be used to determine the number of classes.",
+    stroke = knext.BoolParameter(
+        "Stroke",
+        "Whether to draw strokes along the polygon boundary.",
         default_value=True,
-    )
-
-    classification_method = knext.StringParameter(
-        "Classification method",
-        "Select the classification method to use for the color column.",
-        default_value="EqualInterval",
-        enum=[
-            "BoxPlot",
-            "EqualInterval",
-            "FisherJenks",
-            "FisherJenksSampled",
-            "HeadTailBreaks",
-            "JenksCaspall",
-            "JenksCaspallForced",
-            "JenksCaspallSampled",
-            "MaxP",
-            "MaximumBreaks",
-            "NaturalBreaks",
-            "Quantiles",
-            "Percentiles",
-            "StdMean",
-        ],
-    )
-
-    classification_bins = knext.IntParameter(
-        "Number of classes",
-        "Select the number of classes of the classification method.",
-        default_value=5,
-        min_value=1,
-        max_value=50,
     )
 
     size_col = knext.ColumnParameter(
         "Marker size column",
-        "Select marker size column. The size is fixed by default. If a size column is selected, the size will be scaled by the values of the column. For point features, the size is the radius of the circle. For line features, the size is the width of the line. For polygon features, the size is the radius of the centroid of the ploygon.",
+        """Select marker size column. The size is fixed by default. If a size column is selected, the size will be 
+        scaled by the values of the column. For point features, the size is the radius of the circle. 
+        For line features, the size is the width of the line. For polygon features, the size is the radius of 
+        the centroid of the polygon.""",
         column_filter=knut.is_numeric,
         include_none_column=True,
     )
@@ -322,17 +383,9 @@ class ViewNode:
         column_filter=knut.is_numeric_or_string,
     )
 
-    plot_legend = knext.BoolParameter(
-        "Show legend",
-        "If checked, a legend will be shown in the plot.",
-        default_value=True,
-    )
+    color_settings = ColorSettings()
 
-    legend_caption = knext.StringParameter(
-        "Legend caption",
-        "Set the caption for the legend. By default, the caption is the name of the selected color column.",
-        default_value="",
-    )
+    legend_settings = LegendSettings()
 
     def configure(self, configure_context, input_schema):
         self.geo_col = knut.column_exists_or_preset(
@@ -352,32 +405,34 @@ class ViewNode:
             "tooltip": self.name_cols,
             "tiles": self.base_map,
             "popup": self.popup_cols,
-            "legend": self.plot_legend,
+            "legend": self.legend_settings.plot,
             "m": None,
             "legend_kwds": {
-                "caption": self.legend_caption,
+                "caption": self.legend_settings.caption,
                 "scale": False,
                 "max_labels": 3,
                 "colorbar": True,
             },
         }
 
-        if "none" not in str(self.color_col).lower():
-            kws["column"] = self.color_col
-            kws["cmap"] = self.color_map
+        if "none" not in str(self.color_settings.color_col).lower():
+            kws["column"] = self.color_settings.color_col
+            kws["cmap"] = self.color_settings.color_map
 
-            if type(gdf[self.color_col].values[0]) == str:
+            if type(gdf[self.color_settings.color_col].values[0]) == str:
                 kws["categorical"] = True
                 kws["legend_kwds"]["colorbar"] = False
 
-            if (self.legend_caption is None) or (self.legend_caption == ""):
-                self.legend_caption = self.color_col
+            if (self.legend_settings.caption is None) or (
+                self.legend_settings.caption == ""
+            ):
+                self.legend_settings.caption = self.color_settings.color_col
         else:
-            self.plot_legend = False
+            self.legend_settings.plot = False
 
-        if self.use_classify:
-            kws["scheme"] = self.classification_method
-            kws["k"] = self.classification_bins
+        if self.color_settings.use_classify:
+            kws["scheme"] = self.color_settings.classification_method
+            kws["k"] = self.color_settings.classification_bins
             kws["legend_kwds"]["colorbar"] = False
             kws["legend_kwds"]["max_labels"] = 20
 
@@ -433,42 +488,32 @@ class ViewNode:
             else:
                 kws["style_kwds"] = {"stroke": False}
         map = gdf.explore(**kws)
-        # knut.check_canceled(exec_context)
-        return knext.view(map)
+
+        # replace css and JavaScript paths
+        html = map.get_root().render()
+        html = replace_external_js_css_paths(
+            r"\1./libs/leaflet/1.6.0/\3\"\4",
+            html,
+        )
+
+        return knext.view(html)
 
 
 # geo view static
 
 
-@knext.node(
-    name="Geospatial View Static",
-    node_type=knext.NodeType.VISUALIZER,
-    icon_path=__NODE_ICON_PATH + "StaticMap.png",
-    category=category,
-)
-@knext.input_table(
-    name="Geospatial table to visualize",
-    description="Table with geospatial data to visualize",
-)
-@knext.output_view(
-    name="Geospatial view", description="Showing a map with the geospatial data"
-)
-class ViewNodeStatic:
+@knext.parameter_group(label="Coloring Settings")
+class StaticColorSettings:
     """
-    This node will visualize the given geometric elements on a static map.
+    Group of settings that define coloring of the geometric objects. The color column can be either nominal or numerical.
+    If a numerical column is selected the values need to be classified prior assigning a color to each class using
+    the color map information.
     """
-
-    geo_col = knext.ColumnParameter(
-        "Geometry column",
-        "Select the geometry column to visualize.",
-        column_filter=knut.is_geo,
-        include_row_key=False,
-        include_none_column=False,
-    )
 
     color_col = knext.ColumnParameter(
         "Marker color column",
-        "Select one column to map to the marker color. If you select none, it will not map any column to color.",
+        """Select one column to map to the marker color. If you select none, it will not map any column to color.
+         If you select a numerical column please enable classification and adapt the settings accordingly.""",
         column_filter=knut.is_numeric_or_string,
         include_row_key=False,
         include_none_column=True,
@@ -476,7 +521,7 @@ class ViewNodeStatic:
 
     color = knext.StringParameter(
         "Marker color",
-        "Select marker color. Can select none if you don't want to set a unified marker color ",
+        "Select marker color. Select none if you don't want to set a unified marker color.",
         default_value="none",
         enum=[
             "none",
@@ -504,65 +549,16 @@ class ViewNodeStatic:
 
     color_map = knext.StringParameter(
         "Color map",
-        "Select the color map to use for the color column. See https://matplotlib.org/stable/tutorials/colors/colormaps.html",
+        """Select the color map to use for the color column. 
+        See [Colormaps in Matplotlib](https://matplotlib.org/stable/tutorials/colors/colormaps.html).""",
         default_value="viridis",
         enum=["viridis", "plasma", "inferno", "magma", "cividis"],
     )
 
-    edge_color = knext.StringParameter(
-        "Edge color",
-        "Set the edge color. See https://matplotlib.org/stable/tutorials/colors/colormaps.html",
-        default_value="none",
-        enum=[
-            "none",
-            "black",
-            "red",
-            "blue",
-            "green",
-            "orange",
-            "purple",
-            "darkred",
-            "lightred",
-            "beige",
-            "darkblue",
-            "darkgreen",
-            "cadetblue",
-            "darkpurple",
-            "white",
-            "pink",
-            "lightblue",
-            "lightgreen",
-            "gray",
-            "black",
-            "lightgray",
-        ],
-    )
-
-    size_col = knext.ColumnParameter(
-        "Marker size column",
-        "Select marker size column. The size is fixed by default. If a size column is selected, the size will be scaled by the values of the column. For point features, the size is the radius of the circle. For line features, the size is the width of the line. For polygon features, the size is the radius of the centroid of the ploygon.",
-        column_filter=knut.is_numeric,
-        include_none_column=True,
-    )
-
-    line_width_col = knext.ColumnParameter(
-        "Line width column",
-        "Select line width column. The width is fixed by default. If a width column is selected, the width will be scaled by the values of the column.",
-        column_filter=knut.is_numeric,
-        include_none_column=True,
-    )
-
-    line_width = knext.IntParameter(
-        "Line width",
-        "Select a unified line width, can be set to none",
-        default_value=1,
-        min_value=1,
-        max_value=10,
-    )
-
     use_classify = knext.BoolParameter(
         "Use classification",
-        "If checked, the color column will be classified using the selected classification method.",
+        """If checked, the numerical color column will be classified using the selected classification method. 
+        The `Number of classes` will be used to determine the number of classes.""",
         default_value=True,
     )
 
@@ -590,46 +586,62 @@ class ViewNodeStatic:
 
     classification_bins = knext.IntParameter(
         "Number of classes",
-        "Select the number of classes to use for the color column.",
+        "Select the number of classes of the classification method.",
         default_value=5,
         min_value=1,
-        max_value=10,
+        max_value=50,
     )
 
-    figure_title = knext.StringParameter(
-        "Figure title",
-        "Set the title of the figure.",
-        default_value="",
+    edge_color = knext.StringParameter(
+        "Edge color",
+        "Set the edge color. See [Colormaps in Matplotlib](https://matplotlib.org/stable/tutorials/colors/colormaps.html).",
+        default_value="none",
+        enum=[
+            "none",
+            "black",
+            "red",
+            "blue",
+            "green",
+            "orange",
+            "purple",
+            "darkred",
+            "lightred",
+            "beige",
+            "darkblue",
+            "darkgreen",
+            "cadetblue",
+            "darkpurple",
+            "white",
+            "pink",
+            "lightblue",
+            "lightgreen",
+            "gray",
+            "black",
+            "lightgray",
+        ],
     )
 
-    figure_title_size = knext.IntParameter(
-        "Figure title size",
-        "Set the size of the figure title.",
-        default_value=10,
-        min_value=1,
-        max_value=100,
-    )
 
-    plot_legend = knext.BoolParameter(
+@knext.parameter_group(label="Legend Settings")
+class StaticLegendSettings:
+    """
+    Group of settings that define if a legend is shown on the map and if so how it should be formatted.
+    """
+
+    plot = knext.BoolParameter(
         "Show legend",
         "If checked, a legend will be shown in the plot.",
         default_value=True,
     )
 
-    # size_col = knext.ColumnParameter(
-    #     "Marker size column",
-    #     "Select marker size column. The column must contain the size value.",
-    #     column_filter=knut.is_numeric,
-    # )
-
-    legend_caption = knext.StringParameter(
+    caption = knext.StringParameter(
         "Legend caption",
         "Set the caption for the legend.",
         default_value="",
         # default_value=color_col,
     )
 
-    legend_caption_fontsize = knext.IntParameter(
+    caption_fontsize = knext.IntParameter(
         "Legend caption font size",
         "Set the font size for the legend caption.",
         default_value=10,
@@ -637,13 +649,13 @@ class ViewNodeStatic:
         max_value=100,
     )
 
-    legend_expand = knext.BoolParameter(
+    expand = knext.BoolParameter(
         "Expand legend",
         "If checked, the legend will be horizontally expanded to fill the axes area",
         default_value=False,
     )
 
-    legend_location = knext.StringParameter(
+    location = knext.StringParameter(
         "Legend location",
         "Select the location for the legend.",
         default_value="lower right",
@@ -664,7 +676,7 @@ class ViewNodeStatic:
         ],
     )
 
-    legend_columns = knext.IntParameter(
+    columns = knext.IntParameter(
         "Legend columns",
         "Select the number of columns for the legend.",
         default_value=1,
@@ -672,7 +684,7 @@ class ViewNodeStatic:
         max_value=30,
     )
 
-    legend_size = knext.IntParameter(
+    size = knext.IntParameter(
         "Legend size",
         "Select the size for the legend.",
         default_value=8,
@@ -680,7 +692,7 @@ class ViewNodeStatic:
         max_value=30,
     )
 
-    legend_fontsize = knext.IntParameter(
+    fontsize = knext.IntParameter(
         "Legend font size",
         "Select the font size for the legend.",
         default_value=10,
@@ -688,20 +700,20 @@ class ViewNodeStatic:
         max_value=30,
     )
 
-    legend_labelcolor = knext.StringParameter(
+    labelcolor = knext.StringParameter(
         "Legend label color",
         "Select the label color for the legend.",
         default_value="black",
         enum=["black", "red", "green", "blue", "yellow", "purple", "orange", "white"],
     )
 
-    legend_frame = knext.BoolParameter(
+    frame = knext.BoolParameter(
         "Show legend frame",
         "If checked, a frame will be shown in the legend.",
         default_value=True,
     )
 
-    legend_framealpha = knext.DoubleParameter(
+    framealpha = knext.DoubleParameter(
         "Legend frame alpha",
         "Select the transparent value for the legend frame.",
         default_value=1.0,
@@ -709,7 +721,7 @@ class ViewNodeStatic:
         max_value=1.0,
     )
 
-    legend_borderpad = knext.DoubleParameter(
+    borderpad = knext.DoubleParameter(
         "Legend border pad",
         "Select the border pad for the legend.",
         default_value=0.5,
@@ -717,7 +729,7 @@ class ViewNodeStatic:
         max_value=3.0,
     )
 
-    legend_labelspacing = knext.DoubleParameter(
+    labelspacing = knext.DoubleParameter(
         "Legend label spacing",
         "Select the label spacing for the legend.",
         default_value=0.5,
@@ -725,7 +737,7 @@ class ViewNodeStatic:
         max_value=1.0,
     )
 
-    legend_colorbar_shrink = knext.DoubleParameter(
+    colorbar_shrink = knext.DoubleParameter(
         "Colorbar legend shrink",
         "Select the shrink value for the colorbar legend. Only work for colorbar",
         default_value=1.0,
@@ -733,7 +745,7 @@ class ViewNodeStatic:
         max_value=1.0,
     )
 
-    legend_colorbar_pad = knext.DoubleParameter(
+    colorbar_pad = knext.DoubleParameter(
         "Colorbar legend pad",
         "Select the pad value for the colorbar legend. Only work for colorbar",
         default_value=0.1,
@@ -741,11 +753,88 @@ class ViewNodeStatic:
         max_value=0.99,
     )
 
+
+@knext.node(
+    name="Geospatial View Static",
+    node_type=knext.NodeType.VISUALIZER,
+    icon_path=__NODE_ICON_PATH + "StaticMap.png",
+    category=category,
+)
+@knext.input_table(
+    name="Geospatial Table to Visualize",
+    description="Table with geospatial data to visualize",
+)
+@knext.output_view(
+    name="Geospatial View", description="Showing a map with the geospatial data"
+)
+class ViewNodeStatic:
+    """Creates a static map of the given geometric elements.
+    This node will visualize the given geometric elements on a static map.
+    """
+
+    geo_col = knext.ColumnParameter(
+        "Geometry column",
+        "Select the geometry column to visualize.",
+        column_filter=knut.is_geo,
+        include_row_key=False,
+        include_none_column=False,
+    )
+
+    size_col = knext.ColumnParameter(
+        "Marker size column",
+        """Select marker size column. The size is fixed by default. If a size column is selected, the size will be 
+        scaled by the values of the column. For point features, the size is the radius of the circle. 
+        For line features, the size is the width of the line. For polygon features, the size is the radius of 
+        the centroid of the polygon.""",
+        column_filter=knut.is_numeric,
+        include_none_column=True,
+    )
+
+    line_width_col = knext.ColumnParameter(
+        "Line width column",
+        """Select line width column. The width is fixed by default. If a width column is selected, the width will 
+        be scaled by the values of the column.""",
+        column_filter=knut.is_numeric,
+        include_none_column=True,
+    )
+
+    line_width = knext.IntParameter(
+        "Line width",
+        "Select a unified line width, can be set to none",
+        default_value=1,
+        min_value=1,
+        max_value=10,
+    )
+
+    figure_title = knext.StringParameter(
+        "Figure title",
+        "Set the title of the figure.",
+        default_value="",
+    )
+
+    figure_title_size = knext.IntParameter(
+        "Figure title size",
+        "Set the size of the figure title.",
+        default_value=10,
+        min_value=1,
+        max_value=100,
+    )
+
+    # size_col = knext.ColumnParameter(
+    #     "Marker size column",
+    #     "Select marker size column. The column must contain the size value.",
+    #     column_filter=knut.is_numeric,
+    # )
+
     set_axis_off = knext.BoolParameter(
         "Set axis off",
         "If checked, the axis will be set off.",
         default_value=False,
     )
+
+    color_settings = StaticColorSettings()
+
+    legend_settings = StaticLegendSettings()
 
     def configure(self, configure_context, input_schema):
         self.geo_col = knut.column_exists_or_preset(
@@ -759,72 +848,74 @@ class ViewNodeStatic:
         gdf = gp.GeoDataFrame(input_table.to_pandas(), geometry=self.geo_col)
 
         # check legend caption
-        if (self.legend_caption is None) or (self.legend_caption == ""):
-            if "none" not in str(self.color_col).lower():
-                self.legend_caption = self.color_col
+        if (self.legend_settings.caption is None) or (
+            self.legend_settings.caption == ""
+        ):
+            if "none" not in str(self.color_settings.color_col).lower():
+                self.legend_settings.caption = self.color_settings.color_col
 
         #  set legend location
-        if self.legend_location == "outside_top":
+        if self.legend_settings.location == "outside_top":
             colorbar_legend_location = "top"
-        elif self.legend_location == "outside_bottom":
+        elif self.legend_settings.location == "outside_bottom":
             colorbar_legend_location = "bottom"
         else:
             colorbar_legend_location = "right"
 
         legend_bbox_to_anchor = None
-        if self.legend_location == "outside_top":
-            self.legend_location = "lower right"
+        if self.legend_settings.location == "outside_top":
+            self.legend_settings.location = "lower right"
             legend_bbox_to_anchor = (0.0, 1.02, 1.0, 0.102)
-        if self.legend_location == "outside_bottom":
-            self.legend_location = "upper right"
+        if self.legend_settings.location == "outside_bottom":
+            self.legend_settings.location = "upper right"
             legend_bbox_to_anchor = (0.0, -0.2, 1.0, 0.102)
 
-        if self.legend_expand:
+        if self.legend_settings.expand:
             legend_expand = "expand"
         else:
             legend_expand = None
 
-        kws = {"alpha": 1, "legend": self.plot_legend, "aspect": 1}
+        kws = {"alpha": 1, "legend": self.legend_settings.plot, "aspect": 1}
 
-        if "none" not in str(self.edge_color):
-            kws["edgecolor"] = self.edge_color
-        if "none" not in str(self.color_col).lower():
-            kws["column"] = self.color_col
-            kws["cmap"] = self.color_map
-        if "none" not in str(self.color).lower():
-            kws["color"] = self.color
+        if "none" not in str(self.color_settings.edge_color):
+            kws["edgecolor"] = self.color_settings.edge_color
+        if "none" not in str(self.color_settings.color_col).lower():
+            kws["column"] = self.color_settings.color_col
+            kws["cmap"] = self.color_settings.color_map
+        if "none" not in str(self.color_settings.color).lower():
+            kws["color"] = self.color_settings.color
 
-        if ("none" not in str(self.edge_color)) or (
-            "none" not in str(self.color_col).lower()
+        if ("none" not in str(self.color_settings.edge_color)) or (
+            "none" not in str(self.color_settings.color_col).lower()
         ):
-            if self.use_classify:
+            if self.color_settings.use_classify:
                 kws["legend_kwds"] = {
                     "fmt": "{:.0f}",
-                    "loc": self.legend_location,
-                    "title": self.legend_caption,
-                    "ncols": self.legend_columns,
-                    "prop": {"size": self.legend_size},
-                    "fontsize": self.legend_fontsize,
+                    "loc": self.legend_settings.location,
+                    "title": self.legend_settings.caption,
+                    "ncols": self.legend_settings.columns,
+                    "prop": {"size": self.legend_settings.size},
+                    "fontsize": self.legend_settings.fontsize,
                     "bbox_to_anchor": legend_bbox_to_anchor,
-                    "labelcolor": self.legend_labelcolor,
-                    "frameon": self.legend_frame,
-                    "framealpha": self.legend_framealpha,
+                    "labelcolor": self.legend_settings.labelcolor,
+                    "frameon": self.legend_settings.frame,
+                    "framealpha": self.legend_settings.framealpha,
                     "fancybox": True,
                     "mode": legend_expand,
                     "alignment": "left",
                     # "title": "Population",
-                    "title_fontsize": self.legend_caption_fontsize,
-                    "labelspacing": self.legend_labelspacing,
-                    "borderaxespad": self.legend_borderpad,
+                    "title_fontsize": self.legend_settings.caption_fontsize,
+                    "labelspacing": self.legend_settings.labelspacing,
+                    "borderaxespad": self.legend_settings.borderpad,
                 }
-                kws["scheme"] = self.classification_method
-                kws["k"] = self.classification_bins
+                kws["scheme"] = self.color_settings.classification_method
+                kws["k"] = self.color_settings.classification_bins
             else:
                 kws["legend_kwds"] = {
-                    "shrink": self.legend_colorbar_shrink,
+                    "shrink": self.legend_settings.colorbar_shrink,
                     "fmt": "{:.0f}",
                     "location": colorbar_legend_location,
-                    "pad": self.legend_colorbar_pad,
+                    "pad": self.legend_settings.colorbar_pad,
                 }
 
         geo_types = gdf[self.geo_col].geom_type.unique()
@@ -862,13 +953,25 @@ class ViewNodeStatic:
     category=category,
 )
 @knext.input_table(
-    name="Geospatial table to visualize",
+    name="Geospatial Table to Visualize",
     description="Table with geospatial data to visualize",
 )
 @knext.output_view(
-    name="Geospatial view", description="Showing a map with the geospatial data"
+    name="Geospatial View",
+    description="Showing a map with the geospatial data",
+    static_resources="libs/kepler/2.5.5",
 )
 class ViewNodeKepler:
+    """This node will visualize the given geometric elements on a map.
+    This node will visualize the given geometric elements on a map using the [kepler.gl](https://kepler.gl/)
+    visualization framework. This view is highly interactive and allows you to change various aspects of the view
+    within the visualization itself e.g. adding [layers](https://docs.kepler.gl/docs/user-guides/c-types-of-layers)
+    and [filters](https://docs.kepler.gl/docs/user-guides/e-filters). It also allows you to create a filter that
+    creates and animation for a given timeseries column. For more information about the supported interactions
+    see the [kepler.gl user guides](https://docs.kepler.gl/docs/user-guides).
+
+    This node uses the [Mapbox GL JS API](https://www.mapbox.com/pricing#map-loads-for-web) which for commercial
+    usage might require an [access token](https://docs.mapbox.com/help/glossary/access-token/).
     """
     This node will visualize the given geometric elements on a map.
     The geometry column must be required.
@@ -928,12 +1031,35 @@ class ViewNodeKepler:
                 config = json.loads(f.read())
         map_1.config = config
 
-        # map_1.add_data(data=data.copy(), name="haha")
         html = map_1._repr_html_()
         html = html.decode("utf-8")
-        # knext.view_html(html)
-        # knut.check_canceled(exec_context)
-        # cx.add_basemap(map, crs=gdf.crs.to_string(), source=cx.providers.flatten()[self.base_map])
+
+        # replace css and JavaScript paths
+        html = replace_external_js_css_paths(
+            r"\1./libs/kepler/2.5.5/\3\"\4",
+            html,
+        )
+        # replace any stylesheet links that are dynamically created
+        html = replace_external_js_css_paths(
+            r"\1./libs/kepler/2.5.5/\2\3",
+            html,
+            """(createElement\("link",\{rel:"stylesheet",href:")[^"']*\/([^"']*)("\}\))""",
+        )
+
+        # remove all Google Analytics scripts to prevent sending any information
+        html = replace_external_js_css_paths(
+            "", html, "<script>[^<]*www\.google-analytics\.com[^<]*<\/script>"
+        )
+        html = replace_external_js_css_paths(
+            "",
+            html,
+            """s\.a\.createElement\("script"[^)]*googletagmanager\.com[^\)]*\),""",
+        )
+        html = replace_external_js_css_paths(
+            "",
+            html,
+            """s\.a\.createElement\("script",null,"[^"]*gtag\([^"]*"\)""",
+        )
 
         return knext.view_html(html)
 
@@ -950,13 +1076,18 @@ class ViewNodeKepler:
     category=category,
 )
 @knext.input_table(
-    name="Table to visualize",
+    name="Table to Visualize",
     description="Table with data to visualize",
 )
-@knext.output_view(name="Heatmap view", description="Showing a heatmap with the data")
+@knext.output_view(
+    name="Heatmap View",
+    description="Showing a heatmap with the data",
+    static_resources="libs/leaflet/1.6.0",
+)
 class ViewNodeHeatmap:
-    """
-    This node will visualize the given data on a heatmap. More details about heatmap [here](https://www.gislounge.com/heat-maps-in-gis/).
+    """This node will visualize the given data on a heatmap.
+    This node will visualize the given data on a heatmap.
+    Please find more information about the heatmap [here](https://www.gislounge.com/heat-maps-in-gis/).
     """
 
     geo_col = knext.ColumnParameter(
@@ -983,7 +1114,8 @@ class ViewNodeHeatmap:
 
     max_zoom = knext.IntParameter(
         "Maximum zoom",
-        "Zoom level where the points reach maximum intensity (as intensity scales with zoom), equals maxZoom of the map by default",
+        """Zoom level where the points reach maximum intensity (as intensity scales with zoom), 
+        equals maxZoom of the map by default""",
         default_value=18,
     )
 
@@ -1027,4 +1159,11 @@ class ViewNodeHeatmap:
 
         folium.LayerControl().add_to(map)
 
-        return knext.view(map)
+        # replace css and JavaScript paths
+        html = map.get_root().render()
+        html = replace_external_js_css_paths(
+            r"\1./libs/leaflet/1.6.0/\3\"\4",
+            html,
+        )
+
+        return knext.view(html)
