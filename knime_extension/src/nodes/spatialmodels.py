@@ -43,6 +43,7 @@ __NODE_ICON_PATH = "icons/icon/SpatialModel/"
     # node_type=knext.NodeType.MANIPULATOR,
     category=__category,
     icon_path=__NODE_ICON_PATH + "2SLS.png",
+    after=""
 )
 @knext.input_table(
     name="Input Table",
@@ -65,8 +66,8 @@ __NODE_ICON_PATH = "icons/icon/SpatialModel/"
     description="Model Summary View of Spatial 2SlS",
 )
 class Spatial2SLSModel:
-    """
-    Spatial two stage least squares (S2SLS) with results and diagnostics; Anselin (1988)
+    """Spatial two stage least squares (S2SLS) with results and diagnostics.
+    Spatial two stage least squares (S2SLS) with results and diagnostics; Anselin (1988).
     """
 
     # input parameters
@@ -198,6 +199,7 @@ class Spatial2SLSModel:
     node_type=knext.NodeType.LEARNER,
     category=__category,
     icon_path=__NODE_ICON_PATH + "SpatialLag.png",
+    after=""
 )
 @knext.input_table(
     name="Input Table",
@@ -220,8 +222,8 @@ class Spatial2SLSModel:
     description="Model Summary for Spatial Lag Panel Model with Fixed Effects",
 )
 class SpatialLagPanelModelwithFixedEffects:
-    """
-    Spatial Lag Panel Model with Fixed Effects
+    """Spatial Lag Panel Model with Fixed Effects.
+    Spatial Lag Panel Model with Fixed Effects.
     """
 
     geo_col = knut.geo_col_parameter()
@@ -322,6 +324,7 @@ class SpatialLagPanelModelwithFixedEffects:
     node_type=knext.NodeType.LEARNER,
     category=__category,
     icon_path=__NODE_ICON_PATH + "SpatialError.png",
+    after=""
 )
 @knext.input_table(
     name="Input Table",
@@ -344,8 +347,8 @@ class SpatialLagPanelModelwithFixedEffects:
     description="Model Summary for Spatial Error Panel Model with Fixed Effects",
 )
 class SpatialErrorPanelModelwithFixedEffects:
-    """
-    Spatial Error Panel Model with Fixed Effects node
+    """Spatial Error Panel Model with Fixed Effects node.
+    Spatial Error Panel Model with Fixed Effects node.
     """
 
     geo_col = knut.geo_col_parameter()
@@ -445,6 +448,7 @@ class SpatialErrorPanelModelwithFixedEffects:
     node_type=knext.NodeType.LEARNER,
     category=__category,
     icon_path=__NODE_ICON_PATH + "GWR.png",
+    after=""
 )
 @knext.input_table(
     name="Input Table",
@@ -468,8 +472,8 @@ class SpatialErrorPanelModelwithFixedEffects:
     description="Model Summary for Geographically Weighted Regression",
 )
 class GeographicallyWeightedRegression:
-    """
-    Geographically Weighted Regression node
+    """Geographically Weighted Regression node.
+    Geographically Weighted Regression node.
     """
 
     geo_col = knut.geo_col_parameter()
@@ -582,6 +586,7 @@ class GeographicallyWeightedRegression:
     node_type=knext.NodeType.PREDICTOR,
     category=__category,
     icon_path=__NODE_ICON_PATH + "GWRp.png",
+    after=""
 )
 @knext.input_table(
     name="Input Table",
@@ -597,8 +602,8 @@ class GeographicallyWeightedRegression:
     description="Output table for Geographically Weighted Regression Predictor",
 )
 class GeographicallyWeightedRegressionPredictor:
-    """
-    Geographically Weighted Regression Predictor node
+    """Geographically Weighted Regression Predictor node.
+    Geographically Weighted Regression Predictor node.
     """
 
     geo_col = knut.geo_col_parameter()
@@ -641,6 +646,7 @@ class GeographicallyWeightedRegressionPredictor:
     node_type=knext.NodeType.LEARNER,
     category=__category,
     icon_path=__NODE_ICON_PATH + "MGWR.png",
+    after=""
 )
 @knext.input_table(
     name="Input Table",
@@ -660,8 +666,8 @@ class GeographicallyWeightedRegressionPredictor:
     description="Model Summary for Multiscale Geographically Weighted Regression",
 )
 class MultiscaleGeographicallyWeightedRegression:
-    """
-    Multiscale Geographically Weighted Regression node
+    """Multiscale Geographically Weighted Regression node.
+    Multiscale Geographically Weighted Regression node.
     """
 
     geo_col = knut.geo_col_parameter()
@@ -782,6 +788,7 @@ class MultiscaleGeographicallyWeightedRegression:
 #     node_type=knext.NodeType.PREDICTOR,
 #     category=__category,
 #     icon_path=__NODE_ICON_PATH + "SpatialWeight.png",
+#     after=""
 # )
 # @knext.input_table(
 #     name="Input Table",
@@ -848,6 +855,7 @@ class MultiscaleGeographicallyWeightedRegression:
     node_type=knext.NodeType.LEARNER,
     category=__category,
     icon_path=__NODE_ICON_PATH + "SpatialOLS.png",
+    after=""
 )
 @knext.input_table(
     name="Input Table",
@@ -870,8 +878,8 @@ class MultiscaleGeographicallyWeightedRegression:
     description="Model summary view of the spatial OLS model.",
 )
 class SpatialOLS:
-    """
-    Spatial OLS
+    """Spatial OLS node.
+    Spatial OLS node.
     """
 
     geo_col = knut.geo_col_parameter()
@@ -972,6 +980,7 @@ class SpatialOLS:
     node_type=knext.NodeType.LEARNER,
     category=__category,
     icon_path=__NODE_ICON_PATH + "MLLag.png",
+    after=""
 )
 @knext.input_table(
     name="Input Table",
@@ -994,8 +1003,8 @@ class SpatialOLS:
     description="Model summary view of the spatial ML_Lag model.",
 )
 class SpatialML_Lag:
-    """
-    Spatial ML_Lag
+    """Spatial ML_Lag.
+    Spatial ML_Lag.
     """
 
     geo_col = knut.geo_col_parameter()
@@ -1095,6 +1104,7 @@ class SpatialML_Lag:
     node_type=knext.NodeType.LEARNER,
     category=__category,
     icon_path=__NODE_ICON_PATH + "MLErr.png",
+    after=""
 )
 @knext.input_table(
     name="Input Table",
@@ -1117,8 +1127,8 @@ class SpatialML_Lag:
     description="Model summary view of the spatial ML_Error model.",
 )
 class SpatialML_Error:
-    """
-    Spatial ML_Error
+    """Spatial ML_Error.
+    Spatial ML_Error.
     """
 
     geo_col = knut.geo_col_parameter()

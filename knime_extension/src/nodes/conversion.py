@@ -73,7 +73,7 @@ class _ToGeoConverter:
             knext.Port(
                 type=knext.PortType.TABLE,
                 name="Data table",
-                description=f"Input table to extract the geometry column from.",
+                description=f"Input table to append the generated geometry column to.",
             )
         ]
         # standard output port description can be overwritten in the child classes
@@ -127,6 +127,7 @@ class _ToGeoConverter:
     node_type=knext.NodeType.MANIPULATOR,
     icon_path=__NODE_ICON_PATH + "WKTtoGeo.png",
     category=__category,
+    after="",
 )
 @knut.geo_node_description(
     short_description="Converts the input Well-known-text (WKT) column to a geometry column.",
@@ -166,6 +167,7 @@ class WKTtoGeoNode(_ToGeoConverter):
 #     node_type=knext.NodeType.MANIPULATOR,
 #     icon_path=__NODE_ICON_PATH + "WKBtoGeo.png",
 #     category=__category,
+#     after=""
 # )
 # @knut.geo_node_description(
 #     short_description="Converts the input Well-known-binary (WKB) column to a geometry column.",
@@ -202,6 +204,7 @@ class WKTtoGeoNode(_ToGeoConverter):
     node_type=knext.NodeType.MANIPULATOR,
     icon_path=__NODE_ICON_PATH + "GeoJSONtoGeo.png",
     category=__category,
+    after="",
 )
 @knut.geo_node_description(
     short_description="Converts the input GeoJSON column to a geometry column.",
@@ -209,15 +212,15 @@ class WKTtoGeoNode(_ToGeoConverter):
     a geometry column in the units of the provided CRS.
     """,
     references={
-        "From GeoJSON": "https://geopandas.org/en/stable/docs/reference/api/geopandas.GeoSeries.from_wkt.html",
+        "GeoJSON cells are read using the read_file function": "https://geopandas.org/en/stable/docs/reference/api/geopandas.read_file.html#geopandas.read_file",
         "CRS parser from pyproj": "https://pyproj4.github.io/pyproj/stable/api/crs/crs.html#pyproj.crs.CRS.from_user_input",
     },
 )
 class GeoJSONtoGeoNode(_ToGeoConverter):
 
     input_column = knext.ColumnParameter(
-        label="GeoJSON column",
-        description="[GeoJSON](https://en.wikipedia.org/wiki/GeoJSON) column to convert",
+        label="GeoJSON formatted string column",
+        description="String column with a [GeoJSON](https://en.wikipedia.org/wiki/GeoJSON) string to convert",
         column_filter=knut.is_string,
         include_row_key=False,
         include_none_column=False,
@@ -260,6 +263,7 @@ class GeoJSONtoGeoNode(_ToGeoConverter):
     node_type=knext.NodeType.MANIPULATOR,
     icon_path=__NODE_ICON_PATH + "LatLongToGeo.png",
     category=__category,
+    after="",
 )
 @knext.input_table(
     name="Table with latitude and longitude",
@@ -405,6 +409,7 @@ class _FromGeoConverter:
     node_type=knext.NodeType.MANIPULATOR,
     icon_path=__NODE_ICON_PATH + "GeoToWKT.png",
     category=__category,
+    after="",
 )
 @knut.geo_node_description(
     short_description="Converts the input geometry column to a Well-known-text (WKT) column.",
@@ -438,6 +443,7 @@ class GeoToWKTNode(_FromGeoConverter):
 #     node_type=knext.NodeType.MANIPULATOR,
 #     icon_path=__NODE_ICON_PATH + "GeoToWKB.png",
 #     category=__category,
+#     after=""
 # )
 # @knut.geo_node_description(
 #     short_description="Converts the input geometry column to a Well-known-binary (WKB) column.",
@@ -470,6 +476,7 @@ class GeoToWKTNode(_FromGeoConverter):
     node_type=knext.NodeType.MANIPULATOR,
     icon_path=__NODE_ICON_PATH + "GeoToGeoJSON.png",
     category=__category,
+    after="",
 )
 @knut.geo_node_description(
     short_description="Converts the input geometry column to a Well-known-binary (WKB) column.",
@@ -520,6 +527,7 @@ class GeoToGeoJSONNode(_FromGeoConverter):
     node_type=knext.NodeType.MANIPULATOR,
     icon_path=__NODE_ICON_PATH + "GeoToLatLon.png",
     category=__category,
+    after="",
 )
 @knext.input_table(
     name="Geo table",

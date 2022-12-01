@@ -40,12 +40,12 @@ __NODE_ICON_PATH = "icons/icon/SpatialStatistics/"
     node_type=knext.NodeType.MANIPULATOR,
     icon_path=__NODE_ICON_PATH + "SpatialWeight.png",
     category=__category,
+    after="",
 )
 @knext.input_table(name="Geo table", description="Table with geometry column")
 @knext.output_table(name="Spatial Weights", description="Spatial Weights")
 class spatialWeights:
-    """
-
+    """This node constructs a contiguity spatial weights matrix from the input data.
     This node constructs a contiguity spatial weights matrix from the input data.
     """
 
@@ -221,6 +221,7 @@ class spatialWeights:
     node_type=knext.NodeType.LEARNER,
     category=__category,
     icon_path=__NODE_ICON_PATH + "GlobalMoran.png",
+    after="",
 )
 @knext.input_table(
     name="Input Table",
@@ -244,8 +245,8 @@ class spatialWeights:
     description="Output view of Global Moran's I",
 )
 class GlobalMoransI:
-    """
-    Global Moran's I
+    """Global Moran's I.
+    Global Moran's I.
     """
 
     # input parameters
@@ -297,6 +298,7 @@ class GlobalMoransI:
     # node_type=knext.NodeType.MANIPULATOR,
     category=__category,
     icon_path=__NODE_ICON_PATH + "LocalMoran.png",
+    after="",
 )
 @knext.input_table(
     name="Input Table",
@@ -320,8 +322,8 @@ class GlobalMoransI:
     description="Output view of Local Moran's I",
 )
 class LocalMoransI:
-    """
-    Local Moran's I
+    """Local Moran's I.
+    Local Moran's I.
     """
 
     # input parameters
@@ -401,6 +403,7 @@ class LocalMoransI:
     # node_type=knext.NodeType.MANIPULATOR,
     category=__category,
     icon_path=__NODE_ICON_PATH + "GlobalGeary.png",
+    after="",
 )
 @knext.input_table(
     name="Input Table",
@@ -424,8 +427,8 @@ class LocalMoransI:
     description="Output view of Global Geary’s C",
 )
 class GlobalGearysC:
-    """
-    Global Geary’s C
+    """Global Geary’s C.
+    Global Geary’s C.
     """
 
     # input parameters
@@ -480,6 +483,7 @@ class GlobalGearysC:
     # node_type=knext.NodeType.MANIPULATOR,
     category=__category,
     icon_path=__NODE_ICON_PATH + "GlobalGetis.png",
+    after="",
 )
 @knext.input_table(
     name="Input Table",
@@ -503,8 +507,8 @@ class GlobalGearysC:
     description="Output view of Global Getis-Ord",
 )
 class GlobalGetisOrd:
-    """
-    Global Getis-Ord
+    """Global Getis-Ord.
+    Global Getis-Ord.
     """
 
     # input parameters
@@ -559,6 +563,7 @@ class GlobalGetisOrd:
     # node_type=knext.NodeType.MANIPULATOR,
     category=__category,
     icon_path=__NODE_ICON_PATH + "LocalGeary.png",
+    after="",
 )
 @knext.input_table(
     name="Input Table",
@@ -582,8 +587,8 @@ class GlobalGetisOrd:
     description="Output view of Local Getis-Ord",
 )
 class LocalGetisOrd:
-    """
-    Local Getis-Ord
+    """Local Getis-Ord.
+    Local Getis-Ord.
     """
 
     # input parameters
