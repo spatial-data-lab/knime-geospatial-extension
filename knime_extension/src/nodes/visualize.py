@@ -1085,7 +1085,6 @@ class ViewNodeKepler:
 )
 class ViewNodeHeatmap:
     """This node will visualize the given data on a heatmap.
-    This node will visualize the given data on a heatmap.
     Please find more information about the heatmap [here](https://www.gislounge.com/heat-maps-in-gis/).
     """
 
