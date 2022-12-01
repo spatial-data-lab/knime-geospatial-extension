@@ -30,6 +30,7 @@ category = knext.category(
     node_type=knext.NodeType.MANIPULATOR,
     icon_path="icons/icon/GeometryTransformation/Projection.png",
     category=category,
+    after="",
 )
 @knext.input_table(
     name="Geo table",
@@ -69,13 +70,12 @@ class CrsTransformerNode:
         )
         return input_schema_1
 
-    def execute(self, exec_context: knext.ExecutionContext, input_1):
-        gdf = gp.GeoDataFrame(input_1.to_pandas(), geometry=self.geo_col)
-        exec_context.set_progress(0.3, "Geo data frame loaded. Starting projection...")
+    def execute(self, exec_context: knext.ExecutionContext, input_table):
+        gdf = knut.load_geo_data_frame(input_table, self.geo_col, exec_context)
         gdf = gdf.to_crs(self.new_crs)
-        exec_context.set_progress(0.1, "Projection done")
+        crs = gdf.crs
         LOGGER.debug("CRS converted to " + self.new_crs)
-        return knext.Table.from_pandas(gdf)
+        return knut.to_table(gdf, exec_context)
 
 
 ############################################
@@ -88,6 +88,7 @@ class CrsTransformerNode:
     node_type=knext.NodeType.MANIPULATOR,
     icon_path="icons/icon/GeometryTransformation/FeatureToPoint.png",
     category=category,
+    after="",
 )
 @knext.input_table(
     name="Geo table",
@@ -153,6 +154,7 @@ class GeometryToPointNode:
     node_type=knext.NodeType.MANIPULATOR,
     icon_path="icons/icon/GeometryTransformation/Explode.png",
     category=category,
+    after="",
 )
 @knext.input_table(
     name="Geo table",
@@ -205,6 +207,7 @@ class ExplodeNode:
     node_type=knext.NodeType.MANIPULATOR,
     icon_path="icons/icon/GeometryTransformation/PolygonToLine.png",
     category=category,
+    after="",
 )
 @knext.input_table(
     name="Geo table",
@@ -260,6 +263,7 @@ class PolygonToLineNode:
     node_type=knext.NodeType.MANIPULATOR,
     icon_path="icons/icon/GeometryTransformation/PointToLine.png",
     category=category,
+    after="",
 )
 @knext.input_table(
     name="Geo table",
@@ -341,6 +345,7 @@ class PointsToLineNode:
     node_type=knext.NodeType.MANIPULATOR,
     icon_path="icons/icon/GeometryTransformation/LinePolygonToPoints.png",
     category=category,
+    after="",
 )
 @knext.input_table(
     name="Geo table",

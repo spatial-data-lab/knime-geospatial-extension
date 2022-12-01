@@ -31,6 +31,7 @@ __NODE_ICON_PATH = "icons/icon/LocationAnalysis/"
     node_type=knext.NodeType.MANIPULATOR,
     icon_path=__NODE_ICON_PATH + "pmedian.png",
     category=__category,
+    after=""
 )
 @knext.input_table(
     name="Input OD list with geometries ",
@@ -233,6 +234,7 @@ class PmedianNode:
     node_type=knext.NodeType.MANIPULATOR,
     icon_path=__NODE_ICON_PATH + "LSCP.png",
     category=__category,
+    after=""
 )
 @knext.input_table(
     name="Input OD list with geometries ",
@@ -422,6 +424,7 @@ class LSCPNode:
     node_type=knext.NodeType.MANIPULATOR,
     icon_path=__NODE_ICON_PATH + "MCLP.png",
     category=__category,
+    after=""
 )
 @knext.input_table(
     name="Input OD list with geometries ",

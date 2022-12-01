@@ -28,6 +28,7 @@ __NODE_ICON_PATH = "icons/icon/OpenDataset/"
     node_type=knext.NodeType.SOURCE,
     icon_path=__NODE_ICON_PATH + "UStiger.png",
     category=__category,
+    after="",
 )
 @knext.output_table(
     name="TIGER Line Table ",
@@ -50,13 +51,13 @@ class US2020TIGERNode:
     StateFips = knext.StringParameter(
         label="State FIPS (2-digits)",
         description="The State to use",
-        default_value="25",
+        default_value="",
     )
 
     County3Fips = knext.StringParameter(
         "County FIPS(3-digits)/ or State FIPS ",
         "The County/State FIPS code to use",
-        "017",
+        "",
     )
 
     geofile = knext.StringParameter(
@@ -69,7 +70,7 @@ class US2020TIGERNode:
         - **County:** county10,county20, for US County in 2010 and 2020, only applicable for the setting when the input of County FIPs equals State FIPs.
         - **State:** state10,state20, for US State in 2010 and 2020,same as County.
 """,
-        default_value="bg20",
+        default_value="",
         enum=[
             "bg10",
             "bg20",
@@ -155,7 +156,7 @@ class US2020TIGERNode:
                     "COLORADO",
                     "CONNECTICUT",
                     "DELAWARE",
-                    "COLUMBIA",
+                    "DISTRICT_OF_COLUMBIA",
                     "FLORIDA",
                     "GEORGIA",
                     "HAWAII",
@@ -176,29 +177,29 @@ class US2020TIGERNode:
                     "MONTANA",
                     "NEBRASKA",
                     "NEVADA",
-                    "HAMPSHIRE",
-                    "JERSEY",
-                    "MEXICO",
-                    "YORK",
-                    "CAROLINA",
-                    "DAKOTA",
+                    "NEW_HAMPSHIRE",
+                    "NEW_JERSEY",
+                    "NEW_MEXICO",
+                    "NEW_YORK",
+                    "NORTH_CAROLINA",
+                    "NORTH_DAKOTA",
                     "OHIO",
                     "OKLAHOMA",
                     "OREGON",
                     "PENNSYLVANIA",
-                    "ISLAND",
-                    "CAROLINA",
-                    "DAKOTA",
+                    "RHODE_ISLAND",
+                    "SOUTH_CAROLINA",
+                    "SOUTH_DAKOTA",
                     "TENNESSEE",
                     "TEXAS",
                     "UTAH",
                     "VERMONT",
                     "VIRGINIA",
                     "WASHINGTON",
-                    "VIRGINIA",
+                    "WEST_VIRGINIA",
                     "WISCONSIN",
                     "WYOMING",
-                    "RICO",
+                    "PUERTO_RICO",
                 ],
             }
         )
@@ -211,7 +212,7 @@ class US2020TIGERNode:
 
         base_url = "https://www2.census.gov/geo/tiger/TIGER2020PL/STATE/"
 
-        if self.StateFips != self.County3Fips:
+        if self.StateFips != self.County3Fips and self.County3Fips != "*":
             data_url = f"{base_url}{Statepath}/{County5Fips}/tl_2020_{County5Fips}_{self.geofile}.zip"
         else:
             County5Fips = self.StateFips
@@ -232,6 +233,7 @@ class US2020TIGERNode:
     node_type=knext.NodeType.SOURCE,
     icon_path=__NODE_ICON_PATH + "UScensus.png",
     category=__category,
+    after="",
 )
 @knext.output_table(
     name="Census data table",
@@ -318,6 +320,7 @@ class USCensus2020Node:
     node_type=knext.NodeType.SOURCE,
     icon_path=__NODE_ICON_PATH + "CensusACS.png",
     category=__category,
+    after="",
 )
 @knext.output_table(
     name="US Census ACS 5-Year table",
@@ -412,6 +415,7 @@ class UScensusACSNode:
     node_type=knext.NodeType.SOURCE,
     icon_path=__NODE_ICON_PATH + "OSMpoi.png",
     category=__category,
+    after="",
 )
 @knext.input_table(
     name="Polygon Data",
@@ -483,6 +487,7 @@ class OSMdataNode:
     node_type=knext.NodeType.SOURCE,
     icon_path=__NODE_ICON_PATH + "OSMnetwork.png",
     category=__category,
+    after="",
 )
 @knext.input_table(
     name="Polygon Data",
@@ -535,7 +540,13 @@ class OSMnetworkNode:
             G = ox.add_edge_travel_times(G)
         edges = ox.utils_graph.graph_to_gdfs(G, nodes=False)
         objcolumn = edges.select_dtypes(include=["object"]).columns.tolist()
-        edges[objcolumn] = edges[objcolumn].astype("string")
+        # Convert each element of the dataframe to a string but sort lists before doing so
+        def convert_to_string(v):
+            if type(v) == list:
+                v.sort()
+            return str(v)
+
+        edges[objcolumn] = edges[objcolumn].applymap(convert_to_string)
         edges = edges.reset_index(drop=True)
         return knext.Table.from_pandas(edges)
 
@@ -548,6 +559,7 @@ class OSMnetworkNode:
     node_type=knext.NodeType.SOURCE,
     icon_path=__NODE_ICON_PATH + "OSMboundary.png",
     category=__category,
+    after="",
 )
 @knext.output_table(
     name="OSM GeoBoundary data",
