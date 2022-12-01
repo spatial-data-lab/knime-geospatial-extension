@@ -21,7 +21,7 @@ __NODE_ICON_PATH = "icons/icon/Visulization/"
 
 
 # helper class for geoview
-# TODO: add this class 
+# TODO: add this class
 # class __GeoView:
 #     def __init__(self, geo_df, color_col, color_map, geo_col):
 #         self.geo_df = geo_df
@@ -40,8 +40,6 @@ __NODE_ICON_PATH = "icons/icon/Visulization/"
 
 #     def _repr_mimebundle_(self, include=None, exclude=None):
 #         return self.geo_df._repr_mimebundle_(include, exclude)
-
-
 
 
 @knext.node(
@@ -873,6 +871,12 @@ class ViewNodeStatic:
 class ViewNodeKepler:
     """
     This node will visualize the given geometric elements on a map.
+    The geometry column must be required.
+    By default, it takes all column information that is included inside the input table.
+    If you want to limit the amount of information you should use the filter node before.
+    If you want to use a different base map, you can configure it inside the interactive
+    view with Kepler.gl's UI. You can also configure the Mapbox style you want to use and
+    the access token there.
     """
 
     geo_col = knext.ColumnParameter(
@@ -883,17 +887,17 @@ class ViewNodeKepler:
         include_none_column=False,
     )
 
-    save_config = knext.BoolParameter(
-        "Save config",
-        "Save the config for the map",
-        default_value=False,
-    )
+    # save_config = knext.BoolParameter(
+    #     "Save config",
+    #     "Save the config for the map",
+    #     default_value=False,
+    # )
 
-    load_config = knext.BoolParameter(
-        "Load config",
-        "Load the config for the map",
-        default_value=False,
-    )
+    # load_config = knext.BoolParameter(
+    #     "Load config",
+    #     "Load the config for the map",
+    #     default_value=False,
+    # )
 
     def configure(self, configure_context, input_schema):
         self.geo_col = knut.column_exists_or_preset(
