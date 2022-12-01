@@ -67,7 +67,7 @@ class GeoFileReaderNode:
 ############################################
 @knext.node(
     name="GeoFile Writer",
-    node_type=knext.NodeType.SOURCE,
+    node_type=knext.NodeType.SINK,
     icon_path=__NODE_ICON_PATH + "GeoFileWriter.png",
     category=__category,
 )
@@ -188,7 +188,7 @@ class GeoPackageReaderNode:
 ############################################
 @knext.node(
     name="GeoPackage Writer",
-    node_type=knext.NodeType.SOURCE,
+    node_type=knext.NodeType.SINK,
     icon_path=__NODE_ICON_PATH + "GeoPackageWriter.png",
     category=__category,
 )
