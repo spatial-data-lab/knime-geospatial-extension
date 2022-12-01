@@ -26,6 +26,7 @@ __NODE_ICON_PATH = "icons/icon/IO/"
     node_type=knext.NodeType.SOURCE,
     icon_path=__NODE_ICON_PATH + "GeoFileReader.png",
     category=__category,
+    after="",
 )
 @knext.output_table(
     name="Geodata table",
@@ -70,6 +71,7 @@ class GeoFileReaderNode:
     node_type=knext.NodeType.SINK,
     icon_path=__NODE_ICON_PATH + "GeoFileWriter.png",
     category=__category,
+    after="",
 )
 @knext.input_table(
     name="Geodata table",
@@ -130,6 +132,7 @@ class GeoFileWriterNode:
     node_type=knext.NodeType.SOURCE,
     icon_path=__NODE_ICON_PATH + "GeoPackageReader.png",
     category=__category,
+    after="",
 )
 @knext.output_table(
     name="Geodata table",
@@ -191,6 +194,7 @@ class GeoPackageReaderNode:
     node_type=knext.NodeType.SINK,
     icon_path=__NODE_ICON_PATH + "GeoPackageWriter.png",
     category=__category,
+    after="",
 )
 @knext.input_table(
     name="Geodata table",

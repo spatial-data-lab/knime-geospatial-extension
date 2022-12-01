@@ -43,6 +43,7 @@ __NODE_ICON_PATH = "icons/icon/SpatialModel/"
     # node_type=knext.NodeType.MANIPULATOR,
     category=__category,
     icon_path=__NODE_ICON_PATH + "2SLS.png",
+    after=""
 )
 @knext.input_table(
     name="Input Table",
@@ -198,6 +199,7 @@ class Spatial2SLSModel:
     node_type=knext.NodeType.LEARNER,
     category=__category,
     icon_path=__NODE_ICON_PATH + "SpatialLag.png",
+    after=""
 )
 @knext.input_table(
     name="Input Table",
@@ -322,6 +324,7 @@ class SpatialLagPanelModelwithFixedEffects:
     node_type=knext.NodeType.LEARNER,
     category=__category,
     icon_path=__NODE_ICON_PATH + "SpatialError.png",
+    after=""
 )
 @knext.input_table(
     name="Input Table",
@@ -445,6 +448,7 @@ class SpatialErrorPanelModelwithFixedEffects:
     node_type=knext.NodeType.LEARNER,
     category=__category,
     icon_path=__NODE_ICON_PATH + "GWR.png",
+    after=""
 )
 @knext.input_table(
     name="Input Table",
@@ -582,6 +586,7 @@ class GeographicallyWeightedRegression:
     node_type=knext.NodeType.PREDICTOR,
     category=__category,
     icon_path=__NODE_ICON_PATH + "GWRp.png",
+    after=""
 )
 @knext.input_table(
     name="Input Table",
@@ -641,6 +646,7 @@ class GeographicallyWeightedRegressionPredictor:
     node_type=knext.NodeType.LEARNER,
     category=__category,
     icon_path=__NODE_ICON_PATH + "MGWR.png",
+    after=""
 )
 @knext.input_table(
     name="Input Table",
@@ -782,6 +788,7 @@ class MultiscaleGeographicallyWeightedRegression:
 #     node_type=knext.NodeType.PREDICTOR,
 #     category=__category,
 #     icon_path=__NODE_ICON_PATH + "SpatialWeight.png",
+#     after=""
 # )
 # @knext.input_table(
 #     name="Input Table",
@@ -848,6 +855,7 @@ class MultiscaleGeographicallyWeightedRegression:
     node_type=knext.NodeType.LEARNER,
     category=__category,
     icon_path=__NODE_ICON_PATH + "SpatialOLS.png",
+    after=""
 )
 @knext.input_table(
     name="Input Table",
@@ -972,6 +980,7 @@ class SpatialOLS:
     node_type=knext.NodeType.LEARNER,
     category=__category,
     icon_path=__NODE_ICON_PATH + "MLLag.png",
+    after=""
 )
 @knext.input_table(
     name="Input Table",
@@ -1095,6 +1104,7 @@ class SpatialML_Lag:
     node_type=knext.NodeType.LEARNER,
     category=__category,
     icon_path=__NODE_ICON_PATH + "MLErr.png",
+    after=""
 )
 @knext.input_table(
     name="Input Table",

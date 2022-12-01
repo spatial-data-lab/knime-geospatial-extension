@@ -91,6 +91,7 @@ class _SingleCalculator:
     node_type=knext.NodeType.MANIPULATOR,
     icon_path=__NODE_ICON_PATH + "Area.png",
     category=__category,
+    after="",
 )
 @knut.geo_node_description(
     short_description="Calculates the area of geometric objects.",
@@ -122,6 +123,7 @@ class AreaNode(_SingleCalculator):
     node_type=knext.NodeType.MANIPULATOR,
     icon_path=__NODE_ICON_PATH + "Length.png",
     category=__category,
+    after="",
 )
 @knut.geo_node_description(
     short_description="Calculates the length of geometric objects.",
@@ -153,6 +155,7 @@ class LengthNode(_SingleCalculator):
     node_type=knext.NodeType.MANIPULATOR,
     icon_path=__NODE_ICON_PATH + "BoundingBox.png",
     category=__category,
+    after="",
 )
 @knext.input_table(
     name="Geo table",
@@ -189,6 +192,7 @@ class BoundingBoxNode(_SingleCalculator):
     node_type=knext.NodeType.MANIPULATOR,
     icon_path=__NODE_ICON_PATH + "ConvexHull.png",
     category=__category,
+    after="",
 )
 @knext.input_table(
     name="Geo table",
@@ -226,6 +230,7 @@ class ConvexHullNode(_SingleCalculator):
     node_type=knext.NodeType.MANIPULATOR,
     icon_path=__NODE_ICON_PATH + "XYZcoordinates.png",
     category=__category,
+    after="",
 )
 @knext.input_table(
     name="Geo table",
@@ -304,6 +309,7 @@ class CoordinatesNode:
     node_type=knext.NodeType.MANIPULATOR,
     icon_path=__NODE_ICON_PATH + "Bounds.png",
     category=__category,
+    after="",
 )
 @knext.input_table(
     name="Geo table",
@@ -387,6 +393,7 @@ class BoundsNode:
     node_type=knext.NodeType.MANIPULATOR,
     icon_path=__NODE_ICON_PATH + "TotalBounds.png",
     category=__category,
+    after="",
 )
 @knext.input_table(
     name="Geo table",
@@ -447,6 +454,7 @@ class TotalBoundsNode:
     node_type=knext.NodeType.MANIPULATOR,
     icon_path=__NODE_ICON_PATH + "UnaryUnion.png",
     category=__category,
+    after="",
 )
 @knext.input_table(
     name="Geo table",

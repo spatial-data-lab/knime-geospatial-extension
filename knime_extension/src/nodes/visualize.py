@@ -258,6 +258,7 @@ class LegendSettings:
     node_type=knext.NodeType.VISUALIZER,
     icon_path=__NODE_ICON_PATH + "InteractiveMap.png",
     category=category,
+    after="",
 )
 @knext.input_table(
     name="Geospatial Table to Visualize",
@@ -762,6 +763,7 @@ class StaticLegendSettings:
     node_type=knext.NodeType.VISUALIZER,
     icon_path=__NODE_ICON_PATH + "StaticMap.png",
     category=category,
+    after="",
 )
 @knext.input_table(
     name="Geospatial Table to Visualize",
@@ -956,6 +958,7 @@ class ViewNodeStatic:
     node_type=knext.NodeType.VISUALIZER,
     icon_path=__NODE_ICON_PATH + "Kepler.gl.png",
     category=category,
+    after="",
 )
 @knext.input_table(
     name="Geospatial Table to Visualize",
@@ -1081,6 +1084,7 @@ class ViewNodeKepler:
     node_type=knext.NodeType.VISUALIZER,
     icon_path=__NODE_ICON_PATH + "SpatialHeatmap.png",
     category=category,
+    after="",
 )
 @knext.input_table(
     name="Table to Visualize",

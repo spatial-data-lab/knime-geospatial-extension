@@ -40,6 +40,7 @@ __NODE_ICON_PATH = "icons/icon/SpatialStatistics/"
     node_type=knext.NodeType.MANIPULATOR,
     icon_path=__NODE_ICON_PATH + "SpatialWeight.png",
     category=__category,
+    after="",
 )
 @knext.input_table(name="Geo table", description="Table with geometry column")
 @knext.output_table(name="Spatial Weights", description="Spatial Weights")
@@ -220,6 +221,7 @@ class spatialWeights:
     node_type=knext.NodeType.LEARNER,
     category=__category,
     icon_path=__NODE_ICON_PATH + "GlobalMoran.png",
+    after="",
 )
 @knext.input_table(
     name="Input Table",
@@ -296,6 +298,7 @@ class GlobalMoransI:
     # node_type=knext.NodeType.MANIPULATOR,
     category=__category,
     icon_path=__NODE_ICON_PATH + "LocalMoran.png",
+    after="",
 )
 @knext.input_table(
     name="Input Table",
@@ -400,6 +403,7 @@ class LocalMoransI:
     # node_type=knext.NodeType.MANIPULATOR,
     category=__category,
     icon_path=__NODE_ICON_PATH + "GlobalGeary.png",
+    after="",
 )
 @knext.input_table(
     name="Input Table",
@@ -479,6 +483,7 @@ class GlobalGearysC:
     # node_type=knext.NodeType.MANIPULATOR,
     category=__category,
     icon_path=__NODE_ICON_PATH + "GlobalGetis.png",
+    after="",
 )
 @knext.input_table(
     name="Input Table",
@@ -558,6 +563,7 @@ class GlobalGetisOrd:
     # node_type=knext.NodeType.MANIPULATOR,
     category=__category,
     icon_path=__NODE_ICON_PATH + "LocalGeary.png",
+    after="",
 )
 @knext.input_table(
     name="Input Table",

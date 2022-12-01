@@ -127,6 +127,7 @@ class _ToGeoConverter:
     node_type=knext.NodeType.MANIPULATOR,
     icon_path=__NODE_ICON_PATH + "WKTtoGeo.png",
     category=__category,
+    after="",
 )
 @knut.geo_node_description(
     short_description="Converts the input Well-known-text (WKT) column to a geometry column.",
@@ -166,6 +167,7 @@ class WKTtoGeoNode(_ToGeoConverter):
 #     node_type=knext.NodeType.MANIPULATOR,
 #     icon_path=__NODE_ICON_PATH + "WKBtoGeo.png",
 #     category=__category,
+#     after=""
 # )
 # @knut.geo_node_description(
 #     short_description="Converts the input Well-known-binary (WKB) column to a geometry column.",
@@ -202,6 +204,7 @@ class WKTtoGeoNode(_ToGeoConverter):
     node_type=knext.NodeType.MANIPULATOR,
     icon_path=__NODE_ICON_PATH + "GeoJSONtoGeo.png",
     category=__category,
+    after="",
 )
 @knut.geo_node_description(
     short_description="Converts the input GeoJSON column to a geometry column.",
@@ -260,6 +263,7 @@ class GeoJSONtoGeoNode(_ToGeoConverter):
     node_type=knext.NodeType.MANIPULATOR,
     icon_path=__NODE_ICON_PATH + "LatLongToGeo.png",
     category=__category,
+    after="",
 )
 @knext.input_table(
     name="Table with latitude and longitude",
@@ -405,6 +409,7 @@ class _FromGeoConverter:
     node_type=knext.NodeType.MANIPULATOR,
     icon_path=__NODE_ICON_PATH + "GeoToWKT.png",
     category=__category,
+    after="",
 )
 @knut.geo_node_description(
     short_description="Converts the input geometry column to a Well-known-text (WKT) column.",
@@ -438,6 +443,7 @@ class GeoToWKTNode(_FromGeoConverter):
 #     node_type=knext.NodeType.MANIPULATOR,
 #     icon_path=__NODE_ICON_PATH + "GeoToWKB.png",
 #     category=__category,
+#     after=""
 # )
 # @knut.geo_node_description(
 #     short_description="Converts the input geometry column to a Well-known-binary (WKB) column.",
@@ -470,6 +476,7 @@ class GeoToWKTNode(_FromGeoConverter):
     node_type=knext.NodeType.MANIPULATOR,
     icon_path=__NODE_ICON_PATH + "GeoToGeoJSON.png",
     category=__category,
+    after="",
 )
 @knut.geo_node_description(
     short_description="Converts the input geometry column to a Well-known-binary (WKB) column.",
@@ -520,6 +527,7 @@ class GeoToGeoJSONNode(_FromGeoConverter):
     node_type=knext.NodeType.MANIPULATOR,
     icon_path=__NODE_ICON_PATH + "GeoToLatLon.png",
     category=__category,
+    after="",
 )
 @knext.input_table(
     name="Geo table",

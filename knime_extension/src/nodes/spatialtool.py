@@ -52,6 +52,7 @@ class _JoinModes(knext.EnumParameterOptions):
     node_type=knext.NodeType.MANIPULATOR,
     icon_path=__NODE_ICON_PATH + "Buffer.png",
     category=__category,
+    after="",
 )
 @knext.input_table(
     name="Geo table",
@@ -107,6 +108,7 @@ class BufferNode:
     node_type=knext.NodeType.MANIPULATOR,
     icon_path=__NODE_ICON_PATH + "Dissolve.png",
     category=__category,
+    after="",
 )
 @knext.input_table(
     name="Geo table",
@@ -168,6 +170,7 @@ class DissolveNode:
     node_type=knext.NodeType.MANIPULATOR,
     icon_path=__NODE_ICON_PATH + "SpatialJoin.png",
     category=__category,
+    after="",
 )
 @knext.input_table(
     name="Left geo table",
@@ -310,6 +313,7 @@ class SpatialJoinNode:
     node_type=knext.NodeType.MANIPULATOR,
     icon_path=__NODE_ICON_PATH + "NearestJoin.png",
     category=__category,
+    after="",
 )
 @knext.input_table(
     name="Left geo table",
@@ -421,6 +425,7 @@ class NearestJoinNode:
     node_type=knext.NodeType.MANIPULATOR,
     icon_path=__NODE_ICON_PATH + "Clip.png",
     category=__category,
+    after="",
 )
 @knext.input_table(
     name="Left geo table",
@@ -501,6 +506,7 @@ class ClipNode:
     node_type=knext.NodeType.MANIPULATOR,
     icon_path=__NODE_ICON_PATH + "SpatialOverlay.png",
     category=__category,
+    after="",
 )
 @knext.input_table(
     name="Left geo table",
@@ -614,6 +620,7 @@ class OverlayNode:
     node_type=knext.NodeType.MANIPULATOR,
     icon_path=__NODE_ICON_PATH + "EuclideanDistance.png",
     category=__category,
+    after="",
 )
 @knext.input_table(
     name="Left geo table",
@@ -700,6 +707,7 @@ class EuclideanDistanceNode:
     node_type=knext.NodeType.MANIPULATOR,
     icon_path=__NODE_ICON_PATH + "MultipleRingBuffer.png",
     category=__category,
+    after="",
 )
 @knext.input_table(
     name="Geo table",
@@ -791,6 +799,7 @@ class MultiRingBufferNode:
     node_type=knext.NodeType.MANIPULATOR,
     icon_path=__NODE_ICON_PATH + "Simplify.png",
     category=__category,
+    after="",
 )
 @knext.input_table(
     name="Geo table",
@@ -855,6 +864,7 @@ class SimplifyNode:
     node_type=knext.NodeType.MANIPULATOR,
     icon_path=__NODE_ICON_PATH + "CreateGrid.png",
     category=__category,
+    after="",
 )
 @knext.input_table(
     name="Input Table",
@@ -927,6 +937,7 @@ class CreateGrid:
     node_type=knext.NodeType.MANIPULATOR,
     icon_path=__NODE_ICON_PATH + "HaversineDist.png",
     category=__category,
+    after="",
 )
 @knext.input_table(
     name="Input Table",
