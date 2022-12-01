@@ -774,13 +774,18 @@ class MultiRingBufferNode:
         # sort list
         bufferlist = bufferlist.tolist()
         bufferlist.sort()
-        c1 = gp.GeoDataFrame(geometry=gdf.buffer(bufferlist[0]))
-        c2 = gp.GeoDataFrame(geometry=gdf.buffer(bufferlist[1]))
+        if gdf.shape[0] > 1:
+            gdf_union = gdf.unary_union
+            gdfunion = gp.GeoDataFrame(geometry=gp.GeoSeries(gdf_union), crs=gdf.crs)
+        else:
+            gdfunion = gdf
+        c1 = gp.GeoDataFrame(geometry=gdfunion.buffer(bufferlist[0]))
+        c2 = gp.GeoDataFrame(geometry=gdfunion.buffer(bufferlist[1]))
         gdf0 = gp.overlay(c1, c2, how="union")
         if len(bufferlist) > 2:
             # Construct all other rings by loop
             for i in range(2, len(bufferlist)):
-                ci = gp.GeoDataFrame(geometry=gdf.buffer(bufferlist[i]))
+                ci = gp.GeoDataFrame(geometry=gdfunion.buffer(bufferlist[i]))
                 gdf0 = gp.overlay(gdf0, ci, how="union")
         # Add ring radius values as a new column
         gdf0["dist"] = bufferlist
