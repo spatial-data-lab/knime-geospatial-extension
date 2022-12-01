@@ -540,7 +540,13 @@ class OSMnetworkNode:
             G = ox.add_edge_travel_times(G)
         edges = ox.utils_graph.graph_to_gdfs(G, nodes=False)
         objcolumn = edges.select_dtypes(include=["object"]).columns.tolist()
-        edges[objcolumn] = edges[objcolumn].astype("string")
+        # Convert each element of the dataframe to a string but sort lists before doing so
+        def convert_to_string(v):
+            if type(v) == list:
+                v.sort()
+            return str(v)
+
+        edges[objcolumn] = edges[objcolumn].applymap(convert_to_string)
         edges = edges.reset_index(drop=True)
         return knext.Table.from_pandas(edges)
 
