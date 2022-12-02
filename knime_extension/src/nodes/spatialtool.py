@@ -83,14 +83,18 @@ class BufferNode:
         "Buffer distance", "The buffer distance for geometry. ", 1000.0
     )
 
-    def configure(self, configure_context, input_schema_1):
-        knut.column_exists(self.geo_col, input_schema_1)
+    def configure(self, configure_context, input_schema):
+        self.geo_col = knut.column_exists_or_preset(
+            configure_context, self.geo_col, input_schema, knut.is_geo
+        )
         return None
 
-    def execute(self, exec_context: knext.ExecutionContext, input_1):
-        gdf = gp.GeoDataFrame(input_1.to_pandas(), geometry=self.geo_col)
+    def execute(self, exec_context: knext.ExecutionContext, input):
+        gdf = gp.GeoDataFrame(input.to_pandas(), geometry=self.geo_col)
         exec_context.set_progress(0.3, "Geo data frame loaded. Starting buffering...")
-        gdf["geometry"] = gdf.buffer(self.bufferdist)
+        gdf[knut.get_unique_column_name("geometry", input.schema)] = gdf.buffer(
+            self.bufferdist
+        )
         exec_context.set_progress(0.1, "Buffering done")
         LOGGER.debug(
             "Feature geometry " + self.geo_col + " buffered with" + str(self.bufferdist)
@@ -144,8 +148,10 @@ class DissolveNode:
         include_none_column=False,
     )
 
-    def configure(self, configure_context, input_schema_1):
-        knut.column_exists(self.geo_col, input_schema_1)
+    def configure(self, configure_context, input_schema):
+        self.geo_col = knut.column_exists_or_preset(
+            configure_context, self.geo_col, input_schema, knut.is_geo
+        )
         return None
 
     def execute(self, exec_context: knext.ExecutionContext, input_1):
@@ -848,11 +854,13 @@ class SimplifyNode:
         self.geo_col = knut.column_exists_or_preset(
             configure_context, self.geo_col, input_schema_1, knut.is_geo
         )
-        return input_schema_1
+        return None
 
     def execute(self, exec_context: knext.ExecutionContext, input_1):
         gdf = gp.GeoDataFrame(input_1.to_pandas(), geometry=self.geo_col)
-        gdf["geometry"] = gdf.geometry.simplify(self.simplifydist)
+        gdf[
+            knut.get_unique_column_name("geometry", input.schema)
+        ] = gdf.geometry.simplify(self.simplifydist)
         gdf = gdf.reset_index(drop=True)
         exec_context.set_progress(0.1, "Transformation done")
         LOGGER.debug("Feature Simplified")
@@ -893,7 +901,9 @@ class CreateGrid:
     )
 
     def configure(self, configure_context, input_schema):
-
+        self.geo_col = knut.column_exists_or_preset(
+            configure_context, self.geo_col, input_schema, knut.is_geo
+        )
         return None
 
     def execute(self, exec_context: knext.ExecutionContext, input_table):
