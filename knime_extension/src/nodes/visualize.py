@@ -252,6 +252,29 @@ class LegendSettings:
         default_value="",
     )
 
+@knext.parameter_group(label="Size Settings")
+class SizeSettings:
+    """
+    Group of settings that define the size of the geometric objects. The size column should be numerical.
+    """
+    size_col = knext.ColumnParameter(
+        "Marker size column",
+        """Select marker size column. The size is fixed by default. If the Maker size column is selected, the size will be 
+        scaled by the values of the column. For point features, the size is the radius of the circle. 
+        For line features, the size is the width of the line. For polygon features, the size is the radius of 
+        the centroid of the polygon.""",
+        column_filter=knut.is_numeric,
+        include_none_column=True,
+    )
+
+    size_scale = knext.IntParameter(
+        "Marker size scale",
+        """Select the size scale of the markers. If the Maker size column is selected, this option will be ignored.
+        Noticed that the size scale only work for point features.""",
+        default_value=1,
+        min_value=1,
+        max_value=100,
+    )
 
 @knext.node(
     name="Geospatial View",
@@ -360,24 +383,6 @@ class ViewNode:
         default_value=True,
     )
 
-    size_col = knext.ColumnParameter(
-        "Marker size column",
-        """Select marker size column. The size is fixed by default. If the Maker size column is selected, the size will be 
-        scaled by the values of the column. For point features, the size is the radius of the circle. 
-        For line features, the size is the width of the line. For polygon features, the size is the radius of 
-        the centroid of the polygon.""",
-        column_filter=knut.is_numeric,
-        include_none_column=True,
-    )
-
-    size_scale = knext.IntParameter(
-        "Marker size scale",
-        """Select the size scale of the markers. If the Maker size column is selected, this option will be ignored.
-        Noticed that the size scale only work for point features.""",
-        default_value=1,
-        min_value=1,
-        max_value=100,
-    )
 
     name_cols = knext.MultiColumnParameter(
         "Marker tooltip columns",
@@ -390,6 +395,8 @@ class ViewNode:
         "Select columns which should be shown in the marker popup.",
         column_filter=knut.is_numeric_or_string,
     )
+
+    size_settings = SizeSettings()
 
     color_settings = ColorSettings()
 
@@ -444,10 +451,10 @@ class ViewNode:
             kws["legend_kwds"]["colorbar"] = False
             kws["legend_kwds"]["max_labels"] = 20
 
-        if "none" not in str(self.size_col).lower():
+        if "none" not in str(self.size_settings.size_col).lower():
 
-            max_pop_est = gdf[self.size_col].max()
-            min_pop_est = gdf[self.size_col].min()
+            max_pop_est = gdf[self.size_settings.size_col].max()
+            min_pop_est = gdf[self.size_settings.size_col].min()
 
             # check whether is line
             # FIXME: change it to use utlis.is_line
@@ -456,7 +463,7 @@ class ViewNode:
                 max_size = 8
                 kws["style_kwds"] = {
                     "style_function": lambda x: {
-                        "weight": (x["properties"][self.size_col] - min_pop_est)
+                        "weight": (x["properties"][self.size_settings.size_col] - min_pop_est)
                         / (max_pop_est - min_pop_est)
                         * max_size
                     }
@@ -465,7 +472,7 @@ class ViewNode:
                 max_size = 30
                 kws["style_kwds"] = {
                     "style_function": lambda x: {
-                        "radius": (x["properties"][self.size_col] - min_pop_est)
+                        "radius": (x["properties"][self.size_settings.size_col] - min_pop_est)
                         / (max_pop_est - min_pop_est)
                         * max_size
                     }
@@ -477,19 +484,19 @@ class ViewNode:
                 max_size = 30
                 kws["style_kwds"] = {
                     "style_function": lambda x: {
-                        "radius": (x["properties"][self.size_col] - min_pop_est)
+                        "radius": (x["properties"][self.size_settings.size_col] - min_pop_est)
                         / (max_pop_est - min_pop_est)
                         * max_size
                     }
                 }
-        elif "none" not in str(self.size_scale).lower():
+        elif "none" not in str(self.size_settings.size_scale).lower():
             geo_types = gdf[self.geo_col].geom_type.unique()
             if ("LineString" in geo_types) or ("MultiLineString" in geo_types):
-                kws["style_kwds"] = {"weight": self.size_scale}
+                kws["style_kwds"] = {"weight": self.size_settings.size_scale}
             elif ("Polygon" in geo_types) or ("MultiPolygon" in geo_types):
                 pass
             else:
-                kws["style_kwds"] = {"radius": self.size_scale}
+                kws["style_kwds"] = {"radius": self.size_settings.size_scale}
         if not self.stroke:
             if "style_kwds" in kws:
                 kws["style_kwds"]["stroke"] = False
