@@ -274,6 +274,9 @@ class ViewNode:
     This node creates an interactive map view based on the selected geometric elements of the input table.
     It provides various dialog options to modify the appearance of teh view e.g. the base map, shape color and
     size.
+    The geometric elements are drawn in the order they appear in the input table. For example if you want to show
+    points within a polygon you want to have the points drawn last on top of the polygon. To do so sort the input
+    table to have polygons as first rows followed by the points.
     """
 
     geo_col = knext.ColumnParameter(
@@ -1028,17 +1031,17 @@ class ViewNodeKepler:
         map_1 = KeplerGl(show_docs=False)
         map_1.add_data(data=gdf.copy(), name="state")
         config = {}
-        if self.save_config:
-            # Save map_1 config to a file
-            # config_str = json.dumps(map_1.config)
-            # if type(config) == str:
-            #     config = config.encode("utf-8")
-            with open("kepler_config.json", "w") as f:
-                f.write(json.dumps(map_1.config))
+        # if self.save_config:
+        #     # Save map_1 config to a file
+        #     # config_str = json.dumps(map_1.config)
+        #     # if type(config) == str:
+        #     #     config = config.encode("utf-8")
+        #     with open("kepler_config.json", "w") as f:
+        #         f.write(json.dumps(map_1.config))
 
-        if self.load_config:
-            with open("kepler_config.json", "r") as f:
-                config = json.loads(f.read())
+        # if self.load_config:
+        #     with open("kepler_config.json", "r") as f:
+        #         config = json.loads(f.read())
         map_1.config = config
 
         html = map_1._repr_html_()
@@ -1100,6 +1103,10 @@ class ViewNodeHeatmap:
 
     This node will visualize the given data as interactive heatmap. The selected weight column defines
     the "heat" of each data point which is visualized on a world map.
+
+    The geometric elements are drawn in the order they appear in the input table. For example if you want to show
+    points within a polygon you want to have the points drawn last on top of the polygon. To do so sort the input
+    table to have polygons as first rows followed by the points.
 
     Please find more information about the heatmap [here](https://www.gislounge.com/heat-maps-in-gis/).
     """
