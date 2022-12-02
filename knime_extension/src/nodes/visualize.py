@@ -276,40 +276,10 @@ class SizeSettings:
         max_value=100,
     )
 
-@knext.node(
-    name="Geospatial View",
-    node_type=knext.NodeType.VISUALIZER,
-    icon_path=__NODE_ICON_PATH + "InteractiveMap.png",
-    category=category,
-    after="",
-)
-@knext.input_table(
-    name="Geospatial Table to Visualize",
-    description="Table with geospatial data to visualize",
-)
-@knext.output_view(
-    name="Geospatial View",
-    description="Showing a interactive map with the geospatial data",
-    static_resources="libs/leaflet/1.6.0",
-)
-class ViewNode:
-    """Creates an interactive map view based on the selected geometric elements of the input table.
-    This node creates an interactive map view based on the selected geometric elements of the input table.
-    It provides various dialog options to modify the appearance of teh view e.g. the base map, shape color and
-    size.
-    The geometric elements are drawn in the order they appear in the input table. For example if you want to show
-    points within a polygon you want to have the points drawn last on top of the polygon. To do so sort the input
-    table to have polygons as first rows followed by the points.
+@knext.parameter_group(label="Base Map Setting")
+class BaseMapSettings:
+    """Base map setting for the visualization.
     """
-
-    geo_col = knext.ColumnParameter(
-        "Geometry column",
-        "Select the geometry column to visualize.",
-        # "geometry",
-        column_filter=knut.is_geo,  # Allows all geo columns
-        include_row_key=False,
-        include_none_column=False,  # must contains a geometry column
-    )
 
     base_map = knext.StringParameter(
         "Base map",
@@ -377,6 +347,44 @@ class ViewNode:
         ],
     )
 
+
+@knext.node(
+    name="Geospatial View",
+    node_type=knext.NodeType.VISUALIZER,
+    icon_path=__NODE_ICON_PATH + "InteractiveMap.png",
+    category=category,
+    after="",
+)
+@knext.input_table(
+    name="Geospatial Table to Visualize",
+    description="Table with geospatial data to visualize",
+)
+@knext.output_view(
+    name="Geospatial View",
+    description="Showing a interactive map with the geospatial data",
+    static_resources="libs/leaflet/1.6.0",
+)
+class ViewNode:
+    """Creates an interactive map view based on the selected geometric elements of the input table.
+    This node creates an interactive map view based on the selected geometric elements of the input table.
+    It provides various dialog options to modify the appearance of teh view e.g. the base map, shape color and
+    size.
+    The geometric elements are drawn in the order they appear in the input table. For example if you want to show
+    points within a polygon you want to have the points drawn last on top of the polygon. To do so sort the input
+    table to have polygons as first rows followed by the points.
+    """
+
+    geo_col = knext.ColumnParameter(
+        "Geometry column",
+        "Select the geometry column to visualize.",
+        # "geometry",
+        column_filter=knut.is_geo,  # Allows all geo columns
+        include_row_key=False,
+        include_none_column=False,  # must contains a geometry column
+    )
+
+    basemap_setting = BaseMapSettings()
+
     stroke = knext.BoolParameter(
         "Stroke",
         "Whether to draw strokes along the polygon boundary.",
@@ -418,7 +426,7 @@ class ViewNode:
             # "column":self.color_col,
             # "cmap":self.color_map,
             "tooltip": self.name_cols,
-            "tiles": self.base_map,
+            "tiles": self.basemap_setting.base_map,
             "popup": self.popup_cols,
             "legend": self.legend_settings.plot,
             "m": None,
@@ -477,7 +485,7 @@ class ViewNode:
                         * max_size
                     }
                 }
-                kws["m"] = gdf.explore(tiles=self.base_map)
+                kws["m"] = gdf.explore(tiles=self.basemap_setting.base_map)
                 gdf[self.geo_col] = gdf.centroid
 
             else:
@@ -1127,6 +1135,8 @@ class ViewNodeHeatmap:
         include_none_column=False,
     )
 
+    basemap_settings = BaseMapSettings()
+
     weight_col = knext.ColumnParameter(
         "Weight column",
         "Select the weight column to visualize.",
@@ -1169,7 +1179,7 @@ class ViewNodeHeatmap:
 
         gdf = gp.GeoDataFrame(input_table.to_pandas(), geometry=self.geo_col)
 
-        map = gdf.explore()
+        map = gdf.explore(tiles = self.basemap_settings.base_map)
         gdf["lon"] = gdf.geometry.centroid.x
         gdf["lat"] = gdf.geometry.centroid.y
 
