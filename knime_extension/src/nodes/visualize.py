@@ -362,7 +362,7 @@ class ViewNode:
 
     size_col = knext.ColumnParameter(
         "Marker size column",
-        """Select marker size column. The size is fixed by default. If a size column is selected, the size will be 
+        """Select marker size column. The size is fixed by default. If the Maker size column is selected, the size will be 
         scaled by the values of the column. For point features, the size is the radius of the circle. 
         For line features, the size is the width of the line. For polygon features, the size is the radius of 
         the centroid of the polygon.""",
@@ -372,7 +372,8 @@ class ViewNode:
 
     size_scale = knext.IntParameter(
         "Marker size scale",
-        "Select the size scale of the markers.",
+        """Select the size scale of the markers. If the Maker size column is selected, this option will be ignored.
+        Noticed that the size scale only work for point features.""",
         default_value=1,
         min_value=1,
         max_value=100,
