@@ -72,13 +72,14 @@ def replace_external_js_css_paths(
 class ColorSettings:
     """
     Group of settings that define coloring of the geometric objects. The color column can be either nominal or numerical.
-    If a numerical column is selected the values need to be classified prior assigning a color to each class using
-    the color map information.
+    If a numerical column is selected you might want to enable the classification of the numeric values to group
+    them into bins prior assigning a color to each bin using the color map information.
     """
 
     color_col = knext.ColumnParameter(
         "Marker color column",
-        "Select marker color column to be plotted. If numerical adapt the classification settings accordingly.",
+        """Select marker color column to be plotted. If numerical you might want to adapt the classification 
+        settings accordingly.""",
         column_filter=knut.is_numeric_or_string,
         include_row_key=False,
         include_none_column=True,
@@ -196,15 +197,15 @@ class ColorSettings:
     )
 
     use_classify = knext.BoolParameter(
-        "Use classification",
-        """If checked, the color column will be classified using the selected classification method. 
-        The `Number of classes` will be used to determine the number of classes.""",
+        "Classify numerical marker color columns",
+        """If checked, a numerical marker color column will be classified using the selected classification method. 
+        The 'Number of classes' will be used to determine the number of bins.""",
         default_value=True,
     )
 
     classification_method = knext.StringParameter(
         "Classification method",
-        "Select the classification method to use for the numerical color column.",
+        "Select the classification method to use for the selected numerical marker color column.",
         default_value="EqualInterval",
         enum=[
             "BoxPlot",
@@ -226,7 +227,7 @@ class ColorSettings:
 
     classification_bins = knext.IntParameter(
         "Number of classes",
-        "Select the number of classes of the classification method.",
+        "Select the number of classes used by the classification method.",
         default_value=5,
         min_value=1,
         max_value=50,
@@ -257,6 +258,7 @@ class LegendSettings:
     node_type=knext.NodeType.VISUALIZER,
     icon_path=__NODE_ICON_PATH + "InteractiveMap.png",
     category=category,
+    after="",
 )
 @knext.input_table(
     name="Geospatial Table to Visualize",
@@ -270,6 +272,11 @@ class LegendSettings:
 class ViewNode:
     """Creates an interactive map view based on the selected geometric elements of the input table.
     This node creates an interactive map view based on the selected geometric elements of the input table.
+    It provides various dialog options to modify the appearance of teh view e.g. the base map, shape color and
+    size.
+    The geometric elements are drawn in the order they appear in the input table. For example if you want to show
+    points within a polygon you want to have the points drawn last on top of the polygon. To do so sort the input
+    table to have polygons as first rows followed by the points.
     """
 
     geo_col = knext.ColumnParameter(
@@ -364,7 +371,7 @@ class ViewNode:
     )
 
     size_scale = knext.IntParameter(
-        "Size scale",
+        "Marker size scale",
         "Select the size scale of the markers.",
         default_value=1,
         min_value=1,
@@ -372,13 +379,13 @@ class ViewNode:
     )
 
     name_cols = knext.MultiColumnParameter(
-        "Tooltip columns",
+        "Marker tooltip columns",
         "Select columns which should be shown in the marker tooltip.",
         column_filter=knut.is_numeric_or_string,
     )
 
     popup_cols = knext.MultiColumnParameter(
-        "Popup columns",
+        "Marker popup columns",
         "Select columns which should be shown in the marker popup.",
         column_filter=knut.is_numeric_or_string,
     )
@@ -506,14 +513,14 @@ class ViewNode:
 class StaticColorSettings:
     """
     Group of settings that define coloring of the geometric objects. The color column can be either nominal or numerical.
-    If a numerical column is selected the values need to be classified prior assigning a color to each class using
-    the color map information.
+    If a numerical column is selected you might want to enable the classification of the numeric values to group
+    them into bins prior assigning a color to each bin using the color map information.
     """
 
     color_col = knext.ColumnParameter(
         "Marker color column",
-        """Select one column to map to the marker color. If you select none, it will not map any column to color.
-         If you select a numerical column please enable classification and adapt the settings accordingly.""",
+        """Select marker color column to be plotted. If numerical you might want to adapt the classification 
+        settings accordingly.""",
         column_filter=knut.is_numeric_or_string,
         include_row_key=False,
         include_none_column=True,
@@ -556,15 +563,15 @@ class StaticColorSettings:
     )
 
     use_classify = knext.BoolParameter(
-        "Use classification",
-        """If checked, the numerical color column will be classified using the selected classification method. 
-        The `Number of classes` will be used to determine the number of classes.""",
+        "Classify numerical marker color columns",
+        """If checked, the numerical marker color column will be classified using the selected classification method. 
+        # The 'Number of classes' will be used to determine the number of bins.""",
         default_value=True,
     )
 
     classification_method = knext.StringParameter(
         "Classification method",
-        "Select the classification method to use for the color column.",
+        "Select the classification method to use for the selected numerical marker color column.",
         default_value="EqualInterval",
         enum=[
             "BoxPlot",
@@ -586,7 +593,7 @@ class StaticColorSettings:
 
     classification_bins = knext.IntParameter(
         "Number of classes",
-        "Select the number of classes of the classification method.",
+        "Select the number of classes used by the classification method.",
         default_value=5,
         min_value=1,
         max_value=50,
@@ -759,6 +766,7 @@ class StaticLegendSettings:
     node_type=knext.NodeType.VISUALIZER,
     icon_path=__NODE_ICON_PATH + "StaticMap.png",
     category=category,
+    after="",
 )
 @knext.input_table(
     name="Geospatial Table to Visualize",
@@ -768,8 +776,10 @@ class StaticLegendSettings:
     name="Geospatial View", description="Showing a map with the geospatial data"
 )
 class ViewNodeStatic:
-    """Creates a static map of the given geometric elements.
-    This node will visualize the given geometric elements on a static map.
+    """Creates a static visualization of the geometric elements.
+    This node will visualize the given geometric elements using the [matplotlib}(https://matplotlib.org/stable/).
+    It can be used to create [Choropleth Maps](https://en.wikipedia.org/wiki/Choropleth_map) by assigning
+    a marker color column. The node further supports various settings to adapt the legend to your needs.
     """
 
     geo_col = knext.ColumnParameter(
@@ -951,6 +961,7 @@ class ViewNodeStatic:
     node_type=knext.NodeType.VISUALIZER,
     icon_path=__NODE_ICON_PATH + "Kepler.gl.png",
     category=category,
+    after="",
 )
 @knext.input_table(
     name="Geospatial Table to Visualize",
@@ -962,10 +973,8 @@ class ViewNodeStatic:
     static_resources="libs/kepler/2.5.5",
 )
 class ViewNodeKepler:
-    """This node will visualize the given geometric elements on a map.
-    The geometry column must be required.
-    By default, it takes all column information that is included inside the input table.
-    If you want to limit the amount of information you should use the filter node before.
+    """Visualizes given geometric elements on a map.
+
     This node will visualize the given geometric elements on a map using the [kepler.gl](https://kepler.gl/)
     visualization framework. This view is highly interactive and allows you to change various aspects of the view
     within the visualization itself e.g. adding [layers](https://docs.kepler.gl/docs/user-guides/c-types-of-layers)
@@ -975,10 +984,15 @@ class ViewNodeKepler:
 
     This node uses the [Mapbox GL JS API](https://www.mapbox.com/pricing#map-loads-for-web) which for commercial
     usage might require an [access token](https://docs.mapbox.com/help/glossary/access-token/).
-
     If you want to use a different base map, you can configure it inside the interactive
-    view with Kepler.gl's UI. You can also configure the Mapbox style you want to use and
-    the access token there.
+    view with Kepler.gl's UI. You can also configure the
+    [Mapbox style](https://docs.kepler.gl/docs/user-guides/f-map-styles#custom-map-styles) you want to use and
+    the access token.
+
+
+    By default, it takes all column information that is included inside the input table.
+    If you want to limit the amount of information send to th e node view you can use the one of the
+    [column filter](https://kni.me/n/DOkyMaii62U05xZ1) nodes to filter the input table.
     """
 
     geo_col = knext.ColumnParameter(
@@ -1017,17 +1031,17 @@ class ViewNodeKepler:
         map_1 = KeplerGl(show_docs=False)
         map_1.add_data(data=gdf.copy(), name="state")
         config = {}
-        if self.save_config:
-            # Save map_1 config to a file
-            # config_str = json.dumps(map_1.config)
-            # if type(config) == str:
-            #     config = config.encode("utf-8")
-            with open("kepler_config.json", "w") as f:
-                f.write(json.dumps(map_1.config))
+        # if self.save_config:
+        #     # Save map_1 config to a file
+        #     # config_str = json.dumps(map_1.config)
+        #     # if type(config) == str:
+        #     #     config = config.encode("utf-8")
+        #     with open("kepler_config.json", "w") as f:
+        #         f.write(json.dumps(map_1.config))
 
-        if self.load_config:
-            with open("kepler_config.json", "r") as f:
-                config = json.loads(f.read())
+        # if self.load_config:
+        #     with open("kepler_config.json", "r") as f:
+        #         config = json.loads(f.read())
         map_1.config = config
 
         html = map_1._repr_html_()
@@ -1073,6 +1087,7 @@ class ViewNodeKepler:
     node_type=knext.NodeType.VISUALIZER,
     icon_path=__NODE_ICON_PATH + "SpatialHeatmap.png",
     category=category,
+    after="",
 )
 @knext.input_table(
     name="Table to Visualize",
@@ -1085,6 +1100,14 @@ class ViewNodeKepler:
 )
 class ViewNodeHeatmap:
     """This node will visualize the given data on a heatmap.
+
+    This node will visualize the given data as interactive heatmap. The selected weight column defines
+    the "heat" of each data point which is visualized on a world map.
+
+    The geometric elements are drawn in the order they appear in the input table. For example if you want to show
+    points within a polygon you want to have the points drawn last on top of the polygon. To do so sort the input
+    table to have polygons as first rows followed by the points.
+
     Please find more information about the heatmap [here](https://www.gislounge.com/heat-maps-in-gis/).
     """
 
@@ -1106,7 +1129,7 @@ class ViewNodeHeatmap:
 
     min_opacity = knext.DoubleParameter(
         "Minimum opacity",
-        "The minimum opacity the heat will start at.",
+        "The minimum opacity the lowest value in the heatmap will have.",
         default_value=0.5,
     )
 
@@ -1119,13 +1142,14 @@ class ViewNodeHeatmap:
 
     radius = knext.IntParameter(
         "Radius",
-        "Radius of each “point” of the heatmap",
+        "Radius of each datapoint of the heatmap",
         default_value=25,
     )
 
     blur = knext.IntParameter(
         "Blur",
-        "Amount of blur",
+        """The blur factor that will be applied to all datapoints. 
+        The higher the blur factor is, the smoother the gradients will be.""",
         default_value=15,
     )
 

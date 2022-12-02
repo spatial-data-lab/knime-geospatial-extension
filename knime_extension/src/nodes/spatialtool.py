@@ -52,6 +52,7 @@ class _JoinModes(knext.EnumParameterOptions):
     node_type=knext.NodeType.MANIPULATOR,
     icon_path=__NODE_ICON_PATH + "Buffer.png",
     category=__category,
+    after="",
 )
 @knext.input_table(
     name="Geo table",
@@ -82,14 +83,18 @@ class BufferNode:
         "Buffer distance", "The buffer distance for geometry. ", 1000.0
     )
 
-    def configure(self, configure_context, input_schema_1):
-        knut.column_exists(self.geo_col, input_schema_1)
+    def configure(self, configure_context, input_schema):
+        self.geo_col = knut.column_exists_or_preset(
+            configure_context, self.geo_col, input_schema, knut.is_geo
+        )
         return None
 
-    def execute(self, exec_context: knext.ExecutionContext, input_1):
-        gdf = gp.GeoDataFrame(input_1.to_pandas(), geometry=self.geo_col)
+    def execute(self, exec_context: knext.ExecutionContext, input):
+        gdf = gp.GeoDataFrame(input.to_pandas(), geometry=self.geo_col)
         exec_context.set_progress(0.3, "Geo data frame loaded. Starting buffering...")
-        gdf["geometry"] = gdf.buffer(self.bufferdist)
+        gdf[knut.get_unique_column_name("geometry", input.schema)] = gdf.buffer(
+            self.bufferdist
+        )
         exec_context.set_progress(0.1, "Buffering done")
         LOGGER.debug(
             "Feature geometry " + self.geo_col + " buffered with" + str(self.bufferdist)
@@ -107,6 +112,7 @@ class BufferNode:
     node_type=knext.NodeType.MANIPULATOR,
     icon_path=__NODE_ICON_PATH + "Dissolve.png",
     category=__category,
+    after="",
 )
 @knext.input_table(
     name="Geo table",
@@ -142,8 +148,10 @@ class DissolveNode:
         include_none_column=False,
     )
 
-    def configure(self, configure_context, input_schema_1):
-        knut.column_exists(self.geo_col, input_schema_1)
+    def configure(self, configure_context, input_schema):
+        self.geo_col = knut.column_exists_or_preset(
+            configure_context, self.geo_col, input_schema, knut.is_geo
+        )
         return None
 
     def execute(self, exec_context: knext.ExecutionContext, input_1):
@@ -168,6 +176,7 @@ class DissolveNode:
     node_type=knext.NodeType.MANIPULATOR,
     icon_path=__NODE_ICON_PATH + "SpatialJoin.png",
     category=__category,
+    after="",
 )
 @knext.input_table(
     name="Left geo table",
@@ -310,6 +319,7 @@ class SpatialJoinNode:
     node_type=knext.NodeType.MANIPULATOR,
     icon_path=__NODE_ICON_PATH + "NearestJoin.png",
     category=__category,
+    after="",
 )
 @knext.input_table(
     name="Left geo table",
@@ -421,6 +431,7 @@ class NearestJoinNode:
     node_type=knext.NodeType.MANIPULATOR,
     icon_path=__NODE_ICON_PATH + "Clip.png",
     category=__category,
+    after="",
 )
 @knext.input_table(
     name="Left geo table",
@@ -484,10 +495,12 @@ class ClipNode:
         )
         knut.check_canceled(exec_context)
         right_gdf = right_gdf.to_crs(left_gdf.crs)
-        # gdf_clip = gp.clip(left_gdf, right_gdf)
-        gdf_clipnew = gp.clip(left_gdf, right_gdf, keep_geom_type=True)
-        # gdf_clipnew = gp.GeoDataFrame(geometry=gdf_clip.geometry)
-        # =gdf_clip.reset_index(drop=True)
+        try:
+            gdf_clipnew = gp.clip(left_gdf, right_gdf, keep_geom_type=True)
+            r = knext.Table.from_pandas(gdf_clipnew)
+        except:
+            raise ValueError("Improper Mask Geometry")
+
         return knext.Table.from_pandas(gdf_clipnew)
 
 
@@ -501,6 +514,7 @@ class ClipNode:
     node_type=knext.NodeType.MANIPULATOR,
     icon_path=__NODE_ICON_PATH + "SpatialOverlay.png",
     category=__category,
+    after="",
 )
 @knext.input_table(
     name="Left geo table",
@@ -614,6 +628,7 @@ class OverlayNode:
     node_type=knext.NodeType.MANIPULATOR,
     icon_path=__NODE_ICON_PATH + "EuclideanDistance.png",
     category=__category,
+    after="",
 )
 @knext.input_table(
     name="Left geo table",
@@ -700,6 +715,7 @@ class EuclideanDistanceNode:
     node_type=knext.NodeType.MANIPULATOR,
     icon_path=__NODE_ICON_PATH + "MultipleRingBuffer.png",
     category=__category,
+    after="",
 )
 @knext.input_table(
     name="Geo table",
@@ -766,13 +782,18 @@ class MultiRingBufferNode:
         # sort list
         bufferlist = bufferlist.tolist()
         bufferlist.sort()
-        c1 = gp.GeoDataFrame(geometry=gdf.buffer(bufferlist[0]))
-        c2 = gp.GeoDataFrame(geometry=gdf.buffer(bufferlist[1]))
+        if gdf.shape[0] > 1:
+            gdf_union = gdf.unary_union
+            gdfunion = gp.GeoDataFrame(geometry=gp.GeoSeries(gdf_union), crs=gdf.crs)
+        else:
+            gdfunion = gdf
+        c1 = gp.GeoDataFrame(geometry=gdfunion.buffer(bufferlist[0]))
+        c2 = gp.GeoDataFrame(geometry=gdfunion.buffer(bufferlist[1]))
         gdf0 = gp.overlay(c1, c2, how="union")
         if len(bufferlist) > 2:
             # Construct all other rings by loop
             for i in range(2, len(bufferlist)):
-                ci = gp.GeoDataFrame(geometry=gdf.buffer(bufferlist[i]))
+                ci = gp.GeoDataFrame(geometry=gdfunion.buffer(bufferlist[i]))
                 gdf0 = gp.overlay(gdf0, ci, how="union")
         # Add ring radius values as a new column
         gdf0["dist"] = bufferlist
@@ -791,6 +812,7 @@ class MultiRingBufferNode:
     node_type=knext.NodeType.MANIPULATOR,
     icon_path=__NODE_ICON_PATH + "Simplify.png",
     category=__category,
+    after="",
 )
 @knext.input_table(
     name="Geo table",
@@ -834,11 +856,13 @@ class SimplifyNode:
         self.geo_col = knut.column_exists_or_preset(
             configure_context, self.geo_col, input_schema_1, knut.is_geo
         )
-        return input_schema_1
+        return None
 
     def execute(self, exec_context: knext.ExecutionContext, input_1):
         gdf = gp.GeoDataFrame(input_1.to_pandas(), geometry=self.geo_col)
-        gdf["geometry"] = gdf.geometry.simplify(self.simplifydist)
+        gdf[
+            knut.get_unique_column_name("geometry", input.schema)
+        ] = gdf.geometry.simplify(self.simplifydist)
         gdf = gdf.reset_index(drop=True)
         exec_context.set_progress(0.1, "Transformation done")
         LOGGER.debug("Feature Simplified")
@@ -855,6 +879,7 @@ class SimplifyNode:
     node_type=knext.NodeType.MANIPULATOR,
     icon_path=__NODE_ICON_PATH + "CreateGrid.png",
     category=__category,
+    after="",
 )
 @knext.input_table(
     name="Input Table",
@@ -878,7 +903,9 @@ class CreateGrid:
     )
 
     def configure(self, configure_context, input_schema):
-
+        self.geo_col = knut.column_exists_or_preset(
+            configure_context, self.geo_col, input_schema, knut.is_geo
+        )
         return None
 
     def execute(self, exec_context: knext.ExecutionContext, input_table):
@@ -927,6 +954,7 @@ class CreateGrid:
     node_type=knext.NodeType.MANIPULATOR,
     icon_path=__NODE_ICON_PATH + "HaversineDist.png",
     category=__category,
+    after="",
 )
 @knext.input_table(
     name="Input Table",

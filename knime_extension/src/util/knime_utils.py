@@ -20,15 +20,30 @@ LOGGER = logging.getLogger(__name__)
 DEFAULT_CRS = "epsg:4326"
 """Default coordinate reference system."""
 
-DEF_CRS_DESCRIPTION = """[Coordinate reference system (CRS)](https://en.wikipedia.org/wiki/Spatial_reference_system).
-        Supports the following input types:
+DEF_CRS_DESCRIPTION = """Enter the 
+        [Coordinate reference system (CRS)](https://en.wikipedia.org/wiki/Spatial_reference_system) to use.
+
+        Common [EPSG codes](https://en.wikipedia.org/wiki/EPSG_Geodetic_Parameter_Dataset) that can be universally 
+        used for mapping coordinates everywhere in the world are 
+        [epsg:4326 (WGS 84, Unit: degree)](https://epsg.io/4326) (Latitude/longitude coordinate system based 
+        on the Earth's center of mass;  Used by the Global Positioning System among others) and 
+        [epsg:3857 (Unit: meter)](https://epsg.io/3857) (Web Mercator projection used by many web-based mapping tools,
+        including Google Maps and OpenStreetMap.). 
+        
+        There are EPSG codes for specific regions that provide a higher accuracy in these regions, such as 
+        [epsg:4269 (NAD83, Unit: degree)](https://epsg.io/4269) 
+        and [epsg:26918 (NAD83 18N, Unit: meter)](https://epsg.io/26918) for North America, 
+        and [epsg:4490 (CGCS2000, Unit: degree)](https://epsg.io/4490) 
+        and [epsg:4479 (CGCS2000, Unit: meter)](https://epsg.io/4479) for China.
+        
+        The input field supports the following input types:
         
         - An authority string [i.e. 'epsg:4326']
         - An EPSG integer code [i.e. 4326]
         - A tuple of ('auth_name': 'auth_code') [i.e ('epsg', '4326')]
-        - CRS WKT string
-        - PROJ string
-        - JSON string with PROJ parameters
+        - [CRS WKT string](https://www.ogc.org/standards/wkt-crs)
+        - [PROJ string](https://proj.org/usage/quickstart.html)
+        - JSON string with [PROJ parameters](https://proj.org/specifications/projjson.html)
         """
 
 
@@ -266,7 +281,7 @@ def census_node_description(short_description: str, description: str, references
         s = f"{short_description}\n"
         s += f"{description}\n\n"
         # s += "___\n\n"  # separator line between description and general part
-        s += "The node is based on the data from [US Census](https://www.census.gov/)  and here are related data sources and references"
+        s += "The node is based on the data from [US Census](https://www.census.gov/) and [FIPS code](https://www.census.gov/library/reference/code-lists/ansi.html) and here are related data sources and references"
         if references is not None:
             if len(references) > 1:
                 s += "s"
@@ -493,3 +508,14 @@ def check_canceled(exec_context: knext.ExecutionContext) -> None:
     """
     if exec_context.is_canceled():
         raise RuntimeError("Execution canceled")
+
+
+def ensure_file_extension(file_name: str, file_extension: str) -> str:
+    """
+    Checks if the given file_name ends with the given file_extension and if not appends it to the returned file_name.
+    """
+    if not file_name:
+        raise knext.InvalidParametersError("Please enter a valid file name")
+    if file_name.lower().endswith(file_extension):
+        return file_name
+    return file_name + file_extension

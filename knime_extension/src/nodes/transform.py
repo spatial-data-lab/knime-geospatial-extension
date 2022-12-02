@@ -30,6 +30,7 @@ category = knext.category(
     node_type=knext.NodeType.MANIPULATOR,
     icon_path="icons/icon/GeometryTransformation/Projection.png",
     category=category,
+    after="",
 )
 @knext.input_table(
     name="Geo table",
@@ -87,6 +88,7 @@ class CrsTransformerNode:
     node_type=knext.NodeType.MANIPULATOR,
     icon_path="icons/icon/GeometryTransformation/FeatureToPoint.png",
     category=category,
+    after="",
 )
 @knext.input_table(
     name="Geo table",
@@ -152,6 +154,7 @@ class GeometryToPointNode:
     node_type=knext.NodeType.MANIPULATOR,
     icon_path="icons/icon/GeometryTransformation/Explode.png",
     category=category,
+    after="",
 )
 @knext.input_table(
     name="Geo table",
@@ -204,6 +207,7 @@ class ExplodeNode:
     node_type=knext.NodeType.MANIPULATOR,
     icon_path="icons/icon/GeometryTransformation/PolygonToLine.png",
     category=category,
+    after="",
 )
 @knext.input_table(
     name="Geo table",
@@ -259,6 +263,7 @@ class PolygonToLineNode:
     node_type=knext.NodeType.MANIPULATOR,
     icon_path="icons/icon/GeometryTransformation/PointToLine.png",
     category=category,
+    after="",
 )
 @knext.input_table(
     name="Geo table",
@@ -340,6 +345,7 @@ class PointsToLineNode:
     node_type=knext.NodeType.MANIPULATOR,
     icon_path="icons/icon/GeometryTransformation/LinePolygonToPoints.png",
     category=category,
+    after="",
 )
 @knext.input_table(
     name="Geo table",

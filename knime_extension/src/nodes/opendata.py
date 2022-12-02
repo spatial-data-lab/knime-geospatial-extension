@@ -28,6 +28,7 @@ __NODE_ICON_PATH = "icons/icon/OpenDataset/"
     node_type=knext.NodeType.SOURCE,
     icon_path=__NODE_ICON_PATH + "UStiger.png",
     category=__category,
+    after="",
 )
 @knext.output_table(
     name="TIGER Line Table ",
@@ -37,25 +38,27 @@ __NODE_ICON_PATH = "icons/icon/OpenDataset/"
     short_description="Retrieve geospatial data from US Census TIGER/Line",
     description="This node retrieves the specific geospatial boundaries for one specific state of the United States."
     + "The popular TIGER/Line levels are Block group, Roads, Blocks,Tracts."
-    + "When the same State FIPS (2-digits) is used for County FIPS(3-digits), the geodata of all counties in the state will be retrieved,"
-    + "county10/20 and state10/20 can only be applicable in this case. ",
+    + "When the same State FIPS (2-digits) or * is used for County FIPS(3-digits), the geodata of all counties in the state will be retrieved,"
+    + "county10/20 and state10/20 can only be applicable in this case. "
+    + "This node can help user to get the FIPS codes of target study area. Linking it to Geospatial View node will be more helpful. ",
     references={
         "TIGER/Line Shapefiles": "https://www.census.gov/geographies/mapping-files/time-series/geo/tiger-line-file.2020.html",
         "FTP Archive by State": "https://www2.census.gov/geo/tiger/TIGER2020PL/STATE/",
         "FTP Archive by Layer": "https://www2.census.gov/geo/tiger/TIGER2020PL/LAYER/",
+        "FIPS code list": "https://transition.fcc.gov/oet/info/maps/census/fips/fips.txt",
     },
 )
 class US2020TIGERNode:
 
     StateFips = knext.StringParameter(
         label="State FIPS (2-digits)",
-        description="The State to use",
+        description="The State to use [FIPS](https://transition.fcc.gov/oet/info/maps/census/fips/fips.txt)",
         default_value="",
     )
 
     County3Fips = knext.StringParameter(
-        "County FIPS(3-digits)/ or State FIPS ",
-        "The County/State FIPS code to use",
+        "County FIPS(3-digits)/ State FIPS or * ",
+        "The County/State FIPS code to use [FIPS](https://transition.fcc.gov/oet/info/maps/census/fips/fips.txt)",
         "",
     )
 
@@ -93,112 +96,112 @@ class US2020TIGERNode:
         USdict = pd.DataFrame.from_dict(
             {
                 "state": [
-                    '01',
-                    '02',
-                    '04',
-                    '05',
-                    '06',
-                    '08',
-                    '09',
-                    '10',
-                    '11',
-                    '12',
-                    '13',
-                    '15',
-                    '16',
-                    '17',
-                    '18',
-                    '19',
-                    '20',
-                    '21',
-                    '22',
-                    '23',
-                    '24',
-                    '25',
-                    '26',
-                    '27',
-                    '28',
-                    '29',
-                    '30',
-                    '31',
-                    '32',
-                    '33',
-                    '34',
-                    '35',
-                    '36',
-                    '37',
-                    '38',
-                    '39',
-                    '40',
-                    '41',
-                    '42',
-                    '44',
-                    '45',
-                    '46',
-                    '47',
-                    '48',
-                    '49',
-                    '50',
-                    '51',
-                    '53',
-                    '54',
-                    '55',
-                    '56',
-                    '72',
+                    "01",
+                    "02",
+                    "04",
+                    "05",
+                    "06",
+                    "08",
+                    "09",
+                    "10",
+                    "11",
+                    "12",
+                    "13",
+                    "15",
+                    "16",
+                    "17",
+                    "18",
+                    "19",
+                    "20",
+                    "21",
+                    "22",
+                    "23",
+                    "24",
+                    "25",
+                    "26",
+                    "27",
+                    "28",
+                    "29",
+                    "30",
+                    "31",
+                    "32",
+                    "33",
+                    "34",
+                    "35",
+                    "36",
+                    "37",
+                    "38",
+                    "39",
+                    "40",
+                    "41",
+                    "42",
+                    "44",
+                    "45",
+                    "46",
+                    "47",
+                    "48",
+                    "49",
+                    "50",
+                    "51",
+                    "53",
+                    "54",
+                    "55",
+                    "56",
+                    "72",
                 ],
                 "stateName": [
-                    'ALABAMA',
-                    'ALASKA',
-                    'ARIZONA',
-                    'ARKANSAS',
-                    'CALIFORNIA',
-                    'COLORADO',
-                    'CONNECTICUT',
-                    'DELAWARE',
-                    'DISTRICT_OF_COLUMBIA',
-                    'FLORIDA',
-                    'GEORGIA',
-                    'HAWAII',
-                    'IDAHO',
-                    'ILLINOIS',
-                    'INDIANA',
-                    'IOWA',
-                    'KANSAS',
-                    'KENTUCKY',
-                    'LOUISIANA',
-                    'MAINE',
-                    'MARYLAND',
-                    'MASSACHUSETTS',
-                    'MICHIGAN',
-                    'MINNESOTA',
-                    'MISSISSIPPI',
-                    'MISSOURI',
-                    'MONTANA',
-                    'NEBRASKA',
-                    'NEVADA',
-                    'NEW_HAMPSHIRE',
-                    'NEW_JERSEY',
-                    'NEW_MEXICO',
-                    'NEW_YORK',
-                    'NORTH_CAROLINA',
-                    'NORTH_DAKOTA',
-                    'OHIO',
-                    'OKLAHOMA',
-                    'OREGON',
-                    'PENNSYLVANIA',
-                    'RHODE_ISLAND',
-                    'SOUTH_CAROLINA',
-                    'SOUTH_DAKOTA',
-                    'TENNESSEE',
-                    'TEXAS',
-                    'UTAH',
-                    'VERMONT',
-                    'VIRGINIA',
-                    'WASHINGTON',
-                    'WEST_VIRGINIA',
-                    'WISCONSIN',
-                    'WYOMING',
-                    'PUERTO_RICO',
+                    "ALABAMA",
+                    "ALASKA",
+                    "ARIZONA",
+                    "ARKANSAS",
+                    "CALIFORNIA",
+                    "COLORADO",
+                    "CONNECTICUT",
+                    "DELAWARE",
+                    "DISTRICT_OF_COLUMBIA",
+                    "FLORIDA",
+                    "GEORGIA",
+                    "HAWAII",
+                    "IDAHO",
+                    "ILLINOIS",
+                    "INDIANA",
+                    "IOWA",
+                    "KANSAS",
+                    "KENTUCKY",
+                    "LOUISIANA",
+                    "MAINE",
+                    "MARYLAND",
+                    "MASSACHUSETTS",
+                    "MICHIGAN",
+                    "MINNESOTA",
+                    "MISSISSIPPI",
+                    "MISSOURI",
+                    "MONTANA",
+                    "NEBRASKA",
+                    "NEVADA",
+                    "NEW_HAMPSHIRE",
+                    "NEW_JERSEY",
+                    "NEW_MEXICO",
+                    "NEW_YORK",
+                    "NORTH_CAROLINA",
+                    "NORTH_DAKOTA",
+                    "OHIO",
+                    "OKLAHOMA",
+                    "OREGON",
+                    "PENNSYLVANIA",
+                    "RHODE_ISLAND",
+                    "SOUTH_CAROLINA",
+                    "SOUTH_DAKOTA",
+                    "TENNESSEE",
+                    "TEXAS",
+                    "UTAH",
+                    "VERMONT",
+                    "VIRGINIA",
+                    "WASHINGTON",
+                    "WEST_VIRGINIA",
+                    "WISCONSIN",
+                    "WYOMING",
+                    "PUERTO_RICO",
                 ],
             }
         )
@@ -232,6 +235,7 @@ class US2020TIGERNode:
     node_type=knext.NodeType.SOURCE,
     icon_path=__NODE_ICON_PATH + "UScensus.png",
     category=__category,
+    after="",
 )
 @knext.output_table(
     name="Census data table",
@@ -252,19 +256,20 @@ class US2020TIGERNode:
         "Geography": "https://api.census.gov/data/2020/dec/pl/geography.html",
         "Variables": "https://api.census.gov/data/2020/dec/pl/variables.html",
         "Census API examples": "https://api.census.gov/data/2020/dec/pl/examples.html",
+        "FIPS code list": "https://transition.fcc.gov/oet/info/maps/census/fips/fips.txt",
     },
 )
 class USCensus2020Node:
 
     StateFips = knext.StringParameter(
         "State FIPS (2-digits)",
-        "The State to investigate, input * for all states (while choose county for geography)",
+        "The State [FIPS](https://transition.fcc.gov/oet/info/maps/census/fips/fips.txt) to investigate, input * for all states (while choose county for geography)",
         "25",
     )
 
     County3Fips = knext.StringParameter(
         "County FIPS (3-digits)",
-        "The County to investigate, input * for all counties",
+        "The County [FIPS](https://transition.fcc.gov/oet/info/maps/census/fips/fips.txt) to investigate, input * for all counties",
         "017",
     )
 
@@ -318,6 +323,7 @@ class USCensus2020Node:
     node_type=knext.NodeType.SOURCE,
     icon_path=__NODE_ICON_PATH + "CensusACS.png",
     category=__category,
+    after="",
 )
 @knext.output_table(
     name="US Census ACS 5-Year table",
@@ -339,19 +345,20 @@ class USCensus2020Node:
         "Geography": "https://api.census.gov/data/2020/acs/acs5/geography.html",
         "Variables": "https://api.census.gov/data/2020/acs/acs5/variables.html",
         "Census API examples": "https://api.census.gov/data/2020/acs/acs5/subject/examples.html",
+        "FIPS code list": "https://transition.fcc.gov/oet/info/maps/census/fips/fips.txt",
     },
 )
 class UScensusACSNode:
 
     StateFips = knext.StringParameter(
         "State FIPS (2-digits)",
-        "The State to investigate, input * for all states (while choose county for geography)",
+        "The State [FIPS](https://transition.fcc.gov/oet/info/maps/census/fips/fips.txt) to investigate, input * for all states (while choose county for geography)",
         "25",
     )
 
     County3Fips = knext.StringParameter(
         "County FIPS (3-digits)",
-        "The County to investigate, input * for all counties",
+        "The County [FIPS](https://transition.fcc.gov/oet/info/maps/census/fips/fips.txt) to investigate, input * for all counties",
         "017",
     )
 
@@ -412,6 +419,7 @@ class UScensusACSNode:
     node_type=knext.NodeType.SOURCE,
     icon_path=__NODE_ICON_PATH + "OSMpoi.png",
     category=__category,
+    after="",
 )
 @knext.input_table(
     name="Polygon Data",
@@ -483,6 +491,7 @@ class OSMdataNode:
     node_type=knext.NodeType.SOURCE,
     icon_path=__NODE_ICON_PATH + "OSMnetwork.png",
     category=__category,
+    after="",
 )
 @knext.input_table(
     name="Polygon Data",
@@ -535,7 +544,13 @@ class OSMnetworkNode:
             G = ox.add_edge_travel_times(G)
         edges = ox.utils_graph.graph_to_gdfs(G, nodes=False)
         objcolumn = edges.select_dtypes(include=["object"]).columns.tolist()
-        edges[objcolumn] = edges[objcolumn].astype("string")
+        # Convert each element of the dataframe to a string but sort lists before doing so
+        def convert_to_string(v):
+            if type(v) == list:
+                v.sort()
+            return str(v)
+
+        edges[objcolumn] = edges[objcolumn].applymap(convert_to_string)
         edges = edges.reset_index(drop=True)
         return knext.Table.from_pandas(edges)
 
@@ -548,6 +563,7 @@ class OSMnetworkNode:
     node_type=knext.NodeType.SOURCE,
     icon_path=__NODE_ICON_PATH + "OSMboundary.png",
     category=__category,
+    after="",
 )
 @knext.output_table(
     name="OSM GeoBoundary data",
