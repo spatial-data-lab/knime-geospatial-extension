@@ -31,7 +31,7 @@ __NODE_ICON_PATH = "icons/icon/LocationAnalysis/"
     node_type=knext.NodeType.MANIPULATOR,
     icon_path=__NODE_ICON_PATH + "pmedian.png",
     category=__category,
-    after=""
+    after="",
 )
 @knext.input_table(
     name="Input OD list with geometries ",
@@ -128,7 +128,7 @@ class PmedianNode:
         # ])
 
     def execute(self, exec_context: knext.ExecutionContext, input_1):
-        df = gp.GeoDataFrame(input_1.to_pandas(),geometry=self.DemandGeometry)
+        df = gp.GeoDataFrame(input_1.to_pandas(), geometry=self.DemandGeometry)
         # Sort with DID and SID
         df = df.sort_values(by=[self.DemandID, self.SupplyID]).reset_index(drop=True)
 
@@ -148,10 +148,9 @@ class PmedianNode:
             .rename(columns={"index": self.SupplyID, self.SupplyGeometry: "geometry"})
         )
         DemandPt = gp.GeoDataFrame(DemandPt, geometry="geometry")
-        SupplyPt = gp.GeoDataFrame(SupplyPt, geometry="geometry")        
+        SupplyPt = gp.GeoDataFrame(SupplyPt, geometry="geometry")
         DemandPt = DemandPt.set_crs(df.crs)
         SupplyPt = SupplyPt.set_crs(df.crs)
-
 
         # calculate parameter for matrix
         num_trt = DemandPt.shape[0]
@@ -217,13 +216,13 @@ class PmedianNode:
         DemandPt["linxy"] = [
             LineString(xy) for xy in zip(DemandPt["geometry"], DemandPt["SIDcoord"])
         ]
-        DemandPt["SIDwkt"] = DemandPt.set_geometry("SIDcoord").geometry.to_wkt()
-        DemandPt["Linewkt"] = DemandPt.set_geometry("linxy").geometry.to_wkt()
+        SIDwkt = gp.GeoDataFrame(geometry=DemandPt.SIDcoord, crs=df.crs)
+        Linewkt = gp.GeoDataFrame(geometry=DemandPt.linxy, crs=df.crs)
+        DemandPt["SIDwkt"] = SIDwkt.geometry
+        DemandPt["Linewkt"] = Linewkt.geometry
         DemandPt = DemandPt.drop(columns=["linxy", "SIDcoord"])
         DemandPt = DemandPt.reset_index(drop=True)
-        # DemandPt=DemandPt.rename(columns={'geometry':'DIDgeometry'})
-        gdf = gp.GeoDataFrame(DemandPt, geometry="geometry", crs=df.crs)
-        return knext.Table.from_pandas(gdf)
+        return knext.Table.from_pandas(DemandPt)
 
 
 ############################################
@@ -234,7 +233,7 @@ class PmedianNode:
     node_type=knext.NodeType.MANIPULATOR,
     icon_path=__NODE_ICON_PATH + "LSCP.png",
     category=__category,
-    after=""
+    after="",
 )
 @knext.input_table(
     name="Input OD list with geometries ",
@@ -322,7 +321,7 @@ class LSCPNode:
         # ])
 
     def execute(self, exec_context: knext.ExecutionContext, input_1):
-        df = gp.GeoDataFrame(input_1.to_pandas(),geometry=self.DemandGeometry)
+        df = gp.GeoDataFrame(input_1.to_pandas(), geometry=self.DemandGeometry)
         # Sort with DID and SID
         df = df.sort_values(by=[self.DemandID, self.SupplyID]).reset_index(drop=True)
 
@@ -407,13 +406,13 @@ class LSCPNode:
         DemandPt["linxy"] = [
             LineString(xy) for xy in zip(DemandPt["geometry"], DemandPt["SIDcoord"])
         ]
-        DemandPt["SIDwkt"] = DemandPt.set_geometry("SIDcoord").geometry.to_wkt()
-        DemandPt["Linewkt"] = DemandPt.set_geometry("linxy").geometry.to_wkt()
-
+        SIDwkt = gp.GeoDataFrame(geometry=DemandPt.SIDcoord, crs=df.crs)
+        Linewkt = gp.GeoDataFrame(geometry=DemandPt.linxy, crs=df.crs)
+        DemandPt["SIDwkt"] = SIDwkt.geometry
+        DemandPt["Linewkt"] = Linewkt.geometry
         DemandPt = DemandPt.drop(columns=["linxy", "SIDcoord"])
         DemandPt = DemandPt.reset_index(drop=True)
-        gdf = gp.GeoDataFrame(DemandPt, geometry="geometry", crs=df.crs)
-        return knext.Table.from_pandas(gdf)
+        return knext.Table.from_pandas(DemandPt)
 
 
 ############################################
@@ -424,7 +423,7 @@ class LSCPNode:
     node_type=knext.NodeType.MANIPULATOR,
     icon_path=__NODE_ICON_PATH + "MCLP.png",
     category=__category,
-    after=""
+    after="",
 )
 @knext.input_table(
     name="Input OD list with geometries ",
@@ -524,7 +523,7 @@ class MCLPNode:
         # ])
 
     def execute(self, exec_context: knext.ExecutionContext, input_1):
-        df = gp.GeoDataFrame(input_1.to_pandas(),geometry=self.DemandGeometry)
+        df = gp.GeoDataFrame(input_1.to_pandas(), geometry=self.DemandGeometry)
         # Sort with DID and SID
         df = df.sort_values(by=[self.DemandID, self.SupplyID]).reset_index(drop=True)
 
@@ -613,10 +612,10 @@ class MCLPNode:
         DemandPt["linxy"] = [
             LineString(xy) for xy in zip(DemandPt["geometry"], DemandPt["SIDcoord"])
         ]
-        DemandPt["SIDwkt"] = DemandPt.set_geometry("SIDcoord").geometry.to_wkt()
-        DemandPt["Linewkt"] = DemandPt.set_geometry("linxy").geometry.to_wkt()
+        SIDwkt = gp.GeoDataFrame(geometry=DemandPt.SIDcoord, crs=df.crs)
+        Linewkt = gp.GeoDataFrame(geometry=DemandPt.linxy, crs=df.crs)
+        DemandPt["SIDwkt"] = SIDwkt.geometry
+        DemandPt["Linewkt"] = Linewkt.geometry
         DemandPt = DemandPt.drop(columns=["linxy", "SIDcoord"])
         DemandPt = DemandPt.reset_index(drop=True)
-        # DemandPt=DemandPt.rename(columns={'geometry':'DIDgeometry'})
-        gdf = gp.GeoDataFrame(DemandPt, geometry="geometry", crs=df.crs)
-        return knext.Table.from_pandas(gdf)
+        return knext.Table.from_pandas(DemandPt)
