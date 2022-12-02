@@ -495,10 +495,12 @@ class ClipNode:
         )
         knut.check_canceled(exec_context)
         right_gdf = right_gdf.to_crs(left_gdf.crs)
-        # gdf_clip = gp.clip(left_gdf, right_gdf)
-        gdf_clipnew = gp.clip(left_gdf, right_gdf, keep_geom_type=True)
-        # gdf_clipnew = gp.GeoDataFrame(geometry=gdf_clip.geometry)
-        # =gdf_clip.reset_index(drop=True)
+        try:
+            gdf_clipnew = gp.clip(left_gdf, right_gdf, keep_geom_type=True)
+            r = knext.Table.from_pandas(gdf_clipnew)
+        except:
+            raise ValueError("Improper Mask Geometry")
+
         return knext.Table.from_pandas(gdf_clipnew)
 
 
