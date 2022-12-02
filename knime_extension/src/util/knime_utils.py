@@ -508,3 +508,14 @@ def check_canceled(exec_context: knext.ExecutionContext) -> None:
     """
     if exec_context.is_canceled():
         raise RuntimeError("Execution canceled")
+
+
+def ensure_file_extension(file_name: str, file_extension: str) -> str:
+    """
+    Checks if the given file_name ends with the given file_extension and if not appends it to the returned file_name.
+    """
+    if not file_name:
+        raise knext.InvalidParametersError("Please enter a valid file name")
+    if file_name.lower().endswith(file_extension):
+        return file_name
+    return file_name + file_extension
