@@ -237,9 +237,9 @@ class LegendSettings:
 @knext.parameter_group(label="Size Settings")
 class SizeSettings:
     """
-    Group of settings that define the size of the geometric objects. The size column should be numerical. 
+    Group of settings that define the size of the geometric objects. The size column should be numerical.
     The size is fixed by default. If the `Maker size column` is selected, the `Marker size scale` option will
-    be ignored, and size will be scaled by the values of the column. For point features, the size is the radius 
+    be ignored, and size will be scaled by the values of the column. For point features, the size is the radius
     of the circle. For line features, the size is the width of the line. For polygon features, the size is the
     radius of the centroid of the polygon.
     """
@@ -1130,7 +1130,7 @@ class ViewNodeHeatmap:
     points within a polygon you want to have the points drawn last on top of the polygon. To do so sort the input
     table to have polygons as first rows followed by the points.
 
-    Please make sure the input table does not contain any rows with missing values. 
+    Please make sure the input table does not contain any rows with missing values.
 
     Find more information about the supported options in [folium.plugins.HeatMap](https://python-visualization.github.io/folium/plugins.html#folium.plugins.HeatMap).
 

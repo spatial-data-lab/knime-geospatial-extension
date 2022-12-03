@@ -587,8 +587,13 @@ class LocalGetisOrd:
     """
 
     # input parameters
-    knut.geo_col_parameter(
-        description="The column containing the geometry to use for local Getis-Ord.",
+
+    geo_col = knext.ColumnParameter(
+        "Geometry column",
+        "The column containing the geometry to use for local Getis-Ord.",
+        column_filter=knut.is_geo,
+        include_row_key=False,
+        include_none_column=False,
     )
 
     Field_col = knext.ColumnParameter(
