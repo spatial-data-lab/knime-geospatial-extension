@@ -28,12 +28,12 @@ def replace_external_js_css_paths(
     regex_patter: str = '(<script src="|<link( rel="stylesheet")? href=")https?[^"]*\/([^"]*)"( rel="stylesheet")?',
 ) -> str:
     """
-    Uses a regular expression to find all script and stylesheet tags in a given html page.
+    Uses a regular expression to find all script and stylesheet tags in a given HTML page.
     The first matching group is either the script ar stylesheet part up until the opening " of the
     URL. The second matching group is the file name.
     The method will also add the closing ".
 
-    For example if the html code is <script src="https://cdn.jsdelivr.net/npm/leaflet@1.6.0/dist/leaflet.js">
+    For example if the HTML code is <script src="https://cdn.jsdelivr.net/npm/leaflet@1.6.0/dist/leaflet.js">
     the first group is <script src=" and the second group is leaflet.js so using the following replacement
     r'\1./libs/kepler/2.5.5/\3\"\4' will lead to this URL: <script src="./libs/leaflet/1.6.0/leaflet.js">.
     """
@@ -50,14 +50,16 @@ def replace_external_js_css_paths(
 @knext.parameter_group(label="Coloring Settings")
 class ColorSettings:
     """
-    Group of settings that define coloring of the geometric objects. The color column can be either nominal or numerical.
+    Group of settings that define the coloring of the geometric objects. The color column can be either nominal or numerical.
     If a numerical column is selected you might want to enable the classification of the numeric values to group
-    them into bins prior assigning a color to each bin using the color map information.
+    them into bins prior to assigning a color to each bin using the color map information.
+    If a nominal column is selected the color map will be used to assign a color to each unique value in the column.
+    Noticed that if a nominal column is selected the classification settings will be ignored.
     """
 
     color_col = knext.ColumnParameter(
         "Marker color column",
-        """Select marker color column to be plotted. If numerical you might want to adapt the classification 
+        """Select the marker color column to be plotted. If numerical you might want to adapt the classification 
         settings accordingly.""",
         column_filter=knut.is_numeric_or_string,
         include_row_key=False,
@@ -66,7 +68,7 @@ class ColorSettings:
 
     color_map = knext.StringParameter(
         "Color map",
-        """Select the color map to use for the color column. `xxx_r` mean reverse of the `xxx` colormap. 
+        """Select the color map to use for the color column. `xxx_r` mean the reverse of the `xxx` colormap. 
         See [Colormaps in Matplotlib](https://matplotlib.org/stable/tutorials/colors/colormaps.html)""",
         default_value="viridis",
         enum=[
@@ -235,23 +237,27 @@ class LegendSettings:
 @knext.parameter_group(label="Size Settings")
 class SizeSettings:
     """
-    Group of settings that define the size of the geometric objects. The size column should be numerical.
+    Group of settings that define the size of the geometric objects. The size column should be numerical. 
+    The size is fixed by default. If the `Maker size column` is selected, the `Marker size scale` option will
+    be ignored, and size will be scaled by the values of the column. For point features, the size is the radius 
+    of the circle. For line features, the size is the width of the line. For polygon features, the size is the
+    radius of the centroid of the polygon.
     """
 
     size_col = knext.ColumnParameter(
         "Marker size column",
-        """Select marker size column. The size is fixed by default. If the Maker size column is selected, the size will be 
-        scaled by the values of the column. For point features, the size is the radius of the circle. 
-        For line features, the size is the width of the line. For polygon features, the size is the radius of 
-        the centroid of the polygon.""",
+        """Select marker size column. 
+        """,
         column_filter=knut.is_numeric,
         include_none_column=True,
     )
 
     size_scale = knext.IntParameter(
         "Marker size scale",
-        """Select the size scale of the markers. If the Maker size column is selected, this option will be ignored.
-        Noticed that the size scale only work for point features.""",
+        """Select the size scale of the markers. 
+        If the Maker size column is selected, this option will be ignored.
+        Noticed that the size scale only works for point features.
+        """,
         default_value=1,
         min_value=1,
         max_value=100,
@@ -342,15 +348,15 @@ class BaseMapSettings:
 )
 @knext.output_view(
     name="Geospatial View",
-    description="Showing a interactive map with the geospatial data",
+    description="Showing an interactive map with the geospatial data",
     static_resources="libs/leaflet/1.6.0",
 )
 class ViewNode:
     """Creates an interactive map view based on the selected geometric elements of the input table.
     This node creates an interactive map view based on the selected geometric elements of the input table.
-    It provides various dialog options to modify the appearance of teh view e.g. the base map, shape color and
+    It provides various dialog options to modify the appearance of the view e.g. the base map, shape color and
     size.
-    The geometric elements are drawn in the order they appear in the input table. For example if you want to show
+    The geometric elements are drawn in the order they appear in the input table. For example, if you want to show
     points within a polygon you want to have the points drawn last on top of the polygon. To do so sort the input
     table to have polygons as first rows followed by the points.
     """
@@ -372,13 +378,13 @@ class ViewNode:
 
     name_cols = knext.MultiColumnParameter(
         "Marker tooltip columns",
-        "Select columns which should be shown in the marker tooltip.",
+        "Select columns which should be shown in the marker tooltips.",
         column_filter=knut.is_numeric_or_string,
     )
 
     popup_cols = knext.MultiColumnParameter(
         "Marker popup columns",
-        "Select columns which should be shown in the marker popup.",
+        "Select columns which should be shown in the marker popups.",
         column_filter=knut.is_numeric_or_string,
     )
 
@@ -445,7 +451,6 @@ class ViewNode:
             min_pop_est = gdf[self.size_settings.size_col].min()
 
             # check whether is line
-            # FIXME: change it to use utlis.is_line
             geo_types = gdf[self.geo_col].geom_type.unique()
             if ("LineString" in geo_types) or ("MultiLineString" in geo_types):
                 max_size = 8
@@ -514,9 +519,9 @@ class ViewNode:
 @knext.parameter_group(label="Coloring Settings")
 class StaticColorSettings:
     """
-    Group of settings that define coloring of the geometric objects. The color column can be either nominal or numerical.
+    Group of settings that define the coloring of the geometric objects. The color column can be either nominal or numerical.
     If a numerical column is selected you might want to enable the classification of the numeric values to group
-    them into bins prior assigning a color to each bin using the color map information.
+    them into bins prior to assigning a color to each bin using the color map information.
     """
 
     color_col = knext.ColumnParameter(

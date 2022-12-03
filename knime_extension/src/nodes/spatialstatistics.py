@@ -116,7 +116,6 @@ class spatialWeights:
         The weights matrix must be in matrix format and in the order of the samples.""",
         "",
     )
-    # FIXME:
     Kernel_type = knext.StringParameter(
         "Kernel type",
         " ",
@@ -124,7 +123,6 @@ class spatialWeights:
         enum=["triangular", "uniform", "quadratic", "quartic", "gaussian"],
     )
     Kernel_K = knext.IntParameter("Kernel K", " ", 12)
-    # FIXME:
     Kernel_bandwidth = knext.StringParameter(
         "Kernel bandwidth", " ", "Fixed", enum=["Fixed", "Adaptive"]
     )
@@ -147,13 +145,11 @@ class spatialWeights:
         gdf = gp.GeoDataFrame(input_1.to_pandas(), geometry=self.geo_col)
         exec_context.set_progress(0.3, "Geo data frame loaded. Starting projection...")
 
-        # my functions here TODO:
 
         if self.category == "Rook":
             w = libpysal.weights.Rook.from_dataframe(gdf)
             wname = "Rook"
             w.transform = "r"
-            # FIXME:
         if self.category == "Queen":
             w = libpysal.weights.Queen.from_dataframe(gdf)
             wname = "Queen"
@@ -213,7 +209,6 @@ class spatialWeights:
 ############################################
 # Global Moran's I node
 ############################################
-#
 
 
 @knext.node(
