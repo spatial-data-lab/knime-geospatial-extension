@@ -23,29 +23,6 @@ category = knext.category(
 __NODE_ICON_PATH = "icons/icon/Visulization/"
 
 
-# helper class for geoview
-# TODO: add this class
-# TODO: add this class
-# class __GeoView:
-#     def __init__(self, geo_df, color_col, color_map, geo_col):
-#         self.geo_df = geo_df
-#         self.color_col = color_col
-#         self.color_map = color_map
-#         self.geo_col = geo_col
-
-#     def __repr__(self):
-#         return self.geo_df.to_json()
-
-#     def __str__(self):
-#         return self.geo_df.to_json()
-
-#     def _repr_html_(self):
-#         return self.geo_df._repr_html_()
-
-#     def _repr_mimebundle_(self, include=None, exclude=None):
-#         return self.geo_df._repr_mimebundle_(include, exclude)
-
-
 def replace_external_js_css_paths(
     replacement: str,
     html: str,
@@ -251,7 +228,7 @@ class LegendSettings:
 
     caption = knext.StringParameter(
         "Legend caption",
-        "Set the caption for the legend. By default, the caption is the name of the selected color column.",
+        "Set the caption for the legend. By default, the caption is the name of the selected color column or empty for heat map.",
         default_value="",
     )
 
@@ -386,7 +363,7 @@ class ViewNode:
         include_none_column=False,  # must contains a geometry column
     )
 
-    basemap_setting = BaseMapSettings()
+    
 
     stroke = knext.BoolParameter(
         "Stroke",
@@ -410,6 +387,8 @@ class ViewNode:
     size_settings = SizeSettings()
 
     color_settings = ColorSettings()
+
+    basemap_setting = BaseMapSettings()
 
     legend_settings = LegendSettings()
 
@@ -1402,19 +1381,12 @@ class ViewNodeHeatmap:
         include_none_column=False,
     )
 
-    basemap_settings = BaseMapSettings()
-
+    
     color_map = knext.StringParameter(
         "Color map",
         "Select the color map to use for the heatmap.",
-        default_value="YlOrRd",
+        default_value="YlOrRd_09",
         enum = list(_color_bars.keys()),
-    )
-
-    plot = knext.BoolParameter(
-        "Show legend",
-        "If checked, a legend will be shown in the plot.",
-        default_value=True,
     )
 
     weight_col = knext.ColumnParameter(
@@ -1451,6 +1423,10 @@ class ViewNodeHeatmap:
         default_value=15,
     )
 
+    basemap_settings = BaseMapSettings()
+
+    legend_settings = LegendSettings()
+
     def configure(self, configure_context, input_schema):
 
         return None
@@ -1472,10 +1448,12 @@ class ViewNodeHeatmap:
         steps=20
         linear_colormap = self._color_bars[self.color_map]
         colormap = linear_colormap.scale(0, 1).to_step(steps)
+        colormap.caption = self.legend_settings.caption
         gradient_map=defaultdict(dict)
         for i in range(steps):
             gradient_map[1/steps*i] = colormap.rgb_hex_str(1/steps*i)
-        colormap.add_to(map) #add color bar at the top of the map
+        if self.legend_settings.plot:
+            colormap.add_to(map) #add color bar at the top of the map
 
         plugins.HeatMap(
             heat_data,
@@ -1490,10 +1468,11 @@ class ViewNodeHeatmap:
         folium.LayerControl().add_to(map)
 
         # replace css and JavaScript paths
+        # FIXME: 
         html = map.get_root().render()
-        html = replace_external_js_css_paths(
-            r"\1./libs/leaflet/1.6.0/\3\"\4",
-            html,
-        )
+        # html = replace_external_js_css_paths(
+        #     r"\1./libs/leaflet/1.6.0/\3\"\4",
+        #     html,
+        # )
 
         return knext.view(html)
