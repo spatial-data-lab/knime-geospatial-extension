@@ -42,15 +42,16 @@ __NODE_ICON_PATH = "icons/icon/SpatialStatistics/"
     category=__category,
     after="",
 )
-@knext.input_table(name="Geo table", description="Table with geometry column")
-@knext.output_table(name="Spatial Weights", description="Spatial Weights")
+@knext.input_table(name="Geo table", description="Table with geometry column.")
+@knext.output_table(name="Spatial Weights", description="Spatial Weights.")
 class spatialWeights:
     """This node constructs a contiguity spatial weights matrix from the input data.
     This node constructs a contiguity spatial weights matrix from the input data.
     """
 
-    # FIXME:
-    geo_col = knut.geo_col_parameter()
+    geo_col = knut.geo_col_parameter(
+        description="Geometry column."
+    )
 
     category = knext.StringParameter(
         "Weights category",
@@ -63,8 +64,8 @@ class spatialWeights:
         the distance threshold 'Threshold' in the following options. When selecting Inverse Distance, please select 
         the distance threshold 'Threshold' and the corresponding power 'Power' in the following options. 
         When 'Your own' is selected, please enter the path of the spatial weights matrix in CSV format in the 
-        following options. More details about spatial weights, please see the GeoDa center website: 
-        https://geodacenter.github.io/documentation.html""",
+        following options. More details about spatial weights, please see the [GeoDa center website](https://geodacenter.github.io/documentation.html).
+        """,
         "Queen",
         enum=[
             "Queen",
@@ -86,7 +87,7 @@ class spatialWeights:
 
     Nearest_k = knext.IntParameter(
         "Nearest k",
-        "K-nearest are often used for point data. k is the number of the nearest neighbor",
+        "K-nearest are often used for point data. k is the number of the nearest neighbor.",
         4,
     )
 
@@ -122,18 +123,17 @@ class spatialWeights:
         "triangular",
         enum=["triangular", "uniform", "quadratic", "quartic", "gaussian"],
     )
-    Kernel_K = knext.IntParameter("Kernel K", " ", 12)
+    Kernel_K = knext.IntParameter(
+            "Kernel K",
+            "The number of nearest neighbors to use for determining bandwidth.", 
+            12)
     Kernel_bandwidth = knext.StringParameter(
-        "Kernel bandwidth", " ", "Fixed", enum=["Fixed", "Adaptive"]
+        "Kernel bandwidth", 
+        "The bandwidth of the kernel. The default is fixed. If adaptive then bandwidth is adaptive across observations.", 
+        "Fixed", 
+        enum=["Fixed", "Adaptive"]
     )
 
-    # new_crs = knext.StringParameter("New CRS", "The new CRS system to use", "3857")
-    # new_crs = knext.StringParameter("New CRS", "The new CRS system to use", "3857")
-    # new_crs = knext.StringParameter("New CRS", "The new CRS system to use", "3857")
-    # new_crs = knext.StringParameter("New CRS", "The new CRS system to use", "3857")
-    # new_crs = knext.StringParameter("New CRS", "The new CRS system to use", "3857")
-    # new_crs = knext.StringParameter("New CRS", "The new CRS system to use", "3857")
-    # li = knext.ColumnParameter()
 
     def configure(self, configure_context, input_schema_1):
         self.geo_col = knut.column_exists_or_preset(
@@ -205,6 +205,18 @@ class spatialWeights:
 
         return knext.Table.from_pandas(out)
 
+    
+@knext.parameter_group(label="Variable Setting")
+class VariableSetting:
+    """
+    Select the variable you want to use for the analysis.
+    """
+    Field_col = knext.ColumnParameter(
+        "Variable column",
+        "The variable column you want to use for the analysis",
+        column_filter=knut.is_numeric,
+        include_none_column=False,
+    )
 
 ############################################
 # Global Moran's I node
@@ -220,15 +232,15 @@ class spatialWeights:
 )
 @knext.input_table(
     name="Input Table",
-    description="Input table for calculation of Global Moran's I",
+    description="Input table for calculation of Global Moran's I.",
 )
 @knext.input_table(
     name="Spatial Weights",
-    description="Spatial Weights table for calculation of Global Moran's I",
+    description="Spatial Weights table for calculation of Global Moran's I.",
 )
 @knext.output_table(
     name="Output Table",
-    description="Output table results of Global Moran's I",
+    description="Output table results of Global Moran's I.",
 )
 # @knext.output_binary(
 #     name="output model",
@@ -241,7 +253,7 @@ class spatialWeights:
 )
 class GlobalMoransI:
     """Global Moran's I.
-    Global Moran's I.
+    Moran’s I Global Autocorrelation Statistic.
     """
 
     # input parameters
@@ -249,12 +261,7 @@ class GlobalMoransI:
         description="The column containing the geometry to use for the spatial weights matrix."
     )
 
-    Field_col = knext.ColumnParameter(
-        "Field column",
-        "The column containing the field to use for the calculation of Global Moran's I.",
-        column_filter=knut.is_numeric,
-        include_none_column=False,
-    )
+    variable_setting = VariableSetting()
 
     def configure(self, configure_context, input_schema_1, input_schema_2):
         self.geo_col = knut.column_exists_or_preset(
@@ -268,7 +275,7 @@ class GlobalMoransI:
         adjust_list = input_2.to_pandas()
         w = W.from_adjlist(adjust_list)
 
-        y = gdf[self.Field_col]
+        y = gdf[self.variable_setting.Field_col]
         np.random.seed(12345)
         mi = esda.moran.Moran(y, w)
         result = {"Moran's I": mi.I, "p-value": mi.p_norm, "z-score": mi.z_norm}
@@ -307,18 +314,13 @@ class GlobalMoransI:
     name="Output Table",
     description="Output table results of Local Moran's I",
 )
-# @knext.output_binary(
-#     name="output model",
-#     description="Output model of Global Moran's I",
-#     id="pysal.esda.moran.Moran",
-# )
 @knext.output_view(
     name="Output View",
     description="Output view of Local Moran's I",
 )
 class LocalMoransI:
     """Local Moran's I.
-    Local Moran's I.
+    Local Moran's I Statistics.
     """
 
     # input parameters
@@ -326,12 +328,7 @@ class LocalMoransI:
         description="The column containing the geometry to use for local Moran's I.",
     )
 
-    Field_col = knext.ColumnParameter(
-        "Field column",
-        "The column containing the field to use for the calculation of Local Moran's I.",
-        column_filter=knut.is_numeric,
-        include_none_column=False,
-    )
+    variable_setting = VariableSetting()
 
     def configure(self, configure_context, input_schema_1, input_schema_2):
         self.geo_col = knut.column_exists_or_preset(
@@ -345,7 +342,7 @@ class LocalMoransI:
         adjust_list = input_2.to_pandas()
         w = W.from_adjlist(adjust_list)
 
-        y = gdf[self.Field_col]
+        y = gdf[self.variable_setting.Field_col]
         np.random.seed(12345)
         li = esda.moran.Moran_Local(y, w)
 
@@ -362,8 +359,8 @@ class LocalMoransI:
         gdf.loc[gdf["p-value"] < 0.05, "spots_type"] = "Not Significant"
         # out = pd.merge(gdf, out, left_index=True, right_index=True)
 
-        lag_index = lps.weights.lag_spatial(w, gdf[self.Field_col])
-        index_v = gdf[self.Field_col]
+        lag_index = lps.weights.lag_spatial(w, gdf[self.variable_setting.Field_col])
+        index_v = gdf[self.variable_setting.Field_col]
         b, a = np.polyfit(index_v, lag_index, 1)
         f, ax = plt.subplots(1, figsize=(9, 9))
 
@@ -377,8 +374,8 @@ class LocalMoransI:
         # red line of best fit using global I as slope
         plt.plot(index_v, a + b * index_v, "r")
         plt.title("Moran Scatterplot")
-        plt.ylabel("Spatial Lag of %s" % self.Field_col)
-        plt.xlabel("%s" % self.Field_col)
+        plt.ylabel("Spatial Lag of %s" % self.variable_setting.Field_col)
+        plt.xlabel("%s" % self.variable_setting.Field_col)
 
         # out.drop(columns=[self.geo_col], inplace=True)
         # out.reset_index(inplace=True)
@@ -431,12 +428,7 @@ class GlobalGearysC:
         description="The column containing the geometry to use for global Geary’s C.",
     )
 
-    Field_col = knext.ColumnParameter(
-        "Field column",
-        "The column containing the field to use for the calculation of Global Geary’s C.",
-        column_filter=knut.is_numeric,
-        include_none_column=False,
-    )
+    variable_setting = VariableSetting()
 
     def configure(self, configure_context, input_schema_1, input_schema_2):
         self.geo_col = knut.column_exists_or_preset(
@@ -450,7 +442,7 @@ class GlobalGearysC:
         adjust_list = input_2.to_pandas()
         w = W.from_adjlist(adjust_list)
 
-        y = gdf[self.Field_col]
+        y = gdf[self.variable_setting.Field_col]
         np.random.seed(12345)
         gc = esda.geary.Geary(y, w)
 
@@ -511,12 +503,7 @@ class GlobalGetisOrd:
         description="The column containing the geometry to use for global Getis-Ord.",
     )
 
-    Field_col = knext.ColumnParameter(
-        "Field column",
-        "The column containing the field to use for the calculation of Global Getis-Ord.",
-        column_filter=knut.is_numeric,
-        include_none_column=False,
-    )
+    variable_setting = VariableSetting()
 
     def configure(self, configure_context, input_schema_1, input_schema_2):
         self.geo_col = knut.column_exists_or_preset(
@@ -530,7 +517,7 @@ class GlobalGetisOrd:
         adjust_list = input_2.to_pandas()
         w = W.from_adjlist(adjust_list)
 
-        y = gdf[self.Field_col]
+        y = gdf[self.variable_setting.Field_col]
         np.random.seed(12345)
         go = esda.getisord.G(y, w)
 
@@ -588,20 +575,11 @@ class LocalGetisOrd:
 
     # input parameters
 
-    geo_col = knext.ColumnParameter(
-        "Geometry column",
-        "The column containing the geometry to use for local Getis-Ord.",
-        column_filter=knut.is_geo,
-        include_row_key=False,
-        include_none_column=False,
+    geo_col = knut.geo_col_parameter(
+        description="The column containing the geometry to use for local Getis-Ord.",
     )
 
-    Field_col = knext.ColumnParameter(
-        "Field column",
-        "The column containing the field to use for the calculation of Local Getis-Ord.",
-        column_filter=knut.is_numeric,
-        include_none_column=False,
-    )
+    variable_setting = VariableSetting()
 
     def configure(self, configure_context, input_schema_1, input_schema_2):
         self.geo_col = knut.column_exists_or_preset(
@@ -615,7 +593,7 @@ class LocalGetisOrd:
         adjust_list = input_2.to_pandas()
         w = W.from_adjlist(adjust_list)
 
-        y = gdf[self.Field_col]
+        y = gdf[self.variable_setting.Field_col]
         np.random.seed(12345)
         lo = esda.getisord.G_Local(y, w)
 
@@ -623,8 +601,8 @@ class LocalGetisOrd:
         gdf.loc[:, "p-value"] = lo.p_sim
         gdf.loc[:, "z-score"] = lo.z_sim
 
-        lag_index = lps.weights.lag_spatial(w, gdf[self.Field_col])
-        index_v = gdf[self.Field_col]
+        lag_index = lps.weights.lag_spatial(w, gdf[self.variable_setting.Field_col])
+        index_v = gdf[self.variable_setting.Field_col]
         b, a = np.polyfit(index_v, lag_index, 1)
         f, ax = plt.subplots(1, figsize=(9, 9))
 
@@ -633,8 +611,8 @@ class LocalGetisOrd:
         plt.hlines(lag_index.mean(), index_v.min(), index_v.max(), linestyle="--")
 
         plt.plot(index_v, a + b * index_v, "r")
-        plt.xlabel(self.Field_col)
-        plt.ylabel("Spatial Lag of " + self.Field_col)
+        plt.xlabel(self.variable_setting.Field_col)
+        plt.ylabel("Spatial Lag of " + self.variable_setting.Field_col)
         plt.title("Local Getis-Ord G Scatterplot")
 
         return knext.Table.from_pandas(gdf), knext.view_matplotlib(f)
