@@ -522,12 +522,16 @@ class StaticColorSettings:
     Group of settings that define the coloring of the geometric objects. The color column can be either nominal or numerical.
     If a numerical column is selected you might want to enable the classification of the numeric values to group
     them into bins prior to assigning a color to each bin using the color map information.
+    If a nominal column is selected the color map will be used to assign a color to each unique value in the column.
+    Noticed that if a nominal column is selected the classification settings will be ignored.
     """
 
     color_col = knext.ColumnParameter(
         "Marker color column",
         """Select marker color column to be plotted. If numerical you might want to adapt the classification 
-        settings accordingly.""",
+        settings accordingly. If nominal the color map will be used to assign a color to each unique value in the column.
+        Noticed that if a nominal column is selected the classification settings will be ignored.
+        Select 'None' if you want a unified maker color.""",
         column_filter=knut.is_numeric_or_string,
         include_row_key=False,
         include_none_column=True,
@@ -535,7 +539,9 @@ class StaticColorSettings:
 
     color = knext.StringParameter(
         "Marker color",
-        "Select marker color. Select none if you don't want to set a unified marker color.",
+        """Select marker color. It will assign a unified color for all features. If the a `Marker color column` 
+        is selected and not `None` option, this option will be ignored.
+        Select none if you don't want to set a unified marker color.""",
         default_value="none",
         enum=[
             "none",
@@ -640,6 +646,8 @@ class StaticColorSettings:
 class StaticLegendSettings:
     """
     Group of settings that define if a legend is shown on the map and if so how it should be formatted.
+    More details about the legend settings can be found [matplotlib.pyplot.legend](https://matplotlib.org/stable/api/_as_gen/matplotlib.pyplot.legend.html#matplotlib.pyplot.legend)
+    and [matplotlib.pyplot.colorbar](https://matplotlib.org/stable/api/_as_gen/matplotlib.pyplot.colorbar.html#matplotlib.pyplot.colorbar).
     """
 
     plot = knext.BoolParameter(
@@ -665,7 +673,7 @@ class StaticLegendSettings:
 
     expand = knext.BoolParameter(
         "Expand legend",
-        "If checked, the legend will be horizontally expanded to fill the axes area",
+        "If checked, the legend will be horizontally expanded to fill the axes area.",
         default_value=False,
     )
 
@@ -753,7 +761,7 @@ class StaticLegendSettings:
 
     colorbar_shrink = knext.DoubleParameter(
         "Colorbar legend shrink",
-        "Select the shrink value for the colorbar legend. Only work for colorbar",
+        "Select the shrinking value for the colorbar legend. Only work for colorbar.",
         default_value=1.0,
         min_value=0.0,
         max_value=1.0,
@@ -784,7 +792,7 @@ class StaticLegendSettings:
 )
 class ViewNodeStatic:
     """Creates a static visualization of the geometric elements.
-    This node will visualize the given geometric elements using the [matplotlib}(https://matplotlib.org/stable/).
+    This node will visualize the given geometric elements using the [matplotlib](https://matplotlib.org/stable/).
     It can be used to create [Choropleth Maps](https://en.wikipedia.org/wiki/Choropleth_map) by assigning
     a marker color column. The node further supports various settings to adapt the legend to your needs.
     For more information on the settings, please refer to the [geopandas.GeoDataFrame.plot](https://geopandas.org/en/stable/docs/reference/api/geopandas.GeoDataFrame.plot.html).
@@ -800,7 +808,7 @@ class ViewNodeStatic:
 
     line_width_col = knext.ColumnParameter(
         "Line width column",
-        """Select line width column. The width is fixed by default. If a width column is selected, the width will 
+        """Select line width column. The width is fixed by default. If a line width column is selected, the width will 
         be scaled by the values of the column.""",
         column_filter=knut.is_numeric,
         include_none_column=True,
@@ -808,7 +816,7 @@ class ViewNodeStatic:
 
     line_width = knext.IntParameter(
         "Line width",
-        "Select a unified line width, can be set to none",
+        "Select a unified line width, can be set to none.",
         default_value=1,
         min_value=1,
         max_value=10,
@@ -995,7 +1003,7 @@ class ViewNodeKepler:
     visualization framework. This view is highly interactive and allows you to change various aspects of the view
     within the visualization itself e.g. adding [layers](https://docs.kepler.gl/docs/user-guides/c-types-of-layers)
     and [filters](https://docs.kepler.gl/docs/user-guides/e-filters). It also allows you to create a filter that
-    creates and animation for a given timeseries column. For more information about the supported interactions
+    creates an animation for a given time series column. For more information about the supported interactions
     see the [kepler.gl user guides](https://docs.kepler.gl/docs/user-guides).
 
     This node uses the [Mapbox GL JS API](https://www.mapbox.com/pricing#map-loads-for-web) which for commercial
@@ -1007,7 +1015,7 @@ class ViewNodeKepler:
 
 
     By default, it takes all column information that is included inside the input table.
-    If you want to limit the amount of information send to the node view you can use one of the
+    If you want to limit the amount of information sent to the node view you can use one of the
     [column filter](https://kni.me/n/DOkyMaii62U05xZ1) nodes to filter the input table.
     """
 
@@ -1118,13 +1126,15 @@ class ViewNodeHeatmap:
     This node will visualize the given data as an interactive heatmap. The selected weight column defines
     the "heat" of each data point which is visualized on a world map.
 
-    The geometric elements are drawn in the order they appear in the input table. For example if you want to show
+    The geometric elements are drawn in the order they appear in the input table. For example, if you want to show
     points within a polygon you want to have the points drawn last on top of the polygon. To do so sort the input
     table to have polygons as first rows followed by the points.
 
     Please make sure the input table does not contain any rows with missing values. 
 
-    Please find more information about the heatmap [here](https://www.gislounge.com/heat-maps-in-gis/).
+    Find more information about the supported options in [folium.plugins.HeatMap](https://python-visualization.github.io/folium/plugins.html#folium.plugins.HeatMap).
+
+    Find more information about the heatmap algorithm [here](https://www.gislounge.com/heat-maps-in-gis/).
     """
 
     _color_bars = {
@@ -1405,7 +1415,7 @@ class ViewNodeHeatmap:
 
     color_map = knext.StringParameter(
         "Color map",
-        "Select the color map to use for the heatmap.",
+        "Select the color map to use for the heatmap. See [branca](https://python-visualization.github.io/branca/colormap.html) for more information.",
         default_value="YlOrRd_09",
         enum=list(_color_bars.keys()),
     )
@@ -1427,7 +1437,7 @@ class ViewNodeHeatmap:
     max_zoom = knext.IntParameter(
         "Maximum zoom",
         """Zoom level where the points reach maximum intensity (as intensity scales with zoom), 
-        equals maxZoom of the map by default""",
+        equals maxZoom of the map by default.""",
         default_value=18,
     )
 
@@ -1439,7 +1449,7 @@ class ViewNodeHeatmap:
 
     blur = knext.IntParameter(
         "Blur",
-        """The blur factor that will be applied to all datapoints. 
+        """The blur factor that will be applied to all data points. 
         The higher the blur factor is, the smoother the gradients will be.""",
         default_value=15,
     )
