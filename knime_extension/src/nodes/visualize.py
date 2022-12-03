@@ -641,7 +641,7 @@ class StaticLegendSettings:
 
     caption = knext.StringParameter(
         "Legend caption",
-        "Set the caption for the legend.",
+        "Set the caption for the legend. By default, the caption is the name of the selected color column or empty for heat map.",
         default_value="",
         # default_value=color_col,
     )
@@ -788,15 +788,7 @@ class ViewNodeStatic:
         include_none_column=False,
     )
 
-    size_col = knext.ColumnParameter(
-        "Marker size column",
-        """Select marker size column. The size is fixed by default. If a size column is selected, the size will be 
-        scaled by the values of the column. For point features, the size is the radius of the circle. 
-        For line features, the size is the width of the line. For polygon features, the size is the radius of 
-        the centroid of the polygon.""",
-        column_filter=knut.is_numeric,
-        include_none_column=True,
-    )
+
 
     line_width_col = knext.ColumnParameter(
         "Line width column",
@@ -828,17 +820,14 @@ class ViewNodeStatic:
         max_value=100,
     )
 
-    # size_col = knext.ColumnParameter(
-    #     "Marker size column",
-    #     "Select marker size column. The column must contain the size value.",
-    #     column_filter=knut.is_numeric,
-    # )
 
     set_axis_off = knext.BoolParameter(
         "Set axis off",
         "If checked, the axis will be set off.",
         default_value=False,
     )
+
+    size_settings = SizeSettings()
 
     color_settings = StaticColorSettings()
 
@@ -885,6 +874,7 @@ class ViewNodeStatic:
 
         kws = {"alpha": 1, "legend": self.legend_settings.plot, "aspect": 1}
 
+        # set color
         if "none" not in str(self.color_settings.edge_color):
             kws["edgecolor"] = self.color_settings.edge_color
         if "none" not in str(self.color_settings.color_col).lower():
@@ -895,8 +885,28 @@ class ViewNodeStatic:
 
         if ("none" not in str(self.color_settings.edge_color)) or (
             "none" not in str(self.color_settings.color_col).lower()
-        ):
-            if self.color_settings.use_classify:
+        ):  
+            if type(gdf[self.color_settings.color_col].values[0]) == str:
+                 kws["legend_kwds"] = {
+                    # "fmt": "{:.0f}",
+                    "loc": self.legend_settings.location,
+                    "title": self.legend_settings.caption,
+                    "ncols": self.legend_settings.columns,
+                    "prop": {"size": self.legend_settings.size},
+                    "fontsize": self.legend_settings.fontsize,
+                    "bbox_to_anchor": legend_bbox_to_anchor,
+                    "labelcolor": self.legend_settings.labelcolor,
+                    "frameon": self.legend_settings.frame,
+                    "framealpha": self.legend_settings.framealpha,
+                    "fancybox": True,
+                    "mode": legend_expand,
+                    "alignment": "left",
+                    # "title": "Population",
+                    "title_fontsize": self.legend_settings.caption_fontsize,
+                    "labelspacing": self.legend_settings.labelspacing,
+                    "borderaxespad": self.legend_settings.borderpad,
+                }
+            elif self.color_settings.use_classify:
                 kws["legend_kwds"] = {
                     "fmt": "{:.0f}",
                     "loc": self.legend_settings.location,
@@ -926,13 +936,14 @@ class ViewNodeStatic:
                     "pad": self.legend_settings.colorbar_pad,
                 }
 
+        # set size
         geo_types = gdf[self.geo_col].geom_type.unique()
         if not (("LineString" in geo_types) or ("MultiLineString" in geo_types)):
-            if "none" not in str(self.size_col).lower():
+            if "none" not in str(self.size_settings.size_col).lower():
                 max_point_size = 2000
-                max_val = gdf[self.size_col].max()
-                min_val = gdf[self.size_col].min()
-                normal_base = (gdf[self.size_col] - min_val) / max_val
+                max_val = gdf[self.size_settings.size_col].max()
+                min_val = gdf[self.size_settings.size_col].min()
+                normal_base = (gdf[self.size_settings.size_col] - min_val) / max_val
                 kws["makersize"] = normal_base * max_point_size
         if "none" not in str(self.line_width_col).lower():
             max_line_width = 5
