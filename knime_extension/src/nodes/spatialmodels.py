@@ -512,7 +512,7 @@ class GeographicallyWeightedRegression:
 
     kernel = knext.StringParameter(
         "Kernel",
-        "type of kernel function used to weight observations; available options: ‘gaussian’ ‘bisquare’ ‘exponential’",
+        "Type of kernel function used to weight observations; available options: ‘gaussian’ ‘bisquare’ ‘exponential’",
         default_value="bisquare",
         enum=["gaussian", "bisquare", "exponential"],
     )
@@ -600,7 +600,7 @@ class GeographicallyWeightedRegression:
 )
 @knext.output_table(
     name="Output Table",
-    description="Output table for Geographically Weighted Regression Predictor",
+    description="Output table with predictions for Geographically Weighted Regression Predictor",
 )
 class GeographicallyWeightedRegressionPredictor:
     """Geographically Weighted Regression Predictor node.
@@ -687,14 +687,14 @@ class MultiscaleGeographicallyWeightedRegression:
 
     search_method = knext.StringParameter(
         "Search method",
-        "bw search method: ‘golden’, ‘interval’",
+        "Bw search method: ‘golden’, ‘interval’",
         default_value="golden",
         enum=["golden", "interval"],
     )
 
     bandwith_min = knext.IntParameter(
         "Bandwith min",
-        "min value used in bandwidth search",
+        "Min value used in bandwidth search",
         default_value=2,
     )
 
