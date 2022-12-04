@@ -67,7 +67,7 @@ __NODE_ICON_PATH = "icons/icon/SpatialModel/"
 )
 class Spatial2SLSModel:
     """Spatial two stage least squares (S2SLS) with results and diagnostics.
-    Spatial two stage least squares (S2SLS) with results and diagnostics; Anselin (1988).
+    Spatial two stage least squares (S2SLS) with results and diagnostics. More details can be found in the following reference, Luc Anselin. Spatial Econometrics: Methods and Models. Kluwer. Dordrecht, 1988.
     """
 
     # input parameters
@@ -223,7 +223,7 @@ class Spatial2SLSModel:
 )
 class SpatialLagPanelModelwithFixedEffects:
     """Spatial Lag Panel Model with Fixed Effects.
-    Spatial Lag Panel Model with Fixed Effects.
+    Spatial Lag Panel Model with Fixed Effects. ML estimation of the fixed effects spatial lag model with all results and diagnostics. More details can be found at J. Paul Elhorst. Specification and estimation of spatial panel data models. International Regional Science Review, 26(3):244–268, 2003. doi:10.1177/0160017603253791.
     """
 
     geo_col = knut.geo_col_parameter()
@@ -348,7 +348,7 @@ class SpatialLagPanelModelwithFixedEffects:
 )
 class SpatialErrorPanelModelwithFixedEffects:
     """Spatial Error Panel Model with Fixed Effects node.
-    Spatial Error Panel Model with Fixed Effects node.
+    Spatial Error Panel Model with Fixed Effects node. ML estimation of the fixed effects spatial error model with all results and diagnostics. More details can be found at J. Paul Elhorst. Specification and estimation of spatial panel data models. International Regional Science Review, 26(3):244–268, 2003. doi:10.1177/0160017603253791.
     """
 
     geo_col = knut.geo_col_parameter()
@@ -473,7 +473,8 @@ class SpatialErrorPanelModelwithFixedEffects:
 )
 class GeographicallyWeightedRegression:
     """Geographically Weighted Regression node.
-    Geographically Weighted Regression node.
+    Performs Geographically Weighted Regression (GWR), a local form of linear regression used to model spatially varying relationships. Can currently estimate Gaussian, Poisson, and logistic models(built on a GLM framework). 
+    More details can be found at [here](https://desktop.arcgis.com/en/arcmap/10.3/tools/spatial-statistics-toolbox/geographically-weighted-regression.htm).
     """
 
     geo_col = knut.geo_col_parameter()
