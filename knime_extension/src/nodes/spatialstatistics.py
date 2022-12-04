@@ -34,33 +34,30 @@ __NODE_ICON_PATH = "icons/icon/SpatialStatistics/"
 
 __global_statistics_output_table_description = """
 The output table contains the following columns:
-- The local statistic value for the input geometry.
-- The p-value for the local statistic value.
-- The z-score for the local statistic value.
+the local statistic value for the input geometry,
+the p-value for the local statistic value,
+the z-score for the local statistic value.
 """
 __global_statistics_interactive_view_description = """
 The interactive view shows the density plot of the statistic values for permuted samples.
-- The red line: the value of Moran’s I
-- The blue line: The expected value under normality assumption
+The red line is the value of Moran’s I
+The blue line is the expected value under normality assumption
 """
 
 __local_statistics_output_table_description = """
 The output table contains the original input table with the following additional columns:
-- The local statistic value.
-- `p-value`: The p-value for the local statistic value.
-- `z-score`: The z-score for the local statistic value.
+the local statistic value,
+`p-value` is the p-value for the local statistic value,
+`z-score` is the z-score for the local statistic value.
 
 """
 
 __spots = """
-- Spots: Values indicate quadrant location 1 HH, 2 LH, 3 LL, 4 HL. 
-- Spots_type: 
-    - HH: High-High
-    - LH: Low-High
-    - LL: Low-Low
-    - HL: High-Low
-    - Not Significant: The p-value is greater than the significance level.
-    """
+`spots` are the values that indicate quadrant location 1 HH, 2 LH, 3 LL, 4 HL, 
+`spots_type` has the values of HH (High-High), LH (Low-High), LL (Low-Low),
+HL (High-Low), Not Significant (the p-value is greater than the significance level).
+"""
+
 ############################################
 # Spatial Weights
 ############################################
@@ -341,7 +338,7 @@ class GlobalMoransI:
 )
 @knext.output_table(
     name="Output Table",
-    description="Output table results of Local Moran's I. " + __local_statistics_output_table_description ,
+    description="Output table results of Local Moran's I. " + __local_statistics_output_table_description + __spots ,
 )
 @knext.output_view(
     name="Output View",
