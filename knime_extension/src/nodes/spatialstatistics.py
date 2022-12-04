@@ -75,9 +75,7 @@ class spatialWeights:
     This node constructs a contiguity spatial weights matrix from the input data.
     """
 
-    geo_col = knut.geo_col_parameter(
-        description="Geometry column."
-    )
+    geo_col = knut.geo_col_parameter(description="Geometry column.")
 
     category = knext.StringParameter(
         "Weights category",
@@ -150,16 +148,16 @@ class spatialWeights:
         enum=["triangular", "uniform", "quadratic", "quartic", "gaussian"],
     )
     Kernel_K = knext.IntParameter(
-            "Kernel K",
-            "The number of nearest neighbors to use for determining bandwidth.", 
-            12)
-    Kernel_bandwidth = knext.StringParameter(
-        "Kernel bandwidth", 
-        "The bandwidth of the kernel. The default is fixed. If adaptive then bandwidth is adaptive across observations.", 
-        "Fixed", 
-        enum=["Fixed", "Adaptive"]
+        "Kernel K",
+        "The number of nearest neighbors to use for determining bandwidth.",
+        12,
     )
-
+    Kernel_bandwidth = knext.StringParameter(
+        "Kernel bandwidth",
+        "The bandwidth of the kernel. The default is fixed. If adaptive then bandwidth is adaptive across observations.",
+        "Fixed",
+        enum=["Fixed", "Adaptive"],
+    )
 
     def configure(self, configure_context, input_schema_1):
         self.geo_col = knut.column_exists_or_preset(
@@ -170,7 +168,6 @@ class spatialWeights:
     def execute(self, exec_context: knext.ExecutionContext, input_1):
         gdf = gp.GeoDataFrame(input_1.to_pandas(), geometry=self.geo_col)
         exec_context.set_progress(0.3, "Geo data frame loaded. Starting projection...")
-
 
         if self.category == "Rook":
             w = libpysal.weights.Rook.from_dataframe(gdf)
@@ -231,18 +228,20 @@ class spatialWeights:
 
         return knext.Table.from_pandas(out)
 
-    
+
 @knext.parameter_group(label="Variable Setting")
 class VariableSetting:
     """
     Select the variable you want to use for the analysis.
     """
+
     Field_col = knext.ColumnParameter(
         "Variable column",
         "The variable column you want to use for the analysis",
         column_filter=knut.is_numeric,
         include_none_column=False,
     )
+
 
 ############################################
 # Global Moran's I node
@@ -266,7 +265,8 @@ class VariableSetting:
 )
 @knext.output_table(
     name="Output Table",
-    description="Output table results of Global Moran's I. " + __global_statistics_output_table_description
+    description="Output table results of Global Moran's I. "
+    + __global_statistics_output_table_description,
 )
 # @knext.output_binary(
 #     name="output model",
@@ -275,7 +275,8 @@ class VariableSetting:
 # )
 @knext.output_view(
     name="Output View",
-    description="Output view of Global Moran's I. "+ __global_statistics_interactive_view_description
+    description="Output view of Global Moran's I. "
+    + __global_statistics_interactive_view_description,
 )
 class GlobalMoransI:
     """Global Moran's I.
@@ -338,7 +339,9 @@ class GlobalMoransI:
 )
 @knext.output_table(
     name="Output Table",
-    description="Output table results of Local Moran's I. " + __local_statistics_output_table_description + __spots ,
+    description="Output table results of Local Moran's I. "
+    + __local_statistics_output_table_description
+    + __spots,
 )
 @knext.output_view(
     name="Output View",
@@ -433,7 +436,8 @@ class LocalMoransI:
 )
 @knext.output_table(
     name="Output Table",
-    description="Output table results of Global Geary’s C. " + __global_statistics_output_table_description,
+    description="Output table results of Global Geary’s C. "
+    + __global_statistics_output_table_description,
 )
 # @knext.output_binary(
 #     name="output model",
@@ -442,7 +446,8 @@ class LocalMoransI:
 # )
 @knext.output_view(
     name="Output View",
-    description="Output view of Global Geary’s C. " + __global_statistics_interactive_view_description,
+    description="Output view of Global Geary’s C. "
+    + __global_statistics_interactive_view_description,
 )
 class GlobalGearysC:
     """Global Geary’s C.
@@ -508,7 +513,8 @@ class GlobalGearysC:
 )
 @knext.output_table(
     name="Output Table",
-    description="Output table results of Global Getis-Ord. " + __global_statistics_output_table_description,
+    description="Output table results of Global Getis-Ord. "
+    + __global_statistics_output_table_description,
 )
 # @knext.output_binary(
 #     name="output model",
@@ -517,7 +523,8 @@ class GlobalGearysC:
 # )
 @knext.output_view(
     name="Output View",
-    description="Output view of Global Getis-Ord. " + __global_statistics_interactive_view_description,
+    description="Output view of Global Getis-Ord. "
+    + __global_statistics_interactive_view_description,
 )
 class GlobalGetisOrd:
     """Global Getis-Ord G.
@@ -583,7 +590,8 @@ class GlobalGetisOrd:
 )
 @knext.output_table(
     name="Output Table",
-    description="Output table results of Local Getis-Ord. " + __local_statistics_output_table_description,
+    description="Output table results of Local Getis-Ord. "
+    + __local_statistics_output_table_description,
 )
 # @knext.output_binary(
 #     name="output model",
