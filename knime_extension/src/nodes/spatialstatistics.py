@@ -32,6 +32,35 @@ __category = knext.category(
 # Root path for all node icons in this file
 __NODE_ICON_PATH = "icons/icon/SpatialStatistics/"
 
+__global_statistics_output_table_description = """
+The output table contains the following columns:
+- The local statistic value for the input geometry.
+- The p-value for the local statistic value.
+- The z-score for the local statistic value.
+"""
+__global_statistics_interactive_view_description = """
+The interactive view shows the density plot of the statistic values for permuted samples.
+- The red line: the value of Moran’s I
+- The blue line: The expected value under normality assumption
+"""
+
+__local_statistics_output_table_description = """
+The output table contains the original input table with the following additional columns:
+- The local statistic value.
+- `p-value`: The p-value for the local statistic value.
+- `z-score`: The z-score for the local statistic value.
+
+"""
+
+__spots = """
+- Spots: Values indicate quadrant location 1 HH, 2 LH, 3 LL, 4 HL. 
+- Spots_type: 
+    - HH: High-High
+    - LH: Low-High
+    - LL: Low-Low
+    - HL: High-Low
+    - Not Significant: The p-value is greater than the significance level.
+    """
 ############################################
 # Spatial Weights
 ############################################
@@ -240,7 +269,7 @@ class VariableSetting:
 )
 @knext.output_table(
     name="Output Table",
-    description="Output table results of Global Moran's I.",
+    description="Output table results of Global Moran's I. " + __global_statistics_output_table_description
 )
 # @knext.output_binary(
 #     name="output model",
@@ -249,7 +278,7 @@ class VariableSetting:
 # )
 @knext.output_view(
     name="Output View",
-    description="Output view of Global Moran's I",
+    description="Output view of Global Moran's I. "+ __global_statistics_interactive_view_description
 )
 class GlobalMoransI:
     """Global Moran's I.
@@ -312,11 +341,11 @@ class GlobalMoransI:
 )
 @knext.output_table(
     name="Output Table",
-    description="Output table results of Local Moran's I",
+    description="Output table results of Local Moran's I. " + __local_statistics_output_table_description ,
 )
 @knext.output_view(
     name="Output View",
-    description="Output view of Local Moran's I",
+    description="The scatter plot of Local Moran's I",
 )
 class LocalMoransI:
     """Local Moran's I.
@@ -407,7 +436,7 @@ class LocalMoransI:
 )
 @knext.output_table(
     name="Output Table",
-    description="Output table results of Global Geary’s C",
+    description="Output table results of Global Geary’s C. " + __global_statistics_output_table_description,
 )
 # @knext.output_binary(
 #     name="output model",
@@ -416,11 +445,11 @@ class LocalMoransI:
 # )
 @knext.output_view(
     name="Output View",
-    description="Output view of Global Geary’s C",
+    description="Output view of Global Geary’s C. " + __global_statistics_interactive_view_description,
 )
 class GlobalGearysC:
     """Global Geary’s C.
-    Global Geary’s C.
+    Global Geary C Autocorrelation statistic.
     """
 
     # input parameters
@@ -482,7 +511,7 @@ class GlobalGearysC:
 )
 @knext.output_table(
     name="Output Table",
-    description="Output table results of Global Getis-Ord",
+    description="Output table results of Global Getis-Ord. " + __global_statistics_output_table_description,
 )
 # @knext.output_binary(
 #     name="output model",
@@ -491,11 +520,11 @@ class GlobalGearysC:
 # )
 @knext.output_view(
     name="Output View",
-    description="Output view of Global Getis-Ord",
+    description="Output view of Global Getis-Ord. " + __global_statistics_interactive_view_description,
 )
 class GlobalGetisOrd:
-    """Global Getis-Ord.
-    Global Getis-Ord.
+    """Global Getis-Ord G.
+    Global G Autocorrelation Statistic.
     """
 
     # input parameters
@@ -557,7 +586,7 @@ class GlobalGetisOrd:
 )
 @knext.output_table(
     name="Output Table",
-    description="Output table results of Local Getis-Ord",
+    description="Output table results of Local Getis-Ord. " + __local_statistics_output_table_description,
 )
 # @knext.output_binary(
 #     name="output model",
@@ -566,11 +595,11 @@ class GlobalGetisOrd:
 # )
 @knext.output_view(
     name="Output View",
-    description="Output view of Local Getis-Ord",
+    description="The scatter plot Local Getis-Ord",
 )
 class LocalGetisOrd:
     """Local Getis-Ord.
-    Local Getis-Ord.
+    Local Getis-Ord G Statistics.
     """
 
     # input parameters
