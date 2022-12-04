@@ -43,7 +43,7 @@ __NODE_ICON_PATH = "icons/icon/SpatialModel/"
     # node_type=knext.NodeType.MANIPULATOR,
     category=__category,
     icon_path=__NODE_ICON_PATH + "2SLS.png",
-    after=""
+    after="",
 )
 @knext.input_table(
     name="Input Table",
@@ -199,7 +199,7 @@ class Spatial2SLSModel:
     node_type=knext.NodeType.LEARNER,
     category=__category,
     icon_path=__NODE_ICON_PATH + "SpatialLag.png",
-    after=""
+    after="",
 )
 @knext.input_table(
     name="Input Table",
@@ -324,7 +324,7 @@ class SpatialLagPanelModelwithFixedEffects:
     node_type=knext.NodeType.LEARNER,
     category=__category,
     icon_path=__NODE_ICON_PATH + "SpatialError.png",
-    after=""
+    after="",
 )
 @knext.input_table(
     name="Input Table",
@@ -448,7 +448,7 @@ class SpatialErrorPanelModelwithFixedEffects:
     node_type=knext.NodeType.LEARNER,
     category=__category,
     icon_path=__NODE_ICON_PATH + "GWR.png",
-    after=""
+    after="",
 )
 @knext.input_table(
     name="Input Table",
@@ -473,7 +473,7 @@ class SpatialErrorPanelModelwithFixedEffects:
 )
 class GeographicallyWeightedRegression:
     """Geographically Weighted Regression node.
-    Performs Geographically Weighted Regression (GWR), a local form of linear regression used to model spatially varying relationships. Can currently estimate Gaussian, Poisson, and logistic models(built on a GLM framework). 
+    Performs Geographically Weighted Regression (GWR), a local form of linear regression used to model spatially varying relationships. Can currently estimate Gaussian, Poisson, and logistic models(built on a GLM framework).
     More details can be found at [here](https://desktop.arcgis.com/en/arcmap/10.3/tools/spatial-statistics-toolbox/geographically-weighted-regression.htm).
     """
 
@@ -493,14 +493,14 @@ class GeographicallyWeightedRegression:
 
     search_method = knext.StringParameter(
         "Search method",
-        "bw search method: ‘golden’, ‘interval’",
+        "Bw search method: ‘golden’, ‘interval’",
         default_value="golden",
         enum=["golden", "interval"],
     )
 
     bandwith_min = knext.IntParameter(
         "Bandwith min",
-        "min value used in bandwidth search",
+        "Min value used in bandwidth search",
         default_value=2,
     )
 
@@ -587,7 +587,7 @@ class GeographicallyWeightedRegression:
     node_type=knext.NodeType.PREDICTOR,
     category=__category,
     icon_path=__NODE_ICON_PATH + "GWRp.png",
-    after=""
+    after="",
 )
 @knext.input_table(
     name="Input Table",
@@ -647,7 +647,7 @@ class GeographicallyWeightedRegressionPredictor:
     node_type=knext.NodeType.LEARNER,
     category=__category,
     icon_path=__NODE_ICON_PATH + "MGWR.png",
-    after=""
+    after="",
 )
 @knext.input_table(
     name="Input Table",
@@ -856,7 +856,7 @@ class MultiscaleGeographicallyWeightedRegression:
     node_type=knext.NodeType.LEARNER,
     category=__category,
     icon_path=__NODE_ICON_PATH + "SpatialOLS.png",
-    after=""
+    after="",
 )
 @knext.input_table(
     name="Input Table",
@@ -880,7 +880,7 @@ class MultiscaleGeographicallyWeightedRegression:
 )
 class SpatialOLS:
     """Spatial OLS node.
-    Ordinary least squares with results and diagnostics. More information can be found at 
+    Ordinary least squares with results and diagnostics. More information can be found at
     [here](https://spreg.readthedocs.io/en/latest/generated/spreg.OLS.html)
     """
 
@@ -982,7 +982,7 @@ class SpatialOLS:
     node_type=knext.NodeType.LEARNER,
     category=__category,
     icon_path=__NODE_ICON_PATH + "MLLag.png",
-    after=""
+    after="",
 )
 @knext.input_table(
     name="Input Table",
@@ -1106,7 +1106,7 @@ class SpatialML_Lag:
     node_type=knext.NodeType.LEARNER,
     category=__category,
     icon_path=__NODE_ICON_PATH + "MLErr.png",
-    after=""
+    after="",
 )
 @knext.input_table(
     name="Input Table",
