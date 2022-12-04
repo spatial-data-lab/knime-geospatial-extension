@@ -215,6 +215,10 @@ class GeoPackageReaderNode:
             gdf = gp.read_file(self.data_url, layer=0)
         gdf = gdf.reset_index(drop=True)
         listtable = pd.DataFrame({"layerlist": layerlist})
+        try:
+            test = knext.Table.from_pandas(gdf)
+        except:
+            gdf = pd.DataFrame(gdf.drop(columns="geometry"))
         return knext.Table.from_pandas(gdf), knext.Table.from_pandas(listtable)
 
 
