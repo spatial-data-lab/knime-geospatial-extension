@@ -604,7 +604,7 @@ class GeographicallyWeightedRegression:
 )
 class GeographicallyWeightedRegressionPredictor:
     """Geographically Weighted Regression Predictor node.
-    Geographically Weighted Regression Predictor node.
+    Geographically Weighted Regression Predictor. It will predict the dependent variable using the model and the input table.
     """
 
     geo_col = knut.geo_col_parameter()
@@ -668,7 +668,7 @@ class GeographicallyWeightedRegressionPredictor:
 )
 class MultiscaleGeographicallyWeightedRegression:
     """Multiscale Geographically Weighted Regression node.
-    Multiscale Geographically Weighted Regression node.
+    Multiscale Geographically Weighted Regression estimation. More details can be found at A. Stewart Fotheringham, Wenbai Yang, and Wei Kang. Multiscale geographically weighted regression (mgwr). Annals of the American Association of Geographers, 107(6):1247–1265, 2017. URL: http://dx.doi.org/10.1080/24694452.2017.1352480, arXiv:http://dx.doi.org/10.1080/24694452.2017.1352480, doi:10.1080/24694452.2017.1352480. and Hanchen Yu, Alexander Stewart Fotheringham, Ziqi Li, Taylor Oshan, Wei Kang, and Levi John Wolf. Inference in multiscale geographically weighted regression. Geographical Analysis, 2019. URL: https://onlinelibrary.wiley.com/doi/abs/10.1111/gean.12189, arXiv:https://onlinelibrary.wiley.com/doi/pdf/10.1111/gean.12189, doi:10.1111/gean.12189.
     """
 
     geo_col = knut.geo_col_parameter()
@@ -880,7 +880,8 @@ class MultiscaleGeographicallyWeightedRegression:
 )
 class SpatialOLS:
     """Spatial OLS node.
-    Spatial OLS node.
+    Ordinary least squares with results and diagnostics. More information can be found at 
+    [here](https://spreg.readthedocs.io/en/latest/generated/spreg.OLS.html)
     """
 
     geo_col = knut.geo_col_parameter()
@@ -1005,7 +1006,7 @@ class SpatialOLS:
 )
 class SpatialML_Lag:
     """Spatial ML_Lag.
-    Spatial ML_Lag.
+    ML estimation of the spatial lag model with all results and diagnostics. More details can be found at Luc Anselin. Spatial Econometrics: Methods and Models. Kluwer, Dordrecht, 1988.
     """
 
     geo_col = knut.geo_col_parameter()
@@ -1129,7 +1130,7 @@ class SpatialML_Lag:
 )
 class SpatialML_Error:
     """Spatial ML_Error.
-    Spatial ML_Error.
+    ML estimation of the spatial error model with all results and diagnostics. More details can be found at Luc Anselin. Spatial Econometrics: Methods and Models. Kluwer, Dordrecht, 1988.
     """
 
     geo_col = knut.geo_col_parameter()
