@@ -1499,11 +1499,10 @@ class ViewNodeHeatmap:
         folium.LayerControl().add_to(map)
 
         # replace css and JavaScript paths
-        # FIXME:
         html = map.get_root().render()
-        # html = replace_external_js_css_paths(
-        #     r"\1./libs/leaflet/1.6.0/\3\"\4",
-        #     html,
-        # )
+        html = replace_external_js_css_paths(
+            r"\1./libs/leaflet/1.6.0/\3\"\4",
+            html,
+        )
 
         return knext.view(html)
