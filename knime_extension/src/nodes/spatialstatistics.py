@@ -221,7 +221,7 @@ class spatialWeights:
         # flow_variables["weights"] =path
         out = w.to_adjlist()
 
-        # gdf=gdf.to_crs(self.new_crs)
+        # gdf.to_crs(self.new_crs, inplace=True)
         exec_context.set_progress(
             0.1, "Constructs a contiguity spatial weights matrix done"
         )

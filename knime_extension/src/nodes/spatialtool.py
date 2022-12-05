@@ -298,7 +298,7 @@ class SpatialJoinNode:
             right_input.to_pandas(), geometry=self.right_geo_col
         )
         knut.check_canceled(exec_context)
-        right_gdf = right_gdf.to_crs(left_gdf.crs)
+        right_gdf.to_crs(left_gdf.crs, inplace=True)
         gdf = left_gdf.sjoin(
             right_gdf, how=self.join_mode.lower(), predicate=self.match_mode.lower()
         )
@@ -403,8 +403,8 @@ class NearestJoinNode:
             right_input.to_pandas(), geometry=self.right_geo_col
         )
         knut.check_canceled(exec_context)
-        left_gdf = left_gdf.to_crs(self.crs_info)
-        right_gdf = right_gdf.to_crs(self.crs_info)
+        left_gdf.to_crs(self.crs_info, inplace=True)
+        right_gdf.to_crs(self.crs_info, inplace=True)
         gdf = gp.sjoin_nearest(
             left_gdf,
             right_gdf,
@@ -494,14 +494,12 @@ class ClipNode:
             right_input.to_pandas(), geometry=self.right_geo_col
         )
         knut.check_canceled(exec_context)
-        right_gdf = right_gdf.to_crs(left_gdf.crs)
+        right_gdf.to_crs(left_gdf.crs, inplace=True)
         try:
             gdf_clipnew = gp.clip(left_gdf, right_gdf, keep_geom_type=True)
-            r = knext.Table.from_pandas(gdf_clipnew)
+            return knext.Table.from_pandas(gdf_clipnew)
         except:
             raise ValueError("Improper Mask Geometry")
-
-        return knext.Table.from_pandas(gdf_clipnew)
 
 
 ############################################
@@ -612,7 +610,7 @@ class OverlayNode:
             right_input.to_pandas(), geometry=self.right_geo_col
         )
         knut.check_canceled(exec_context)
-        right_gdf = right_gdf.to_crs(left_gdf.crs)
+        right_gdf.to_crs(left_gdf.crs, inplace=True)
         gdf = gp.overlay(left_gdf, right_gdf, how=self.overlay_mode.lower())
         gdf.reset_index(drop=True, inplace=True)
         return knext.Table.from_pandas(gdf)
@@ -693,8 +691,8 @@ class EuclideanDistanceNode:
             right_input.to_pandas(), geometry=self.right_geo_col
         )
         knut.check_canceled(exec_context)
-        right_gdf = right_gdf.to_crs(self.crs_info)
-        left_gdf = left_gdf.to_crs(self.crs_info)
+        right_gdf.to_crs(self.crs_info, inplace=True)
+        left_gdf.to_crs(self.crs_info, inplace=True)
         # left_gdf['LID'] = range(1,(left_gdf.shape[0]+1))
         # right_gdf['RID'] = range(1,(right_gdf.shape[0]+1))
         mergedf = left_gdf.merge(right_gdf, how="cross")
@@ -728,6 +726,9 @@ class EuclideanDistanceNode:
 @knut.geo_node_description(
     short_description="This node generate multiple polygons with a series distances of each geometric object.",
     description="""This node generate multiple polygons with a series distances of each geometric object.
+
+**Note:** If the input table contains multiple rows the node first computes the union of all geometries before 
+computing the buffers from the union.
     """,
     references={
         "Buffer": "https://geopandas.org/en/stable/docs/reference/api/geopandas.GeoSeries.buffer.html",
@@ -769,7 +770,7 @@ class MultiRingBufferNode:
     def execute(self, exec_context: knext.ExecutionContext, input_1):
         gdf = gp.GeoDataFrame(input_1.to_pandas(), geometry=self.geo_col)
         gdf = gp.GeoDataFrame(geometry=gdf.geometry)
-        gdf = gdf.to_crs(self.crs_info)
+        gdf.to_crs(self.crs_info, inplace=True)
         exec_context.set_progress(0.3, "Geo data frame loaded. Starting buffering...")
         # transfrom string list to number
         bufferlist = np.array(self.bufferdist.split(","), dtype=np.int64)
@@ -858,8 +859,8 @@ class SimplifyNode:
         )
         return None
 
-    def execute(self, exec_context: knext.ExecutionContext, input_1):
-        gdf = gp.GeoDataFrame(input_1.to_pandas(), geometry=self.geo_col)
+    def execute(self, exec_context: knext.ExecutionContext, input):
+        gdf = gp.GeoDataFrame(input.to_pandas(), geometry=self.geo_col)
         gdf[
             knut.get_unique_column_name("geometry", input.schema)
         ] = gdf.geometry.simplify(self.simplifydist)

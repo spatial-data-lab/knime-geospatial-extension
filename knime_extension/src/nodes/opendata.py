@@ -472,7 +472,8 @@ class OSMdataNode:
 
     def execute(self, exec_context: knext.ExecutionContext, input_1):
         gdf = gp.GeoDataFrame(input_1.to_pandas(), geometry=self.geo_col)
-        gdf_union = gdf.to_crs(4326).unary_union
+        gdf.to_crs(4326, inplace=True)
+        gdf_union = gdf.unary_union
         if self.tagvalue != "True":
             tags = {self.taginfo: self.tagvalue}
         else:
@@ -535,7 +536,8 @@ class OSMnetworkNode:
 
     def execute(self, exec_context: knext.ExecutionContext, input_1):
         gdf = gp.GeoDataFrame(input_1.to_pandas(), geometry=self.geo_col)
-        gdf_union = gdf.to_crs(4326).unary_union
+        gdf.to_crs(4326, inplace=True)
+        gdf_union = gdf.unary_union
         G = ox.graph.graph_from_polygon(gdf_union, self.networktype)
         if self.networktype == "drive":
             # impute speed on all edges missing data
