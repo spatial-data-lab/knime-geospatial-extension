@@ -8,7 +8,7 @@ import requests
 import osmnx as ox
 
 __category = knext.category(
-    path="/geo",
+    path="/community/geo",
     level_id="opendataset",
     name="Open Datasets",
     description="Nodes for providing open geospatial datasets.",
@@ -38,25 +38,27 @@ __NODE_ICON_PATH = "icons/icon/OpenDataset/"
     short_description="Retrieve geospatial data from US Census TIGER/Line",
     description="This node retrieves the specific geospatial boundaries for one specific state of the United States."
     + "The popular TIGER/Line levels are Block group, Roads, Blocks,Tracts."
-    + "When the same State FIPS (2-digits) is used for County FIPS(3-digits), the geodata of all counties in the state will be retrieved,"
-    + "county10/20 and state10/20 can only be applicable in this case. ",
+    + "When the same State FIPS (2-digits) or * is used for County FIPS(3-digits), the geodata of all counties in the state will be retrieved,"
+    + "county10/20 and state10/20 can only be applicable in this case. "
+    + "This node can help user to get the FIPS codes of target study area. Linking it to Geospatial View node will be more helpful. ",
     references={
         "TIGER/Line Shapefiles": "https://www.census.gov/geographies/mapping-files/time-series/geo/tiger-line-file.2020.html",
         "FTP Archive by State": "https://www2.census.gov/geo/tiger/TIGER2020PL/STATE/",
         "FTP Archive by Layer": "https://www2.census.gov/geo/tiger/TIGER2020PL/LAYER/",
+        "FIPS code list": "https://transition.fcc.gov/oet/info/maps/census/fips/fips.txt",
     },
 )
 class US2020TIGERNode:
 
     StateFips = knext.StringParameter(
         label="State FIPS (2-digits)",
-        description="The State to use",
+        description="The State to use [FIPS](https://transition.fcc.gov/oet/info/maps/census/fips/fips.txt)",
         default_value="",
     )
 
     County3Fips = knext.StringParameter(
-        "County FIPS(3-digits)/ or State FIPS ",
-        "The County/State FIPS code to use",
+        "County FIPS(3-digits)/ State FIPS or * ",
+        "The County/State FIPS code to use [FIPS](https://transition.fcc.gov/oet/info/maps/census/fips/fips.txt)",
         "",
     )
 
@@ -254,19 +256,20 @@ class US2020TIGERNode:
         "Geography": "https://api.census.gov/data/2020/dec/pl/geography.html",
         "Variables": "https://api.census.gov/data/2020/dec/pl/variables.html",
         "Census API examples": "https://api.census.gov/data/2020/dec/pl/examples.html",
+        "FIPS code list": "https://transition.fcc.gov/oet/info/maps/census/fips/fips.txt",
     },
 )
 class USCensus2020Node:
 
     StateFips = knext.StringParameter(
         "State FIPS (2-digits)",
-        "The State to investigate, input * for all states (while choose county for geography)",
+        "The State [FIPS](https://transition.fcc.gov/oet/info/maps/census/fips/fips.txt) to investigate, input * for all states (while choose county for geography)",
         "25",
     )
 
     County3Fips = knext.StringParameter(
         "County FIPS (3-digits)",
-        "The County to investigate, input * for all counties",
+        "The County [FIPS](https://transition.fcc.gov/oet/info/maps/census/fips/fips.txt) to investigate, input * for all counties",
         "017",
     )
 
@@ -342,19 +345,20 @@ class USCensus2020Node:
         "Geography": "https://api.census.gov/data/2020/acs/acs5/geography.html",
         "Variables": "https://api.census.gov/data/2020/acs/acs5/variables.html",
         "Census API examples": "https://api.census.gov/data/2020/acs/acs5/subject/examples.html",
+        "FIPS code list": "https://transition.fcc.gov/oet/info/maps/census/fips/fips.txt",
     },
 )
 class UScensusACSNode:
 
     StateFips = knext.StringParameter(
         "State FIPS (2-digits)",
-        "The State to investigate, input * for all states (while choose county for geography)",
+        "The State [FIPS](https://transition.fcc.gov/oet/info/maps/census/fips/fips.txt) to investigate, input * for all states (while choose county for geography)",
         "25",
     )
 
     County3Fips = knext.StringParameter(
         "County FIPS (3-digits)",
-        "The County to investigate, input * for all counties",
+        "The County [FIPS](https://transition.fcc.gov/oet/info/maps/census/fips/fips.txt) to investigate, input * for all counties",
         "017",
     )
 
@@ -468,7 +472,8 @@ class OSMdataNode:
 
     def execute(self, exec_context: knext.ExecutionContext, input_1):
         gdf = gp.GeoDataFrame(input_1.to_pandas(), geometry=self.geo_col)
-        gdf_union = gdf.to_crs(4326).unary_union
+        gdf.to_crs(4326, inplace=True)
+        gdf_union = gdf.unary_union
         if self.tagvalue != "True":
             tags = {self.taginfo: self.tagvalue}
         else:
@@ -531,7 +536,8 @@ class OSMnetworkNode:
 
     def execute(self, exec_context: knext.ExecutionContext, input_1):
         gdf = gp.GeoDataFrame(input_1.to_pandas(), geometry=self.geo_col)
-        gdf_union = gdf.to_crs(4326).unary_union
+        gdf.to_crs(4326, inplace=True)
+        gdf_union = gdf.unary_union
         G = ox.graph.graph_from_polygon(gdf_union, self.networktype)
         if self.networktype == "drive":
             # impute speed on all edges missing data

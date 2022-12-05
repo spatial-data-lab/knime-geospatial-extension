@@ -11,7 +11,7 @@ LOGGER = logging.getLogger(__name__)
 
 
 category = knext.category(
-    path="/geo",
+    path="/community/geo",
     level_id="transform",
     name="Spatial Transformation",
     description="Geospatial transformation nodes",
@@ -72,7 +72,7 @@ class CrsTransformerNode:
 
     def execute(self, exec_context: knext.ExecutionContext, input_table):
         gdf = knut.load_geo_data_frame(input_table, self.geo_col, exec_context)
-        gdf = gdf.to_crs(self.new_crs)
+        gdf.to_crs(self.new_crs, inplace=True)
         crs = gdf.crs
         LOGGER.debug("CRS converted to " + self.new_crs)
         return knut.to_table(gdf, exec_context)

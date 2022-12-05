@@ -6,7 +6,7 @@ import util.knime_utils as knut
 
 
 __category = knext.category(
-    path="/geo",
+    path="/community/geo",
     level_id="calculation",
     name="Spatial Calculation",
     description="Nodes that calculate properties for given geometric objects.",
