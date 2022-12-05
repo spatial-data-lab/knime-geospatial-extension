@@ -124,7 +124,9 @@ class GeometryToPointNode:
     )
 
     def configure(self, configure_context, input_schema_1):
-        knut.column_exists(self.geo_col, input_schema_1)
+        self.geo_col = knut.column_exists_or_preset(
+            configure_context, self.geo_col, input_schema_1, knut.is_geo
+        )
         return None
 
     def execute(self, exec_context: knext.ExecutionContext, input_1):
@@ -241,7 +243,9 @@ class PolygonToLineNode:
     )
 
     def configure(self, configure_context, input_schema_1):
-        knut.column_exists(self.geo_col, input_schema_1)
+        self.geo_col = knut.column_exists_or_preset(
+            configure_context, self.geo_col, input_schema_1, knut.is_geo_polygon
+        )
         return None
 
     def execute(self, exec_context: knext.ExecutionContext, input_1):
@@ -309,12 +313,20 @@ class PointsToLineNode:
         include_none_column=False,
     )
 
-    def configure(self, configure_context, input_schema_1):
-        knut.column_exists(self.geo_col, input_schema_1)
+    def configure(self, configure_context, input_schema):
+        self.geo_col = knut.column_exists_or_preset(
+            configure_context, self.geo_col, input_schema, knut.is_geo_point
+        )
+        self.group_col = knut.column_exists_or_preset(
+            configure_context, self.group_col, input_schema, knut.is_string
+        )
+        self.seiral_col = knut.column_exists_or_preset(
+            configure_context, self.seiral_col, input_schema, knut.is_numeric
+        )
         return None
 
-    def execute(self, exec_context: knext.ExecutionContext, input_1):
-        gdf = gp.GeoDataFrame(input_1.to_pandas(), geometry=self.geo_col)
+    def execute(self, exec_context: knext.ExecutionContext, input):
+        gdf = gp.GeoDataFrame(input.to_pandas(), geometry=self.geo_col)
         gdf = gdf.rename(columns={self.geo_col: "geometry"})
         exec_context.set_progress(0.3, "Geo data frame loaded. Starting explosion...")
         line_gdf = (
