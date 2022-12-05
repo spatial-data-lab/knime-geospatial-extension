@@ -3,7 +3,7 @@ import knime_extension as knext
 
 # This defines the root Geospatial KNIME category that is displayed in the node repository
 category = knext.category(
-    path="/",
+    path="/community",
     level_id="geo",
     name="Geospatial Analytics",
     description="Nodes for Geospatial Analytics",

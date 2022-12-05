@@ -16,7 +16,7 @@ import  requests # for OSRM
 import json # for OSRM
 
 __category = knext.category(
-    path="/geo",
+    path="/community/geo",
     level_id="geolab",
     name="Spatial Data Lab",
     description="Nodes that for testing and future exploration.",

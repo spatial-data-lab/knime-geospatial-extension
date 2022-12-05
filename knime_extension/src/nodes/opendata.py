@@ -8,7 +8,7 @@ import requests
 import osmnx as ox
 
 __category = knext.category(
-    path="/geo",
+    path="/community/geo",
     level_id="opendataset",
     name="Open Datasets",
     description="Nodes for providing open geospatial datasets.",

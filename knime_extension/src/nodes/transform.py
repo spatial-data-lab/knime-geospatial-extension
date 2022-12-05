@@ -11,7 +11,7 @@ LOGGER = logging.getLogger(__name__)
 
 
 category = knext.category(
-    path="/geo",
+    path="/community/geo",
     level_id="transform",
     name="Spatial Transformation",
     description="Geospatial transformation nodes",

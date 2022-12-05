@@ -10,7 +10,7 @@ from collections import defaultdict
 
 
 category = knext.category(
-    path="/geo",
+    path="/community/geo",
     level_id="viz",
     name="Spatial Visualization",  # Spatial Visualization
     description="Spatial view nodes",
@@ -1501,9 +1501,9 @@ class ViewNodeHeatmap:
         # replace css and JavaScript paths
         # FIXME:
         html = map.get_root().render()
-        html = replace_external_js_css_paths(
-            r"\1./libs/leaflet/1.6.0/\3\"\4",
-            html,
-        )
+        # html = replace_external_js_css_paths(
+        #     r"\1./libs/leaflet/1.6.0/\3\"\4",
+        #     html,
+        # )
 
         return knext.view(html)

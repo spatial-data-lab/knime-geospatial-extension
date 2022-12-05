@@ -7,7 +7,7 @@ import util.knime_utils as knut
 import fiona
 
 __category = knext.category(
-    path="/geo",
+    path="/community/geo",
     level_id="io",
     name="Spatial IO",
     description="Nodes that for reading and writing Geodata.",

@@ -16,7 +16,7 @@ LOGGER = logging.getLogger(__name__)
 __NODE_ICON_PATH = "icons/icon/SpatialTool/"
 
 __category = knext.category(
-    path="/geo",
+    path="/community/geo",
     level_id="spatialtool",
     name="Spatial Manipulation",
     description="Geospatial manipulation nodes",

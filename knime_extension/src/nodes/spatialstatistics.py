@@ -20,7 +20,7 @@ import sys
 
 
 __category = knext.category(
-    path="/geo",
+    path="/community/geo",
     level_id="spatialstatistic",
     name="Exploratory Spatial Data Analysis",
     description="Spatial Statistic Nodes",

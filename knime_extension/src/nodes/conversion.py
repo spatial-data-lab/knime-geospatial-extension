@@ -8,7 +8,7 @@ import pyproj as pyp
 
 
 __category = knext.category(
-    path="/geo",
+    path="/community/geo",
     level_id="conversion",
     name="Spatial Conversion",
     description="Nodes that perform conversions from/to geometric objects.",

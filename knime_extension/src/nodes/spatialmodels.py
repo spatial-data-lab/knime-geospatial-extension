@@ -21,7 +21,7 @@ import pulp
 from shapely.geometry import LineString
 
 __category = knext.category(
-    path="/geo",
+    path="/community/geo",
     level_id="spatialmodels",
     name="Spatial Modelling",
     description="Spatial Models Nodes",

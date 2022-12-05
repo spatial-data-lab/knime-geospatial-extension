@@ -11,7 +11,7 @@ import numpy as np
 # import sys
 
 __category = knext.category(
-    path="/geo",
+    path="/community/geo",
     level_id="LocationAnalysis",
     name="Location Analysis",
     description="Location Analysis",
