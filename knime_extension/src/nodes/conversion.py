@@ -7,6 +7,7 @@ import util.knime_utils as knut
 import pyproj as pyp
 import geopy
 from geopy.extra.rate_limiter import RateLimiter
+from shapely.geometry import Point
 
 
 
@@ -667,5 +668,5 @@ class GeoGeocodingNode:
 
             df['latitude'] = df[self.address_col].apply(lambda x: geocode(x).latitude)
             df['longitude'] = df[self.address_col].apply(lambda x: geocode(x).longitude)
-
-            return knut.to_table(df)
+            gdf = gp.GeoDataFrame(df, geometry=gp.points_from_xy(df.longitude, df.latitude), crs="EPSG:4326")
+            return knut.to_table(gdf)
