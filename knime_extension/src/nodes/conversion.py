@@ -5,6 +5,9 @@ import geopandas as gp
 import knime_extension as knext
 import util.knime_utils as knut
 import pyproj as pyp
+import geopy
+from geopy.extra.rate_limiter import RateLimiter
+
 
 
 __category = knext.category(
@@ -582,3 +585,94 @@ class GeoToLatLongNode:
         gdf[knut.get_unique_column_name(self.col_lat, input.schema)] = gs.y
         gdf[knut.get_unique_column_name(self.col_lon, input.schema)] = gs.x
         return knut.to_table(gdf, exec_context)
+
+############################################
+# geocoding (address to geometry)
+############################################
+
+@knext.node(
+    name="Geocoding",
+    node_type=knext.NodeType.MANIPULATOR,
+    icon_path=__NODE_ICON_PATH + "GeoGeocoding.png",
+    category=__category,
+    after="",
+)
+@knext.input_table(
+    name="Input table",
+    description="Table with an address column to geocode.",
+)
+@knext.output_table(
+    name="Table with geometry",
+    description="Table with the geometry for all given addresses.",
+)
+@knut.geo_node_description(
+    short_description="Geocodes the given addresses.",
+    description="This node geocodes the given addresses and appends the geometry to the input table.",
+    references={
+        "Geocoding": "https://en.wikipedia.org/wiki/Geocoding",
+        "Geopy": "https://geopy.readthedocs.io/en/stable/",
+    },
+)
+class GeoGeocodingNode:
+    
+        address_col = knext.ColumnParameter(
+            "Address column",
+            "Select the address column to geocode." 
+            + "The column must contain a string with the address to geocode.",
+            )
+        geo_col = "geometry"
+
+        service_provider = knext.StringParameter(
+            "Service provider",
+            "Select the service provider to use for geocoding.",
+            default_value="Nominatim",
+            enum=list(geopy.geocoders.SERVICE_TO_GEOCODER.keys())
+        )
+
+        api_key = knext.StringParameter(
+            "API key",
+            "Enter the API key for the service provider.",
+            default_value=""
+        )
+
+        min_delay_seconds = knext.IntParameter(
+            "Minimum delay (seconds)",
+            "Enter the minimum delay in seconds between two geocoding requests.",
+            default_value=1
+        )
+
+        default_timeout = knext.IntParameter(
+            "Default timeout (seconds)",
+            "Enter the default timeout in seconds for geocoding requests.",
+            default_value=10
+        )
+
+
+    
+        def configure(self, configure_context, input_schema):
+            self.address_col = knut.column_exists_or_preset(
+                configure_context, self.address_col, input_schema, knut.is_string
+            )
+            return input_schema.append(
+                [
+                    knext.Column(
+                        knext.geo_point(),
+                        knut.get_unique_column_name(self.geo_col, input_schema),
+                    )
+                ]
+            )
+    
+        def execute(self, exec_context: knext.ExecutionContext, input):
+            gdf = knut.load_geo_data_frame(input, self.geo_col, exec_context)
+            # geopy.geocoders.options.default_user_agent = 'my_app/1'
+            geopy.geocoders.options.default_timeout = self.default_timeout
+
+            service_provider = geopy.geocoders.SERVICE_TO_GEOCODER[self.service_provider] 
+            geolocator = service_provider(api_key=self.api_key)
+            geocode = RateLimiter(geolocator.geocode, min_delay_seconds=self.min_delay_seconds)
+
+
+            gdf['latitude'] = gdf[self.address_col].apply(lambda x: geocode(x).latitude)
+            gdf['longitude'] = gdf[self.address_col].apply(lambda x: geocode(x).longitude)
+
+            return knut.to_table(gdf, exec_context)
