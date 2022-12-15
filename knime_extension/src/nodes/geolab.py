@@ -8,7 +8,6 @@ import knime_extension as knext
 from sympy import content
 import util.knime_utils as knut
 import requests
-from pandarallel import pandarallel
 import io
 import numpy as np
 from shapely.geometry import Polygon
