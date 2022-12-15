@@ -7,7 +7,6 @@ import util.knime_utils as knut
 import pyproj as pyp
 import geopy
 from geopy.extra.rate_limiter import RateLimiter
-from shapely.geometry import Point
 
 
 
@@ -650,7 +649,6 @@ class GeoGeocodingNode:
             default_value=10
         )
 
-
     
         def configure(self, configure_context, input_schema):
            
@@ -663,10 +661,95 @@ class GeoGeocodingNode:
 
             service_provider = geopy.geocoders.SERVICE_TO_GEOCODER[self.service_provider] 
             geolocator = service_provider(api_key=self.api_key)
+
             geocode = RateLimiter(geolocator.geocode, min_delay_seconds=self.min_delay_seconds)
-
-
             df['latitude'] = df[self.address_col].apply(lambda x: geocode(x).latitude)
             df['longitude'] = df[self.address_col].apply(lambda x: geocode(x).longitude)
             gdf = gp.GeoDataFrame(df, geometry=gp.points_from_xy(df.longitude, df.latitude), crs="EPSG:4326")
-            return knut.to_table(gdf)
+
+            return knut.to_table(df)
+        
+
+############################################
+# reverse geocoding (geometry to address)
+############################################
+
+@knext.node(
+    name="Reverse Geocoding",
+    node_type=knext.NodeType.MANIPULATOR,
+    icon_path=__NODE_ICON_PATH + "GeoReverseGeocoding.png",
+    category=__category,
+    after="",
+)
+@knext.input_table(
+    name="Input table",
+    description="Table with a geometry column to reverse geocode.",
+)
+@knext.output_table(
+    name="Table with address",
+    description="Table with the address for all given geometries.",
+)
+@knut.geo_node_description(
+    short_description="Reverse geocodes the given geometries.",
+    description="This node reverse geocodes the given geometries and appends the address to the input table.",
+    references={
+        "Reverse Geocoding": "https://en.wikipedia.org/wiki/Reverse_geocoding",
+        "Geopy": "https://geopy.readthedocs.io/en/stable/",
+    },
+)
+class GeoReverseGeocodingNode:
+        
+    geo_col = knext.ColumnParameter(
+        "Geometry column",
+        "Select the geometry column to reverse geocode." 
+        + "The column must contain a geometry.",
+        column_filter=knut.is_geo,
+        include_row_key=False,
+    include_none_column=False,
+        )
+
+    service_provider = knext.StringParameter(
+        "Service provider",
+        "Select the service provider to use for reverse geocoding.",
+        default_value="Nominatim",
+        enum=list(geopy.geocoders.SERVICE_TO_GEOCODER.keys())
+    )
+
+    api_key = knext.StringParameter(
+        "API key",
+        "Enter the API key for the service provider.",
+        default_value=""
+    )
+
+    min_delay_seconds = knext.IntParameter(
+        "Minimum delay (seconds)",
+        "Enter the minimum delay in seconds between two reverse geocoding requests.",
+        default_value=1
+    )
+
+    default_timeout = knext.IntParameter(
+        "Default timeout (seconds)",
+        "Enter the default timeout in seconds for reverse geocoding requests.",
+        default_value=10
+    )
+
+
+    def configure(self, configure_context, input_schema):
+        
+        return None
+    
+    def execute(self, exec_context: knext.ExecutionContext, input_table):
+        df = input_table.to_pandas()
+        df.rename(columns={self.geo_col: "geometry"}, inplace=True)
+        gdf = gp.GeoDataFrame(df, geometry="geometry")
+        # geopy.geocoders.options.default_user_agent = 'my_app/1'
+        geopy.geocoders.options.default_timeout = self.default_timeout
+
+        service_provider = geopy.geocoders.SERVICE_TO_GEOCODER[self.service_provider] 
+        geolocator = service_provider(api_key=self)
+
+        reverse = RateLimiter(geolocator.reverse, min_delay_seconds=self.min_delay_seconds)
+        gdf['address'] = gdf['geometry'].apply(lambda x: reverse((x.y,x.x)).address)
+        
+
+        return knut.to_table(gdf)
