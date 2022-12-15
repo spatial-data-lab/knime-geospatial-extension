@@ -519,3 +519,16 @@ def ensure_file_extension(file_name: str, file_extension: str) -> str:
     if file_name.lower().endswith(file_extension):
         return file_name
     return file_name + file_extension
+
+
+def Turn_all_NA_column_as_str(gdf) -> None:
+    """
+     Checks if the GeoDataFrame has columns of all NAs, otherwise it cannot be write out and makes the node crush.
+    """
+    # Transform the NA columns to string
+    NotNacol = list(gdf.dropna(axis=1, how="all").columns)
+    Nacol = gdf.loc[:, ~gdf.columns.isin(NotNacol)].columns.tolist()
+    if len(Nacol)>0:
+        gdf[Nacol] = gdf[Nacol].astype(str)
+    gdf= gdf.reset_index(drop=True)
+    return gdf

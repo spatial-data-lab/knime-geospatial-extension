@@ -67,7 +67,7 @@ class GeoFileReaderNode:
             0.4, "Reading file (This might take a while without progress changes)"
         )
         gdf = gp.read_file(self.data_url)
-        gdf = gdf.reset_index(drop=True)
+        gdf = knut.Turn_all_NA_column_as_str(gdf)
         if "<Row Key>" in gdf.columns:
             gdf = gdf.drop(columns="<Row Key>")
         return knext.Table.from_pandas(gdf)
