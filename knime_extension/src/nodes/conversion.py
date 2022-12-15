@@ -619,8 +619,10 @@ class GeoGeocodingNode:
             "Address column",
             "Select the address column to geocode." 
             + "The column must contain a string with the address to geocode.",
+             column_filter=knut.is_string,
+            include_row_key=False,
+        include_none_column=False,
             )
-        geo_col = "geometry"
 
         service_provider = knext.StringParameter(
             "Service provider",
@@ -650,20 +652,11 @@ class GeoGeocodingNode:
 
     
         def configure(self, configure_context, input_schema):
-            self.address_col = knut.column_exists_or_preset(
-                configure_context, self.address_col, input_schema, knut.is_string
-            )
-            return input_schema.append(
-                [
-                    knext.Column(
-                        knext.geo_point(),
-                        knut.get_unique_column_name(self.geo_col, input_schema),
-                    )
-                ]
-            )
+           
+            return None
     
-        def execute(self, exec_context: knext.ExecutionContext, input):
-            gdf = knut.load_geo_data_frame(input, self.geo_col, exec_context)
+        def execute(self, exec_context: knext.ExecutionContext, input_table):
+            df = input_table.to_pandas()
             # geopy.geocoders.options.default_user_agent = 'my_app/1'
             geopy.geocoders.options.default_timeout = self.default_timeout
 
@@ -672,7 +665,7 @@ class GeoGeocodingNode:
             geocode = RateLimiter(geolocator.geocode, min_delay_seconds=self.min_delay_seconds)
 
 
-            gdf['latitude'] = gdf[self.address_col].apply(lambda x: geocode(x).latitude)
-            gdf['longitude'] = gdf[self.address_col].apply(lambda x: geocode(x).longitude)
+            df['latitude'] = df[self.address_col].apply(lambda x: geocode(x).latitude)
+            df['longitude'] = df[self.address_col].apply(lambda x: geocode(x).longitude)
 
-            return knut.to_table(gdf, exec_context)
+            return knut.to_table(df)
