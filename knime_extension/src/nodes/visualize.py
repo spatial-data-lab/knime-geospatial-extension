@@ -959,7 +959,7 @@ class ViewNodeStatic:
                 max_val = gdf[self.size_settings.size_col].max()
                 min_val = gdf[self.size_settings.size_col].min()
                 normal_base = (gdf[self.size_settings.size_col] - min_val) / max_val
-                kws["makersize"] = normal_base * max_point_size
+                kws["markersize"] = normal_base * max_point_size
         if "none" not in str(self.line_width_col).lower():
             max_line_width = 5
             max_val = gdf[self.line_width_col].max()
