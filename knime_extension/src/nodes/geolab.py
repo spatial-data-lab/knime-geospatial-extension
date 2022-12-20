@@ -1368,7 +1368,7 @@ class BivariateLocalMoran:
 # OSRM
 ############################################
 @knext.node(
-    name="OSRM Drive Matrix",
+    name="OSRM Drive Matrix Old",
     node_type=knext.NodeType.LEARNER,
     # node_type=knext.NodeType.MANIPULATOR,
     category=__category,
@@ -1640,3 +1640,153 @@ class GoogleDistanceMatrix:
             distance_matrix.iloc[i, 2] = Google_Travel_Cost[0]
             distance_matrix.iloc[i, 3] = Google_Travel_Cost[1]
         return knext.Table.from_pandas(distance_matrix)
+
+
+############################################
+# OSRM
+############################################
+@knext.node(
+    name="OSRM Drive Matrix",
+    node_type=knext.NodeType.LEARNER,
+    # node_type=knext.NodeType.MANIPULATOR,
+    category=__category,
+    icon_path=__NODE_ICON_PATH + "BivariateLocal.png",
+)
+@knext.input_table(
+    name="Input Table as origin",
+    description="Input origin table with geometry.",
+)
+@knext.input_table(
+    name="Input Table as destination",
+    description="Input destination table with geometry.",
+)
+@knext.output_table(
+    name="Output Table",
+    description="Output table with driving Cost in Minutes and Meters.",
+)
+class OSRMDriveMatrixNew:
+    """
+    OSRM Distance Matrix
+    """
+
+    # input parameters
+    O_geo_col = knext.ColumnParameter(
+        "Origin Geometry Column(Points)",
+        "Select the geometry column as origin.",
+        # Allow only GeoValue compatible columns
+        port_index=0,
+        column_filter=knut.is_geo,
+        include_row_key=False,
+        include_none_column=False,
+    )
+
+    D_geo_col = knext.ColumnParameter(
+        "Right geometry column",
+        "Select the geometry column as destination.",
+        # Allow only GeoValue compatible columns
+        port_index=1,
+        column_filter=knut.is_geo,
+        include_row_key=False,
+        include_none_column=False,
+    )
+
+    def configure(self, configure_context, input_schema_1, input_schema_2):
+        return None
+
+    def execute(self, exec_context: knext.ExecutionContext, left_input, right_input):
+        O_gdf = gp.GeoDataFrame(left_input.to_pandas(), geometry=self.O_geo_col)
+        D_gdf = gp.GeoDataFrame(right_input.to_pandas(), geometry=self.D_geo_col)
+        # Set a lat\Lon CRS
+        O_gdf = O_gdf.to_crs(4326)
+        D_gdf = D_gdf.to_crs(4326)
+        # Generate ID
+        O_gdf["OriginID"] = range(1, (O_gdf.shape[0] + 1))
+        D_gdf["DestinationID"] = range(1, (D_gdf.shape[0] + 1))
+        mergedf = O_gdf.merge(D_gdf, how="cross")
+        mergedf_x = gp.GeoDataFrame(geometry=mergedf["geometry_x"])
+        mergedf_y = gp.GeoDataFrame(geometry=mergedf["geometry_y"])
+
+        df = mergedf[["OriginID", "DestinationID"]]
+        df["StartX"] = mergedf_x.centroid.x
+        df["StartY"] = mergedf_x.centroid.y
+        df["EndX"] = mergedf_y.centroid.x
+        df["EndY"] = mergedf_y.centroid.y
+        df = df.reset_index(drop=True)
+        # set minimun set
+        slnum = 100
+        nlength = df.shape[0]
+        nloop = nlength // slnum
+        ntail = nlength % slnum
+        df["duration"] = 0.0
+        df["distance"] = 0.0
+        osrm_route_service = "http://router.project-osrm.org/route/v1/driving/"
+        if nloop >= 1:
+            for i in range(nloop):
+                ns = slnum * i
+                ne = ns + slnum - 1
+                dfs = df.copy().loc[ns:ne]
+                dfs = dfs[["StartX", "StartY", "EndX", "EndY"]]
+                dfs = dfs.astype(str)
+                dfs["period"] = (
+                    dfs["StartX"]
+                    + ","
+                    + dfs["StartY"]
+                    + ";"
+                    + dfs["EndX"]
+                    + ","
+                    + dfs["EndY"]
+                )
+                Querylist = [";".join(dfs["period"])]
+                address = osrm_route_service + Querylist[0]
+                try:
+                    r = requests.get(
+                        address, params={"continue_straight": "false"}, timeout=None
+                    )
+                    data = json.loads(r.text)
+                    if data["code"] == "Ok":
+                        dfr = pd.DataFrame(data["routes"][0]["legs"])[
+                            ["duration", "distance"]
+                        ].iloc[::2]
+                        df.loc[ns:ne, "duration"] = dfr.duration.to_list()
+                        df.loc[ns:ne, "distance"] = dfr.distance.to_list()
+                    else:
+                        print("error from:{} to :{}".format(ns, ne))
+                except:
+                    print("error from:{} to :{}".format(ns, ne))
+        if ntail > 0:
+            ns = slnum * nloop
+            ne = ns + ntail - 1
+            dfs = df.copy().loc[ns:ne]
+            dfs = dfs[["StartX", "StartY", "EndX", "EndY"]]
+            dfs = dfs.astype(str)
+            dfs["period"] = (
+                dfs["StartX"]
+                + ","
+                + dfs["StartY"]
+                + ";"
+                + dfs["EndX"]
+                + ","
+                + dfs["EndY"]
+            )
+            Querylist = [";".join(dfs["period"])]
+            address = osrm_route_service + Querylist[0]
+            try:
+                r = requests.get(
+                    address, params={"continue_straight": "false"}, timeout=None
+                )
+                data = json.loads(r.text)
+                if data["code"] == "Ok":
+                    dfr = pd.DataFrame(data["routes"][0]["legs"])[
+                        ["duration", "distance"]
+                    ].iloc[::2]
+                    df.loc[ns:ne, "duration"] = dfr.duration.to_list()
+                    df.loc[ns:ne, "distance"] = dfr.distance.to_list()
+                else:
+                    print("error from:{} to :{}".format(ns, ne))
+            except:
+                print("error from:{} to :{}".format(ns, ne))
+            else:
+                print("error from:{} to :{}".format(ns, ne))
+        df1 = df[["OriginID", "DestinationID", "duration", "distance"]]
+        df1["duration"] = df1.duration / 60
+        return knext.Table.from_pandas(df1)
