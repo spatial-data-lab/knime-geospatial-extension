@@ -735,7 +735,6 @@ class GeoReverseGeocodingNode:
     )
 
     def configure(self, configure_context, input_schema):
-
         return None
 
     def execute(self, exec_context: knext.ExecutionContext, input_table):
@@ -746,8 +745,7 @@ class GeoReverseGeocodingNode:
         geopy.geocoders.options.default_timeout = self.default_timeout
 
         service_provider = geopy.geocoders.SERVICE_TO_GEOCODER[self.service_provider]
-        geolocator = service_provider(api_key=self)
-
+        geolocator = service_provider(api_key=self.api_key)
         reverse = RateLimiter(
             geolocator.reverse, min_delay_seconds=self.min_delay_seconds
         )
