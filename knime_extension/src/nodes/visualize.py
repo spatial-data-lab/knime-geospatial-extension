@@ -959,7 +959,7 @@ class ViewNodeStatic:
                 max_val = gdf[self.size_settings.size_col].max()
                 min_val = gdf[self.size_settings.size_col].min()
                 normal_base = (gdf[self.size_settings.size_col] - min_val) / max_val
-                kws["makersize"] = normal_base * max_point_size
+                kws["markersize"] = normal_base * max_point_size
         if "none" not in str(self.line_width_col).lower():
             max_line_width = 5
             max_val = gdf[self.line_width_col].max()
@@ -1054,7 +1054,7 @@ class ViewNodeKepler:
 
         map_1 = KeplerGl(show_docs=False)
         map_1.add_data(data=gdf.copy(), name="state")
-        config = {}
+        # config = {}
         # if self.save_config:
         #     # Save map_1 config to a file
         #     # config_str = json.dumps(map_1.config)
@@ -1066,9 +1066,9 @@ class ViewNodeKepler:
         # if self.load_config:
         #     with open("kepler_config.json", "r") as f:
         #         config = json.loads(f.read())
-        map_1.config = config
+        # map_1.config = config
 
-        html = map_1._repr_html_()
+        html = map_1._repr_html_(center_map=True)
         html = html.decode("utf-8")
 
         # replace css and JavaScript paths
