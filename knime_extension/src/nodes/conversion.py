@@ -697,6 +697,8 @@ class GeoGeocodingNode:
             df, geometry=gp.points_from_xy(df.longitude, df.latitude), crs="EPSG:4326"
         )
 
+        gdf.drop(columns=["latitude", "longitude"], inplace=True)
+
         return knut.to_table(gdf)
 
 
