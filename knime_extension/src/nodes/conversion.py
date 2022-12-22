@@ -594,7 +594,7 @@ class GeocodingServiceSettings:
         "Service provider",
         "Select the service provider to use for reverse geocoding.",
         default_value="nominatim",
-        enum=['arcgis',  'baidu', 'baiduv3', 'bing', 'google', 'googlev3', 'mapbox', 'nominatim'],
+        enum=[ 'baiduv3', 'bing',  'googlev3', 'mapbox','yandex', 'nominatim'],
     )
 
     api_key = knext.StringParameter(
@@ -660,11 +660,14 @@ class GeoGeocodingNode:
 
     def execute(self, exec_context: knext.ExecutionContext, input_table):
         df = input_table.to_pandas()
-        # geopy.geocoders.options.default_user_agent = 'my_app/1'
+
         geopy.geocoders.options.default_timeout = self.geocoding_service_settings.default_timeout
 
         service_provider = geopy.geocoders.SERVICE_TO_GEOCODER[self.geocoding_service_settings.service_provider]
-        geolocator = service_provider(api_key=self.geocoding_service_settings.api_key)
+        if self.geocoding_service_settings.service_provider == "nominatim":
+            geolocator = service_provider(user_agent="any_name")
+        else:
+            geolocator = service_provider(api_key=self.geocoding_service_settings.api_key)
 
         geocode = RateLimiter(
             geolocator.geocode, min_delay_seconds=self.geocoding_service_settings.min_delay_seconds
@@ -728,11 +731,14 @@ class GeoReverseGeocodingNode:
         df = input_table.to_pandas()
         df.rename(columns={self.geo_col: "geometry"}, inplace=True)
         gdf = gp.GeoDataFrame(df, geometry="geometry")
-        # geopy.geocoders.options.default_user_agent = 'my_app/1'
+
         geopy.geocoders.options.default_timeout = self.geocoding_service_settings.default_timeout
 
         service_provider = geopy.geocoders.SERVICE_TO_GEOCODER[self.geocoding_service_settings.service_provider]
-        geolocator = service_provider(api_key=self.geocoding_service_settings.api_key)
+        if self.geocoding_service_settings.service_provider == "nominatim":
+            geolocator = service_provider(user_agent="any_name")
+        else:
+            geolocator = service_provider(api_key=self.geocoding_service_settings.api_key)
         reverse = RateLimiter(
             geolocator.reverse, min_delay_seconds=self.geocoding_service_settings.min_delay_seconds
         )
