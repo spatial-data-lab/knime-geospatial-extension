@@ -643,7 +643,16 @@ class GeocodingServiceSettings:
 )
 @knut.geo_node_description(
     short_description="Geocodes the given addresses.",
-    description="This node geocodes the given addresses and appends the `geometry` to the input table.",
+    description="""This node geocodes the given addresses and appends the `geometry` to the input table.
+    The `geometry` column contains the point geometry for the given address.
+    The node uses the [geopy](https://geopy.readthedocs.io/en/stable/) library to geocode the addresses.
+    The node uses the [Nominatim](https://nominatim.org/) service by default.
+    You can change the service provider and API key in the node settings.
+    See the [geopy documentation](https://geopy.readthedocs.io/en/stable/#module-geopy.geocoders) for more information.
+    Notice that the service provider and API key are only required for some service providers. You don't have to enter them for
+    service providers such as Nomintim and ArcGIS.
+    The addresses can be like `1600 Amphitheatre Parkway, Mountain View, CA` or `1600 Amphitheatre Parkway, Mountain View, CA, United States`.
+    """,
     references={
         "Geocoding": "https://en.wikipedia.org/wiki/Geocoding",
         "Geopy": "https://geopy.readthedocs.io/en/stable/",
