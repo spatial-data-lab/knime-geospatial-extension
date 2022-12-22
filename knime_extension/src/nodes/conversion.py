@@ -586,6 +586,33 @@ class GeoToLatLongNode:
         return knut.to_table(gdf, exec_context)
 
 
+
+@knext.parameter_group(label="Geocoding Service Settings")
+class GeocodingServiceSettings:
+
+    service_provider = knext.StringParameter(
+        "Service provider",
+        "Select the service provider to use for reverse geocoding.",
+        default_value="nominatim",
+        enum=['arcgis',  'baidu', 'baiduv3', 'bing', 'google', 'googlev3', 'mapbox', 'nominatim'],
+    )
+
+    api_key = knext.StringParameter(
+        "API key", "Enter the API key for the service provider.", default_value=""
+    )
+
+    min_delay_seconds = knext.IntParameter(
+        "Minimum delay (seconds)",
+        "Enter the minimum delay in seconds between two reverse geocoding requests.",
+        default_value=1,
+    )
+
+    default_timeout = knext.IntParameter(
+        "Default timeout (seconds)",
+        "Enter the default timeout in seconds for reverse geocoding requests.",
+        default_value=10,
+    )
+
 ############################################
 # geocoding (address to geometry)
 ############################################
@@ -625,28 +652,7 @@ class GeoGeocodingNode:
         include_none_column=False,
     )
 
-        service_provider = knext.StringParameter(
-            "Service provider",
-            "Select the service provider to use for geocoding.",
-            default_value="nominatim",
-            enum=list(geopy.geocoders.SERVICE_TO_GEOCODER.keys())
-        )
-
-    api_key = knext.StringParameter(
-        "API key", "Enter the API key for the service provider.", default_value=""
-    )
-
-    min_delay_seconds = knext.IntParameter(
-        "Minimum delay (seconds)",
-        "Enter the minimum delay in seconds between two geocoding requests.",
-        default_value=1,
-    )
-
-    default_timeout = knext.IntParameter(
-        "Default timeout (seconds)",
-        "Enter the default timeout in seconds for geocoding requests.",
-        default_value=10,
-    )
+    geocoding_service_settings = GeocodingServiceSettings()
 
     def configure(self, configure_context, input_schema):
 
@@ -655,13 +661,13 @@ class GeoGeocodingNode:
     def execute(self, exec_context: knext.ExecutionContext, input_table):
         df = input_table.to_pandas()
         # geopy.geocoders.options.default_user_agent = 'my_app/1'
-        geopy.geocoders.options.default_timeout = self.default_timeout
+        geopy.geocoders.options.default_timeout = self.geocoding_service_settings.default_timeout
 
-        service_provider = geopy.geocoders.SERVICE_TO_GEOCODER[self.service_provider]
-        geolocator = service_provider(api_key=self.api_key)
+        service_provider = geopy.geocoders.SERVICE_TO_GEOCODER[self.geocoding_service_settings.service_provider]
+        geolocator = service_provider(api_key=self.geocoding_service_settings.api_key)
 
         geocode = RateLimiter(
-            geolocator.geocode, min_delay_seconds=self.min_delay_seconds
+            geolocator.geocode, min_delay_seconds=self.geocoding_service_settings.min_delay_seconds
         )
         df["latitude"] = df[self.address_col].apply(lambda x: geocode(x).latitude)
         df["longitude"] = df[self.address_col].apply(lambda x: geocode(x).longitude)
@@ -670,6 +676,8 @@ class GeoGeocodingNode:
         )
 
         return knut.to_table(df)
+
+
 
 
 ############################################
@@ -711,28 +719,7 @@ class GeoReverseGeocodingNode:
         include_none_column=False,
     )
 
-    service_provider = knext.StringParameter(
-        "Service provider",
-        "Select the service provider to use for reverse geocoding.",
-        default_value="Nominatim",
-        enum=list(geopy.geocoders.SERVICE_TO_GEOCODER.keys())
-    )
-
-    api_key = knext.StringParameter(
-        "API key", "Enter the API key for the service provider.", default_value=""
-    )
-
-    min_delay_seconds = knext.IntParameter(
-        "Minimum delay (seconds)",
-        "Enter the minimum delay in seconds between two reverse geocoding requests.",
-        default_value=1,
-    )
-
-    default_timeout = knext.IntParameter(
-        "Default timeout (seconds)",
-        "Enter the default timeout in seconds for reverse geocoding requests.",
-        default_value=10,
-    )
+    geocoding_service_settings = GeocodingServiceSettings()
 
     def configure(self, configure_context, input_schema):
         return None
@@ -742,12 +729,12 @@ class GeoReverseGeocodingNode:
         df.rename(columns={self.geo_col: "geometry"}, inplace=True)
         gdf = gp.GeoDataFrame(df, geometry="geometry")
         # geopy.geocoders.options.default_user_agent = 'my_app/1'
-        geopy.geocoders.options.default_timeout = self.default_timeout
+        geopy.geocoders.options.default_timeout = self.geocoding_service_settings.default_timeout
 
-        service_provider = geopy.geocoders.SERVICE_TO_GEOCODER[self.service_provider]
-        geolocator = service_provider(api_key=self.api_key)
+        service_provider = geopy.geocoders.SERVICE_TO_GEOCODER[self.geocoding_service_settings.service_provider]
+        geolocator = service_provider(api_key=self.geocoding_service_settings.api_key)
         reverse = RateLimiter(
-            geolocator.reverse, min_delay_seconds=self.min_delay_seconds
+            geolocator.reverse, min_delay_seconds=self.geocoding_service_settings.min_delay_seconds
         )
         gdf["address"] = gdf["geometry"].apply(lambda x: reverse((x.y, x.x)).address)
 
