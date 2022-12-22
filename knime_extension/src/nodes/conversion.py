@@ -697,7 +697,7 @@ class GeoGeocodingNode:
             df, geometry=gp.points_from_xy(df.longitude, df.latitude), crs="EPSG:4326"
         )
 
-        return knut.to_table(df)
+        return knut.to_table(gdf)
 
 
 
@@ -725,7 +725,15 @@ class GeoGeocodingNode:
 @knut.geo_node_description(
     short_description="Reverse geocodes the given geometries.",
     description="""This node reverse geocodes the given geometries and appends the `address` column to the input table. 
-    Please rename your column if you already have an `address` column.""",
+    Please rename your column if you already have an `address` column.
+    The `address` column contains the address for the given geometry.
+    The node uses the [geopy](https://geopy.readthedocs.io/en/stable/) library to reverse geocode the geometries.
+    The node uses the [Nominatim](https://nominatim.org/) service by default.
+    You can change the service provider and API key in the node settings.
+    See the [geopy documentation](https://geopy.readthedocs.io/en/stable/#module-geopy.geocoders) for more information.
+    Notice that the service provider and API key are only required for some service providers. You don't have to enter them for
+    service providers such as Nomintim and ArcGIS.
+    """,
     references={
         "Reverse Geocoding": "https://en.wikipedia.org/wiki/Reverse_geocoding",
         "Geopy": "https://geopy.readthedocs.io/en/stable/",
