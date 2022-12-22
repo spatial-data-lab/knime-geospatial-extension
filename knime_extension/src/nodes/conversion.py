@@ -586,9 +586,14 @@ class GeoToLatLongNode:
         return knut.to_table(gdf, exec_context)
 
 
-
 @knext.parameter_group(label="Geocoding Service Settings")
 class GeocodingServiceSettings:
+    # add documentation for the class
+    """The parameters for the geocoding service. 
+    See the [geopy documentation](https://geopy.readthedocs.io/en/stable/#module-geopy.geocoders) for more information.
+    Notice that the service provider and API key are only required for some service providers. You don't have to enter them for 
+    service providers such as Nomintim and ArcGIS.
+    """
 
     service_provider = knext.StringParameter(
         "Service provider",
@@ -598,7 +603,10 @@ class GeocodingServiceSettings:
     )
 
     api_key = knext.StringParameter(
-        "API key", "Enter the API key for the service provider.", default_value=""
+        "API key", 
+        """Enter the API key for the service provider. 
+        You can leave this field empty if the service provider (such as `nominatim` and `arcgis`) doesn't require an API key.""", 
+        default_value=""
     )
 
     min_delay_seconds = knext.IntParameter(
@@ -635,7 +643,7 @@ class GeocodingServiceSettings:
 )
 @knut.geo_node_description(
     short_description="Geocodes the given addresses.",
-    description="This node geocodes the given addresses and appends the geometry to the input table.",
+    description="This node geocodes the given addresses and appends the `geometry` to the input table.",
     references={
         "Geocoding": "https://en.wikipedia.org/wiki/Geocoding",
         "Geopy": "https://geopy.readthedocs.io/en/stable/",
@@ -707,7 +715,8 @@ class GeoGeocodingNode:
 )
 @knut.geo_node_description(
     short_description="Reverse geocodes the given geometries.",
-    description="This node reverse geocodes the given geometries and appends the address to the input table.",
+    description="""This node reverse geocodes the given geometries and appends the `address` column to the input table. 
+    Please rename your column if you already have an `address` column.""",
     references={
         "Reverse Geocoding": "https://en.wikipedia.org/wiki/Reverse_geocoding",
         "Geopy": "https://geopy.readthedocs.io/en/stable/",
