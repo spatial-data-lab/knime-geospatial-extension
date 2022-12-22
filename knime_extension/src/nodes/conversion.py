@@ -668,11 +668,25 @@ class GeoGeocodingNode:
         include_row_key=False,
         include_none_column=False,
     )
+    name = "geometry"
 
     geocoding_service_settings = GeocodingServiceSettings()
 
     def configure(self, configure_context, input_schema):
-
+        self.address_col = knut.column_exists_or_preset(
+            configure_context,self.address_col, input_schema, knut.is_string
+        )
+        # from shapely.geometry import Point 
+        # result = input_schema.append(
+            
+        #     knext.Column(
+        #     ktype=knext.logical(Point),
+        #     name=knut.get_unique_column_name(
+        #             self.name, 
+        #             input_schema
+        #         ),
+        #     )
+        # )
         return None
 
     def execute(self, exec_context: knext.ExecutionContext, input_table):
@@ -698,6 +712,12 @@ class GeoGeocodingNode:
         )
 
         gdf.drop(columns=["latitude", "longitude"], inplace=True)
+        # result_col_name = knut.get_unique_column_name(
+        #     self.name, input_table.schema
+        # )
+        # gdf.rename(columns={"geometry": result_col_name}, inplace=True)
+
+        # gdf = gp.GeoDataFrame(df, geometry=gdf.geometry, crs="EPSG:4326")
 
         return knut.to_table(gdf)
 
