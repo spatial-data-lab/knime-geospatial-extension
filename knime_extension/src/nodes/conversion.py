@@ -627,7 +627,7 @@ class GeoGeocodingNode:
         service_provider = knext.StringParameter(
             "Service provider",
             "Select the service provider to use for geocoding.",
-            default_value="Nominatim",
+            default_value="nominatim",
             enum=list(geopy.geocoders.SERVICE_TO_GEOCODER.keys())
         )
 
@@ -711,7 +711,7 @@ class GeoReverseGeocodingNode:
     service_provider = knext.StringParameter(
         "Service provider",
         "Select the service provider to use for reverse geocoding.",
-        default_value="Nominatim",
+        default_value="nominatim",
         enum=list(geopy.geocoders.SERVICE_TO_GEOCODER.keys())
     )
 
