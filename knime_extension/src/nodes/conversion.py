@@ -594,7 +594,7 @@ class GeocodingServiceSettings:
         "Service provider",
         "Select the service provider to use for reverse geocoding.",
         default_value="nominatim",
-        enum=[ 'baiduv3', 'bing',  'googlev3', 'mapbox','yandex', 'nominatim'],
+        enum=[ 'baiduv3', 'bing',  'googlev3', 'mapbox','yandex', 'nominatim','arcgis'],
     )
 
     api_key = knext.StringParameter(
@@ -666,6 +666,8 @@ class GeoGeocodingNode:
         service_provider = geopy.geocoders.SERVICE_TO_GEOCODER[self.geocoding_service_settings.service_provider]
         if self.geocoding_service_settings.service_provider == "nominatim":
             geolocator = service_provider(user_agent="any_name")
+        elif self.geocoding_service_settings.service_provider == "arcgis":
+            geolocator = service_provider()
         else:
             geolocator = service_provider(api_key=self.geocoding_service_settings.api_key)
 
@@ -737,11 +739,17 @@ class GeoReverseGeocodingNode:
         service_provider = geopy.geocoders.SERVICE_TO_GEOCODER[self.geocoding_service_settings.service_provider]
         if self.geocoding_service_settings.service_provider == "nominatim":
             geolocator = service_provider(user_agent="any_name")
+        elif self.geocoding_service_settings.service_provider == "arcgis":
+            geolocator = service_provider()
         else:
             geolocator = service_provider(api_key=self.geocoding_service_settings.api_key)
         reverse = RateLimiter(
             geolocator.reverse, min_delay_seconds=self.geocoding_service_settings.min_delay_seconds
         )
         gdf["address"] = gdf["geometry"].apply(lambda x: reverse((x.y, x.x)).address)
+
+        gdf["address"] = gdf["address"].apply(lambda x: x.decode("utf-8") if isinstance(x, bytes) else x)
+
+        
 
         return knut.to_table(gdf)
