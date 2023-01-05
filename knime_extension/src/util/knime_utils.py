@@ -155,12 +155,12 @@ def is_numeric_or_string(column: knext.Column) -> bool:
     Checks if column is numeric or string
     @return: True if Column is numeric or string
     """
-    return (
-        column.ktype == knext.double()
-        or column.ktype == knext.int32()
-        or column.ktype == knext.int64()
-        or column.ktype == knext.string()
-    )
+    return column.ktype in [
+        knext.double(),
+        knext.int32(),
+        knext.int64(),
+        knext.string(),
+    ]
 
 
 def is_binary(column: knext.Column) -> bool:
@@ -523,12 +523,12 @@ def ensure_file_extension(file_name: str, file_extension: str) -> str:
 
 def Turn_all_NA_column_as_str(gdf) -> None:
     """
-     Checks if the GeoDataFrame has columns of all NAs, otherwise it cannot be write out and makes the node crush.
+    Checks if the GeoDataFrame has columns of all NAs, otherwise it cannot be write out and makes the node crush.
     """
     # Transform the NA columns to string
     NotNacol = list(gdf.dropna(axis=1, how="all").columns)
     Nacol = gdf.loc[:, ~gdf.columns.isin(NotNacol)].columns.tolist()
-    if len(Nacol)>0:
+    if len(Nacol) > 0:
         gdf[Nacol] = gdf[Nacol].astype(str)
-    gdf= gdf.reset_index(drop=True)
+    gdf = gdf.reset_index(drop=True)
     return gdf

@@ -262,9 +262,9 @@ class CoordinatesNode:
         False,
     )
 
-    col_x = "x"
-    col_y = "y"
-    col_z = "z"
+    _col_x = "x"
+    _col_y = "y"
+    _col_z = "z"
 
     def configure(self, configure_context, input_schema_1):
         self.geo_col = knut.column_exists_or_preset(
@@ -274,11 +274,11 @@ class CoordinatesNode:
             [
                 knext.Column(
                     knext.double(),
-                    knut.get_unique_column_name(self.col_x, input_schema_1),
+                    knut.get_unique_column_name(self._col_x, input_schema_1),
                 ),
                 knext.Column(
                     knext.double(),
-                    knut.get_unique_column_name(self.col_y, input_schema_1),
+                    knut.get_unique_column_name(self._col_y, input_schema_1),
                 ),
             ]
         )
@@ -286,7 +286,7 @@ class CoordinatesNode:
             result = result.append(
                 knext.Column(
                     knext.double(),
-                    knut.get_unique_column_name(self.col_z, input_schema_1),
+                    knut.get_unique_column_name(self._col_z, input_schema_1),
                 )
             )
         return result
@@ -294,10 +294,10 @@ class CoordinatesNode:
     def execute(self, exec_context: knext.ExecutionContext, input_1):
         gdf = knut.load_geo_data_frame(input_1, self.geo_col, exec_context)
         gs = gdf.loc[:, self.geo_col]
-        gdf[knut.get_unique_column_name(self.col_x, input_1.schema)] = gs.x
-        gdf[knut.get_unique_column_name(self.col_y, input_1.schema)] = gs.y
+        gdf[knut.get_unique_column_name(self._col_x, input_1.schema)] = gs.x
+        gdf[knut.get_unique_column_name(self._col_y, input_1.schema)] = gs.y
         if self.add_z:
-            gdf[knut.get_unique_column_name(self.col_z, input_1.schema)] = gs.z
+            gdf[knut.get_unique_column_name(self._col_z, input_1.schema)] = gs.z
         return knut.to_table(gdf, exec_context)
 
 
@@ -416,10 +416,10 @@ class TotalBoundsNode:
         description="Select the geometry column to compute the total bounds for."
     )
 
-    col_min_x = "minx"
-    col_min_y = "miny"
-    col_max_x = "maxx"
-    col_max_y = "maxy"
+    _COL_MIN_X = "minx"
+    _COL_MIN_Y = "miny"
+    _COL_MAX_X = "maxx"
+    _COL_MAX_Y = "maxy"
 
     def configure(self, configure_context, input_schema_1):
         self.geo_col = knut.column_exists_or_preset(
@@ -427,10 +427,10 @@ class TotalBoundsNode:
         )
         return knext.Schema.from_columns(
             [
-                knext.Column(knext.double(), self.col_min_x),
-                knext.Column(knext.double(), self.col_min_y),
-                knext.Column(knext.double(), self.col_max_x),
-                knext.Column(knext.double(), self.col_max_y),
+                knext.Column(knext.double(), self._COL_MIN_X),
+                knext.Column(knext.double(), self._COL_MIN_Y),
+                knext.Column(knext.double(), self._COL_MAX_X),
+                knext.Column(knext.double(), self._COL_MAX_Y),
             ]
         )
 
@@ -439,7 +439,12 @@ class TotalBoundsNode:
         bounds = gdf.total_bounds
         result = pd.DataFrame(
             [bounds],
-            columns=[self.col_min_x, self.col_min_y, self.col_max_x, self.col_max_y],
+            columns=[
+                self._COL_MIN_X,
+                self._COL_MIN_Y,
+                self._COL_MAX_X,
+                self._COL_MAX_Y,
+            ],
         )
         return knut.to_table(result, exec_context)
 
