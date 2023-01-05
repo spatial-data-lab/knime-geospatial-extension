@@ -313,6 +313,8 @@ class USCensus2020Node:
         response = requests.get(data_url)
         data = response.json()
         gdf = pd.DataFrame(data[1:], columns=data[0])
+        if "GEO_ID" in gdf.columns:
+            gdf["GEO_ID"] = gdf["GEO_ID"].str.replace(r".*US", "", regex=True)
         return knext.Table.from_pandas(gdf)
 
 
@@ -409,6 +411,8 @@ class UScensusACSNode:
         response = requests.get(data_url)
         data = response.json()
         gdf = pd.DataFrame(data[1:], columns=data[0])
+        if "GEO_ID" in gdf.columns:
+            gdf["GEO_ID"] = gdf["GEO_ID"].str.replace(r".*US", "", regex=True)
         return knext.Table.from_pandas(gdf)
 
 

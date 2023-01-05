@@ -9,6 +9,7 @@ import util.knime_utils as knut
 import numpy as np
 from math import radians, cos, sin, asin, sqrt  # For Haversine Distance
 from shapely.geometry import Polygon  # For Grid
+from pyproj import CRS  # For CRS Units check
 
 LOGGER = logging.getLogger(__name__)
 
@@ -91,6 +92,9 @@ class BufferNode:
 
     def execute(self, exec_context: knext.ExecutionContext, input):
         gdf = gp.GeoDataFrame(input.to_pandas(), geometry=self.geo_col)
+        crsinput = CRS.from_user_input(gdf.crs)
+        if crsinput.is_geographic:
+            logging.warning("Unit as Degree, Please use Projected CRS")
         exec_context.set_progress(0.3, "Geo data frame loaded. Starting buffering...")
         gdf[knut.get_unique_column_name("geometry", input.schema)] = gdf.buffer(
             self.bufferdist
@@ -771,6 +775,9 @@ class MultiRingBufferNode:
         gdf = gp.GeoDataFrame(input_1.to_pandas(), geometry=self.geo_col)
         gdf = gp.GeoDataFrame(geometry=gdf.geometry)
         gdf.to_crs(self.crs_info, inplace=True)
+        crsinput = CRS.from_user_input(gdf.crs)
+        if crsinput.is_geographic:
+            logging.warning("Unit as Degree, Please use Projected CRS")
         exec_context.set_progress(0.3, "Geo data frame loaded. Starting buffering...")
         # transfrom string list to number
         bufferlist = np.array(self.bufferdist.split(","), dtype=np.int64)
