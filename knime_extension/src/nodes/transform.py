@@ -6,6 +6,7 @@ import geopandas as gp
 import knime_extension as knext
 import util.knime_utils as knut
 from shapely.geometry import Point, MultiPoint, LineString
+import knime.types.geospatial as gt
 
 LOGGER = logging.getLogger(__name__)
 
@@ -117,19 +118,31 @@ class GeometryToPointNode:
     geo_col = knut.geo_col_parameter()
 
     pointtype = knext.StringParameter(
-        "Selection",
+        "Point Type Selection",
         "The point type to choose from.",
         "centroid",
         enum=["centroid", "representative_point"],
     )
 
-    def configure(self, configure_context, input_schema_1):
+    appendtype = knext.StringParameter(
+        "Geometry Attach Type Selection",
+        "The way to attach point geometry.",
+        "Replace",
+        enum=["Replace", "Append"],
+    )
+
+    def configure(self, configure_context, input_schema):
         self.geo_col = knut.column_exists_or_preset(
-            configure_context, self.geo_col, input_schema_1, knut.is_geo
+            configure_context, self.geo_col, input_schema, knut.is_geo
         )
-        return None
+        new_geo_col = knut.get_unique_column_name(self.geo_col, input_schema)
+        if self.appendtype == "Replace":
+            return None
+        else:
+            return input_schema.append(knext.Column(knext.logical(Point), new_geo_col))
 
     def execute(self, exec_context: knext.ExecutionContext, input_1):
+        new_geo_col = knut.get_unique_column_name(self.geo_col, input_1.schema)
         gdf = gp.GeoDataFrame(input_1.to_pandas(), geometry=self.geo_col)
         exec_context.set_progress(
             0.3, "Geo data frame loaded. Starting transformation..."
@@ -139,10 +152,13 @@ class GeometryToPointNode:
         else:
             gdf["point"] = gdf.representative_point()
         gdf = gdf.set_geometry("point")
-        gdf = gdf.drop(columns=self.geo_col)
-        gdf = gdf.rename(columns={"point": self.geo_col})
+        # gdf = gdf.drop(columns=self.geo_col)
+        gdf = gdf.rename(columns={"point": new_geo_col})
         exec_context.set_progress(0.1, "Transformation done")
         LOGGER.debug("Feature converted to " + self.pointtype)
+        if self.appendtype == "Replace":
+            gdf = gdf.drop(columns=self.geo_col)
+            gdf = gdf.rename(columns={new_geo_col: self.geo_col})
         return knext.Table.from_pandas(gdf)
 
 
