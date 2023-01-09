@@ -262,9 +262,9 @@ class CoordinatesNode:
         False,
     )
 
-    _col_x = "x"
-    _col_y = "y"
-    _col_z = "z"
+    _COL_X = "x"
+    _COL_Y = "y"
+    _COL_Z = "z"
 
     def configure(self, configure_context, input_schema_1):
         self.geo_col = knut.column_exists_or_preset(
@@ -274,11 +274,11 @@ class CoordinatesNode:
             [
                 knext.Column(
                     knext.double(),
-                    knut.get_unique_column_name(self._col_x, input_schema_1),
+                    knut.get_unique_column_name(self._COL_X, input_schema_1),
                 ),
                 knext.Column(
                     knext.double(),
-                    knut.get_unique_column_name(self._col_y, input_schema_1),
+                    knut.get_unique_column_name(self._COL_Y, input_schema_1),
                 ),
             ]
         )
@@ -286,7 +286,7 @@ class CoordinatesNode:
             result = result.append(
                 knext.Column(
                     knext.double(),
-                    knut.get_unique_column_name(self._col_z, input_schema_1),
+                    knut.get_unique_column_name(self._COL_Z, input_schema_1),
                 )
             )
         return result
@@ -294,10 +294,10 @@ class CoordinatesNode:
     def execute(self, exec_context: knext.ExecutionContext, input_1):
         gdf = knut.load_geo_data_frame(input_1, self.geo_col, exec_context)
         gs = gdf.loc[:, self.geo_col]
-        gdf[knut.get_unique_column_name(self._col_x, input_1.schema)] = gs.x
-        gdf[knut.get_unique_column_name(self._col_y, input_1.schema)] = gs.y
+        gdf[knut.get_unique_column_name(self._COL_X, input_1.schema)] = gs.x
+        gdf[knut.get_unique_column_name(self._COL_Y, input_1.schema)] = gs.y
         if self.add_z:
-            gdf[knut.get_unique_column_name(self._col_z, input_1.schema)] = gs.z
+            gdf[knut.get_unique_column_name(self._COL_Z, input_1.schema)] = gs.z
         return knut.to_table(gdf, exec_context)
 
 
@@ -331,10 +331,10 @@ class BoundsNode:
     geo_col = knut.geo_col_parameter(
         description="Select the geometry column to compute the bounds for."
     )
-    col_min_x = "minx"
-    col_min_y = "miny"
-    col_max_x = "maxx"
-    col_max_y = "maxy"
+    _COL_MIN_X = "minx"
+    _COL_MIN_Y = "miny"
+    _COL_MAX_X = "maxx"
+    _COL_MAX_Y = "maxy"
 
     def configure(self, configure_context, input_schema_1):
         self.geo_col = knut.column_exists_or_preset(
@@ -344,19 +344,19 @@ class BoundsNode:
             [
                 knext.Column(
                     knext.double(),
-                    knut.get_unique_column_name(self.col_min_x, input_schema_1),
+                    knut.get_unique_column_name(self._COL_MIN_X, input_schema_1),
                 ),
                 knext.Column(
                     knext.double(),
-                    knut.get_unique_column_name(self.col_min_y, input_schema_1),
+                    knut.get_unique_column_name(self._COL_MIN_Y, input_schema_1),
                 ),
                 knext.Column(
                     knext.double(),
-                    knut.get_unique_column_name(self.col_max_x, input_schema_1),
+                    knut.get_unique_column_name(self._COL_MAX_X, input_schema_1),
                 ),
                 knext.Column(
                     knext.double(),
-                    knut.get_unique_column_name(self.col_max_y, input_schema_1),
+                    knut.get_unique_column_name(self._COL_MAX_Y, input_schema_1),
                 ),
             ]
         )
@@ -366,17 +366,17 @@ class BoundsNode:
         bounds = gdf.bounds
         bounds.rename(
             columns={
-                self.col_min_x: knut.get_unique_column_name(
-                    self.col_min_x, input_1.schema
+                self._COL_MIN_X: knut.get_unique_column_name(
+                    self._COL_MIN_X, input_1.schema
                 ),
-                self.col_min_y: knut.get_unique_column_name(
-                    self.col_min_y, input_1.schema
+                self._COL_MIN_Y: knut.get_unique_column_name(
+                    self._COL_MIN_Y, input_1.schema
                 ),
-                self.col_max_x: knut.get_unique_column_name(
-                    self.col_max_x, input_1.schema
+                self._COL_MAX_X: knut.get_unique_column_name(
+                    self._COL_MAX_X, input_1.schema
                 ),
-                self.col_max_y: knut.get_unique_column_name(
-                    self.col_max_y, input_1.schema
+                self._COL_MAX_Y: knut.get_unique_column_name(
+                    self._COL_MAX_Y, input_1.schema
                 ),
             },
             inplace=True,
