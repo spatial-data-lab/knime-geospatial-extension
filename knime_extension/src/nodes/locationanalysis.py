@@ -1,10 +1,7 @@
+import geopandas as gp
 import knime_extension as knext
 import util.knime_utils as knut
-import pandas as pd
-import geopandas as gp
-import pulp
-from shapely.geometry import LineString
-import numpy as np
+
 
 # import pickle
 # from io import StringIO
@@ -156,6 +153,8 @@ class PmedianNode:
         num_trt = DemandPt.shape[0]
         num_hosp = SupplyPt.shape[0]
 
+        import pulp
+
         # define problem
         problem = pulp.LpProblem("pmedian", sense=pulp.LpMinimize)
 
@@ -213,6 +212,9 @@ class PmedianNode:
                 i, j = getIndex(it)
                 DemandPt.at[i, "assignSID"] = SupplyPt.at[j, self.SupplyID]
                 DemandPt.at[i, "SIDcoord"] = SupplyPt.at[j, "geometry"]
+
+        from shapely.geometry import LineString
+
         DemandPt["linxy"] = [
             LineString(xy) for xy in zip(DemandPt["geometry"], DemandPt["SIDcoord"])
         ]
@@ -352,6 +354,8 @@ class LSCPNode:
         df["within"] = 0
         df.loc[(df[self.ODcost] <= self.threshold), "within"] = 1
 
+        import pulp
+
         # define problem
         problem = pulp.LpProblem("LSCPProblem", sense=pulp.LpMinimize)
 
@@ -385,6 +389,8 @@ class LSCPNode:
         DemandPt["assignSID"] = None
         DemandPt["SIDcoord"] = None
 
+        import pandas as pd
+
         area = pd.DataFrame(columns=["OID"])
         for it in X:
             v = varX[it]
@@ -403,6 +409,9 @@ class LSCPNode:
             oid = int(df.at[index, self.SupplyID])
             DemandPt.at[it, "assignSID"] = SupplyPt.at[oid, self.SupplyID]
             DemandPt.at[it, "SIDcoord"] = SupplyPt.at[oid, "geometry"]
+
+        from shapely.geometry import LineString
+
         DemandPt["linxy"] = [
             LineString(xy) for xy in zip(DemandPt["geometry"], DemandPt["SIDcoord"])
         ]
@@ -554,6 +563,8 @@ class MCLPNode:
         df["within"] = 0
         df.loc[(df[self.ODcost] <= self.threshold), "within"] = 1
 
+        import pulp
+
         # define problem
         problem = pulp.LpProblem("MCLP", sense=pulp.LpMinimize)
 
@@ -592,6 +603,8 @@ class MCLPNode:
         DemandPt["assignSID"] = None
         DemandPt["SIDcoord"] = None
 
+        import pandas as pd
+
         area = pd.DataFrame(columns=["OID"])
         for it in X:
             v = varX[it]
@@ -609,6 +622,9 @@ class MCLPNode:
             oid = int(df.at[index, self.SupplyID])
             DemandPt.at[it, "assignSID"] = SupplyPt.at[oid, self.SupplyID]
             DemandPt.at[it, "SIDcoord"] = SupplyPt.at[oid, "geometry"]
+
+        from shapely.geometry import LineString
+
         DemandPt["linxy"] = [
             LineString(xy) for xy in zip(DemandPt["geometry"], DemandPt["SIDcoord"])
         ]

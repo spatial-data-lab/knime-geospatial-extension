@@ -1,12 +1,6 @@
-from re import S
-from typing import Callable
-import pandas as pd
 import geopandas as gp
 import knime_extension as knext
 import util.knime_utils as knut
-import pyproj as pyp
-import geopy
-from geopy.extra.rate_limiter import RateLimiter
 
 
 __category = knext.category(
@@ -47,8 +41,10 @@ def validate_crs(crs: str) -> None:
         raise knext.InvalidParametersError(str(error))
 
 
-def parse_crs(crs: str) -> pyp.CRS:
+def parse_crs(crs: str):
     """Parses the input crs into a CRS object and throws an exception if it is invalid."""
+    import pyproj as pyp
+
     return pyp.CRS.from_user_input(crs)
 
 
@@ -61,6 +57,9 @@ class _ToGeoConverter:
     """
 
     DEF_GEO_COL_NAME = "geometry"
+
+    import pandas as pd
+    from typing import Callable
 
     def __init__(
         self,
@@ -347,6 +346,8 @@ class _FromGeoConverter:
     Helper class for conversion that creates a new column from a geometry column.
     """
 
+    from typing import Callable
+
     def __init__(
         self,
         column_name: str,
@@ -589,9 +590,9 @@ class GeoToLatLongNode:
 @knext.parameter_group(label="Geocoding Service Settings")
 class GeocodingServiceSettings:
     # add documentation for the class
-    """The parameters for the geocoding service. 
+    """The parameters for the geocoding service.
     See the [geopy documentation](https://geopy.readthedocs.io/en/stable/#module-geopy.geocoders) for more information.
-    Notice that the service provider and API key are only required for some service providers. You don't have to enter them for 
+    Notice that the service provider and API key are only required for some service providers. You don't have to enter them for
     service providers such as Nomintim and ArcGIS.
     """
 
@@ -599,14 +600,14 @@ class GeocodingServiceSettings:
         "Service provider",
         "Select the service provider to use for reverse geocoding.",
         default_value="nominatim",
-        enum=[ 'baiduv3', 'bing',  'googlev3', 'mapbox','yandex', 'nominatim','arcgis'],
+        enum=["baiduv3", "bing", "googlev3", "mapbox", "yandex", "nominatim", "arcgis"],
     )
 
     api_key = knext.StringParameter(
-        "API key", 
+        "API key",
         """Enter the API key for the service provider. 
-        You can leave this field empty if the service provider (such as `nominatim` and `arcgis`) doesn't require an API key.""", 
-        default_value=""
+        You can leave this field empty if the service provider (such as `nominatim` and `arcgis`) doesn't require an API key.""",
+        default_value="",
     )
 
     min_delay_seconds = knext.IntParameter(
@@ -620,6 +621,7 @@ class GeocodingServiceSettings:
         "Enter the default timeout in seconds for reverse geocoding requests.",
         default_value=10,
     )
+
 
 ############################################
 # geocoding (address to geometry)
@@ -674,15 +676,15 @@ class GeoGeocodingNode:
 
     def configure(self, configure_context, input_schema):
         self.address_col = knut.column_exists_or_preset(
-            configure_context,self.address_col, input_schema, knut.is_string
+            configure_context, self.address_col, input_schema, knut.is_string
         )
-        # from shapely.geometry import Point 
+        # from shapely.geometry import Point
         # result = input_schema.append(
-            
+
         #     knext.Column(
         #     ktype=knext.logical(Point),
         #     name=knut.get_unique_column_name(
-        #             self.name, 
+        #             self.name,
         #             input_schema
         #         ),
         #     )
@@ -692,18 +694,29 @@ class GeoGeocodingNode:
     def execute(self, exec_context: knext.ExecutionContext, input_table):
         df = input_table.to_pandas()
 
-        geopy.geocoders.options.default_timeout = self.geocoding_service_settings.default_timeout
+        import geopy
 
-        service_provider = geopy.geocoders.SERVICE_TO_GEOCODER[self.geocoding_service_settings.service_provider]
+        geopy.geocoders.options.default_timeout = (
+            self.geocoding_service_settings.default_timeout
+        )
+
+        service_provider = geopy.geocoders.SERVICE_TO_GEOCODER[
+            self.geocoding_service_settings.service_provider
+        ]
         if self.geocoding_service_settings.service_provider == "nominatim":
             geolocator = service_provider(user_agent="any_name")
         elif self.geocoding_service_settings.service_provider == "arcgis":
             geolocator = service_provider()
         else:
-            geolocator = service_provider(api_key=self.geocoding_service_settings.api_key)
+            geolocator = service_provider(
+                api_key=self.geocoding_service_settings.api_key
+            )
+
+        from geopy.extra.rate_limiter import RateLimiter
 
         geocode = RateLimiter(
-            geolocator.geocode, min_delay_seconds=self.geocoding_service_settings.min_delay_seconds
+            geolocator.geocode,
+            min_delay_seconds=self.geocoding_service_settings.min_delay_seconds,
         )
         df["latitude"] = df[self.address_col].apply(lambda x: geocode(x).latitude)
         df["longitude"] = df[self.address_col].apply(lambda x: geocode(x).longitude)
@@ -720,8 +733,6 @@ class GeoGeocodingNode:
         # gdf = gp.GeoDataFrame(df, geometry=gdf.geometry, crs="EPSG:4326")
 
         return knut.to_table(gdf)
-
-
 
 
 ############################################
@@ -782,22 +793,33 @@ class GeoReverseGeocodingNode:
         df.rename(columns={self.geo_col: "geometry"}, inplace=True)
         gdf = gp.GeoDataFrame(df, geometry="geometry")
 
-        geopy.geocoders.options.default_timeout = self.geocoding_service_settings.default_timeout
+        import geopy
 
-        service_provider = geopy.geocoders.SERVICE_TO_GEOCODER[self.geocoding_service_settings.service_provider]
+        geopy.geocoders.options.default_timeout = (
+            self.geocoding_service_settings.default_timeout
+        )
+
+        service_provider = geopy.geocoders.SERVICE_TO_GEOCODER[
+            self.geocoding_service_settings.service_provider
+        ]
         if self.geocoding_service_settings.service_provider == "nominatim":
             geolocator = service_provider(user_agent="any_name")
         elif self.geocoding_service_settings.service_provider == "arcgis":
             geolocator = service_provider()
         else:
-            geolocator = service_provider(api_key=self.geocoding_service_settings.api_key)
+            geolocator = service_provider(
+                api_key=self.geocoding_service_settings.api_key
+            )
+        from geopy.extra.rate_limiter import RateLimiter
+
         reverse = RateLimiter(
-            geolocator.reverse, min_delay_seconds=self.geocoding_service_settings.min_delay_seconds
+            geolocator.reverse,
+            min_delay_seconds=self.geocoding_service_settings.min_delay_seconds,
         )
         gdf["address"] = gdf["geometry"].apply(lambda x: reverse((x.y, x.x)).address)
 
-        gdf["address"] = gdf["address"].apply(lambda x: x.decode("utf-8") if isinstance(x, bytes) else x)
-
-        
+        gdf["address"] = gdf["address"].apply(
+            lambda x: x.decode("utf-8") if isinstance(x, bytes) else x
+        )
 
         return knut.to_table(gdf)

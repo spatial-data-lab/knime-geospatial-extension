@@ -1,5 +1,3 @@
-from typing import Callable
-import pandas as pd
 import geopandas as gp
 import knime_extension as knext
 import util.knime_utils as knut
@@ -25,6 +23,8 @@ class _SingleCalculator:
     """
     Helper class for transformations that append a single result column to an input table with geo column.
     """
+
+    from typing import Callable
 
     def __init__(
         self,
@@ -381,6 +381,9 @@ class BoundsNode:
             },
             inplace=True,
         )
+
+        import pandas as pd
+
         gdf = pd.concat([gdf, bounds], axis=1, copy=False)
         return knut.to_table(gdf, exec_context)
 
@@ -437,6 +440,9 @@ class TotalBoundsNode:
     def execute(self, exec_context: knext.ExecutionContext, input_1):
         gdf = knut.load_geo_data_frame(input_1, self.geo_col, exec_context)
         bounds = gdf.total_bounds
+
+        import pandas as pd
+
         result = pd.DataFrame(
             [bounds],
             columns=[

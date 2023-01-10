@@ -1,11 +1,7 @@
-from typing import Callable
-from wsgiref.util import shift_path_info
-import pandas as pd
 import geopandas as gp
 import knime_extension as knext
 import util.knime_utils as knut
-import requests
-import osmnx as ox
+
 
 __category = knext.category(
     path="/community/geo",
@@ -93,6 +89,7 @@ class US2020TIGERNode:
         return None
 
     def execute(self, exec_context: knext.ExecutionContext):
+        import pandas as pd
         USdict = pd.DataFrame.from_dict(
             {
                 "state": [
@@ -310,8 +307,12 @@ class USCensus2020Node:
         else:
             data_url = f"{base_url}{self.cols}&for={self.geofile}:*&in=state:{self.StateFips}&in=county:{self.County3Fips}&in=tract:{self.Tract6Fips}&key={self.censusapikey}"
 
+        import requests
+
         response = requests.get(data_url)
         data = response.json()
+        
+        import pandas as pd
         gdf = pd.DataFrame(data[1:], columns=data[0])
         if "GEO_ID" in gdf.columns:
             gdf["GEO_ID"] = gdf["GEO_ID"].str.replace(r".*US", "", regex=True)
@@ -408,8 +409,12 @@ class UScensusACSNode:
         else:
             data_url = f"{base_url}{self.year}/{Dataset}?get={self.cols}&for=block%20group:*&in=state:{self.StateFips}&in=county:{self.County3Fips}&in=tract:{self.Tract6Fips}&key={self.censusapikey}"
 
+        import requests
+
         response = requests.get(data_url)
         data = response.json()
+
+        import pandas as pd
         gdf = pd.DataFrame(data[1:], columns=data[0])
         if "GEO_ID" in gdf.columns:
             gdf["GEO_ID"] = gdf["GEO_ID"].str.replace(r".*US", "", regex=True)
@@ -484,6 +489,9 @@ class OSMdataNode:
         else:
             tags = {self.taginfo: True}
         # tags = {self.taginfo: self.tagvalue}
+
+        import osmnx as ox
+
         gdfpoi = ox.geometries.geometries_from_polygon(gdf_union, tags)
         gdfpoi = gdfpoi.reset_index(drop=True)
         return knext.Table.from_pandas(gdfpoi)
@@ -543,6 +551,9 @@ class OSMnetworkNode:
         gdf = gp.GeoDataFrame(input_1.to_pandas(), geometry=self.geo_col)
         gdf.to_crs(4326, inplace=True)
         gdf_union = gdf.unary_union
+
+        import osmnx as ox
+
         G = ox.graph.graph_from_polygon(gdf_union, self.networktype)
         if self.networktype == "drive":
             # impute speed on all edges missing data
@@ -599,6 +610,9 @@ class OSMGeoBoundaryNode:
         return None
 
     def execute(self, exec_context: knext.ExecutionContext):
+
+        import osmnx as ox
+
         gdf = ox.geocode_to_gdf(self.placename)
         gdf = gdf.reset_index(drop=True)
         return knext.Table.from_pandas(gdf)

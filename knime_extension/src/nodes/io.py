@@ -1,10 +1,6 @@
-from typing import Callable
-from wsgiref.util import shift_path_info
-import pandas as pd
 import geopandas as gp
 import knime_extension as knext
 import util.knime_utils as knut
-import fiona
 
 __category = knext.category(
     path="/community/geo",
@@ -204,6 +200,9 @@ class GeoPackageReaderNode:
         exec_context.set_progress(
             0.4, "Reading file (This might take a while without progress changes)"
         )
+        import fiona
+        import pandas as pd
+
         layerlist = fiona.listlayers(self.data_url)
         pnumber = pd.Series(range(0, 100)).astype(str).to_list()
         if self.data_layer in layerlist:

@@ -1,12 +1,6 @@
 import geopandas as gp
 import knime_extension as knext
 import util.knime_utils as knut
-from keplergl import KeplerGl
-import json
-from folium import plugins
-import folium
-import branca.colormap
-from collections import defaultdict
 
 
 category = knext.category(
@@ -1052,9 +1046,13 @@ class ViewNodeKepler:
         df.rename(columns={self.geo_col: "geometry"}, inplace=True)
         gdf = gp.GeoDataFrame(df, geometry="geometry")
 
+        from keplergl import KeplerGl
+
         map_1 = KeplerGl(show_docs=False)
         map_1.add_data(data=gdf.copy(), name="state")
         # config = {}
+
+        # import json
         # if self.save_config:
         #     # Save map_1 config to a file
         #     # config_str = json.dumps(map_1.config)
@@ -1136,6 +1134,8 @@ class ViewNodeHeatmap:
 
     Find more information about the heatmap algorithm [here](https://www.gislounge.com/heat-maps-in-gis/).
     """
+
+    import branca.colormap
 
     _color_bars = {
         "viridis": branca.colormap.linear.viridis,
@@ -1480,11 +1480,17 @@ class ViewNodeHeatmap:
         linear_colormap = self._color_bars[self.color_map]
         colormap = linear_colormap.scale(0, 1).to_step(steps)
         colormap.caption = self.legend_settings.caption
+        
+        from collections import defaultdict
+
         gradient_map = defaultdict(dict)
         for i in range(steps):
             gradient_map[1 / steps * i] = colormap.rgb_hex_str(1 / steps * i)
         if self.legend_settings.plot:
             colormap.add_to(map)  # add color bar at the top of the map
+
+        from folium import plugins
+        import folium
 
         plugins.HeatMap(
             heat_data,

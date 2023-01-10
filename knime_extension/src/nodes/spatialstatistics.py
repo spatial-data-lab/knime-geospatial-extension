@@ -1,22 +1,6 @@
+import geopandas as gp
 import knime_extension as knext
 import util.knime_utils as knut
-import pandas as pd
-import geopandas as gp
-from mgwr.gwr import GWR, MGWR
-from mgwr.sel_bw import Sel_BW
-import numpy as np
-import libpysal
-import scipy.sparse
-from libpysal.weights import WSP
-import esda
-import pysal.lib as lps
-import pickle
-import seaborn as sbn
-import matplotlib.pyplot as plt
-from libpysal.weights import W
-import spreg
-from io import StringIO
-import sys
 
 
 __category = knext.category(
@@ -169,6 +153,8 @@ class spatialWeights:
         gdf = gp.GeoDataFrame(input_1.to_pandas(), geometry=self.geo_col)
         exec_context.set_progress(0.3, "Geo data frame loaded. Starting projection...")
 
+        import libpysal
+
         if self.category == "Rook":
             w = libpysal.weights.Rook.from_dataframe(gdf)
             wname = "Rook"
@@ -203,9 +189,17 @@ class spatialWeights:
             w.transform = "r"
 
         if self.category == "Your own":
+            import pandas as pd
+
             z = pd.read_csv(self.Your_own_matrix_local_path, header=None)
             zz = np.array(z)
+
+            import scipy.sparse
+
             sparse = scipy.sparse.csr_matrix(zz)
+
+            from libpysal.weights import WSP
+
             w = WSP(sparse)
             wname = "Your own"
 
@@ -300,15 +294,32 @@ class GlobalMoransI:
 
         gdf = gp.GeoDataFrame(input_1.to_pandas(), geometry=self.geo_col)
         adjust_list = input_2.to_pandas()
+
+        from libpysal.weights import W
+
         w = W.from_adjlist(adjust_list)
 
         y = gdf[self.variable_setting.Field_col]
+
+        import numpy as np
+
         np.random.seed(12345)
+
+        import esda
+
         mi = esda.moran.Moran(y, w)
         result = {"Moran's I": mi.I, "p-value": mi.p_norm, "z-score": mi.z_norm}
+
+        import pandas as pd
+
         out = pd.DataFrame(result, index=[0])
 
+        import seaborn as sbn
+
         ax = sbn.kdeplot(mi.sim, shade=True)
+
+        import matplotlib.pyplot as plt
+
         plt.vlines(mi.I, 0, 1, color="r")
         plt.vlines(mi.EI, 0, 1)
         plt.xlabel("Moran's I")
@@ -369,10 +380,19 @@ class LocalMoransI:
 
         gdf = gp.GeoDataFrame(input_1.to_pandas(), geometry=self.geo_col)
         adjust_list = input_2.to_pandas()
+
+        from libpysal.weights import W
+
         w = W.from_adjlist(adjust_list)
 
         y = gdf[self.variable_setting.Field_col]
+
+        import numpy as np
+
         np.random.seed(12345)
+
+        import esda
+
         li = esda.moran.Moran_Local(y, w)
 
         # gdf.loc[:,"spots_type"] = gdf["spots_type"].fillna("Not Significant")
@@ -388,8 +408,14 @@ class LocalMoransI:
         gdf.loc[gdf["p-value"] < 0.05, "spots_type"] = "Not Significant"
         # out = pd.merge(gdf, out, left_index=True, right_index=True)
 
+        import pysal.lib as lps
+
         lag_index = lps.weights.lag_spatial(w, gdf[self.variable_setting.Field_col])
         index_v = gdf[self.variable_setting.Field_col]
+
+        import numpy as np
+        import matplotlib.pyplot as plt
+
         b, a = np.polyfit(index_v, lag_index, 1)
         f, ax = plt.subplots(1, figsize=(9, 9))
 
@@ -471,16 +497,30 @@ class GlobalGearysC:
 
         gdf = gp.GeoDataFrame(input_1.to_pandas(), geometry=self.geo_col)
         adjust_list = input_2.to_pandas()
+
+        from libpysal.weights import W
+
         w = W.from_adjlist(adjust_list)
 
         y = gdf[self.variable_setting.Field_col]
+
+        import numpy as np
+
         np.random.seed(12345)
+
+        import esda
+
         gc = esda.geary.Geary(y, w)
+
+        import pandas as pd
 
         out = pd.DataFrame(
             {"Geary's C": [gc.C], "p-value": [gc.p_sim], "z-score": [gc.z_sim]}
         )
         out.reset_index(inplace=True)
+
+        import seaborn as sbn
+        import matplotlib.pyplot as plt
 
         ax = sbn.kdeplot(gc.sim, shade=True)
         plt.vlines(gc.C, 0, 1, color="r")
@@ -548,16 +588,30 @@ class GlobalGetisOrd:
 
         gdf = gp.GeoDataFrame(input_1.to_pandas(), geometry=self.geo_col)
         adjust_list = input_2.to_pandas()
+
+        from libpysal.weights import W
+
         w = W.from_adjlist(adjust_list)
 
         y = gdf[self.variable_setting.Field_col]
+
+        import numpy as np
+
         np.random.seed(12345)
+
+        import esda
+
         go = esda.getisord.G(y, w)
+
+        import pandas as pd
 
         out = pd.DataFrame(
             {"Getis-Ord G": [go.G], "p-value": [go.p_sim], "z-score": [go.z_sim]}
         )
         out.reset_index(inplace=True)
+
+        import seaborn as sbn
+        import matplotlib.pyplot as plt
 
         ax = sbn.kdeplot(go.sim, shade=True)
         plt.vlines(go.G, 0, 1, color="r")
@@ -625,19 +679,33 @@ class LocalGetisOrd:
 
         gdf = gp.GeoDataFrame(input_1.to_pandas(), geometry=self.geo_col)
         adjust_list = input_2.to_pandas()
+
+        from libpysal.weights import W
+
         w = W.from_adjlist(adjust_list)
 
         y = gdf[self.variable_setting.Field_col]
+
+        import numpy as np
+
         np.random.seed(12345)
+
+        import esda
+
         lo = esda.getisord.G_Local(y, w)
 
         gdf.loc[:, "Local Getis-Ord G"] = lo.Gs
         gdf.loc[:, "p-value"] = lo.p_sim
         gdf.loc[:, "z-score"] = lo.z_sim
 
+        import pysal.lib as lps
+
         lag_index = lps.weights.lag_spatial(w, gdf[self.variable_setting.Field_col])
         index_v = gdf[self.variable_setting.Field_col]
         b, a = np.polyfit(index_v, lag_index, 1)
+
+        import matplotlib.pyplot as plt
+
         f, ax = plt.subplots(1, figsize=(9, 9))
 
         plt.plot(index_v, lag_index, ".", color="firebrick")

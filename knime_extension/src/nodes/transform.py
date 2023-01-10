@@ -1,12 +1,8 @@
 # lingbo
-import logging
-from typing import Callable
-import pandas as pd
 import geopandas as gp
+import logging
 import knime_extension as knext
 import util.knime_utils as knut
-from shapely.geometry import Point, MultiPoint, LineString
-import knime.types.geospatial as gt
 
 LOGGER = logging.getLogger(__name__)
 
@@ -344,6 +340,8 @@ class PointsToLineNode:
         gdf = gp.GeoDataFrame(input.to_pandas(), geometry=self.geo_col)
         gdf = gdf.rename(columns={self.geo_col: "geometry"})
         exec_context.set_progress(0.3, "Geo data frame loaded. Starting explosion...")
+        from shapely.geometry import MultiPoint, LineString
+
         line_gdf = (
             gdf.sort_values(by=[self.seiral_col])
             .groupby([self.group_col], as_index=False)["geometry"]
@@ -416,6 +414,8 @@ class GeometryToMultiPointNode:
         gdf = gp.GeoDataFrame(input_1.to_pandas(), geometry=self.geo_col)
         exec_context.set_progress(0.3, "Geo data frame loaded. Starting explosion...")
         gdf["points"] = gdf.apply(lambda l: l["geometry"].coords, axis=1)
+        from shapely.geometry import MultiPoint
+
         gdf["geometry"] = gdf["points"].apply(lambda l: MultiPoint(l))
         gdf = gdf.drop(columns="points")
         exec_context.set_progress(0.1, "LineToMultiPoint done")

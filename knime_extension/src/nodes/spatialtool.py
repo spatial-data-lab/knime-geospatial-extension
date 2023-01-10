@@ -1,15 +1,8 @@
 # lingbo
-import logging
-from typing import Callable
-from typing_extensions import Self
-import pandas as pd
 import geopandas as gp
+import logging
 import knime_extension as knext
 import util.knime_utils as knut
-import numpy as np
-from math import radians, cos, sin, asin, sqrt  # For Haversine Distance
-from shapely.geometry import Polygon  # For Grid
-from pyproj import CRS  # For CRS Units check
 
 LOGGER = logging.getLogger(__name__)
 
@@ -92,6 +85,9 @@ class BufferNode:
 
     def execute(self, exec_context: knext.ExecutionContext, input):
         gdf = gp.GeoDataFrame(input.to_pandas(), geometry=self.geo_col)
+
+        from pyproj import CRS  # For CRS Units check
+
         crsinput = CRS.from_user_input(gdf.crs)
         if crsinput.is_geographic:
             logging.warning("Unit as Degree, Please use Projected CRS")
@@ -775,11 +771,16 @@ class MultiRingBufferNode:
         gdf = gp.GeoDataFrame(input_1.to_pandas(), geometry=self.geo_col)
         gdf = gp.GeoDataFrame(geometry=gdf.geometry)
         gdf.to_crs(self.crs_info, inplace=True)
+
+        from pyproj import CRS  # For CRS Units check
+
         crsinput = CRS.from_user_input(gdf.crs)
         if crsinput.is_geographic:
             logging.warning("Unit as Degree, Please use Projected CRS")
         exec_context.set_progress(0.3, "Geo data frame loaded. Starting buffering...")
         # transfrom string list to number
+        import numpy as np
+
         bufferlist = np.array(self.bufferdist.split(","), dtype=np.int64)
         if self.bufferunit == "Meter":
             bufferlist = bufferlist
@@ -923,6 +924,8 @@ class CreateGrid:
         xmin, ymin, xmax, ymax = gdf.total_bounds
         width = self.grid_length
         height = self.grid_length
+        import numpy as np
+
         rows = int(np.ceil((ymax - ymin) / height))
         cols = int(np.ceil((xmax - xmin) / width))
         XleftOrigin = xmin
@@ -930,6 +933,9 @@ class CreateGrid:
         YtopOrigin = ymax
         YbottomOrigin = ymax - height
         polygons = []
+
+        from shapely.geometry import Polygon  # For Grid
+
         for i in range(cols):
             Ytop = YtopOrigin
             Ybottom = YbottomOrigin
@@ -1014,6 +1020,8 @@ class HaversineDistGrid:
 
     def execute(self, exec_context: knext.ExecutionContext, input_table):
         def HaversineDist(x1, y1, x2, y2):
+            from math import radians, cos, sin, asin, sqrt  # For Haversine Distance
+
             x1 = radians(x1)
             x2 = radians(x2)
             y1 = radians(y1)
