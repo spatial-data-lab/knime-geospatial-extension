@@ -213,37 +213,34 @@ class OSRMDriveMatrix:
     )
 
     def configure(self, configure_context, input_schema_1, input_schema_2):
-        # from shapely.geometry import LineString
+        if self.osrmmodel == "Travel Cost":
+            return knext.Schema.from_columns(
+                [
+                    knext.Column(knext.int64(), "OriginID"),
+                    knext.Column(knext.int64(), "DestinationID"),
+                    knext.Column(knext.double(), "duration"),
+                    knext.Column(knext.double(), "distance"),
+                ]
+            )
+        elif self.osrmmodel == "Route":
+            return knext.Schema.from_columns(
+                [
+                    knext.Column(knext.int64(), "OriginID"),
+                    knext.Column(knext.int64(), "DestinationID"),
+                    knext.Column(knut.TYPE_LINE, "geometry"),
+                ]
+            )
+        else:
+            return knext.Schema.from_columns(
+                [
+                    knext.Column(knext.int64(), "OriginID"),
+                    knext.Column(knext.int64(), "DestinationID"),
+                    knext.Column(knext.double(), "duration"),
+                    knext.Column(knext.double(), "distance"),
+                    knext.Column(knut.TYPE_LINE, "geometry"),
+                ]
+            )
 
-        # if self.osrmmodel == "Travel Cost":
-        #     return knext.Schema.from_columns(
-        #         [
-        #             knext.Column(knext.int64(), "OriginID"),
-        #             knext.Column(knext.int64(), "DestinationID"),
-        #             knext.Column(knext.double(), "duration"),
-        #             knext.Column(knext.double(), "distance"),
-        #         ]
-        #     )
-        # elif self.osrmmodel == "Route":
-        #     return knext.Schema.from_columns(
-        #         [
-        #             knext.Column(knext.int64(), "OriginID"),
-        #             knext.Column(knext.int64(), "DestinationID"),
-        #             knext.Column(knext.logical(LineString), "geometry"),
-        #         ]
-        #     )
-        # else:
-        #     return knext.Schema.from_columns(
-        #         [
-        #             knext.Column(knext.int64(), "OriginID"),
-        #             knext.Column(knext.int64(), "DestinationID"),
-        #             knext.Column(knext.double(), "duration"),
-        #             knext.Column(knext.double(), "distance"),
-        #             knext.Column(knext.logical(LineString), "geometry"),
-        #         ]
-        #     )
-        # TODO LineString can not be identified
-        return None
 
     def execute(self, exec_context: knext.ExecutionContext, left_input, right_input):
 
