@@ -42,6 +42,21 @@ HL (High-Low), Not Significant (the p-value is greater than the significance lev
 """
 
 
+
+def _var_col_exists_or_preset(
+    context: knext.ConfigurationContext,
+    field,
+    schema: knext.Schema,
+) -> str:
+    return knut.column_exists_or_preset(
+        context,
+        field,
+        schema,
+        knut.is_numeric,
+        "No compatible variable column found in input table",
+    )
+
+
 ############################################
 # Spatial Weights
 ############################################
@@ -371,6 +386,9 @@ class GlobalMoransI:
         self.geo_col = knut.column_exists_or_preset(
             configure_context, self.geo_col, input_schema_1, knut.is_geo
         )
+        self.variable_setting.Field_col = _var_col_exists_or_preset(
+            configure_context, self.variable_setting.Field_col, input_schema_1
+        )
         return None
 
     def execute(self, exec_context: knext.ExecutionContext, input_1, input_2):
@@ -463,6 +481,9 @@ class LocalMoransI:
     def configure(self, configure_context, input_schema_1, input_schema_2):
         self.geo_col = knut.column_exists_or_preset(
             configure_context, self.geo_col, input_schema_1, knut.is_geo
+        )
+        self.variable_setting.Field_col = _var_col_exists_or_preset(
+            configure_context, self.variable_setting.Field_col, input_schema_1
         )
         return None
 
@@ -588,6 +609,9 @@ class GlobalGearysC:
         self.geo_col = knut.column_exists_or_preset(
             configure_context, self.geo_col, input_schema_1, knut.is_geo
         )
+        self.variable_setting.Field_col = _var_col_exists_or_preset(
+            configure_context, self.variable_setting.Field_col, input_schema_1
+        )
         return None
 
     def execute(self, exec_context: knext.ExecutionContext, input_1, input_2):
@@ -685,6 +709,9 @@ class GlobalGetisOrd:
     def configure(self, configure_context, input_schema_1, input_schema_2):
         self.geo_col = knut.column_exists_or_preset(
             configure_context, self.geo_col, input_schema_1, knut.is_geo
+        )
+        self.variable_setting.Field_col = _var_col_exists_or_preset(
+            configure_context, self.variable_setting.Field_col, input_schema_1
         )
         return None
 
@@ -785,6 +812,9 @@ class LocalGetisOrd:
     def configure(self, configure_context, input_schema_1, input_schema_2):
         self.geo_col = knut.column_exists_or_preset(
             configure_context, self.geo_col, input_schema_1, knut.is_geo
+        )
+        self.variable_setting.Field_col = _var_col_exists_or_preset(
+            configure_context, self.variable_setting.Field_col, input_schema_1
         )
         return None
 
