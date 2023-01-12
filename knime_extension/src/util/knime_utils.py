@@ -673,3 +673,17 @@ def get_computed_result_frame(
         result_col = get_unique_column_name(self.new_column_name, schema)
     gdf[result_col] = gdf.apply(lambda l: func(l[selected_col]), axis=1)
     return gdf
+
+
+def get_env_path():
+    """
+    Returns the path to the used Python environment e.g. the Python packages of this environment can be found in
+    <RETURNED_VAL>\Lib\site-packages.
+    """
+    import sys
+    import os.path as os
+
+    # path to the Python executable in the used Python environment
+    exec_path = sys.executable
+    env_path = os.dirname(exec_path)
+    return env_path
