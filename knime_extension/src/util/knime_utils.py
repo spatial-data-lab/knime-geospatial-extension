@@ -121,6 +121,15 @@ def typed_geo_col_parameter(
         include_none_column=False,
     )
 
+def negate(function):
+    """
+    Negates the incoming function e.g. negate(is_numeric) can be used in a column parameter to allow the user 
+    to select from all none numeric columns. 
+    @return: the negated input function e.g. if the input function returns true this function returns false
+    """
+    def new_function(*args, **kwargs):
+       return not function(*args, **kwargs)
+    return new_function
 
 def is_numeric(column: knext.Column) -> bool:
     """
@@ -169,6 +178,15 @@ def is_binary(column: knext.Column) -> bool:
     @return: True if Column is binary
     """
     return column.ktype == knext.blob
+
+
+def is_date(column: knext.Column) -> bool:
+    """
+    Checks if column is compatible to the GeoValue interface and thus returns true for all geospatial types such as:
+    GeoPointCell, GeoLineCell, GeoPolygonCell, GeoMultiPointCell, GeoMultiLineCell, GeoMultiPolygonCell, ...
+    @return: True if Column Type is GeoValue compatible
+    """
+    return __is_type_x(column, "org.knime.core.data.v2.time.LocalDateValueFactory")
 
 
 def is_geo(column: knext.Column) -> bool:
