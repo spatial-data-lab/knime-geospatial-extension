@@ -587,6 +587,54 @@ class GeoToLatLongNode:
         return knut.to_table(gdf, exec_context)
 
 
+class _ServiceProvider(knext.EnumParameterOptions):
+
+    baiduv3 = (
+        "baiduv3",
+        "Using [Baidu Map service](http://lbsyun.baidu.com/index.php?title=webapi/guide/webservice-geocoding) to do geocoding or reverse geocoding.",
+    )
+    bing = (
+        "bing",
+        "Using [Bing Map service](https://msdn.microsoft.com/en-us/library/ff701715.aspx) to do geocoding or reverse geocoding.",
+    )
+    googlev3 = (
+        "googlev3",
+        "Using [Google Map service](https://developers.google.com/maps/documentation/geocoding/) to do geocoding or reverse geocoding.",
+    )
+    mapbox = (
+        "mapbox",
+        "Using [Mapbox service](https://www.mapbox.com/api-documentation/) to do geocoding or reverse geocoding.",
+    )
+    yandex = (
+        "yandex",
+        "Using [Yandex service](https://tech.yandex.com/maps/doc/geocoder/desc/concepts/input_params-docpage/) to do geocoding or reverse geocoding.",
+    )
+    nominatim = (
+        "nominatim",
+        "Using [Nominatim service](https://nominatim.org/release-docs/develop/api/Overview/) to do geocoding or reverse geocoding.",
+    )
+    arcgis = (
+        "arcgis",
+        "Using [ArcGIS online service](https://developers.arcgis.com/rest/geocode/api-reference/overview-world-geocoding-service.htm) to do geocoding or reverse geocoding.",
+    )
+    herev7 = (
+        "herev7",
+        "Using [HERE Geocoding & Search v7 API](https://developer.here.com/documentation/geocoding-search-api/) to do geocoding or reverse geocoding.",
+    )
+    tomtom = (
+        "tomtom",
+        "Using [TomTom](https://developer.tomtom.com/search-api/search-api-documentation) to do geocoding or reverse geocoding.",
+    )
+    azure = (
+        "azure",
+        "Using [AzureMaps geocoder based on TomTom](https://docs.microsoft.com/en-us/azure/azure-maps/index) to do geocoding or reverse geocoding.",
+    )
+
+    @classmethod
+    def get_default(cls):
+        return cls.nominatim
+
+
 @knext.parameter_group(label="Geocoding Service Settings")
 class GeocodingServiceSettings:
     # add documentation for the class
@@ -596,11 +644,11 @@ class GeocodingServiceSettings:
     service providers such as Nomintim and ArcGIS.
     """
 
-    service_provider = knext.StringParameter(
+    service_provider = knext.EnumParameter(
         "Service provider",
         "Select the service provider to use for reverse geocoding.",
-        default_value="nominatim",
-        enum=["baiduv3", "bing", "googlev3", "mapbox", "yandex", "nominatim", "arcgis"],
+        default_value=_ServiceProvider.get_default().name,
+        enum=_ServiceProvider,
     )
 
     api_key = knext.StringParameter(
@@ -707,6 +755,10 @@ class GeoGeocodingNode:
             geolocator = service_provider(user_agent="any_name")
         elif self.geocoding_service_settings.service_provider == "arcgis":
             geolocator = service_provider()
+        elif self.geocoding_service_settings.service_provider == "azure":
+            geolocator = service_provider(
+                subscription_key=self.geocoding_service_settings.api_key
+            )
         else:
             geolocator = service_provider(
                 api_key=self.geocoding_service_settings.api_key
@@ -720,15 +772,14 @@ class GeoGeocodingNode:
         )
         df["latitude"] = df[self.address_col].apply(lambda x: geocode(x).latitude)
         df["longitude"] = df[self.address_col].apply(lambda x: geocode(x).longitude)
-        gdf = gp.GeoDataFrame(
-            df, geometry=gp.points_from_xy(df.longitude, df.latitude), crs="EPSG:4326"
-        )
+
+        result_col_name = knut.get_unique_column_name(self.name, input_table.schema)
+
+        df[result_col_name] = gp.points_from_xy(df.longitude, df.latitude)
+
+        gdf = gp.GeoDataFrame(df, geometry=result_col_name, crs="EPSG:4326")
 
         gdf.drop(columns=["latitude", "longitude"], inplace=True)
-        # result_col_name = knut.get_unique_column_name(
-        #     self.name, input_table.schema
-        # )
-        # gdf.rename(columns={"geometry": result_col_name}, inplace=True)
 
         # gdf = gp.GeoDataFrame(df, geometry=gdf.geometry, crs="EPSG:4326")
 
@@ -782,10 +833,26 @@ class GeoReverseGeocodingNode:
         include_row_key=False,
         include_none_column=False,
     )
+    address_name = "address"
+    raw_json_name = "raw_json"
 
     geocoding_service_settings = GeocodingServiceSettings()
 
+    append_raw_json = knext.BoolParameter(
+        "Append raw json",
+        "If selected, the raw json string of the results will be append to a new column. It is useful for who want extract a specified administration level such as city.",
+        default_value=False,
+    )
+
     def configure(self, configure_context, input_schema):
+        # geo_col needs to be defined in the child class
+
+        self.geo_col = knut.column_exists_or_preset(
+            configure_context, self.geo_col, input_schema, knut.is_geo
+        )
+        # self.address_name = knut.get_unique_column_name(self.address_name, input_schema)
+        # self.raw_json_name = knut.get_unique_column_name(self.raw_json_name, input_schema)
+
         return None
 
     def execute(self, exec_context: knext.ExecutionContext, input_table):
@@ -806,6 +873,10 @@ class GeoReverseGeocodingNode:
             geolocator = service_provider(user_agent="any_name")
         elif self.geocoding_service_settings.service_provider == "arcgis":
             geolocator = service_provider()
+        elif self.geocoding_service_settings.service_provider == "azure":
+            geolocator = service_provider(
+                subscription_key=self.geocoding_service_settings.api_key
+            )
         else:
             geolocator = service_provider(
                 api_key=self.geocoding_service_settings.api_key
@@ -816,10 +887,25 @@ class GeoReverseGeocodingNode:
             geolocator.reverse,
             min_delay_seconds=self.geocoding_service_settings.min_delay_seconds,
         )
-        gdf["address"] = gdf["geometry"].apply(lambda x: reverse((x.y, x.x)).address)
+        gdf["__location__"] = gdf["geometry"].apply(lambda x: reverse((x.y, x.x)))
 
-        gdf["address"] = gdf["address"].apply(
+        result_col_name = knut.get_unique_column_name(
+            self.address_name, input_table.schema
+        )
+
+        gdf[result_col_name] = gdf["__location__"].apply(lambda x: x.address)
+        gdf[result_col_name] = gdf[result_col_name].apply(
             lambda x: x.decode("utf-8") if isinstance(x, bytes) else x
         )
 
+        if self.append_raw_json:
+            import json
+
+            result_raw_json_name = knut.get_unique_column_name(
+                self.raw_json_name, input_table.schema
+            )
+            gdf[result_raw_json_name] = gdf["__location__"].apply(
+                lambda x: json.dumps(x.raw)
+            )
+        gdf.drop(["__location__"], axis=1, inplace=True)
         return knut.to_table(gdf)
