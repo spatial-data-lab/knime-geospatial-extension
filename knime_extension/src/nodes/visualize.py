@@ -373,13 +373,13 @@ class ViewNode:
     name_cols = knext.MultiColumnParameter(
         "Marker tooltip columns",
         "Select columns which should be shown in the marker tooltips.",
-        column_filter=knut.is_numeric_or_string,
+        column_filter=knut.negate(knut.is_geo),  # Filter out all geo columns
     )
 
     popup_cols = knext.MultiColumnParameter(
         "Marker popup columns",
         "Select columns which should be shown in the marker popups.",
-        column_filter=knut.is_numeric_or_string,
+        column_filter=knut.negate(knut.is_geo),  # Filter out all geo columns
     )
 
     size_settings = SizeSettings()
@@ -400,7 +400,24 @@ class ViewNode:
 
     def execute(self, exec_context: knext.ExecutionContext, input_table):
 
-        gdf = gp.GeoDataFrame(input_table.to_pandas(), geometry=self.geo_col)
+        # keep only the selected columns
+        selected_col_names = {self.geo_col}
+        if self.name_cols is not None:
+            selected_col_names.update(self.name_cols)
+        if self.popup_cols is not None:
+            selected_col_names.update(self.popup_cols)
+        if "none" not in str(self.color_settings.color_col).lower():
+            selected_col_names.add(self.color_settings.color_col)
+        if "none" not in str(self.size_settings.size_col).lower():
+            selected_col_names.add(self.size_settings.size_col)
+        filtered_table = input_table[list(selected_col_names)]
+
+        gdf = gp.GeoDataFrame(filtered_table.to_pandas(), geometry=self.geo_col)
+        # convert all remaining none string_numeric columns to string
+        schema = filtered_table.schema
+        for c in schema:
+            if not knut.is_numeric_or_string(c) and not knut.is_geo(c):
+                gdf[c.name] = gdf[c.name].apply(str)
 
         kws = {
             # "column":self.color_col,
@@ -1046,6 +1063,12 @@ class ViewNodeKepler:
         df.rename(columns={self.geo_col: "geometry"}, inplace=True)
         gdf = gp.GeoDataFrame(df, geometry="geometry")
 
+        # convert all none string_numeric and geometry columns to string
+        schema = input_table.schema
+        for c in schema:
+            if not knut.is_numeric_or_string(c) and not knut.is_geo(c):
+                gdf[c.name] = gdf[c.name].apply(str)
+
         from keplergl import KeplerGl
 
         map_1 = KeplerGl(show_docs=False)
@@ -1480,7 +1503,7 @@ class ViewNodeHeatmap:
         linear_colormap = self._color_bars[self.color_map]
         colormap = linear_colormap.scale(0, 1).to_step(steps)
         colormap.caption = self.legend_settings.caption
-        
+
         from collections import defaultdict
 
         gradient_map = defaultdict(dict)
