@@ -23,13 +23,13 @@ def replace_external_js_css_paths(
 ) -> str:
     """
     Uses a regular expression to find all script and stylesheet tags in a given HTML page.
-    The first matching group is either the script ar stylesheet part up until the opening " of the
+    The first matching group is either the script or stylesheet part up until the opening " of the
     URL. The second matching group is the file name.
     The method will also add the closing ".
 
     For example if the HTML code is <script src="https://cdn.jsdelivr.net/npm/leaflet@1.6.0/dist/leaflet.js">
     the first group is <script src=" and the second group is leaflet.js so using the following replacement
-    r'\1./libs/kepler/2.5.5/\3\"\4' will lead to this URL: <script src="./libs/leaflet/1.6.0/leaflet.js">.
+    r'\1./libs/leaflet/1.6.0/\3"\4' will lead to this URL: <script src="./libs/leaflet/1.6.0/leaflet.js">.
     """
     import re
 
@@ -517,7 +517,7 @@ class ViewNode:
         # replace css and JavaScript paths
         html = map.get_root().render()
         html = replace_external_js_css_paths(
-            r"\1./libs/leaflet/1.6.0/\3\"\4",
+            r'\1./libs/leaflet/1.6.0/\3"\4',
             html,
         )
 
@@ -1094,7 +1094,7 @@ class ViewNodeKepler:
 
         # replace css and JavaScript paths
         html = replace_external_js_css_paths(
-            r"\1./libs/kepler/2.5.5/\3\"\4",
+            r'\1./libs/kepler/2.5.5/\3"\4',
             html,
         )
         # replace any stylesheet links that are dynamically created
@@ -1482,6 +1482,9 @@ class ViewNodeHeatmap:
     legend_settings = LegendSettings()
 
     def configure(self, configure_context, input_schema):
+        self.geo_col = knut.column_exists_or_preset(
+            configure_context, self.geo_col, input_schema, knut.is_geo
+        )
 
         return None
 
@@ -1530,7 +1533,7 @@ class ViewNodeHeatmap:
         # replace css and JavaScript paths
         html = map.get_root().render()
         html = replace_external_js_css_paths(
-            r"\1./libs/leaflet/1.6.0/\3\"\4",
+            r'\1./libs/leaflet/1.6.0/\3"\4',
             html,
         )
 
