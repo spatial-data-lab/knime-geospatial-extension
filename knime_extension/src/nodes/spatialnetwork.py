@@ -40,11 +40,18 @@ __NODE_ICON_PATH = "icons/icon/Spatialnetwork/"
 )
 class GoogleDistanceMatrix:
     """
-    Google Distance Matrix
+    Google Distance Matrix.
+    The [Distance Matrix API](https://developers.google.com/maps/documentation/distance-matrix/overview)
+    provides travel distance and time for a matrix of origins and destinations,
+    and consists of rows containing duration and distance values for each pair.
+    The API returns information based on the recommended route between start and end points.
+    This node provides two travel modes: driving and transit. The units of distance and time are Meters and Minutes.
+    If the input geometry is not point feature, the centroids will be used.
+    The output includes numerical indices for the origin and destination data that will serve as a common key for merging the data.
     """
 
     O_geo_col = knext.ColumnParameter(
-        "Origin Geometry Column(Points)",
+        "Origin Geometry Column",
         "Select the geometry column as origin.",
         # Allow only GeoValue compatible columns
         port_index=0,
@@ -64,17 +71,23 @@ class GoogleDistanceMatrix:
     )
     API_Key = knext.StringParameter(
         "Google API Key",
-        "Google API Key for distance matrix[FIPS](https://developers.google.com/maps/documentation/distance-matrix/overview) ",
+        "[Google API Key](https://developers.google.com/maps/documentation/distance-matrix/overview)  for distance matrix",
         "",
     )
     Travel_Mode = knext.StringParameter(
         "Travel Mode",
-        "Set Trave Mode[FIPS](https://developers.google.com/maps/documentation/distance-matrix/distance-matrix) ",
+        "Set [Trave Mode](https://developers.google.com/maps/documentation/distance-matrix/distance-matrix) ",
         "Driving",
         enum=["Driving", "Transit"],
     )
 
     def configure(self, configure_context, input_schema_1, input_schema_2):
+        self.O_geo_col = knut.column_exists_or_preset(
+            configure_context, self.O_geo_col, input_schema_1, knut.is_geo
+        )
+        self.D_geo_col = knut.column_exists_or_preset(
+            configure_context, self.D_geo_col, input_schema_2, knut.is_geo
+        )
         return knext.Schema.from_columns(
             [
                 knext.Column(knext.int64(), "OriginID"),
@@ -112,8 +125,11 @@ class GoogleDistanceMatrix:
                 print("Empty value generated")
             return [nt_time, nt_dist]
 
-        O_gdf = gp.GeoDataFrame(left_input.to_pandas(), geometry=self.O_geo_col)
-        D_gdf = gp.GeoDataFrame(right_input.to_pandas(), geometry=self.D_geo_col)
+        O_gdf = left_input.to_pandas().rename(columns={self.O_geo_col: "geometry"})
+        D_gdf = right_input.to_pandas().rename(columns={self.D_geo_col: "geometry"})
+        O_gdf = gp.GeoDataFrame(O_gdf, geometry="geometry")
+        D_gdf = gp.GeoDataFrame(D_gdf, geometry="geometry")
+
         # Set a lat\Lon CRS
         O_gdf = O_gdf.to_crs(4326)
         D_gdf = D_gdf.to_crs(4326)
@@ -144,6 +160,8 @@ class GoogleDistanceMatrix:
             Google_Travel_Cost = fetch_google_OD(Google_Request_Link)
             distance_matrix.iloc[i, 2] = Google_Travel_Cost[0]
             distance_matrix.iloc[i, 3] = Google_Travel_Cost[1]
+        distance_matrix["duration"] = distance_matrix.duration / 1.0
+        distance_matrix["distance"] = distance_matrix.distance / 1.0
         return knext.Table.from_pandas(distance_matrix)
 
 
@@ -171,7 +189,13 @@ class GoogleDistanceMatrix:
 )
 class OSRMDriveMatrix:
     """
-    OSRM Distance Matrix
+    This node can calculate the driving time, distance or route of the shortest paths between origin (left or upper input port)
+    and destination (right or lower input port) points based on the Open Source Routing Machine or [OSRM](https://project-osrm.org/),
+    which  is a C++ implementation of a high-performance routing engine for shortest paths in road networks. It combines sophisticated
+    routing algorithms with the open and free road network data of the OpenStreetMap (OSM) project.
+    If the input geometry is not point feature, the centroids will be used.
+    The output includes numerical indices for the source and destination that will serve as a common key for merging the data.
+
     """
 
     # input parameters
@@ -213,6 +237,12 @@ class OSRMDriveMatrix:
     )
 
     def configure(self, configure_context, input_schema_1, input_schema_2):
+        self.O_geo_col = knut.column_exists_or_preset(
+            configure_context, self.O_geo_col, input_schema_1, knut.is_geo
+        )
+        self.D_geo_col = knut.column_exists_or_preset(
+            configure_context, self.D_geo_col, input_schema_2, knut.is_geo
+        )
         if self.osrmmodel == "Travel Cost":
             return knext.Schema.from_columns(
                 [
@@ -240,7 +270,6 @@ class OSRMDriveMatrix:
                     knext.Column(knut.TYPE_LINE, "geometry"),
                 ]
             )
-
 
     def execute(self, exec_context: knext.ExecutionContext, left_input, right_input):
 
@@ -320,15 +349,22 @@ class OSRMDriveMatrix:
                         df.loc[ns:ne, "distance"] = dfr.distance.to_list()
                     if self.osrmmodel != "Travel Cost":
                         # get route
-                        df.loc[ns:ne, "geometry"] = extractRoute(data)
+                        temproute = extractRoute(data)
+                        # get route
+                        if len(temproute) == 1:
+                            df.loc[ns:ne, "geometry"] = temproute[0]
+                        else:
+                            df.loc[ns:ne, "geometry"] = temproute
                 else:
                     print("error from:{} to :{}".format(ns, ne))
             except:
                 print("error from:{} to :{}".format(ns, ne))
 
         # Cross join Data
-        O_gdf = gp.GeoDataFrame(left_input.to_pandas(), geometry=self.O_geo_col)
-        D_gdf = gp.GeoDataFrame(right_input.to_pandas(), geometry=self.D_geo_col)
+        O_gdf = left_input.to_pandas().rename(columns={self.O_geo_col: "geometry"})
+        D_gdf = right_input.to_pandas().rename(columns={self.D_geo_col: "geometry"})
+        O_gdf = gp.GeoDataFrame(O_gdf, geometry="geometry")
+        D_gdf = gp.GeoDataFrame(D_gdf, geometry="geometry")
         # Set a lat\Lon CRS
         O_gdf = O_gdf.to_crs(4326)
         D_gdf = D_gdf.to_crs(4326)
