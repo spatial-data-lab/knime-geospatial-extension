@@ -589,6 +589,14 @@ class GeoToLatLongNode:
 
 class _ServiceProvider(knext.EnumParameterOptions):
 
+    arcgis = (
+        "arcgis",
+        "Using [ArcGIS online service](https://developers.arcgis.com/rest/geocode/api-reference/overview-world-geocoding-service.htm) to do geocoding or reverse geocoding.",
+    )
+    azure = (
+        "azure",
+        "Using [AzureMaps geocoder based on TomTom](https://docs.microsoft.com/en-us/azure/azure-maps/index) to do geocoding or reverse geocoding.",
+    )
     baiduv3 = (
         "baiduv3",
         "Using [Baidu Map service](http://lbsyun.baidu.com/index.php?title=webapi/guide/webservice-geocoding) to do geocoding or reverse geocoding.",
@@ -601,33 +609,25 @@ class _ServiceProvider(knext.EnumParameterOptions):
         "googlev3",
         "Using [Google Map service](https://developers.google.com/maps/documentation/geocoding/) to do geocoding or reverse geocoding.",
     )
+    herev7 = (
+        "herev7",
+        "Using [HERE Geocoding & Search v7 API](https://developer.here.com/documentation/geocoding-search-api/) to do geocoding or reverse geocoding.",
+    )
     mapbox = (
         "mapbox",
         "Using [Mapbox service](https://www.mapbox.com/api-documentation/) to do geocoding or reverse geocoding.",
-    )
-    yandex = (
-        "yandex",
-        "Using [Yandex service](https://tech.yandex.com/maps/doc/geocoder/desc/concepts/input_params-docpage/) to do geocoding or reverse geocoding.",
     )
     nominatim = (
         "nominatim",
         "Using [Nominatim service](https://nominatim.org/release-docs/develop/api/Overview/) to do geocoding or reverse geocoding.",
     )
-    arcgis = (
-        "arcgis",
-        "Using [ArcGIS online service](https://developers.arcgis.com/rest/geocode/api-reference/overview-world-geocoding-service.htm) to do geocoding or reverse geocoding.",
-    )
-    herev7 = (
-        "herev7",
-        "Using [HERE Geocoding & Search v7 API](https://developer.here.com/documentation/geocoding-search-api/) to do geocoding or reverse geocoding.",
-    )
     tomtom = (
         "tomtom",
         "Using [TomTom](https://developer.tomtom.com/search-api/search-api-documentation) to do geocoding or reverse geocoding.",
     )
-    azure = (
-        "azure",
-        "Using [AzureMaps geocoder based on TomTom](https://docs.microsoft.com/en-us/azure/azure-maps/index) to do geocoding or reverse geocoding.",
+    yandex = (
+        "yandex",
+        "Using [Yandex service](https://tech.yandex.com/maps/doc/geocoder/desc/concepts/input_params-docpage/) to do geocoding or reverse geocoding.",
     )
 
     @classmethod
@@ -699,9 +699,10 @@ class GeocodingServiceSettings:
     The node uses the [Nominatim](https://nominatim.org/) service by default.
     You can change the service provider and API key in the node settings.
     See the [geopy documentation](https://geopy.readthedocs.io/en/stable/#module-geopy.geocoders) for more information.
-    Notice that the service provider and API key are only required for some service providers. You don't have to enter them for
-    service providers such as Nomintim and ArcGIS.
-    The addresses can be like `1600 Amphitheatre Parkway, Mountain View, CA` or `1600 Amphitheatre Parkway, Mountain View, CA, United States`.
+    Notice that the service provider and API key are only required for some service providers. 
+    For example, you do not have to enter them forNomintim or ArcGIS.
+    The addresses can be like `1600 Amphitheatre Parkway, Mountain View, CA` 
+    or `1600 Amphitheatre Parkway, Mountain View, CA, United States`.
     """,
     references={
         "Geocoding": "https://en.wikipedia.org/wiki/Geocoding",
@@ -746,7 +747,7 @@ class GeoGeocodingNode:
             self.geocoding_service_settings.service_provider
         ]
         if self.geocoding_service_settings.service_provider == "nominatim":
-            geolocator = service_provider(user_agent="any_name")
+            geolocator = service_provider(user_agent="KNIME")
         elif self.geocoding_service_settings.service_provider == "arcgis":
             geolocator = service_provider()
         elif self.geocoding_service_settings.service_provider == "azure":
@@ -802,15 +803,14 @@ class GeoGeocodingNode:
 )
 @knut.geo_node_description(
     short_description="Reverse geocodes the given geometries.",
-    description="""This node reverse geocodes the given geometries and appends the `address` column to the input table. 
-    Please rename your column if you already have an `address` column.
-    The `address` column contains the address for the given geometry.
+    description="""This node reverse geocodes the given geometries and appends the `address` column to the input table
+    which contains the address for the given geometry.
     The node uses the [geopy](https://geopy.readthedocs.io/en/stable/) library to reverse geocode the geometries.
     The node uses the [Nominatim](https://nominatim.org/) service by default.
     You can change the service provider and API key in the node settings.
     See the [geopy documentation](https://geopy.readthedocs.io/en/stable/#module-geopy.geocoders) for more information.
-    Notice that the service provider and API key are only required for some service providers. You don't have to enter them for
-    service providers such as Nomintim and ArcGIS.
+    Notice that the service provider and API key are only required for some service providers. 
+    For example, you do not have to enter them for Nominatim or ArcGIS.
     """,
     references={
         "Reverse Geocoding": "https://en.wikipedia.org/wiki/Reverse_geocoding",
@@ -834,7 +834,8 @@ class GeoReverseGeocodingNode:
 
     append_raw_json = knext.BoolParameter(
         "Append raw json",
-        "If selected, the raw json string of the results will be append to a new column. It is useful for who want extract a specified administration level such as city.",
+        """If selected, the provider dependent raw json string of the result will be appended to a new column. 
+        It is useful for extracting specific information such as the city.""",
         default_value=False,
     )
 
@@ -875,7 +876,7 @@ class GeoReverseGeocodingNode:
             self.geocoding_service_settings.service_provider
         ]
         if self.geocoding_service_settings.service_provider == "nominatim":
-            geolocator = service_provider(user_agent="any_name")
+            geolocator = service_provider(user_agent="KNIME")
         elif self.geocoding_service_settings.service_provider == "arcgis":
             geolocator = service_provider()
         elif self.geocoding_service_settings.service_provider == "azure":
