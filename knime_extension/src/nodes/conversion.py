@@ -726,18 +726,12 @@ class GeoGeocodingNode:
         self.address_col = knut.column_exists_or_preset(
             configure_context, self.address_col, input_schema, knut.is_string
         )
-        # from shapely.geometry import Point
-        # result = input_schema.append(
-
-        #     knext.Column(
-        #     ktype=knext.logical(Point),
-        #     name=knut.get_unique_column_name(
-        #             self.name,
-        #             input_schema
-        #         ),
-        #     )
-        # )
-        return None
+        return input_schema.append(
+            knext.Column(
+                ktype=knut.TYPE_POINT,
+                name=knut.get_unique_column_name(self.name, input_schema),
+            )
+        )
 
     def execute(self, exec_context: knext.ExecutionContext, input_table):
         df = input_table.to_pandas()
@@ -850,10 +844,21 @@ class GeoReverseGeocodingNode:
         self.geo_col = knut.column_exists_or_preset(
             configure_context, self.geo_col, input_schema, knut.is_geo
         )
-        # self.address_name = knut.get_unique_column_name(self.address_name, input_schema)
-        # self.raw_json_name = knut.get_unique_column_name(self.raw_json_name, input_schema)
 
-        return None
+        output_schema = input_schema.append(
+            knext.Column(
+                ktype=knext.string(),
+                name=knut.get_unique_column_name(self.address_name, input_schema),
+            )
+        )
+        if self.append_raw_json:
+            output_schema = output_schema.append(
+                knext.Column(
+                    ktype=knext.string(),
+                    name=knut.get_unique_column_name(self.raw_json_name, input_schema),
+                )
+            )
+        return output_schema
 
     def execute(self, exec_context: knext.ExecutionContext, input_table):
         df = input_table.to_pandas()
