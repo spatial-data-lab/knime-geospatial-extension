@@ -765,18 +765,21 @@ class GeoGeocodingNode:
             geolocator.geocode,
             min_delay_seconds=self.geocoding_service_settings.min_delay_seconds,
         )
-        df["latitude"] = df[self.address_col].apply(lambda x: geocode(x).latitude)
-        df["longitude"] = df[self.address_col].apply(lambda x: geocode(x).longitude)
+
+        tmp_col = knut.get_unique_column_name("__location__", input_table.schema)
+        tmp_lat = knut.get_unique_column_name("__latitude__", input_table.schema)
+        tmp_long = knut.get_unique_column_name("__longitude__", input_table.schema)
+        df[tmp_col] = df[self.address_col].apply(lambda x: geocode(x))
+        df[tmp_lat] = df[tmp_col].apply(lambda x: x.latitude)
+        df[tmp_long] = df[tmp_col].apply(lambda x: x.longitude)
 
         result_col_name = knut.get_unique_column_name(self.name, input_table.schema)
 
-        df[result_col_name] = gp.points_from_xy(df.longitude, df.latitude)
+        df[result_col_name] = gp.points_from_xy(df[tmp_long], df[tmp_lat])
 
-        gdf = gp.GeoDataFrame(df, geometry=result_col_name, crs="EPSG:4326")
+        gdf = gp.GeoDataFrame(df, geometry=result_col_name, crs=knut.DEFAULT_CRS)
 
-        gdf.drop(columns=["latitude", "longitude"], inplace=True)
-
-        # gdf = gp.GeoDataFrame(df, geometry=gdf.geometry, crs="EPSG:4326")
+        gdf.drop(columns=[tmp_col, tmp_lat, tmp_long], inplace=True)
 
         return knut.to_table(gdf)
 
@@ -862,9 +865,7 @@ class GeoReverseGeocodingNode:
         return output_schema
 
     def execute(self, exec_context: knext.ExecutionContext, input_table):
-        df = input_table.to_pandas()
-        df.rename(columns={self.geo_col: "geometry"}, inplace=True)
-        gdf = gp.GeoDataFrame(df, geometry="geometry")
+        gdf = knut.load_geo_data_frame(input_table, self.geo_col, exec_context)
 
         import geopy
 
@@ -893,13 +894,15 @@ class GeoReverseGeocodingNode:
             geolocator.reverse,
             min_delay_seconds=self.geocoding_service_settings.min_delay_seconds,
         )
-        gdf["__location__"] = gdf["geometry"].apply(lambda x: reverse((x.y, x.x)))
+
+        tmp_col = knut.get_unique_column_name("__location__", input_table.schema)
+        gdf[tmp_col] = gdf[self.geo_col].apply(lambda x: reverse((x.y, x.x)))
 
         result_col_name = knut.get_unique_column_name(
             self.address_name, input_table.schema
         )
 
-        gdf[result_col_name] = gdf["__location__"].apply(lambda x: x.address)
+        gdf[result_col_name] = gdf[tmp_col].apply(lambda x: x.address)
         gdf[result_col_name] = gdf[result_col_name].apply(
             lambda x: x.decode("utf-8") if isinstance(x, bytes) else x
         )
@@ -910,8 +913,6 @@ class GeoReverseGeocodingNode:
             result_raw_json_name = knut.get_unique_column_name(
                 self.raw_json_name, input_table.schema
             )
-            gdf[result_raw_json_name] = gdf["__location__"].apply(
-                lambda x: json.dumps(x.raw)
-            )
-        gdf.drop(["__location__"], axis=1, inplace=True)
+            gdf[result_raw_json_name] = gdf[tmp_col].apply(lambda x: json.dumps(x.raw))
+        gdf.drop([tmp_col], axis=1, inplace=True)
         return knut.to_table(gdf)
