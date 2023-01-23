@@ -428,8 +428,8 @@ def get_osmnx():
     # use global variable to reuse the cache in subsequent calls of the method
     global osm_root_dir
     if osm_root_dir is None:
-        osm_root_dir = tempfile.mkdtemp()
-        cache_dir = os.path.join(osm_root_dir, "osm_cache")
+        osm_root_dir = tempfile.gettempdir()
+        cache_dir = os.path.join(osm_root_dir, "knime_osmnx_cache")
         ox.settings.use_cache = True
         ox.settings.cache_folder = cache_dir
     return ox
