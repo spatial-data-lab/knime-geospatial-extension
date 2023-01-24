@@ -587,6 +587,54 @@ class GeoToLatLongNode:
         return knut.to_table(gdf, exec_context)
 
 
+class _ServiceProvider(knext.EnumParameterOptions):
+
+    arcgis = (
+        "arcgis",
+        "Using [ArcGIS online service](https://developers.arcgis.com/rest/geocode/api-reference/overview-world-geocoding-service.htm) to do geocoding or reverse geocoding.",
+    )
+    azure = (
+        "azure",
+        "Using [AzureMaps geocoder based on TomTom](https://docs.microsoft.com/en-us/azure/azure-maps/index) to do geocoding or reverse geocoding.",
+    )
+    baiduv3 = (
+        "baiduv3",
+        "Using [Baidu Map service](http://lbsyun.baidu.com/index.php?title=webapi/guide/webservice-geocoding) to do geocoding or reverse geocoding.",
+    )
+    bing = (
+        "bing",
+        "Using [Bing Map service](https://msdn.microsoft.com/en-us/library/ff701715.aspx) to do geocoding or reverse geocoding.",
+    )
+    googlev3 = (
+        "googlev3",
+        "Using [Google Map service](https://developers.google.com/maps/documentation/geocoding/) to do geocoding or reverse geocoding.",
+    )
+    herev7 = (
+        "herev7",
+        "Using [HERE Geocoding & Search v7 API](https://developer.here.com/documentation/geocoding-search-api/) to do geocoding or reverse geocoding.",
+    )
+    mapbox = (
+        "mapbox",
+        "Using [Mapbox service](https://www.mapbox.com/api-documentation/) to do geocoding or reverse geocoding.",
+    )
+    nominatim = (
+        "nominatim",
+        "Using [Nominatim service](https://nominatim.org/release-docs/develop/api/Overview/) to do geocoding or reverse geocoding.",
+    )
+    tomtom = (
+        "tomtom",
+        "Using [TomTom](https://developer.tomtom.com/search-api/search-api-documentation) to do geocoding or reverse geocoding.",
+    )
+    yandex = (
+        "yandex",
+        "Using [Yandex service](https://tech.yandex.com/maps/doc/geocoder/desc/concepts/input_params-docpage/) to do geocoding or reverse geocoding.",
+    )
+
+    @classmethod
+    def get_default(cls):
+        return cls.nominatim
+
+
 @knext.parameter_group(label="Geocoding Service Settings")
 class GeocodingServiceSettings:
     # add documentation for the class
@@ -596,11 +644,11 @@ class GeocodingServiceSettings:
     service providers such as Nomintim and ArcGIS.
     """
 
-    service_provider = knext.StringParameter(
+    service_provider = knext.EnumParameter(
         "Service provider",
         "Select the service provider to use for reverse geocoding.",
-        default_value="nominatim",
-        enum=["baiduv3", "bing", "googlev3", "mapbox", "yandex", "nominatim", "arcgis"],
+        default_value=_ServiceProvider.get_default().name,
+        enum=_ServiceProvider,
     )
 
     api_key = knext.StringParameter(
@@ -651,9 +699,10 @@ class GeocodingServiceSettings:
     The node uses the [Nominatim](https://nominatim.org/) service by default.
     You can change the service provider and API key in the node settings.
     See the [geopy documentation](https://geopy.readthedocs.io/en/stable/#module-geopy.geocoders) for more information.
-    Notice that the service provider and API key are only required for some service providers. You don't have to enter them for
-    service providers such as Nomintim and ArcGIS.
-    The addresses can be like `1600 Amphitheatre Parkway, Mountain View, CA` or `1600 Amphitheatre Parkway, Mountain View, CA, United States`.
+    Notice that the service provider and API key are only required for some service providers. 
+    For example, you do not have to enter them forNomintim or ArcGIS.
+    The addresses can be like `1600 Amphitheatre Parkway, Mountain View, CA` 
+    or `1600 Amphitheatre Parkway, Mountain View, CA, United States`.
     """,
     references={
         "Geocoding": "https://en.wikipedia.org/wiki/Geocoding",
@@ -678,18 +727,12 @@ class GeoGeocodingNode:
         self.address_col = knut.column_exists_or_preset(
             configure_context, self.address_col, input_schema, knut.is_string
         )
-        # from shapely.geometry import Point
-        # result = input_schema.append(
-
-        #     knext.Column(
-        #     ktype=knext.logical(Point),
-        #     name=knut.get_unique_column_name(
-        #             self.name,
-        #             input_schema
-        #         ),
-        #     )
-        # )
-        return None
+        return input_schema.append(
+            knext.Column(
+                ktype=knut.TYPE_POINT,
+                name=knut.get_unique_column_name(self.name, input_schema),
+            )
+        )
 
     def execute(self, exec_context: knext.ExecutionContext, input_table):
         df = input_table.to_pandas()
@@ -704,9 +747,13 @@ class GeoGeocodingNode:
             self.geocoding_service_settings.service_provider
         ]
         if self.geocoding_service_settings.service_provider == "nominatim":
-            geolocator = service_provider(user_agent="any_name")
+            geolocator = service_provider(user_agent="KNIME")
         elif self.geocoding_service_settings.service_provider == "arcgis":
             geolocator = service_provider()
+        elif self.geocoding_service_settings.service_provider == "azure":
+            geolocator = service_provider(
+                subscription_key=self.geocoding_service_settings.api_key
+            )
         else:
             geolocator = service_provider(
                 api_key=self.geocoding_service_settings.api_key
@@ -718,19 +765,21 @@ class GeoGeocodingNode:
             geolocator.geocode,
             min_delay_seconds=self.geocoding_service_settings.min_delay_seconds,
         )
-        df["latitude"] = df[self.address_col].apply(lambda x: geocode(x).latitude)
-        df["longitude"] = df[self.address_col].apply(lambda x: geocode(x).longitude)
-        gdf = gp.GeoDataFrame(
-            df, geometry=gp.points_from_xy(df.longitude, df.latitude), crs="EPSG:4326"
-        )
 
-        gdf.drop(columns=["latitude", "longitude"], inplace=True)
-        # result_col_name = knut.get_unique_column_name(
-        #     self.name, input_table.schema
-        # )
-        # gdf.rename(columns={"geometry": result_col_name}, inplace=True)
+        tmp_col = knut.get_unique_column_name("__location__", input_table.schema)
+        tmp_lat = knut.get_unique_column_name("__latitude__", input_table.schema)
+        tmp_long = knut.get_unique_column_name("__longitude__", input_table.schema)
+        df[tmp_col] = df[self.address_col].apply(lambda x: geocode(x))
+        df[tmp_lat] = df[tmp_col].apply(lambda x: x.latitude)
+        df[tmp_long] = df[tmp_col].apply(lambda x: x.longitude)
 
-        # gdf = gp.GeoDataFrame(df, geometry=gdf.geometry, crs="EPSG:4326")
+        result_col_name = knut.get_unique_column_name(self.name, input_table.schema)
+
+        df[result_col_name] = gp.points_from_xy(df[tmp_long], df[tmp_lat])
+
+        gdf = gp.GeoDataFrame(df, geometry=result_col_name, crs=knut.DEFAULT_CRS)
+
+        gdf.drop(columns=[tmp_col, tmp_lat, tmp_long], inplace=True)
 
         return knut.to_table(gdf)
 
@@ -757,15 +806,14 @@ class GeoGeocodingNode:
 )
 @knut.geo_node_description(
     short_description="Reverse geocodes the given geometries.",
-    description="""This node reverse geocodes the given geometries and appends the `address` column to the input table. 
-    Please rename your column if you already have an `address` column.
-    The `address` column contains the address for the given geometry.
+    description="""This node reverse geocodes the given geometries and appends the `address` column to the input table
+    which contains the address for the given geometry.
     The node uses the [geopy](https://geopy.readthedocs.io/en/stable/) library to reverse geocode the geometries.
     The node uses the [Nominatim](https://nominatim.org/) service by default.
     You can change the service provider and API key in the node settings.
     See the [geopy documentation](https://geopy.readthedocs.io/en/stable/#module-geopy.geocoders) for more information.
-    Notice that the service provider and API key are only required for some service providers. You don't have to enter them for
-    service providers such as Nomintim and ArcGIS.
+    Notice that the service provider and API key are only required for some service providers. 
+    For example, you do not have to enter them for Nominatim or ArcGIS.
     """,
     references={
         "Reverse Geocoding": "https://en.wikipedia.org/wiki/Reverse_geocoding",
@@ -782,16 +830,42 @@ class GeoReverseGeocodingNode:
         include_row_key=False,
         include_none_column=False,
     )
+    address_name = "address"
+    raw_json_name = "raw_json"
 
     geocoding_service_settings = GeocodingServiceSettings()
 
+    append_raw_json = knext.BoolParameter(
+        "Append raw json",
+        """If selected, the provider dependent raw json string of the result will be appended to a new column. 
+        It is useful for extracting specific information such as the city.""",
+        default_value=False,
+    )
+
     def configure(self, configure_context, input_schema):
-        return None
+        # geo_col needs to be defined in the child class
+
+        self.geo_col = knut.column_exists_or_preset(
+            configure_context, self.geo_col, input_schema, knut.is_geo
+        )
+
+        output_schema = input_schema.append(
+            knext.Column(
+                ktype=knext.string(),
+                name=knut.get_unique_column_name(self.address_name, input_schema),
+            )
+        )
+        if self.append_raw_json:
+            output_schema = output_schema.append(
+                knext.Column(
+                    ktype=knext.string(),
+                    name=knut.get_unique_column_name(self.raw_json_name, input_schema),
+                )
+            )
+        return output_schema
 
     def execute(self, exec_context: knext.ExecutionContext, input_table):
-        df = input_table.to_pandas()
-        df.rename(columns={self.geo_col: "geometry"}, inplace=True)
-        gdf = gp.GeoDataFrame(df, geometry="geometry")
+        gdf = knut.load_geo_data_frame(input_table, self.geo_col, exec_context)
 
         import geopy
 
@@ -803,9 +877,13 @@ class GeoReverseGeocodingNode:
             self.geocoding_service_settings.service_provider
         ]
         if self.geocoding_service_settings.service_provider == "nominatim":
-            geolocator = service_provider(user_agent="any_name")
+            geolocator = service_provider(user_agent="KNIME")
         elif self.geocoding_service_settings.service_provider == "arcgis":
             geolocator = service_provider()
+        elif self.geocoding_service_settings.service_provider == "azure":
+            geolocator = service_provider(
+                subscription_key=self.geocoding_service_settings.api_key
+            )
         else:
             geolocator = service_provider(
                 api_key=self.geocoding_service_settings.api_key
@@ -816,10 +894,25 @@ class GeoReverseGeocodingNode:
             geolocator.reverse,
             min_delay_seconds=self.geocoding_service_settings.min_delay_seconds,
         )
-        gdf["address"] = gdf["geometry"].apply(lambda x: reverse((x.y, x.x)).address)
 
-        gdf["address"] = gdf["address"].apply(
+        tmp_col = knut.get_unique_column_name("__location__", input_table.schema)
+        gdf[tmp_col] = gdf[self.geo_col].apply(lambda x: reverse((x.y, x.x)))
+
+        result_col_name = knut.get_unique_column_name(
+            self.address_name, input_table.schema
+        )
+
+        gdf[result_col_name] = gdf[tmp_col].apply(lambda x: x.address)
+        gdf[result_col_name] = gdf[result_col_name].apply(
             lambda x: x.decode("utf-8") if isinstance(x, bytes) else x
         )
 
+        if self.append_raw_json:
+            import json
+
+            result_raw_json_name = knut.get_unique_column_name(
+                self.raw_json_name, input_table.schema
+            )
+            gdf[result_raw_json_name] = gdf[tmp_col].apply(lambda x: json.dumps(x.raw))
+        gdf.drop([tmp_col], axis=1, inplace=True)
         return knut.to_table(gdf)

@@ -232,7 +232,7 @@ class LegendSettings:
 class SizeSettings:
     """
     Group of settings that define the size of the geometric objects. The size column should be numerical.
-    The size is fixed by default. If the `Maker size column` is selected, the `Marker size scale` option will
+    The size is fixed by default. If the `Marker size column` is selected, the `Marker size scale` option will
     be ignored, and size will be scaled by the values of the column. For point features, the size is the radius
     of the circle. For line features, the size is the width of the line. For polygon features, the size is the
     radius of the centroid of the polygon.
@@ -249,7 +249,7 @@ class SizeSettings:
     size_scale = knext.IntParameter(
         "Marker size scale",
         """Select the size scale of the markers. 
-        If the Maker size column is selected, this option will be ignored.
+        If the Marker size column is selected, this option will be ignored.
         Noticed that the size scale only works for point features.
         """,
         default_value=1,
@@ -542,7 +542,7 @@ class StaticColorSettings:
         """Select marker color column to be plotted. If numerical you might want to adapt the classification 
         settings accordingly. If nominal the color map will be used to assign a color to each unique value in the column.
         Noticed that if a nominal column is selected the classification settings will be ignored.
-        Select 'None' if you want a unified maker color.""",
+        Select 'None' if you want a unified marker color.""",
         column_filter=knut.is_numeric_or_string,
         include_row_key=False,
         include_none_column=True,

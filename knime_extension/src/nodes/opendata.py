@@ -90,6 +90,7 @@ class US2020TIGERNode:
 
     def execute(self, exec_context: knext.ExecutionContext):
         import pandas as pd
+
         USdict = pd.DataFrame.from_dict(
             {
                 "state": [
@@ -311,8 +312,9 @@ class USCensus2020Node:
 
         response = requests.get(data_url)
         data = response.json()
-        
+
         import pandas as pd
+
         gdf = pd.DataFrame(data[1:], columns=data[0])
         if "GEO_ID" in gdf.columns:
             gdf["GEO_ID"] = gdf["GEO_ID"].str.replace(r".*US", "", regex=True)
@@ -415,10 +417,36 @@ class UScensusACSNode:
         data = response.json()
 
         import pandas as pd
+
         gdf = pd.DataFrame(data[1:], columns=data[0])
         if "GEO_ID" in gdf.columns:
             gdf["GEO_ID"] = gdf["GEO_ID"].str.replace(r".*US", "", regex=True)
         return knext.Table.from_pandas(gdf)
+
+
+############################################
+# OSM nodes
+############################################
+# TODO:Use this global temp dir for the OSMNX cache file until we have a way to get the KNIME workspace location
+osm_root_dir = None
+
+
+def get_osmnx():
+    """
+    Initializes and returns the osmnx module
+    """
+    import os
+    import osmnx as ox
+    import tempfile
+
+    # use global variable to reuse the cache in subsequent calls of the method
+    global osm_root_dir
+    if osm_root_dir is None:
+        osm_root_dir = tempfile.gettempdir()
+        cache_dir = os.path.join(osm_root_dir, "knime_osmnx_cache")
+        ox.settings.use_cache = True
+        ox.settings.cache_folder = cache_dir
+    return ox
 
 
 ############################################
@@ -490,9 +518,7 @@ class OSMdataNode:
             tags = {self.taginfo: True}
         # tags = {self.taginfo: self.tagvalue}
 
-        import osmnx as ox
-
-        gdfpoi = ox.geometries.geometries_from_polygon(gdf_union, tags)
+        gdfpoi = get_osmnx().geometries.geometries_from_polygon(gdf_union, tags)
         gdfpoi = gdfpoi.reset_index(drop=True)
         return knext.Table.from_pandas(gdfpoi)
 
@@ -552,7 +578,7 @@ class OSMnetworkNode:
         gdf.to_crs(4326, inplace=True)
         gdf_union = gdf.unary_union
 
-        import osmnx as ox
+        ox = get_osmnx()
 
         G = ox.graph.graph_from_polygon(gdf_union, self.networktype)
         if self.networktype == "drive":
@@ -611,8 +637,6 @@ class OSMGeoBoundaryNode:
 
     def execute(self, exec_context: knext.ExecutionContext):
 
-        import osmnx as ox
-
-        gdf = ox.geocode_to_gdf(self.placename)
+        gdf = get_osmnx().geocode_to_gdf(self.placename)
         gdf = gdf.reset_index(drop=True)
         return knext.Table.from_pandas(gdf)
