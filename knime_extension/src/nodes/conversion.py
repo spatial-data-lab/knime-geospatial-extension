@@ -916,3 +916,132 @@ class GeoReverseGeocodingNode:
             gdf[result_raw_json_name] = gdf[tmp_col].apply(lambda x: json.dumps(x.raw))
         gdf.drop([tmp_col], axis=1, inplace=True)
         return knut.to_table(gdf)
+
+
+############################################
+# Geometry to Metadata
+############################################
+@knext.node(
+    name="Geometry to Metadata",
+    node_type=knext.NodeType.MANIPULATOR,
+    icon_path=__NODE_ICON_PATH + "GeoToLatLon.png",
+    category=__category,
+    after="",
+)
+@knext.input_table(
+    name="Geo table",
+    description="Table with a geometry column to extract the metadata e.g. CRS or geometry type from.",
+)
+@knext.output_table(
+    name="Geo table with metadata",
+    description="Table with the metadata for all geometries",
+)
+class GeoToLatLongNode:
+    """
+    This node extracts metadata e.g. the [CRS](https://en.wikipedia.org/wiki/Spatial_reference_system)
+    or type for each geometry of the selected column. The metadata columns are appended to the input table.
+
+    The extracted CRS can be used to extract rows with the same CRS from a table that has a geometry column with mixed
+    CRS which are not supported by most geospatial nodes.
+    """
+
+    geo_col = knut.geo_col_parameter(
+        description="Select the geometry column to extract the metadata from."
+    )
+
+    extract_crs = knext.BoolParameter(
+        label="Extract CRS",
+        description="Extract the [CRS](https://en.wikipedia.org/wiki/Spatial_reference_system) into a column",
+        default_value=True,
+    )
+    extract_type = knext.BoolParameter(
+        label="Extract type",
+        description="""Extract the [geometry type](https://shapely.readthedocs.io/en/stable/manual.html#object.geom_type) 
+        into a column""",
+        default_value=False,
+    )
+    extract_z = knext.BoolParameter(
+        label="Extract z coordinate flag",
+        description="""Extract a flag that indicates if the geometry has a 
+        [z coordinate]([CRS](https://en.wikipedia.org/wiki/Spatial_reference_system))""",
+        default_value=False,
+    )
+
+    __col_crs = "CRS"
+    __col_type = "type"
+    __col_z = "has z"
+
+    def configure(self, configure_context, input_schema):
+        self.geo_col = knut.column_exists_or_preset(
+            configure_context, self.geo_col, input_schema, knut.is_geo
+        )
+        if self.extract_crs:
+            output_schema = input_schema.append(
+                knext.Column(
+                    ktype=knext.string(),
+                    name=knut.get_unique_column_name(self.__col_crs, input_schema),
+                )
+            )
+        if self.extract_type:
+            output_schema = output_schema.append(
+                knext.Column(
+                    ktype=knext.string(),
+                    name=knut.get_unique_column_name(self.__col_type, input_schema),
+                )
+            )
+        if self.extract_z:
+            output_schema = output_schema.append(
+                knext.Column(
+                    ktype=knext.bool_(),
+                    name=knut.get_unique_column_name(self.__col_z, input_schema),
+                )
+            )
+        return output_schema
+
+    def execute(self, exec_context: knext.ExecutionContext, input):
+
+        t = input.to_pyarrow()
+        t_dict = t.to_pydict()
+
+        geometry_col = t_dict[self.geo_col]
+        list_crs = []
+        list_type = []
+        list_z = []
+
+        import shapely
+
+        for geo_value in geometry_col:
+            if geo_value is None or geo_value.wkb is None:
+                list_crs.append(None)
+                list_type.append(None)
+                list_z.append(None)
+            else:
+                list_crs.append(geo_value.crs)
+                # do Shapely creation only if necessary
+                if self.extract_type or self.extract_z:
+                    s = geo_value.to_shapely()
+                    # https://shapely.readthedocs.io/en/stable/manual.html#object.geom_type
+                    list_type.append(s.geom_type)
+                    # https://shapely.readthedocs.io/en/stable/manual.html#object.has_z
+                    list_z.append(s.has_z)
+
+        import pyarrow as pa
+
+        input_schema = input.schema
+        if self.extract_crs:
+            arr_crs = pa.array(list_crs, pa.string())
+            t = t.append_column(
+                knut.get_unique_column_name(self.__col_crs, input_schema), arr_crs
+            )
+        if self.extract_type:
+            arr_type = pa.array(list_type, pa.string())
+            t = t.append_column(
+                knut.get_unique_column_name(self.__col_type, input_schema), arr_type
+            )
+        if self.extract_z:
+            arr_z = pa.array(list_z, pa.bool_())
+            t = t.append_column(
+                knut.get_unique_column_name(self.__col_z, input_schema), arr_z
+            )
+
+        return knext.Table.from_pyarrow(t)
