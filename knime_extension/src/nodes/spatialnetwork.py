@@ -414,6 +414,7 @@ class OSRMDriveMatrix:
             gdf = gp.GeoDataFrame(df1, geometry=df.geometry, crs=4326)
         return knext.Table.from_pandas(gdf)
 
+<<<<<<< Upstream, based on origin/main
 
 ############################################
 # Road Network
@@ -872,3 +873,73 @@ class StreetNetworkMatrix:
         dff.sort_values(by=["OriginID", "DestinationID"], inplace=True)
         dff = dff.reset_index(drop=True)
         return knext.Table.from_pandas(dff)
+=======
+############################################
+# CRS Transformer
+############################################
+@knext.node(
+    name="ProjectTest",
+    node_type=knext.NodeType.MANIPULATOR,
+    # node_type=knext.NodeType.MANIPULATOR,
+    category=__category,
+    icon_path=__NODE_ICON_PATH + "OSMisochrone.png",
+)
+@knext.input_table(
+    name="Geo table",
+    description="Table with geometry column to transform.",
+)
+@knext.output_table(
+    name="Transformed geo table",
+    description="Transformed geo output table.",
+)
+@knut.geo_node_description(
+    short_description="Projection Transformation",
+    description="""This node transforms the Coordinate Reference System (CRS) of the geometry column  with the input 
+    parameter by geopandas.to_crs(). This method will transform all points in all objects. 
+    It has no notion or projecting entire geometries. 
+    All segments joining points are assumed to be lines in the current projection, not geodesics. 
+    Objects crossing the dateline (or other projection boundary) will have undesirable behavior.
+    """,
+    references={
+        "geopandas.GeoSeries.to_crs()": "https://geopandas.org/en/stable/docs/reference/api/geopandas.GeoSeries.to_crs.html",
+        "Coordinate Reference System (CRS) EPSG:4326": "https://epsg.io/4326",
+    },
+)
+class ProjectTestNode:
+    """
+    This node projects the data from its original CRS to the entered CRS.
+    """
+
+    geo_col = knut.geo_col_parameter()
+
+    new_crs = knext.StringParameter(
+        "New CRS", knut.DEF_CRS_DESCRIPTION, knut.DEFAULT_CRS
+    )
+
+    def configure(self, configure_context, input_schema_1):
+        self.geo_col = knut.column_exists_or_preset(
+            configure_context, self.geo_col, input_schema_1, knut.is_geo
+        )
+        return input_schema_1
+
+    def execute(self, exec_context: knext.ExecutionContext, input_table):
+        import os
+        import pyproj
+        import logging
+
+        pyproj_path = pyproj.datadir.get_data_dir()
+        logging.warning(pyproj_path)
+        pyproj_path = os.path.join(knut.get_env_path(), "Library\share\proj")
+        # pyproj_path = pyproj.datadir.get_data_dir()
+        pyproj.datadir.set_data_dir(pyproj_path)
+        logging.warning(pyproj_path)
+        geo_col = knut.geo_col_parameter()
+
+        new_crs = knext.StringParameter(
+            "New CRS", knut.DEF_CRS_DESCRIPTION, knut.DEFAULT_CRS
+        )
+        gdf = knut.load_geo_data_frame(input_table, self.geo_col, exec_context)
+        gdf.to_crs(self.new_crs, inplace=True)
+        crs = gdf.crs
+        return knut.to_table(gdf, exec_context)
+>>>>>>> 70d3e6d test the new env for proj.db
