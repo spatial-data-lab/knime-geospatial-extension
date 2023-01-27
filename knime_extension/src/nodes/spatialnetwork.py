@@ -166,7 +166,7 @@ class GoogleDistanceMatrix:
 
 
 ############################################
-# OSRM
+# OSRM test
 ############################################
 @knext.node(
     name="OSRM Matrix",
