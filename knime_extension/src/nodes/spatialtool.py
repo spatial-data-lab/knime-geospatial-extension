@@ -1,10 +1,6 @@
-# lingbo
 import geopandas as gp
-import logging
 import knime_extension as knext
 import util.knime_utils as knut
-
-LOGGER = logging.getLogger(__name__)
 
 # Root path for all node icons in this file
 __NODE_ICON_PATH = "icons/icon/SpatialTool/"
@@ -76,6 +72,17 @@ class BufferNode:
     bufferdist = knext.DoubleParameter(
         "Buffer distance", "The buffer distance for geometry. ", 1000.0
     )
+    unitset = knext.StringParameter(
+        label="Choose buffer distance unit",
+        description="The unit of buffer distances. ",
+        default_value="Meter",
+        enum=[
+            "Meter",
+            "Kilometer",
+            "Degree",
+        ],
+        since_version="1.1.0",
+    )
 
     def configure(self, configure_context, input_schema):
         self.geo_col = knut.column_exists_or_preset(
@@ -89,16 +96,26 @@ class BufferNode:
         from pyproj import CRS  # For CRS Units check
 
         crsinput = CRS.from_user_input(gdf.crs)
-        if crsinput.is_geographic:
-            logging.warning("Unit as Degree, Please use Projected CRS")
-        exec_context.set_progress(0.3, "Geo data frame loaded. Starting buffering...")
-        gdf[knut.get_unique_column_name("geometry", input.schema)] = gdf.buffer(
-            self.bufferdist
-        )
-        exec_context.set_progress(0.1, "Buffering done")
-        LOGGER.debug(
-            "Feature geometry " + self.geo_col + " buffered with" + str(self.bufferdist)
-        )
+        if crsinput.is_geographic and self.unitset != "Degree":
+            exec_context.set_warning(
+                "CRS unit does not match, CRS is converted to default CRS epsg:3857 "
+            )
+            newcrs = 3857
+        elif crsinput.is_projected and self.unitset == "Degree":
+            exec_context.set_warning(
+                "CRS unit does not match, CRS is converted to  default CRS epsg:4326 "
+            )
+            newcrs = 4326
+        else:
+            newcrs = gdf.crs
+        gdf = gdf.to_crs(newcrs)
+
+        if self.unitset == "Kilometer":
+            newbufferdist = self.bufferdist * 1000
+        else:
+            newbufferdist = self.bufferdist
+        gdf["geometry"] = gdf["geometry"] = gdf.buffer(newbufferdist)
+        gdf = gdf.to_crs(crsinput)
         return knext.Table.from_pandas(gdf)
 
 
@@ -160,9 +177,6 @@ class DissolveNode:
         gdf_dissolve = gdf.dissolve(self.dissolve_col, as_index=False)
         gdf = gdf_dissolve[[self.dissolve_col, self.geo_col]]
         exec_context.set_progress(0.1, "Dissolve done")
-        LOGGER.debug(
-            "Feature geometry " + self.geo_col + "dissolved by " + self.dissolve_col
-        )
         return knext.Table.from_pandas(gdf)
 
 
@@ -384,7 +398,19 @@ class NearestJoinNode:
     crs_info = knext.StringParameter(
         label="CRS for distance calculation",
         description=knut.DEF_CRS_DESCRIPTION,
-        default_value="EPSG:3857",
+        default_value="epsg:3857",
+    )
+
+    unitset = knext.StringParameter(
+        label="Choose distance unit",
+        description="The unit of distances. ",
+        default_value="Meter",
+        enum=[
+            "Meter",
+            "Kilometer",
+            "Degree",
+        ],
+        since_version="1.1.0",
     )
 
     def configure(self, configure_context, left_input_schema, right_input_schema):
@@ -403,21 +429,65 @@ class NearestJoinNode:
             right_input.to_pandas(), geometry=self.right_geo_col
         )
         knut.check_canceled(exec_context)
-        left_gdf.to_crs(self.crs_info, inplace=True)
-        right_gdf.to_crs(self.crs_info, inplace=True)
+
+        left_gdf = left_gdf.to_crs(self.crs_info)
+        right_gdf = right_gdf.to_crs(self.crs_info)
+
+        from pyproj import CRS  # For CRS Units check
+
+        crsinput = CRS.from_user_input(left_gdf.crs)
+        if crsinput.is_geographic and self.unitset != "Degree":
+            exec_context.set_warning(
+                "CRS unit does not match, CRS is converted to default CRS epsg:3857 "
+            )
+            newcrs = 3857
+        elif crsinput.is_projected and self.unitset == "Degree":
+            exec_context.set_warning(
+                "CRS unit does not match, CRS is converted to  default CRS epsg:4326 "
+            )
+            newcrs = 4326
+        else:
+            newcrs = left_gdf.crs
+
+        left_gdf = left_gdf.to_crs(newcrs)
+        right_gdf = right_gdf.to_crs(newcrs)
+
+        if self.unitset == "Kilometer":
+            maxdistvalue = self.maxdist * 1000
+        else:
+            maxdistvalue = self.maxdist
+
         gdf = gp.sjoin_nearest(
             left_gdf,
             right_gdf,
             how=self.join_mode.lower(),
-            max_distance=self.maxdist,
-            distance_col="NearDist",
+            max_distance=maxdistvalue,
+            distance_col="neardist",
             lsuffix="1",
             rsuffix="2",
         )
+        if gdf.shape[0] < 1:
+            exec_context.set_warning(
+                "Using Inner model, Wrong maximum distance was detected and ignored "
+            )
+            gdf = gp.sjoin_nearest(
+                left_gdf,
+                right_gdf,
+                how=self.join_mode.lower(),
+                distance_col="neardist",
+                lsuffix="1",
+                rsuffix="2",
+            )
         # reset the index since it might contain duplicates after joining
         gdf.reset_index(drop=True, inplace=True)
+
+        if self.unitset == "Kilometer":
+            gdf["neardist"] = gdf.neardist / 1000
+
         # drop additional index columns if they exist
         gdf.drop(["index_1", "index_2"], axis=1, errors="ignore", inplace=True)
+        gdf = gdf.to_crs(crsinput)
+
         return knext.Table.from_pandas(gdf)
 
 
@@ -728,7 +798,7 @@ class EuclideanDistanceNode:
     description="""This node generate multiple polygons with a series distances of each geometric object.
 
 **Note:** If the input table contains multiple rows the node first computes the union of all geometries before 
-computing the buffers from the union.
+computing the buffers from the union. This node only accepts buffer distances based on a projected CRS.
     """,
     references={
         "Buffer": "https://geopandas.org/en/stable/docs/reference/api/geopandas.GeoSeries.buffer.html",
@@ -744,13 +814,13 @@ class MultiRingBufferNode:
     )
 
     bufferunit = knext.StringParameter(
-        label="Serial buffer distances",
-        description="The buffer distances for geometry ",
+        label="Serial buffer distance unit",
+        description="The buffer distance unit for geometry ",
         default_value="Meter",
         enum=[
             "Meter",
-            "KiloMeter",
-            "Mile",
+            "Kilometer",
+            "Degree",
         ],
     )
 
@@ -770,24 +840,34 @@ class MultiRingBufferNode:
     def execute(self, exec_context: knext.ExecutionContext, input_1):
         gdf = gp.GeoDataFrame(input_1.to_pandas(), geometry=self.geo_col)
         gdf = gp.GeoDataFrame(geometry=gdf.geometry)
+        origincrs = gdf.crs
         gdf.to_crs(self.crs_info, inplace=True)
 
         from pyproj import CRS  # For CRS Units check
 
         crsinput = CRS.from_user_input(gdf.crs)
-        if crsinput.is_geographic:
-            logging.warning("Unit as Degree, Please use Projected CRS")
-        exec_context.set_progress(0.3, "Geo data frame loaded. Starting buffering...")
-        # transfrom string list to number
+        if crsinput.is_geographic and self.bufferunit != "Degree":
+            exec_context.set_warning(
+                "CRS unit does not match, CRS is converted to default CRS epsg:3857 "
+            )
+            newcrs = 3857
+        elif crsinput.is_projected and self.bufferunit == "Degree":
+            exec_context.set_warning(
+                "CRS unit does not match, CRS is converted to  default CRS epsg:4326 "
+            )
+            newcrs = 4326
+        else:
+            newcrs = gdf.crs
+        gdf = gdf.to_crs(newcrs)
+
         import numpy as np
 
         bufferlist = np.array(self.bufferdist.split(","), dtype=np.int64)
-        if self.bufferunit == "Meter":
-            bufferlist = bufferlist
-        elif self.bufferunit == "KiloMeter":
+        if self.bufferunit == "Kilometer":
             bufferlist = bufferlist * 1000
         else:
-            bufferlist = bufferlist * 1609.34
+            bufferlist = bufferlist
+
         # sort list
         bufferlist = bufferlist.tolist()
         bufferlist.sort()
@@ -806,8 +886,10 @@ class MultiRingBufferNode:
                 gdf0 = gp.overlay(gdf0, ci, how="union")
         # Add ring radius values as a new column
         gdf0["dist"] = bufferlist
+        # convert it back to the orginal CRS of input data
+        gdf0.to_crs(origincrs, inplace=True)
         gdf0 = gdf0.reset_index(drop=True)
-        exec_context.set_progress(0.1, "Buffering done")
+        gdf0 = gdf0.to_crs(origincrs)
         return knext.Table.from_pandas(gdf0)
 
 
@@ -860,6 +942,17 @@ class SimplifyNode:
         """,
         default_value=1.0,
     )
+    unitset = knext.StringParameter(
+        label="Choose tolerance unit",
+        description="The unit of buffer distances. ",
+        default_value="Meter",
+        enum=[
+            "Meter",
+            "Kilometer",
+            "Degree",
+        ],
+        since_version="1.1.0",
+    )
 
     def configure(self, configure_context, input_schema_1):
         self.geo_col = knut.column_exists_or_preset(
@@ -869,12 +962,33 @@ class SimplifyNode:
 
     def execute(self, exec_context: knext.ExecutionContext, input):
         gdf = gp.GeoDataFrame(input.to_pandas(), geometry=self.geo_col)
-        gdf[
-            knut.get_unique_column_name("geometry", input.schema)
-        ] = gdf.geometry.simplify(self.simplifydist)
+
+        from pyproj import CRS  # For CRS Units check
+
+        crsinput = CRS.from_user_input(gdf.crs)
+        if crsinput.is_geographic and self.unitset != "Degree":
+            exec_context.set_warning(
+                "CRS unit does not match, CRS is converted to default CRS epsg:3857 "
+            )
+            newcrs = 3857
+        elif crsinput.is_projected and self.unitset == "Degree":
+            exec_context.set_warning(
+                "CRS unit does not match, CRS is converted to  default CRS epsg:4326 "
+            )
+            newcrs = 4326
+        else:
+            newcrs = gdf.crs
+        gdf = gdf.to_crs(newcrs)
+
+        if self.unitset == "Kilometer":
+            newsimplifydist = self.simplifydist * 1000
+        else:
+            newsimplifydist = self.simplifydist
+
+        gdf[self.geo_col] = gdf.geometry.simplify(newsimplifydist)
+        gdf = gdf.to_crs(crsinput)
         gdf = gdf.reset_index(drop=True)
         exec_context.set_progress(0.1, "Transformation done")
-        LOGGER.debug("Feature Simplified")
         return knext.Table.from_pandas(gdf)
 
 

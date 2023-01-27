@@ -292,6 +292,13 @@ class USCensus2020Node:
         default_value="block group",
         enum=["block group", "block", "tract", "county"],
     )
+    compatibleid = knext.StringParameter(
+        label="Make GEO_ID compatible to Tiger/Line GEOID ",
+        description=" FIPS-based GEOID for  Block, Block group, Tract and County",
+        default_value="False",
+        enum=["Ture", "False"],
+        since_version="1.1.0",
+    )
 
     def configure(self, configure_context):
         # TODO Create combined schema
@@ -316,8 +323,8 @@ class USCensus2020Node:
         import pandas as pd
 
         gdf = pd.DataFrame(data[1:], columns=data[0])
-        if "GEO_ID" in gdf.columns:
-            gdf["GEO_ID"] = gdf["GEO_ID"].str.replace(r".*US", "", regex=True)
+        if "GEO_ID" in gdf.columns and self.compatibleid == "Ture":
+            gdf["GEO_ID"] = gdf["GEO_ID"].str.slice(start=9)
         return knext.Table.from_pandas(gdf)
 
 
@@ -392,6 +399,13 @@ class UScensusACSNode:
     year = knext.StringParameter(
         "US Census ACS5 Year Label", "The Year label of dataset", "2020"
     )
+    compatibleid = knext.StringParameter(
+        label="Make GEO_ID compatible to Tiger/Line GEOID ",
+        description=" FIPS-based GEOID for  Block, Block group, Tract and County",
+        default_value="False",
+        since_version="1.1.0",
+        enum=["Ture", "False"],
+    )
 
     def configure(self, configure_context):
         # TODO Create combined schema
@@ -419,8 +433,8 @@ class UScensusACSNode:
         import pandas as pd
 
         gdf = pd.DataFrame(data[1:], columns=data[0])
-        if "GEO_ID" in gdf.columns:
-            gdf["GEO_ID"] = gdf["GEO_ID"].str.replace(r".*US", "", regex=True)
+        if "GEO_ID" in gdf.columns and self.compatibleid == "Ture":
+            gdf["GEO_ID"] = gdf["GEO_ID"].str.slice(start=9)
         return knext.Table.from_pandas(gdf)
 
 
@@ -505,6 +519,9 @@ class OSMdataNode:
     )
 
     def configure(self, configure_context, input_schema_1):
+        self.geo_col = knut.column_exists_or_preset(
+            configure_context, self.geo_col, input_schema_1, knut.is_geo
+        )
         # TODO Create combined schema
         return None
 
@@ -570,6 +587,9 @@ class OSMnetworkNode:
     )
 
     def configure(self, configure_context, input_schema_1):
+        self.geo_col = knut.column_exists_or_preset(
+            configure_context, self.geo_col, input_schema_1, knut.is_geo
+        )
         # TODO Create combined schema
         return None
 

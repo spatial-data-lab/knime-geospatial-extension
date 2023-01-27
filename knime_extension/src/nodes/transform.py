@@ -1,11 +1,7 @@
 # lingbo
 import geopandas as gp
-import logging
 import knime_extension as knext
 import util.knime_utils as knut
-
-LOGGER = logging.getLogger(__name__)
-
 
 category = knext.category(
     path="/community/geo",
@@ -70,8 +66,6 @@ class CrsTransformerNode:
     def execute(self, exec_context: knext.ExecutionContext, input_table):
         gdf = knut.load_geo_data_frame(input_table, self.geo_col, exec_context)
         gdf.to_crs(self.new_crs, inplace=True)
-        crs = gdf.crs
-        LOGGER.debug("CRS converted to " + self.new_crs)
         return knut.to_table(gdf, exec_context)
 
 
@@ -120,40 +114,23 @@ class GeometryToPointNode:
         enum=["centroid", "representative_point"],
     )
 
-    appendtype = knext.StringParameter(
-        "Geometry Attach Type Selection",
-        "The way to attach point geometry.",
-        "Replace",
-        enum=["Replace", "Append"],
-    )
-
     def configure(self, configure_context, input_schema):
         self.geo_col = knut.column_exists_or_preset(
             configure_context, self.geo_col, input_schema, knut.is_geo
         )
-        if self.appendtype == "Replace":
-            input_schema = input_schema.remove(self.geo_col)
-        new_geo_col = knut.get_unique_column_name(self.geo_col, input_schema)
-        return input_schema.append(knext.Column(knext.logical(Point), new_geo_col))
+        input_schema = input_schema.remove(self.geo_col)
+        return input_schema.append(knext.Column(knut.TYPE_POINT, self.geo_col))
 
     def execute(self, exec_context: knext.ExecutionContext, input_1):
-        new_geo_col = knut.get_unique_column_name(self.geo_col, input_1.schema)
         gdf = gp.GeoDataFrame(input_1.to_pandas(), geometry=self.geo_col)
         exec_context.set_progress(
             0.3, "Geo data frame loaded. Starting transformation..."
         )
         if self.pointtype == "centroid":
-            gdf["point"] = gdf.centroid
+            gdf[self.geo_col] = gdf.centroid
         else:
-            gdf["point"] = gdf.representative_point()
-        gdf = gdf.set_geometry("point")
-        # gdf = gdf.drop(columns=self.geo_col)
-        gdf = gdf.rename(columns={"point": new_geo_col})
-        exec_context.set_progress(0.1, "Transformation done")
-        LOGGER.debug("Feature converted to " + self.pointtype)
-        if self.appendtype == "Replace":
-            gdf = gdf.drop(columns=self.geo_col)
-            gdf = gdf.rename(columns={new_geo_col: self.geo_col})
+            gdf[self.geo_col] = gdf.representative_point()
+
         return knext.Table.from_pandas(gdf)
 
 
@@ -202,11 +179,7 @@ class ExplodeNode:
 
     def execute(self, exec_context: knext.ExecutionContext, input_1):
         gdf = gp.GeoDataFrame(input_1.to_pandas(), geometry=self.geo_col)
-        exec_context.set_progress(0.3, "Geo data frame loaded. Starting explosion...")
         exploded = gdf.explode(ignore_index=True)
-        # gdf[self.geo_col] = exploded.geometry
-        exec_context.set_progress(0.1, "Explosion done")
-        LOGGER.debug("Feature geometry " + self.geo_col + "exploded")
         return knext.Table.from_pandas(exploded)
 
 
@@ -264,7 +237,6 @@ class PolygonToLineNode:
         exec_context.set_progress(0.3, "Geo data frame loaded. Starting explosion...")
         gdf[self.geo_col] = gdf.boundary
         exec_context.set_progress(0.1, "PolygonToLine done")
-        LOGGER.debug("Polygon feature " + self.geo_col + "transformed to line")
         return knext.Table.from_pandas(gdf)
 
 
@@ -349,14 +321,6 @@ class PointsToLineNode:
         )
         line_gdf = gp.GeoDataFrame(line_gdf, geometry="geometry", crs=gdf.crs)
         exec_context.set_progress(0.1, "PolygonToLine done")
-        LOGGER.debug(
-            "Point feature "
-            + self.geo_col
-            + "transformed to line by group column"
-            + self.group_col
-            + "according to the order of"
-            + self.seiral_col
-        )
         return knext.Table.from_pandas(line_gdf)
 
 
@@ -419,5 +383,4 @@ class GeometryToMultiPointNode:
         gdf["geometry"] = gdf["points"].apply(lambda l: MultiPoint(l))
         gdf = gdf.drop(columns="points")
         exec_context.set_progress(0.1, "LineToMultiPoint done")
-        LOGGER.debug("Line feature " + self.geo_col + "transformed to MultiPoint")
         return knext.Table.from_pandas(gdf)
