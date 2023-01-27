@@ -924,7 +924,7 @@ class GeoReverseGeocodingNode:
 @knext.node(
     name="Geometry to Metadata",
     node_type=knext.NodeType.MANIPULATOR,
-    icon_path=__NODE_ICON_PATH + "GeoToLatLon.png",
+    icon_path=__NODE_ICON_PATH + "Metadata.png",
     category=__category,
     after="",
 )
@@ -936,7 +936,7 @@ class GeoReverseGeocodingNode:
     name="Geo table with metadata",
     description="Table with the metadata for all geometries",
 )
-class GeoToLatLongNode:
+class MetadataNode:
     """
     This node extracts metadata e.g. the [CRS](https://en.wikipedia.org/wiki/Spatial_reference_system)
     or type for each geometry of the selected column. The metadata columns are appended to the input table.
