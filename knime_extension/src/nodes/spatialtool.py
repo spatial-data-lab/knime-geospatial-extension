@@ -956,7 +956,7 @@ class CreateGrid:
             XrightOrigin = XrightOrigin + width
 
         grid = gp.GeoDataFrame({"geometry": polygons}, crs=gdf.crs)
-
+        grid['gridid']=list(range(1, grid.shape[0]+1))
         return knext.Table.from_pandas(grid)
 
 
