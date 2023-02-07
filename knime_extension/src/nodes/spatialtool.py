@@ -440,6 +440,7 @@ class NearestJoinNode:
         return None
 
     def execute(self, exec_context: knext.ExecutionContext, left_input, right_input):
+        knut.attach_pyproj_db()
         left_gdf = knut.load_geo_data_frame(left_input, self.left_geo_col, exec_context)
         right_gdf = knut.load_geo_data_frame(
             right_input, self.right_geo_col, exec_context
@@ -768,6 +769,7 @@ class EuclideanDistanceNode:
         )
 
     def execute(self, exec_context: knext.ExecutionContext, left_input, right_input):
+        knut.attach_pyproj_db()
         left_gdf = gp.GeoDataFrame(
             left_input.to_pandas()[self.left_geo_col], geometry=self.left_geo_col
         )
@@ -862,6 +864,7 @@ class MultiRingBufferNode:
         return None
 
     def execute(self, exec_context: knext.ExecutionContext, input_1):
+        knut.attach_pyproj_db()
         gdf = knut.load_geo_data_frame(input_1, self.geo_col, exec_context)
         gdf.to_crs(self.crs_info, inplace=True)
 
