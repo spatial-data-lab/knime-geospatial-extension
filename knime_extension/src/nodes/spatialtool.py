@@ -642,7 +642,8 @@ class OverlayNode:
 )
 @knut.geo_node_description(
     short_description="This node will calculate the Euclidean distance between two geometries.",
-    description="""This node will calculate the Euclidean distance between two geometries.
+    description="""This node will calculate the Euclidean distance between two geometries. 
+    If the input CRS is empty, the CRS of Top(left) input GeoDataFrame will be used as the default.
     """,
     references={
         "Distance": "https://geopandas.org/en/stable/docs/reference/api/geopandas.GeoSeries.distance.html",
@@ -672,7 +673,7 @@ class EuclideanDistanceNode:
     crs_info = knext.StringParameter(
         label="CRS for distance calculation",
         description=knut.DEF_CRS_DESCRIPTION,
-        default_value="EPSG:3857",
+        default_value="",
     )
 
     def configure(self, configure_context, left_input_schema, right_input_schema):
@@ -686,15 +687,25 @@ class EuclideanDistanceNode:
         return None
 
     def execute(self, exec_context: knext.ExecutionContext, left_input, right_input):
-        left_gdf = gp.GeoDataFrame(left_input.to_pandas(), geometry=self.left_geo_col)
-        right_gdf = gp.GeoDataFrame(
-            right_input.to_pandas(), geometry=self.right_geo_col
-        )
+        # rename it to facilitate the subsequent names of geometry-x and geometry-y
+        left_gdf = left_input.to_pandas().rename(columns={self.left_geo_col: "geometry"})
+        right_gdf = right_input.to_pandas().rename(columns={self.self.right_geo_col: "geometry"})
+        left_gdf = gp.GeoDataFrame(left_gdf, geometry="geometry")
+        right_gdf  = gp.GeoDataFrame(right_gdf , geometry="geometry")
+      
+        import pyproj
+        knut.attach_pyproj_db()
+        try:
+            newcrs = pyproj.CRS.from_user_input(self.crs_info )
+            newcrs = self.crs_info
+        except:
+            newcrs =left_gdf.crs
+
         knut.check_canceled(exec_context)
-        right_gdf.to_crs(self.crs_info, inplace=True)
-        left_gdf.to_crs(self.crs_info, inplace=True)
-        # left_gdf['LID'] = range(1,(left_gdf.shape[0]+1))
-        # right_gdf['RID'] = range(1,(right_gdf.shape[0]+1))
+        right_gdf.to_crs(newcrs, inplace=True)
+        left_gdf.to_crs(newcrs, inplace=True)
+        left_gdf['originid'] = range(1,(left_gdf.shape[0]+1))
+        right_gdf['destinationid'] = range(1,(right_gdf.shape[0]+1))
         mergedf = left_gdf.merge(right_gdf, how="cross")
         mergedf_x = gp.GeoDataFrame(geometry=mergedf["geometry_x"])
         mergedf_y = gp.GeoDataFrame(geometry=mergedf["geometry_y"])
