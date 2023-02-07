@@ -683,34 +683,41 @@ class EuclideanDistanceNode:
         self.right_geo_col = knut.column_exists_or_preset(
             configure_context, self.right_geo_col, right_input_schema, knut.is_geo
         )
-        # TODO Create combined schema
-        return None
+        return knext.Schema.from_columns(
+            [
+                knext.Column(knext.int64(), "originid"),
+                knext.Column(knext.int64(), "destinationid"),
+                knext.Column(knext.double(), "EuDist"),
+            ]
+        )
 
     def execute(self, exec_context: knext.ExecutionContext, left_input, right_input):
-        # rename it to facilitate the subsequent names of geometry-x and geometry-y
-        left_gdf = left_input.to_pandas().rename(columns={self.left_geo_col: "geometry"})
-        right_gdf = right_input.to_pandas().rename(columns={self.self.right_geo_col: "geometry"})
-        left_gdf = gp.GeoDataFrame(left_gdf, geometry="geometry")
-        right_gdf  = gp.GeoDataFrame(right_gdf , geometry="geometry")
-      
+        left_gdf = gp.GeoDataFrame(
+            left_input.to_pandas()[self.left_geo_col], geometry=self.left_geo_col
+        )
+        right_gdf = gp.GeoDataFrame(
+            right_input.to_pandas()[self.right_geo_col], geometry=self.right_geo_col
+        )
         import pyproj
+
         knut.attach_pyproj_db()
         try:
-            newcrs = pyproj.CRS.from_user_input(self.crs_info )
-            newcrs = self.crs_info
+            newcrs = pyproj.CRS.from_user_input(self.crs_info)
+            right_gdf.to_crs(newcrs, inplace=True)
+            left_gdf.to_crs(newcrs, inplace=True)
         except:
-            newcrs =left_gdf.crs
-
+            right_gdf.to_crs(left_gdf.crs, inplace=True)
         knut.check_canceled(exec_context)
-        right_gdf.to_crs(newcrs, inplace=True)
-        left_gdf.to_crs(newcrs, inplace=True)
-        left_gdf['originid'] = range(1,(left_gdf.shape[0]+1))
-        right_gdf['destinationid'] = range(1,(right_gdf.shape[0]+1))
+
+        left_gdf["originid"] = range(1, (left_gdf.shape[0] + 1))
+        right_gdf["destinationid"] = range(1, (right_gdf.shape[0] + 1))
         mergedf = left_gdf.merge(right_gdf, how="cross")
         mergedf_x = gp.GeoDataFrame(geometry=mergedf["geometry_x"])
         mergedf_y = gp.GeoDataFrame(geometry=mergedf["geometry_y"])
         mergedf["EuDist"] = mergedf_x.distance(mergedf_y, align=False)
-        mergedf = mergedf.reset_index(drop=True)
+        mergedf = mergedf[["originid", "destinationid", "EuDist"]].reset_index(
+            drop=True
+        )
         return knext.Table.from_pandas(mergedf)
 
 
