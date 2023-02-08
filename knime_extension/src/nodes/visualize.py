@@ -175,7 +175,7 @@ class ColorSettings:
         "Classify numerical marker color columns",
         """If checked, a numerical marker color column will be classified using the selected classification method. 
         The 'Number of classes' will be used to determine the number of bins.""",
-        default_value=True,
+        default_value=False,
     )
 
     classification_method = knext.StringParameter(
@@ -218,7 +218,7 @@ class LegendSettings:
     plot = knext.BoolParameter(
         "Show legend",
         "If checked, a legend will be shown in the plot.",
-        default_value=True,
+        default_value=False,
     )
 
     caption = knext.StringParameter(
@@ -246,15 +246,15 @@ class SizeSettings:
         include_none_column=True,
     )
 
-    size_scale = knext.IntParameter(
+    size_scale = knext.DoubleParameter(
         "Marker size scale",
         """Select the size scale of the markers. 
         If the Marker size column is selected, this option will be ignored.
         Noticed that the size scale only works for point features.
         """,
-        default_value=1,
-        min_value=1,
-        max_value=100,
+        default_value=float(1.0),
+        min_value=None,
+        max_value=None,
     )
 
 
@@ -401,7 +401,6 @@ class ViewNode:
         return None
 
     def execute(self, exec_context: knext.ExecutionContext, input_table):
-
         # keep only the selected columns
         selected_col_names = {self.geo_col}
         if self.name_cols is not None:
@@ -462,7 +461,6 @@ class ViewNode:
             kws["legend_kwds"]["max_labels"] = 20
 
         if "none" not in str(self.size_settings.size_col).lower():
-
             max_pop_est = gdf[self.size_settings.size_col].max()
             min_pop_est = gdf[self.size_settings.size_col].min()
 
@@ -509,7 +507,7 @@ class ViewNode:
             if ("LineString" in geo_types) or ("MultiLineString" in geo_types):
                 kws["style_kwds"] = {"weight": self.size_settings.size_scale}
             elif ("Polygon" in geo_types) or ("MultiPolygon" in geo_types):
-                pass
+                kws["style_kwds"] = {"weight": self.size_settings.size_scale}
             else:
                 kws["style_kwds"] = {"radius": self.size_settings.size_scale}
         if not self.stroke:
@@ -1494,7 +1492,6 @@ class ViewNodeHeatmap:
         return None
 
     def execute(self, exec_context: knext.ExecutionContext, input_table):
-
         gdf = gp.GeoDataFrame(input_table.to_pandas(), geometry=self.geo_col)
 
         if self.basemap_settings.base_map == "Don't show base map":
