@@ -1493,6 +1493,8 @@ class ViewNodeHeatmap:
 
     def execute(self, exec_context: knext.ExecutionContext, input_table):
         gdf = gp.GeoDataFrame(input_table.to_pandas(), geometry=self.geo_col)
+        # convert to WGS84
+        gdf = gdf.to_crs(4326)
 
         if self.basemap_settings.base_map == "Don't show base map":
             base_map = None
