@@ -401,7 +401,6 @@ class ViewNode:
         return None
 
     def execute(self, exec_context: knext.ExecutionContext, input_table):
-
         # keep only the selected columns
         selected_col_names = {self.geo_col}
         if self.name_cols is not None:
@@ -462,7 +461,6 @@ class ViewNode:
             kws["legend_kwds"]["max_labels"] = 20
 
         if "none" not in str(self.size_settings.size_col).lower():
-
             max_pop_est = gdf[self.size_settings.size_col].max()
             min_pop_est = gdf[self.size_settings.size_col].min()
 
@@ -1494,7 +1492,6 @@ class ViewNodeHeatmap:
         return None
 
     def execute(self, exec_context: knext.ExecutionContext, input_table):
-
         gdf = gp.GeoDataFrame(input_table.to_pandas(), geometry=self.geo_col)
 
         if self.basemap_settings.base_map == "Don't show base map":
