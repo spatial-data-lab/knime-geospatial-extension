@@ -264,7 +264,8 @@ class BaseMapSettings:
 
     base_map = knext.StringParameter(
         "Base map",
-        """Select the base map to use for the visualization. 
+        """Select the base map to use for the visualization. If choose `Don't show base map`, the base map will be hidden.
+        The default base map is `OpenStreetMap`.
         See [Folium base maps](https://python-visualization.github.io/folium/quickstart.html#Tiles).""",
         default_value="OpenStreetMap",
         enum=[
@@ -325,6 +326,7 @@ class BaseMapSettings:
             "Strava Run",
             "Strava Water",
             "Strava Winter",
+            "Don't show base map",
         ],
     )
 
@@ -418,12 +420,15 @@ class ViewNode:
         for c in schema:
             if not knut.is_numeric_or_string(c) and not knut.is_geo(c):
                 gdf[c.name] = gdf[c.name].apply(str)
-
+        if self.basemap_setting.base_map == "Don't show base map":
+            base_map = None
+        else:
+            base_map = self.basemap_setting.base_map
         kws = {
             # "column":self.color_col,
             # "cmap":self.color_map,
             "tooltip": self.name_cols,
-            "tiles": self.basemap_setting.base_map,
+            "tiles": base_map,
             "popup": self.popup_cols,
             "legend": self.legend_settings.plot,
             "m": None,
@@ -485,7 +490,7 @@ class ViewNode:
                         * max_size
                     }
                 }
-                kws["m"] = gdf.explore(tiles=self.basemap_setting.base_map)
+                kws["m"] = gdf.explore(tiles=base_map)
                 gdf[self.geo_col] = gdf.centroid
 
             else:
@@ -1492,7 +1497,12 @@ class ViewNodeHeatmap:
 
         gdf = gp.GeoDataFrame(input_table.to_pandas(), geometry=self.geo_col)
 
-        map = gdf.explore(tiles=self.basemap_settings.base_map)
+        if self.basemap_settings.base_map == "Don't show base map":
+            base_map = None
+        else:
+            base_map = self.basemap_settings.base_map
+
+        map = gdf.explore(tiles=base_map)
         gdf["lon"] = gdf.geometry.centroid.x
         gdf["lat"] = gdf.geometry.centroid.y
 
