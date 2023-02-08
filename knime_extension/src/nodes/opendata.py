@@ -292,11 +292,10 @@ class USCensus2020Node:
         default_value="block group",
         enum=["block group", "block", "tract", "county"],
     )
-    compatibleid = knext.StringParameter(
+    compatibleid = knext.BoolParameter(
         label="Make GEO_ID compatible to Tiger/Line GEOID ",
         description=" FIPS-based GEOID for  Block, Block group, Tract and County",
-        default_value="False",
-        enum=["Ture", "False"],
+        default_value=lambda v: False if v <= knext.Version(1, 0, 0) else True,
         since_version="1.1.0",
     )
 
@@ -323,7 +322,7 @@ class USCensus2020Node:
         import pandas as pd
 
         gdf = pd.DataFrame(data[1:], columns=data[0])
-        if "GEO_ID" in gdf.columns and self.compatibleid == "Ture":
+        if "GEO_ID" in gdf.columns and self.compatibleid == True:
             gdf["GEO_ID"] = gdf["GEO_ID"].str.slice(start=9)
         return knext.Table.from_pandas(gdf)
 
@@ -399,12 +398,11 @@ class UScensusACSNode:
     year = knext.StringParameter(
         "US Census ACS5 Year Label", "The Year label of dataset", "2020"
     )
-    compatibleid = knext.StringParameter(
+    compatibleid = knext.BoolParameter(
         label="Make GEO_ID compatible to Tiger/Line GEOID ",
         description=" FIPS-based GEOID for  Block, Block group, Tract and County",
-        default_value="False",
+        default_value=lambda v: False if v <= knext.Version(1, 0, 0) else True,
         since_version="1.1.0",
-        enum=["Ture", "False"],
     )
 
     def configure(self, configure_context):
@@ -433,7 +431,7 @@ class UScensusACSNode:
         import pandas as pd
 
         gdf = pd.DataFrame(data[1:], columns=data[0])
-        if "GEO_ID" in gdf.columns and self.compatibleid == "Ture":
+        if "GEO_ID" in gdf.columns and self.compatibleid == True:
             gdf["GEO_ID"] = gdf["GEO_ID"].str.slice(start=9)
         return knext.Table.from_pandas(gdf)
 
