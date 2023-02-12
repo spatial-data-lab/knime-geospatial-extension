@@ -14,7 +14,7 @@ The extension is mainly based on the [GeoPandas](https://geopandas.org/) library
 
 ## Installation
 
-The extension can be installed via the [KNIME [Hub](https://hub.knime.com/spatialdatalab/extensions/sdl.harvard.features.geospatial/latest) by dragging and doping or installed like any other KNIME extension via the KNIME Extension Manager.
+The extension can be installed via the [KNIME Hub](https://hub.knime.com/spatialdatalab/extensions/sdl.harvard.features.geospatial/latest) by dragging and doping or installed like any other KNIME extension via the KNIME Extension Manager.
 
 
 
