@@ -701,11 +701,11 @@ class EuclideanDistanceNode:
         import pyproj
 
         knut.attach_pyproj_db()
-        try:
+        if self.crs_info != "":
             newcrs = pyproj.CRS.from_user_input(self.crs_info)
             right_gdf.to_crs(newcrs, inplace=True)
             left_gdf.to_crs(newcrs, inplace=True)
-        except:
+        else:
             right_gdf.to_crs(left_gdf.crs, inplace=True)
         knut.check_canceled(exec_context)
 
