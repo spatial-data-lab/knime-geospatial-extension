@@ -98,12 +98,12 @@ class BufferNode:
         crsinput = CRS.from_user_input(gdf.crs)
         if crsinput.is_geographic and self.unitset != "Degree":
             exec_context.set_warning(
-                "CRS unit does not match, CRS is converted to default CRS epsg:3857 "
+                "Input CRS unit does not match selected distance unit. Converted input data to epsg:3857 to compute the distances. "
             )
             newcrs = 3857
         elif crsinput.is_projected and self.unitset == "Degree":
             exec_context.set_warning(
-                "CRS unit does not match, CRS is converted to  default CRS epsg:4326 "
+                "Input CRS unit does not match selected distance unit. Converted input data to epsg:4326 to compute the distances. "
             )
             newcrs = 4326
         else:
@@ -115,7 +115,7 @@ class BufferNode:
         else:
             newbufferdist = self.bufferdist
         gdf["geometry"] = gdf["geometry"] = gdf.buffer(newbufferdist)
-        gdf = gdf.to_crs(crsinput)
+        gdf.to_crs(crsinput, inplace=True)
         return knext.Table.from_pandas(gdf)
 
 
@@ -438,12 +438,12 @@ class NearestJoinNode:
         crsinput = CRS.from_user_input(left_gdf.crs)
         if crsinput.is_geographic and self.unitset != "Degree":
             exec_context.set_warning(
-                "CRS unit does not match, CRS is converted to default CRS epsg:3857 "
+                "Input CRS unit does not match selected distance unit. Converted input data to epsg:3857 to compute the distances. "
             )
             newcrs = 3857
         elif crsinput.is_projected and self.unitset == "Degree":
             exec_context.set_warning(
-                "CRS unit does not match, CRS is converted to  default CRS epsg:4326 "
+                "Input CRS unit does not match selected distance unit. Converted input data to epsg:4326 to compute the distances. "
             )
             newcrs = 4326
         else:
@@ -462,7 +462,7 @@ class NearestJoinNode:
             right_gdf,
             how=self.join_mode.lower(),
             max_distance=maxdistvalue,
-            distance_col="neardist",
+            distance_col="NearDist",
             lsuffix="1",
             rsuffix="2",
         )
@@ -474,7 +474,7 @@ class NearestJoinNode:
                 left_gdf,
                 right_gdf,
                 how=self.join_mode.lower(),
-                distance_col="neardist",
+                distance_col="NearDist",
                 lsuffix="1",
                 rsuffix="2",
             )
@@ -482,7 +482,7 @@ class NearestJoinNode:
         gdf.reset_index(drop=True, inplace=True)
 
         if self.unitset == "Kilometer":
-            gdf["neardist"] = gdf.neardist / 1000
+            gdf["NearDist"] = gdf["NearDist"] / 1000
 
         # drop additional index columns if they exist
         gdf.drop(["index_1", "index_2"], axis=1, errors="ignore", inplace=True)
@@ -798,7 +798,7 @@ class EuclideanDistanceNode:
     description="""This node generate multiple polygons with a series distances of each geometric object.
 
 **Note:** If the input table contains multiple rows the node first computes the union of all geometries before 
-computing the buffers from the union. This node only accepts buffer distances based on a projected CRS.
+computing the buffers from the union. 
     """,
     references={
         "Buffer": "https://geopandas.org/en/stable/docs/reference/api/geopandas.GeoSeries.buffer.html",
@@ -848,17 +848,17 @@ class MultiRingBufferNode:
         crsinput = CRS.from_user_input(gdf.crs)
         if crsinput.is_geographic and self.bufferunit != "Degree":
             exec_context.set_warning(
-                "CRS unit does not match, CRS is converted to default CRS epsg:3857 "
+                "Input CRS unit does not match selected distance unit. Converted input data to epsg:3857 to compute the distances. "
             )
             newcrs = 3857
         elif crsinput.is_projected and self.bufferunit == "Degree":
             exec_context.set_warning(
-                "CRS unit does not match, CRS is converted to  default CRS epsg:4326 "
+                "Input CRS unit does not match selected distance unit. Converted input data to epsg:4326 to compute the distances. "
             )
             newcrs = 4326
         else:
             newcrs = gdf.crs
-        gdf = gdf.to_crs(newcrs)
+        gdf.to_crs(newcrs,inplace=True)
 
         import numpy as np
 
@@ -889,7 +889,6 @@ class MultiRingBufferNode:
         # convert it back to the orginal CRS of input data
         gdf0.to_crs(origincrs, inplace=True)
         gdf0 = gdf0.reset_index(drop=True)
-        gdf0 = gdf0.to_crs(origincrs)
         return knext.Table.from_pandas(gdf0)
 
 
@@ -968,12 +967,12 @@ class SimplifyNode:
         crsinput = CRS.from_user_input(gdf.crs)
         if crsinput.is_geographic and self.unitset != "Degree":
             exec_context.set_warning(
-                "CRS unit does not match, CRS is converted to default CRS epsg:3857 "
+                "Input CRS unit does not match selected distance unit. Converted input data to epsg:3857 to compute the distances. "
             )
             newcrs = 3857
         elif crsinput.is_projected and self.unitset == "Degree":
             exec_context.set_warning(
-                "CRS unit does not match, CRS is converted to  default CRS epsg:4326 "
+                "Input CRS unit does not match selected distance unit. Converted input data to epsg:4326 to compute the distances. "
             )
             newcrs = 4326
         else:
@@ -986,7 +985,7 @@ class SimplifyNode:
             newsimplifydist = self.simplifydist
 
         gdf[self.geo_col] = gdf.geometry.simplify(newsimplifydist)
-        gdf = gdf.to_crs(crsinput)
+        gdf.to_crs(crsinput,inplace=True)
         gdf = gdf.reset_index(drop=True)
         exec_context.set_progress(0.1, "Transformation done")
         return knext.Table.from_pandas(gdf)
