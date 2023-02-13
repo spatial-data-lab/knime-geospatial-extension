@@ -125,10 +125,10 @@ class GoogleDistanceMatrix:
                 print("Empty value generated")
             return [nt_time, nt_dist]
 
-        O_gdf = left_input.to_pandas().rename(columns={self.O_geo_col: "geometry"})
-        D_gdf = right_input.to_pandas().rename(columns={self.D_geo_col: "geometry"})
-        O_gdf = gp.GeoDataFrame(O_gdf, geometry="geometry")
-        D_gdf = gp.GeoDataFrame(D_gdf, geometry="geometry")
+        O_gdf = knut.load_geo_data_frame(left_input, self.O_geo_col, exec_context)
+        D_gdf = knut.load_geo_data_frame(right_input, self.D_geo_col, exec_context)
+        O_gdf = O_gdf[[self.O_geo_col]].rename(columns={self.O_geo_col: "geometry"})
+        D_gdf = D_gdf[[self.D_geo_col]].rename(columns={self.D_geo_col: "geometry"})
 
         # Set a lat\Lon CRS
         O_gdf = O_gdf.to_crs(4326)
@@ -361,10 +361,10 @@ class OSRMDriveMatrix:
                 print("error from:{} to :{}".format(ns, ne))
 
         # Cross join Data
-        O_gdf = left_input.to_pandas().rename(columns={self.O_geo_col: "geometry"})
-        D_gdf = right_input.to_pandas().rename(columns={self.D_geo_col: "geometry"})
-        O_gdf = gp.GeoDataFrame(O_gdf, geometry="geometry")
-        D_gdf = gp.GeoDataFrame(D_gdf, geometry="geometry")
+        O_gdf = knut.load_geo_data_frame(left_input, self.O_geo_col, exec_context)
+        D_gdf = knut.load_geo_data_frame(right_input, self.D_geo_col, exec_context)
+        O_gdf = O_gdf[[self.O_geo_col]].rename(columns={self.O_geo_col: "geometry"})
+        D_gdf = D_gdf[[self.D_geo_col]].rename(columns={self.D_geo_col: "geometry"})
         # Set a lat\Lon CRS
         O_gdf = O_gdf.to_crs(4326)
         D_gdf = D_gdf.to_crs(4326)
@@ -492,7 +492,6 @@ class StreetNetworkMatrix:
     R_speed_col = knext.ColumnParameter(
         "Speed column from Road Network",
         "Select the speed column from road network.",
-        # Allow only GeoValue compatible columns
         port_index=2,
         column_filter=knut.is_numeric,
         include_row_key=False,
@@ -758,18 +757,17 @@ class StreetNetworkMatrix:
             return gdf
 
         # Cross join Data
-        O_gdf = input1.to_pandas().rename(columns={self.O_geo_col: "geometry"})
-        D_gdf = input2.to_pandas().rename(columns={self.D_geo_col: "geometry"})
-        R_gdf = input3.to_pandas().rename(columns={self.R_geo_col: "geometry"})
-        O_gdf = gp.GeoDataFrame(O_gdf, geometry="geometry")
-        D_gdf = gp.GeoDataFrame(D_gdf, geometry="geometry")
-        R_gdf = gp.GeoDataFrame(R_gdf, geometry="geometry")
-        R_gdf = R_gdf.rename(columns={self.R_speed_col: "speed"})
-        # Set a lat\Lon CRS
+        O_gdf = knut.load_geo_data_frame(input1, self.O_geo_col, exec_context)
+        D_gdf = knut.load_geo_data_frame(input2, self.D_geo_col, exec_context)
+        R_gdf = knut.load_geo_data_frame(input3, self.R_geo_col, exec_context)
+        O_gdf = O_gdf[[self.O_geo_col]].rename(columns={self.O_geo_col: "geometry"})
+        D_gdf = D_gdf[[self.D_geo_col]].rename(columns={self.D_geo_col: "geometry"})
+        R_gdf = R_gdf[[self.R_geo_col,self.R_speed_col]].rename(columns={self.R_geo_col: "geometry",self.R_speed_col: "speed"})
 
+        # Set a lat\Lon CRS
         crsinput = CRS.from_user_input(R_gdf.crs)
         if crsinput.is_geographic:
-            logging.warning("Unit as Degree, Please use Projected CRS")
+            logging.warning("Input CRS has degree unit. Use default projected CRS epsg:3857")
             R_gdf = R_gdf.to_crs(3857)
 
         O_gdf = O_gdf.to_crs(R_gdf.crs)
@@ -890,7 +888,6 @@ class StreetNetworkMatrix:
 @knext.node(
     name="Isochrone Map",
     node_type=knext.NodeType.MANIPULATOR,
-    # node_type=knext.NodeType.MANIPULATOR,
     category=__category,
     icon_path=__NODE_ICON_PATH + "OSMisochrone.png",
 )
@@ -913,7 +910,7 @@ class IsochroneMap:
     [ego_graph](https://networkx.org/documentation/stable/reference/generated/networkx.generators.ego.ego_graph.html)
     in [NetworkX](https://networkx.org/) to isochrone for the weighted (time or distance) graph.
 
-    The input value for the interval list should be cautious, it should be within a reasonable boundary of the road network.
+    The input value for the interval list should be selected carefully, it should be within a reasonable boundary of the road network.
 
     The output table contains the two columns, isochrone intervals, and geometry. The calculation depends on a projected coordinates
      system of road network datasets. If it is not in a projected CRS, a default CRS"3857" will be applied.
@@ -942,7 +939,6 @@ class IsochroneMap:
     r_cost_col = knext.ColumnParameter(
         "Travel cost column from Road Network",
         "Select the travel cost column from road network.",
-        # Allow only GeoValue compatible columns
         port_index=1,
         column_filter=knut.is_numeric,
         include_row_key=False,
@@ -951,7 +947,7 @@ class IsochroneMap:
     isolist = knext.StringParameter(
         "Set isochone interval list",
         "Input a interval list separated by comma ",
-        "",
+        "5,10,15,20,25,30",
     )
 
     def configure(
@@ -1117,16 +1113,17 @@ class IsochroneMap:
             return G
 
         # Cross join Data
-        c_gdf = input1.to_pandas().rename(columns={self.c_geo_col: "geometry"})
-        r_gdf = input2.to_pandas().rename(columns={self.r_geo_col: "geometry"})
-        c_gdf = gp.GeoDataFrame(c_gdf, geometry="geometry")
-        r_gdf = gp.GeoDataFrame(r_gdf, geometry="geometry")
-        r_gdf = r_gdf.rename(columns={self.r_cost_col: "time"})
+        c_gdf = knut.load_geo_data_frame(input1, self.c_geo_col, exec_context)
+        r_gdf = knut.load_geo_data_frame(input2, self.r_geo_col, exec_context)
+        c_gdf = gp.GeoDataFrame(geometry=c_gdf[self.c_geo_col], crs=c_gdf.crs)
+        r_gdf = r_gdf[[self.r_geo_col, self.r_cost_col]].rename(
+            columns={self.r_geo_col: "geometry", self.r_cost_col: "time"}
+        )
         # Set a lat\Lon CRS
 
         crsinput = CRS.from_user_input(r_gdf.crs)
         if crsinput.is_geographic:
-            logging.warning("Unit as Degree, Please use Projected CRS")
+            logging.warning("Input CRS has degree unit. Use default projected CRS epsg:3857")
             r_gdf = r_gdf.to_crs(3857)
 
         c_gdf = c_gdf.to_crs(r_gdf.crs)
