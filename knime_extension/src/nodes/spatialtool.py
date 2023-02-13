@@ -1044,3 +1044,131 @@ class HaversineDistGrid:
             axis=1,
         )
         return knext.Table.from_pandas(df)
+
+
+############################################
+# Create Voronoi
+############################################
+
+
+@knext.node(
+    name="Voronoi (Thiessen) Polygon",
+    node_type=knext.NodeType.MANIPULATOR,
+    icon_path=__NODE_ICON_PATH + "Voronoi.png",
+    category=__category,
+    after="",
+)
+@knext.input_table(
+    name="Input Point Table",
+    description="Input point data of Voronoi (Thiessen) Polygon",
+)
+@knext.input_table(
+    name="Input Boundary Table",
+    description="Input boundary data for Voronoi (Thiessen) Polygon",
+)
+@knext.output_table(
+    name="Voronoi (Thiessen) Polygon",
+    description="Output table of Voronoi (Thiessen) Polygon",
+)
+class CreateVoronoi:
+    """Create Grid node.
+    This node creates Voronoi (Thiessen) polygons from the input point data according to the reference boundary.
+    The input data for boundary reference should be Polygon or MultiPolygon.
+    The buffer distance (in Kilometers) is used to create virtual points to generate dummy points and
+    control the output of Voronoi polygons.
+    If the final output polygon is smaller than the reference boundary, users may consider increasing the buffer distance.
+    """
+
+    point_geo_col = knext.ColumnParameter(
+        "Point geometry column",
+        "Select the geometry column to create Voronoi (Thiessen) Polygon.",
+        # Allow only GeoValue compatible columns
+        port_index=0,
+        column_filter=knut.is_geo,
+        include_row_key=False,
+        include_none_column=False,
+    )
+
+    boundary_geo_col = knext.ColumnParameter(
+        "Geometry column for boundary",
+        "Select the geometry column as boundary for Voronoi (Thiessen) polygons.",
+        # Allow only GeoValue compatible columns
+        port_index=1,
+        column_filter=knut.is_geo,
+        include_row_key=False,
+        include_none_column=False,
+    )
+
+    control_buffer = knext.IntParameter(
+        "Buffer distance (kilometers) for Voronoi polygons",
+        "The buffere distance for bounding box of input boundary data to generate dummy points.",
+        default_value=100,
+    )
+
+    def configure(self, configure_context, input_schema1, input_schema2):
+        self.left_geo_col = knut.column_exists_or_preset(
+            configure_context, self.point_geo_col, input_schema1, knut.is_geo
+        )
+        self.right_geo_col = knut.column_exists_or_preset(
+            configure_context, self.boundary_geo_col, input_schema2, knut.is_geo_polygon
+        )
+        return None
+
+    def execute(self, exec_context: knext.ExecutionContext, input_table1, input_table2):
+
+        import pandas as pd
+        from shapely.geometry import Point, Polygon
+        import numpy as np
+        from scipy.spatial import Voronoi
+
+        originpoint = gp.GeoDataFrame(
+            input_table1.to_pandas(), geometry=self.point_geo_col
+        )
+        boundary = gp.GeoDataFrame(
+            input_table2.to_pandas(), geometry=self.boundary_geo_col
+        )
+        pointproj = originpoint.to_crs(3857)
+        boundaryproj = boundary.to_crs(3857)
+
+        distbuffer = self.control_buffer * 1000
+        # Convert the GeoDataFrame to a numpy array
+        points = np.array([[pt.x, pt.y] for pt in pointproj.geometry])
+
+        # get the envelope of the union of the points with a buffer of 1
+        envelope = boundaryproj.unary_union.envelope.buffer(distbuffer).envelope
+
+        # get the coordinates of the envelope
+        xmin, ymin, xmax, ymax = envelope.bounds
+        dummy_points = np.array(
+            [[xmin, ymin], [xmin, ymax], [xmax, ymax], [xmax, ymin]]
+        )
+
+        # combine the sample points and the dummy points
+        points = np.concatenate((points, dummy_points))
+
+        # compute Voronoi tessellation
+        vor = Voronoi(points)
+
+        # extract the vertices of each Voronoi region
+        polygons = []
+        for region in vor.regions:
+            if not -1 in region:
+                polygon = Polygon([vor.vertices[i] for i in region])
+                polygons.append(polygon)
+
+        # convert the list of Polygon objects to a GeoSeries object
+        geo_series = gp.GeoSeries(polygons)
+        # create GeoDataFrame
+        gdf = pd.DataFrame({"geometry": geo_series})
+        gdf = gp.GeoDataFrame(gdf, geometry="geometry", crs=3857)
+
+        gdf = gdf[~gdf.geometry.is_empty]
+        extent = gp.GeoDataFrame(
+            geometry=gp.GeoSeries(boundaryproj.unary_union), crs=3857
+        )
+        gdf = gp.overlay(gdf, extent, how="intersection")
+        gdf = gdf.to_crs(originpoint.crs)
+        gdf["ThiessenID"] = range(1, (gdf.shape[0] + 1))
+        gdf.reset_index(drop=True, inplace=True)
+
+        return knext.Table.from_pandas(gdf)
