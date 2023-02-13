@@ -243,7 +243,16 @@ class SpatialJoinNode:
             """Matches if the left object's boundary and interior intersect only with the interior of the right object 
             (not its boundary or exterior).""",
         )
-
+        HAVE_THEIR_CENTER_IN = (
+            "Have their center in",
+            """Matches if the left object's representative points intersect only with the interior of the right object 
+            (not its boundary or exterior).""",
+        )
+        CONTAIN_CENTER_OF = (
+            "Contain the center of",
+            """Matches if the right object's representative points intersect only with the interior of the left object 
+            (not its boundary or exterior).""",
+        )
         @classmethod
         def get_default(cls):
             return cls.INTERSECTS
@@ -299,9 +308,21 @@ class SpatialJoinNode:
         )
         knut.check_canceled(exec_context)
         right_gdf.to_crs(left_gdf.crs, inplace=True)
-        gdf = left_gdf.sjoin(
-            right_gdf, how=self.join_mode.lower(), predicate=self.match_mode.lower()
-        )
+        if self.match_mode.lower() not in ["have_their_center_in", "contain_center_of"]:
+            gdf = left_gdf.sjoin(
+                right_gdf, how=self.join_mode.lower(), predicate=self.match_mode.lower()
+            )
+        elif self.match_mode.lower() == "have_their_center_in":
+            left_gdf["rep_center"] = left_gdf.representative_point()
+            left_gdf_temp = left_gdf.set_geometry("rep_center")
+            gdf = gp.sjoin(left_gdf_temp, right_gdf, predicate="within")
+            gdf = gdf.set_geometry(self.left_geo_col).drop(columns=["rep_center"])
+        else:
+            right_gdf["rep_center"] = right_gdf.representative_point()
+            right_gdf_temp = right_gdf.set_geometry("rep_center").drop(
+                columns=[self.right_geo_col]
+            )
+            gdf = gp.sjoin(left_gdf, right_gdf_temp, predicate="contains")
         # reset the index since it might contain duplicates after joining
         gdf.reset_index(drop=True, inplace=True)
         # drop additional index columns if they exist
