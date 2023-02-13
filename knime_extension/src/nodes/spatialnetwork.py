@@ -46,7 +46,7 @@ class GoogleDistanceMatrix:
     and consists of rows containing duration and distance values for each pair.
     The API returns information based on the recommended route between start and end points.
     This node provides two travel modes: driving and transit. The units of distance and time are Meters and Minutes.
-    If the input geometry is not point feature, the centroids will be used.
+    If the input geometry is not a point feature, the centroids will be used.
     The output includes numerical indices for the origin and destination data that will serve as a common key for merging the data.
     """
 
@@ -189,11 +189,11 @@ class GoogleDistanceMatrix:
 )
 class OSRMDriveMatrix:
     """
-    This node can calculate the driving time, distance or route of the shortest paths between origin (left or upper input port)
+    This node can calculate the driving time, distance, or route of the shortest paths between the origin (left or upper input port)
     and destination (right or lower input port) points based on the Open Source Routing Machine or [OSRM](https://project-osrm.org/),
-    which  is a C++ implementation of a high-performance routing engine for shortest paths in road networks. It combines sophisticated
+    which is a C++ implementation of a high-performance routing engine for shortest paths in road networks. It combines sophisticated
     routing algorithms with the open and free road network data of the OpenStreetMap (OSM) project.
-    If the input geometry is not point feature, the centroids will be used.
+    If the input geometry is not a point feature, the centroids will be used.
     The output includes numerical indices for the source and destination that will serve as a common key for merging the data.
 
     """
@@ -443,18 +443,18 @@ class OSRMDriveMatrix:
 )
 class StreetNetworkMatrix:
     """
-    This node can calculate the travel time, distance  between origin (left or upper input port)
-    and destination (right or lower input port) points based on the graph derivred from the input road network and its speed column.
-    It first snaps the origin and destination points to the road work, and uses the function
+    This node can calculate the travel time, and distance between the origin (left or upper input port)
+    and destination (right or lower input port) points based on the graph derived from the input road network and its speed column.
+    It first snaps the origin and destination points to the road work and uses the function
     [single_source_dijkstra_path_length](https://networkx.org/documentation/networkx-1.10/reference/generated/networkx.algorithms.shortest_paths.weighted.single_source_dijkstra_path_length.html)
     in [NetworkX](https://networkx.org/) to compute the shortest path length between source and all other reachable nodes for the weighted (time or distance) graph.
 
-    The column for speed value in the road data is used to calculate travle time with the formula "length/speed", so the speed value should better be in meters/minute or meters/second.
-    E.g., 1 mile/hour = 26.8224 meter/minute, 1 Kilometer/hour = 16.6667 meter/minute.
+    The column for speed value in the road data is used to calculate travel time with the formula "length/speed", so the speed value should better be in meters/minute or meters/second.
+    E.g., 1 mile/hour = 26.8224 meters/minute, 1 Kilometer/hour = 16.6667 meters/minute.
 
-    The output table contains the distance between the orginal points and snap points along the road network, which can also be further calculated as additional travel time or distance with user-defined speed.
-    The calcualtion depends on a projected coordinates systemn of road network datasets. If it doesn't have a projected CRS information, a default CRS"3857" will be applied.
-    If the input geometry is not point feature, the centroids will be used.
+    The output table contains the distance between the original points and snap points along the road network, which can also be further calculated as additional travel time or distance with user-defined speed.
+    The calculation depends on a projected coordinates system of road network datasets. If it is not in a projected CRS, a default CRS"3857" will be applied.
+    If the input geometry is not a point feature, the centroids will be used.
     The output includes numerical indices for the origin and destination that will serve as a common key for merging the data.
 
     """
@@ -909,15 +909,15 @@ class StreetNetworkMatrix:
 class IsochroneMap:
     """
     This node can calculate the isochrone map for the input point  based on the input road network and its travel cost column.
-    It first snaps input point to the road work, and uses the function
+    It first snaps  the input points to the road work, and uses the function
     [ego_graph](https://networkx.org/documentation/stable/reference/generated/networkx.generators.ego.ego_graph.html)
     in [NetworkX](https://networkx.org/) to isochrone for the weighted (time or distance) graph.
 
-    The input value for interval list should be cautious, it should be in a reasonable boundary of the road network.
+    The input value for the interval list should be cautious, it should be within a reasonable boundary of the road network.
 
-    The output table contains the two column, isochrone intervals and geometry.The calcualtion depends on a projected coordinates
-    systemn of road network datasets. If it doesn't have a projected CRS information, a default CRS"3857" will be applied.
-    If the input geometry is not point feature, the centroid will be used. If it contains multiple rows, the total centroid will be applied.
+    The output table contains the two columns, isochrone intervals, and geometry. The calculation depends on a projected coordinates
+     system of road network datasets. If it is not in a projected CRS, a default CRS"3857" will be applied.
+    If the input geometry is not a point feature, the centroid will be used. If it contains multiple rows, the total centroid will be applied.
     """
 
     # input parameters
