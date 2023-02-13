@@ -1106,10 +1106,10 @@ class CreateVoronoi:
     )
 
     def configure(self, configure_context, input_schema1, input_schema2):
-        self.left_geo_col = knut.column_exists_or_preset(
+        self.point_geo_col = knut.column_exists_or_preset(
             configure_context, self.point_geo_col, input_schema1, knut.is_geo
         )
-        self.right_geo_col = knut.column_exists_or_preset(
+        self.boundary_geo_col = knut.column_exists_or_preset(
             configure_context, self.boundary_geo_col, input_schema2, knut.is_geo_polygon
         )
         return None
