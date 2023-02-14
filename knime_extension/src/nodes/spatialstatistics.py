@@ -61,6 +61,14 @@ class spatialWeights:
 
     geo_col = knut.geo_col_parameter(description="Geometry column.")
 
+    id_col = knext.ColumnParameter(
+        "Unique ID column",
+        """The unique ID column. 
+        If not specified, it will be automatically generated an ID from 0 to the number of rows 
+        flowing the order of the input data.""",
+        include_none_column=True
+    )
+
     category = knext.StringParameter(
         "Weights category",
         """The default value is ‘Queen’ which will construct a queen contiguity weights matrix. Queen weights is more 
@@ -78,20 +86,51 @@ class spatialWeights:
         enum=[
             "Queen",
             "Rook",
-            "Inverse Distance",
             "Binary Distance Band",
-            "K nearest",
+            "Inverse Distance",
             "Lattice",
+            "K nearest",
             "Kernel",
-            "Your own",
+            "Get spatial weights matrix from file",
         ],
     )
     order = knext.IntParameter(
-        "Order",
+        "Order for Queen or Rook",
         """The order of the weight matrix is 1 by default. Users can change the order of the weights, higher order 
         weights will treat further units as neighbors.""",
         1,
     )
+
+    Threshold = knext.IntParameter(
+        "Threshold for Inverse Distance or Binary Distance Band",
+        """Distance band weights are often used for point data. The weights within the threshold are 1 and otherwise 0. 
+        Inverse distance weights are often used for point data. The weights within the threshold are distance^-power, 
+        and otherwise 0. The distance is Euclidean distance.""",
+        1,
+    )
+
+    Power = knext.IntParameter(
+        "Power for Inverse Distance",
+        """Distance band weights are often used for point data. The weights within the threshold are 1 and otherwise 0. 
+        Inverse distance weights are often used for point data. The weights within the threshold are distance^-power, 
+        and otherwise 0. The distance is Euclidean distance.""",
+        1,
+    )
+
+    Rows = knext.IntParameter(
+        "Rows for Lattice", 
+        "Please choose your rows and colunns of your lattice.", 5
+    )
+    Columns = knext.IntParameter(
+        "Columns for Lattice", 
+        "Please choose your rows and columns of your lattice.", 5
+    )
+
+    # k = knext.IntParameter(
+    #     "K for K nearest or Kernel",
+    #     "k is the number of the nearest neighbor.",
+    #     4,
+    # )
 
     Nearest_k = knext.IntParameter(
         "Nearest k",
@@ -99,48 +138,37 @@ class spatialWeights:
         4,
     )
 
-    Threshold = knext.IntParameter(
-        "Threshold",
-        """Distance band weights are often used for point data. The weights within the threshold are 1 and otherwise 0. 
-        Inverse distance weights are often used for point data. The weights within the threshold are distance^-power, 
-        and otherwise 0. The distance is Euclidean distance.""",
-        1,
-    )
-    Power = knext.IntParameter(
-        "Power",
-        """Distance band weights are often used for point data. The weights within the threshold are 1 and otherwise 0. 
-        Inverse distance weights are often used for point data. The weights within the threshold are distance^-power, 
-        and otherwise 0. The distance is Euclidean distance.""",
-        1,
-    )
-    Rows = knext.IntParameter(
-        "Rows", "Please choose your rows and colunns of your lattice.", 5
-    )
-    Columns = knext.IntParameter(
-        "Columns", "Please choose your rows and columns of your lattice.", 5
-    )
-    Your_own_matrix_local_path = knext.StringParameter(
-        "Your own matrix local path",
-        """Please enter the path of the spatial weights matrix in CSV format in the following options. 
-        The weights matrix must be in matrix format and in the order of the samples.""",
-        "",
-    )
-    Kernel_type = knext.StringParameter(
-        "Kernel type",
-        " ",
-        "triangular",
-        enum=["triangular", "uniform", "quadratic", "quartic", "gaussian"],
-    )
     Kernel_K = knext.IntParameter(
         "Kernel K",
         "The number of nearest neighbors to use for determining bandwidth.",
         12,
     )
+
+    Kernel_type = knext.StringParameter(
+        "Kernel type",
+        " ",
+        "triangular",
+        enum=[
+        "triangular", 
+        "uniform", 
+        "quadratic", 
+        "quartic", 
+        "gaussian"
+        ],
+    )
+
     Kernel_bandwidth = knext.StringParameter(
         "Kernel bandwidth",
         "The bandwidth of the kernel. The default is fixed. If adaptive then bandwidth is adaptive across observations.",
         "Fixed",
         enum=["Fixed", "Adaptive"],
+    )
+
+    Your_own_matrix_local_path = knext.StringParameter(
+        "Get spatial weights matrix from file",
+        """Please enter the path of the spatial weights matrix in CSV format in the following options. 
+        The weights matrix must be in matrix format and in the order of the samples.""",
+        "",
     )
 
     def configure(self, configure_context, input_schema_1):
@@ -151,6 +179,8 @@ class spatialWeights:
 
     def execute(self, exec_context: knext.ExecutionContext, input_1):
         gdf = gp.GeoDataFrame(input_1.to_pandas(), geometry=self.geo_col)
+
+        gdf.index = range(len(gdf))
         exec_context.set_progress(0.3, "Geo data frame loaded. Starting projection...")
 
         import libpysal
@@ -188,7 +218,7 @@ class spatialWeights:
             w = libpysal.weights.higher_order(w, self.order - 1)
             w.transform = "r"
 
-        if self.category == "Your own":
+        if self.category == "Get spatial weights matrix from file":
             import pandas as pd
 
             z = pd.read_csv(self.Your_own_matrix_local_path, header=None)
@@ -201,7 +231,7 @@ class spatialWeights:
             from libpysal.weights import WSP
 
             w = WSP(sparse)
-            wname = "Your own"
+            wname = "Get spatial weights matrix from file"
 
         if self.category == "Kernel":
             bd = False
@@ -215,6 +245,11 @@ class spatialWeights:
         # flow_variables["weights"] =path
         out = w.to_adjlist()
 
+        if "none" not in str(self.id_col).lower():
+            # get index id map
+            id_map = gdf[self.id_col].to_dict()
+            out["focal"] = out["focal"].map(id_map)
+            out["neighbor"] = out["neighbor"].map(id_map)
         # gdf.to_crs(self.new_crs, inplace=True)
         exec_context.set_progress(
             0.1, "Constructs a contiguity spatial weights matrix done"
