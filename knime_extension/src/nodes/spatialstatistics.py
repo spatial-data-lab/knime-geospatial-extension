@@ -42,6 +42,7 @@ __spots = """
 HL (High-Low), Not Significant (the p-value is greater than the significance level).
 """
 
+
 ############################################
 # Spatial Weights
 ############################################
@@ -59,14 +60,16 @@ class spatialWeights:
     This node constructs a contiguity spatial weights matrix from the input data.
     """
 
-    geo_col = knut.geo_col_parameter(description="The name of the geometry column in the input data.")
+    geo_col = knut.geo_col_parameter(
+        description="The name of the geometry column in the input data."
+    )
 
     id_col = knext.ColumnParameter(
         "Unique ID column",
         """The unique ID column. 
         The name of the column containing unique IDs for each observation in the input data. 
         If not specified, IDs will be automatically generated from 0 to the number of rows flowing the order of the input data.""",
-        include_none_column=True
+        include_none_column=True,
     )
 
     category = knext.StringParameter(
@@ -120,12 +123,14 @@ class spatialWeights:
     )
 
     Rows = knext.IntParameter(
-        "Rows for Lattice", 
-        "The number of rows for constructing a lattice spatial weights matrix. Defaults to 5.", 5
+        "Rows for Lattice",
+        "The number of rows for constructing a lattice spatial weights matrix. Defaults to 5.",
+        5,
     )
     Columns = knext.IntParameter(
-        "Columns for Lattice", 
-        "The number of columns for constructing a lattice spatial weights matrix. Defaults to 5.", 5
+        "Columns for Lattice",
+        "The number of columns for constructing a lattice spatial weights matrix. Defaults to 5.",
+        5,
     )
 
     # k = knext.IntParameter(
@@ -150,13 +155,7 @@ class spatialWeights:
         "Kernel type",
         "The type of kernel to use in constructing kernel weights. Defaults to 'triangular' ",
         "triangular",
-        enum=[
-        "triangular", 
-        "uniform", 
-        "quadratic", 
-        "quartic", 
-        "gaussian"
-        ],
+        enum=["triangular", "uniform", "quadratic", "quartic", "gaussian"],
     )
 
     Kernel_bandwidth = knext.StringParameter(
@@ -274,6 +273,7 @@ class VariableSetting:
         include_none_column=False,
     )
 
+
 @knext.parameter_group(label="ID Setting")
 class IDSetting:
     """
@@ -286,6 +286,7 @@ class IDSetting:
         # column_filter=knut.is_numeric,
         include_none_column=True,
     )
+
 
 ############################################
 # Global Moran's I node
@@ -343,7 +344,6 @@ class GlobalMoransI:
         return None
 
     def execute(self, exec_context: knext.ExecutionContext, input_1, input_2):
-
         gdf = gp.GeoDataFrame(input_1.to_pandas(), geometry=self.geo_col)
         adjust_list = input_2.to_pandas()
 
@@ -431,24 +431,26 @@ class LocalMoransI:
         return None
 
     def execute(self, exec_context: knext.ExecutionContext, input_1, input_2):
-
         gdf = gp.GeoDataFrame(input_1.to_pandas(), geometry=self.geo_col)
         adjust_list = input_2.to_pandas()
 
         if "none" not in str(self.id_col_setting.Field_col).lower():
             import libpysal
+
             gdf.index = range(len(gdf))
             w_ref = libpysal.weights.Rook.from_dataframe(gdf)
             id_map = gdf[self.id_col_setting.Field_col].to_dict()
             w_ref.transform = "r"
             adjust_list_ref = w_ref.to_adjlist()
-            for k,row in adjust_list_ref.iterrows():
+            for k, row in adjust_list_ref.iterrows():
                 focal = id_map[row["focal"]]
                 neighbor = id_map[row["neighbor"]]
-                row["weight"] = adjust_list[(adjust_list["focal"]==focal
-                                              ) & (adjust_list["neighbor"]==neighbor)]["weight"]
+                row["weight"] = adjust_list[
+                    (adjust_list["focal"] == focal)
+                    & (adjust_list["neighbor"] == neighbor)
+                ]["weight"]
             adjust_list = adjust_list_ref
-        
+
         from libpysal.weights import W
 
         w = W.from_adjlist(adjust_list)
@@ -562,7 +564,6 @@ class GlobalGearysC:
         return None
 
     def execute(self, exec_context: knext.ExecutionContext, input_1, input_2):
-
         gdf = gp.GeoDataFrame(input_1.to_pandas(), geometry=self.geo_col)
         adjust_list = input_2.to_pandas()
 
@@ -653,7 +654,6 @@ class GlobalGetisOrd:
         return None
 
     def execute(self, exec_context: knext.ExecutionContext, input_1, input_2):
-
         gdf = gp.GeoDataFrame(input_1.to_pandas(), geometry=self.geo_col)
         adjust_list = input_2.to_pandas()
 
@@ -744,7 +744,6 @@ class LocalGetisOrd:
         return None
 
     def execute(self, exec_context: knext.ExecutionContext, input_1, input_2):
-
         gdf = gp.GeoDataFrame(input_1.to_pandas(), geometry=self.geo_col)
         adjust_list = input_2.to_pandas()
 
