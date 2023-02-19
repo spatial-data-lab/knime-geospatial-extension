@@ -435,21 +435,9 @@ class LocalMoransI:
         adjust_list = input_2.to_pandas()
 
         if "none" not in str(self.id_col_setting.Field_col).lower():
-            import libpysal
-
-            gdf.index = range(len(gdf))
-            w_ref = libpysal.weights.Rook.from_dataframe(gdf)
-            id_map = gdf[self.id_col_setting.Field_col].to_dict()
-            w_ref.transform = "r"
-            adjust_list_ref = w_ref.to_adjlist()
-            for k, row in adjust_list_ref.iterrows():
-                focal = id_map[row["focal"]]
-                neighbor = id_map[row["neighbor"]]
-                row["weight"] = adjust_list[
-                    (adjust_list["focal"] == focal)
-                    & (adjust_list["neighbor"] == neighbor)
-                ]["weight"]
-            adjust_list = adjust_list_ref
+            adjust_list = knut.re_order_weight_rows(
+                gdf=gdf, adjust_list=adjust_list, id_col=self.id_col_setting.Field_col
+            )
 
         from libpysal.weights import W
 
