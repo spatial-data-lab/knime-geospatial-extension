@@ -347,6 +347,11 @@ class GlobalMoransI:
         gdf = gp.GeoDataFrame(input_1.to_pandas(), geometry=self.geo_col)
         adjust_list = input_2.to_pandas()
 
+        if "none" not in str(self.id_col_setting.Field_col).lower():
+            adjust_list = knut.re_order_weight_rows(
+                gdf=gdf, adjust_list=adjust_list, id_col=self.id_col_setting.Field_col
+            )
+
         from libpysal.weights import W
 
         w = W.from_adjlist(adjust_list)
@@ -543,6 +548,8 @@ class GlobalGearysC:
         description="The column containing the geometry to use for global Geary’s C.",
     )
 
+    id_col_setting = IDSetting()
+
     variable_setting = VariableSetting()
 
     def configure(self, configure_context, input_schema_1, input_schema_2):
@@ -554,6 +561,11 @@ class GlobalGearysC:
     def execute(self, exec_context: knext.ExecutionContext, input_1, input_2):
         gdf = gp.GeoDataFrame(input_1.to_pandas(), geometry=self.geo_col)
         adjust_list = input_2.to_pandas()
+
+        if "none" not in str(self.id_col_setting.Field_col).lower():
+            adjust_list = knut.re_order_weight_rows(
+                gdf=gdf, adjust_list=adjust_list, id_col=self.id_col_setting.Field_col
+            )
 
         from libpysal.weights import W
 
@@ -633,6 +645,8 @@ class GlobalGetisOrd:
         description="The column containing the geometry to use for global Getis-Ord.",
     )
 
+    id_col_setting = IDSetting()
+
     variable_setting = VariableSetting()
 
     def configure(self, configure_context, input_schema_1, input_schema_2):
@@ -644,6 +658,11 @@ class GlobalGetisOrd:
     def execute(self, exec_context: knext.ExecutionContext, input_1, input_2):
         gdf = gp.GeoDataFrame(input_1.to_pandas(), geometry=self.geo_col)
         adjust_list = input_2.to_pandas()
+
+        if "none" not in str(self.id_col_setting.Field_col).lower():
+            adjust_list = knut.re_order_weight_rows(
+                gdf=gdf, adjust_list=adjust_list, id_col=self.id_col_setting.Field_col
+            )
 
         from libpysal.weights import W
 
@@ -723,6 +742,8 @@ class LocalGetisOrd:
         description="The column containing the geometry to use for local Getis-Ord.",
     )
 
+    id_col_setting = IDSetting()
+
     variable_setting = VariableSetting()
 
     def configure(self, configure_context, input_schema_1, input_schema_2):
@@ -734,6 +755,11 @@ class LocalGetisOrd:
     def execute(self, exec_context: knext.ExecutionContext, input_1, input_2):
         gdf = gp.GeoDataFrame(input_1.to_pandas(), geometry=self.geo_col)
         adjust_list = input_2.to_pandas()
+
+        if "none" not in str(self.id_col_setting.Field_col).lower():
+            adjust_list = knut.re_order_weight_rows(
+                gdf=gdf, adjust_list=adjust_list, id_col=self.id_col_setting.Field_col
+            )
 
         from libpysal.weights import W
 
