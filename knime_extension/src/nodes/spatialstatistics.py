@@ -68,7 +68,13 @@ class spatialWeights:
         "Unique ID column",
         """The unique ID column. 
         The name of the column containing unique IDs for each observation in the input data. 
-        If not specified, IDs will be automatically generated from 0 to the number of rows flowing the order of the input data.""",
+        If not specified, IDs will be automatically generated from 0 to the number of rows flowing the order of the input data.
+        If you don't know how to select the unique ID column, it's better to leave it blank and the node will automatically generate the unique ID column. 
+        If you leave it blank, please also keep the ID setting in the following ESDA or spatial modeling nodes empty too.
+        If you select the ID column, please make sure that the ID column is unique. 
+        Also please make sure that also select the same ID column in the following ESDA or spatial modeling nodes.
+    
+        """,
         include_none_column=True,
     )
 
@@ -277,12 +283,14 @@ class VariableSetting:
 @knext.parameter_group(label="ID Setting")
 class IDSetting:
     """
-    Select the ID you want to use for the analysis.
+    The unique ID column. It should always keep the same as the ID column in the spatial weights matrix node.
+    The selected column should contain unique IDs for each observation in the input data.
+
     """
 
     Field_col = knext.ColumnParameter(
         "ID column",
-        "The ID column you want to use for the analysis",
+        "The selected column should contain unique IDs for each observation in the input data. It should always keep the same as the ID column in the spatial weights matrix node.",
         # column_filter=knut.is_numeric,
         include_none_column=True,
     )

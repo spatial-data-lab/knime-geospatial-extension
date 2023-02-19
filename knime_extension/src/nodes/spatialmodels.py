@@ -19,12 +19,14 @@ __NODE_ICON_PATH = "icons/icon/SpatialModel/"
 @knext.parameter_group(label="ID Setting")
 class IDSetting:
     """
-    Select the ID you want to use for the analysis.
+    The unique ID column. It should always keep the same as the ID column in the spatial weights matrix node.
+    The selected column should contain unique IDs for each observation in the input data.
+
     """
 
     Field_col = knext.ColumnParameter(
         "ID column",
-        "The ID column you want to use for the analysis",
+        "The selected column should contain unique IDs for each observation in the input data. It should always keep the same as the ID column in the spatial weights matrix node.",
         # column_filter=knut.is_numeric,
         include_none_column=True,
     )
