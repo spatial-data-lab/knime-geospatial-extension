@@ -6,3 +6,4 @@ config_*.yml
 .vscode/*
 tests/test.html
 tests/test.ipynb
+tests/*.ipynb
