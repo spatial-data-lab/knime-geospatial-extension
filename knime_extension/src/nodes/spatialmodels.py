@@ -16,6 +16,20 @@ __category = knext.category(
 __NODE_ICON_PATH = "icons/icon/SpatialModel/"
 
 
+@knext.parameter_group(label="ID Setting")
+class IDSetting:
+    """
+    Select the ID you want to use for the analysis.
+    """
+
+    Field_col = knext.ColumnParameter(
+        "ID column",
+        "The ID column you want to use for the analysis",
+        # column_filter=knut.is_numeric,
+        include_none_column=True,
+    )
+
+
 ############################################
 # spatial 2SlS node
 ############################################
@@ -54,6 +68,8 @@ class Spatial2SLSModel:
 
     # input parameters
     geo_col = knut.geo_col_parameter()
+
+    id_col_setting = IDSetting()
 
     dependent_variable = knext.ColumnParameter(
         "Dependent variable",
@@ -96,9 +112,13 @@ class Spatial2SLSModel:
         return None
 
     def execute(self, exec_context: knext.ExecutionContext, input_1, input_2):
-
         gdf = gp.GeoDataFrame(input_1.to_pandas(), geometry=self.geo_col)
         adjust_list = input_2.to_pandas()
+
+        if "none" not in str(self.id_col_setting.Field_col).lower():
+            adjust_list = knut.re_order_weight_rows(
+                gdf=gdf, adjust_list=adjust_list, id_col=self.id_col_setting.Field_col
+            )
 
         from libpysal.weights import W
 
@@ -217,6 +237,8 @@ class SpatialLagPanelModelwithFixedEffects:
 
     geo_col = knut.geo_col_parameter()
 
+    id_col_setting = IDSetting()
+
     dependent_variable = knext.MultiColumnParameter(
         "Dependent variables",
         "The column containing the dependent variables to use for the calculation of Spatial Lag Panel Model with Fixed Effects.",
@@ -236,9 +258,13 @@ class SpatialLagPanelModelwithFixedEffects:
         return None
 
     def execute(self, exec_context: knext.ExecutionContext, input_1, input_2):
-
         gdf = gp.GeoDataFrame(input_1.to_pandas(), geometry=self.geo_col)
         adjust_list = input_2.to_pandas()
+
+        if "none" not in str(self.id_col_setting.Field_col).lower():
+            adjust_list = knut.re_order_weight_rows(
+                gdf=gdf, adjust_list=adjust_list, id_col=self.id_col_setting.Field_col
+            )
 
         from libpysal.weights import W
 
@@ -350,6 +376,8 @@ class SpatialErrorPanelModelwithFixedEffects:
 
     geo_col = knut.geo_col_parameter()
 
+    id_col_setting = IDSetting()
+
     dependent_variable = knext.MultiColumnParameter(
         "Dependent variables",
         "The column containing the dependent variables to use for the calculation of Spatial Error Panel Model with Fixed Effects.",
@@ -369,9 +397,13 @@ class SpatialErrorPanelModelwithFixedEffects:
         return None
 
     def execute(self, exec_context: knext.ExecutionContext, input_1, input_2):
-
         gdf = gp.GeoDataFrame(input_1.to_pandas(), geometry=self.geo_col)
         adjust_list = input_2.to_pandas()
+
+        if "none" not in str(self.id_col_setting.Field_col).lower():
+            adjust_list = knut.re_order_weight_rows(
+                gdf=gdf, adjust_list=adjust_list, id_col=self.id_col_setting.Field_col
+            )
 
         from libpysal.weights import W
 
@@ -529,7 +561,6 @@ class GeographicallyWeightedRegression:
         return None
 
     def execute(self, exec_context: knext.ExecutionContext, input_1):
-
         gdf = gp.GeoDataFrame(input_1.to_pandas(), geometry=self.geo_col)
         # Prepare Georgia dataset inputs
         g_y = gdf[self.dependent_variable].values.reshape((-1, 1))
@@ -638,7 +669,6 @@ class GeographicallyWeightedRegressionPredictor:
         return None
 
     def execute(self, exec_context: knext.ExecutionContext, input_1, model):
-
         gdf = gp.GeoDataFrame(input_1.to_pandas(), geometry=self.geo_col)
         # Prepare Georgia dataset inputs
         g_X = gdf[self.independent_variables].values
@@ -740,7 +770,6 @@ class MultiscaleGeographicallyWeightedRegression:
         return None
 
     def execute(self, exec_context: knext.ExecutionContext, input_1):
-
         gdf = gp.GeoDataFrame(input_1.to_pandas(), geometry=self.geo_col)
         # Prepare Georgia dataset inputs
         g_y = gdf[self.dependent_variable].values.reshape((-1, 1))
@@ -920,6 +949,8 @@ class SpatialOLS:
 
     geo_col = knut.geo_col_parameter()
 
+    id_col_setting = IDSetting()
+
     dependent_variable = knext.ColumnParameter(
         "Dependent variable",
         "The column containing the dependent variable to use for the calculation of the spatial OLS model.",
@@ -943,6 +974,11 @@ class SpatialOLS:
     def execute(self, exec_context: knext.ExecutionContext, input_1, input_2):
         gdf = gp.GeoDataFrame(input_1.to_pandas(), geometry=self.geo_col)
         adjust_list = input_2.to_pandas()
+
+        if "none" not in str(self.id_col_setting.Field_col).lower():
+            adjust_list = knut.re_order_weight_rows(
+                gdf=gdf, adjust_list=adjust_list, id_col=self.id_col_setting.Field_col
+            )
 
         from libpysal.weights import W
 
@@ -1052,6 +1088,8 @@ class SpatialML_Lag:
 
     geo_col = knut.geo_col_parameter()
 
+    id_col_setting = IDSetting()
+
     dependent_variable = knext.ColumnParameter(
         "Dependent variable",
         "The column containing the dependent variable to use for the calculation of the spatial ML_Lag model.",
@@ -1075,6 +1113,11 @@ class SpatialML_Lag:
     def execute(self, exec_context: knext.ExecutionContext, input_1, input_2):
         gdf = gp.GeoDataFrame(input_1.to_pandas(), geometry=self.geo_col)
         adjust_list = input_2.to_pandas()
+
+        if "none" not in str(self.id_col_setting.Field_col).lower():
+            adjust_list = knut.re_order_weight_rows(
+                gdf=gdf, adjust_list=adjust_list, id_col=self.id_col_setting.Field_col
+            )
 
         from libpysal.weights import W
 
@@ -1183,6 +1226,8 @@ class SpatialML_Error:
 
     geo_col = knut.geo_col_parameter()
 
+    id_col_setting = IDSetting()
+
     dependent_variable = knext.ColumnParameter(
         "Dependent variable",
         "The column containing the dependent variable to use for the calculation of the spatial ML_Error model.",
@@ -1206,6 +1251,11 @@ class SpatialML_Error:
     def execute(self, exec_context: knext.ExecutionContext, input_1, input_2):
         gdf = gp.GeoDataFrame(input_1.to_pandas(), geometry=self.geo_col)
         adjust_list = input_2.to_pandas()
+
+        if "none" not in str(self.id_col_setting.Field_col).lower():
+            adjust_list = knut.re_order_weight_rows(
+                gdf=gdf, adjust_list=adjust_list, id_col=self.id_col_setting.Field_col
+            )
 
         from libpysal.weights import W
 
