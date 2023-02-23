@@ -642,7 +642,8 @@ class OverlayNode:
 )
 @knut.geo_node_description(
     short_description="This node will calculate the Euclidean distance between two geometries.",
-    description="""This node will calculate the Euclidean distance between two geometries.
+    description="""This node will calculate the Euclidean distance between two geometries. 
+    If the input CRS is empty, the CRS of Top(left) input GeoDataFrame will be used as the default.
     """,
     references={
         "Distance": "https://geopandas.org/en/stable/docs/reference/api/geopandas.GeoSeries.distance.html",
@@ -672,7 +673,7 @@ class EuclideanDistanceNode:
     crs_info = knext.StringParameter(
         label="CRS for distance calculation",
         description=knut.DEF_CRS_DESCRIPTION,
-        default_value="EPSG:3857",
+        default_value="",
     )
 
     def configure(self, configure_context, left_input_schema, right_input_schema):
@@ -682,24 +683,41 @@ class EuclideanDistanceNode:
         self.right_geo_col = knut.column_exists_or_preset(
             configure_context, self.right_geo_col, right_input_schema, knut.is_geo
         )
-        # TODO Create combined schema
-        return None
+        return knext.Schema.from_columns(
+            [
+                knext.Column(knext.int64(), "originid"),
+                knext.Column(knext.int64(), "destinationid"),
+                knext.Column(knext.double(), "EuDist"),
+            ]
+        )
 
     def execute(self, exec_context: knext.ExecutionContext, left_input, right_input):
-        left_gdf = gp.GeoDataFrame(left_input.to_pandas(), geometry=self.left_geo_col)
-        right_gdf = gp.GeoDataFrame(
-            right_input.to_pandas(), geometry=self.right_geo_col
+        left_gdf = gp.GeoDataFrame(
+            left_input.to_pandas()[self.left_geo_col], geometry=self.left_geo_col
         )
+        right_gdf = gp.GeoDataFrame(
+            right_input.to_pandas()[self.right_geo_col], geometry=self.right_geo_col
+        )
+        import pyproj
+
+        knut.attach_pyproj_db()
+        if self.crs_info != "":
+            newcrs = pyproj.CRS.from_user_input(self.crs_info)
+            right_gdf.to_crs(newcrs, inplace=True)
+            left_gdf.to_crs(newcrs, inplace=True)
+        else:
+            right_gdf.to_crs(left_gdf.crs, inplace=True)
         knut.check_canceled(exec_context)
-        right_gdf.to_crs(self.crs_info, inplace=True)
-        left_gdf.to_crs(self.crs_info, inplace=True)
-        # left_gdf['LID'] = range(1,(left_gdf.shape[0]+1))
-        # right_gdf['RID'] = range(1,(right_gdf.shape[0]+1))
+
+        left_gdf["originid"] = range(1, (left_gdf.shape[0] + 1))
+        right_gdf["destinationid"] = range(1, (right_gdf.shape[0] + 1))
         mergedf = left_gdf.merge(right_gdf, how="cross")
         mergedf_x = gp.GeoDataFrame(geometry=mergedf["geometry_x"])
         mergedf_y = gp.GeoDataFrame(geometry=mergedf["geometry_y"])
         mergedf["EuDist"] = mergedf_x.distance(mergedf_y, align=False)
-        mergedf = mergedf.reset_index(drop=True)
+        mergedf = mergedf[["originid", "destinationid", "EuDist"]].reset_index(
+            drop=True
+        )
         return knext.Table.from_pandas(mergedf)
 
 
@@ -956,7 +974,7 @@ class CreateGrid:
             XrightOrigin = XrightOrigin + width
 
         grid = gp.GeoDataFrame({"geometry": polygons}, crs=gdf.crs)
-
+        grid['gridid']=list(range(1, grid.shape[0]+1))
         return knext.Table.from_pandas(grid)
 
 
