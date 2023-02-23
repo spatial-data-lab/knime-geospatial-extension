@@ -134,7 +134,7 @@ class GeometryToPointNode:
         if self.appendtype == "Replace":
             input_schema = input_schema.remove(self.geo_col)
         new_geo_col = knut.get_unique_column_name(self.geo_col, input_schema)
-        return input_schema.append(knext.Column(knext.logical(Point), new_geo_col))
+        return input_schema.append(knext.Column(knut.TYPE_POINT, new_geo_col))
 
     def execute(self, exec_context: knext.ExecutionContext, input_1):
         new_geo_col = knut.get_unique_column_name(self.geo_col, input_1.schema)
