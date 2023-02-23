@@ -265,6 +265,14 @@ def __is_type_x(column: knext.Column, type: str) -> bool:
         and type in column.ktype.logical_type
     )
 
+def is_geo_polygon_or_multi_polygon(column: knext.Column) -> bool:
+    """
+    Checks if column is polygon or multipolygon
+    @return: True if Column is polygon or multipolygon
+    """
+    return __is_type_x(column, __CELL_TYPE_POLYGON) or __is_type_x(
+        column, __CELL_TYPE_MULTI_POLYGON
+    )
 
 ############################################
 # GeoPandas node class decorator
