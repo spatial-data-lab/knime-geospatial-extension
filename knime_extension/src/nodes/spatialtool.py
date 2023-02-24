@@ -595,12 +595,10 @@ class OverlayNode:
     )
 
     keep_geom_type = knext.BoolParameter(
-        label="Return only geometries of the same geometry type ",
-        description="""If True, return only geometries of the same geometry
-         type the GeoDataFrame has, if False, return all resulting geometries.
-          Default is None, which will set keep_geom_type to True but warn upon 
-          dropping geometries.""",
-        default_value=lambda v: True if v <= knext.Version(1, 0, 0) else False,
+        label="Return only geometries of the same geometry type",
+        description="""If selected, the node returns only geometries of the same geometry type as the geometry column 
+        from the left (top) input table, otherwise it returns all resulting geometries.""",
+        default_value=lambda v: True if v < knext.Version(1, 1, 0) else False,
         since_version="1.1.0",
     )
 
@@ -621,7 +619,12 @@ class OverlayNode:
         )
         knut.check_canceled(exec_context)
         right_gdf.to_crs(left_gdf.crs, inplace=True)
-        gdf = gp.overlay(left_gdf, right_gdf, how=self.overlay_mode.lower(),keep_geom_type=self.keep_geom_type)
+        gdf = gp.overlay(
+            left_gdf,
+            right_gdf,
+            how=self.overlay_mode.lower(),
+            keep_geom_type=self.keep_geom_type,
+        )
         gdf.reset_index(drop=True, inplace=True)
         return knext.Table.from_pandas(gdf)
 
@@ -984,7 +987,7 @@ class CreateGrid:
             XrightOrigin = XrightOrigin + width
 
         grid = gp.GeoDataFrame({"geometry": polygons}, crs=gdf.crs)
-        grid['gridid']=list(range(1, grid.shape[0]+1))
+        grid["gridid"] = list(range(1, grid.shape[0] + 1))
         return knext.Table.from_pandas(grid)
 
 
