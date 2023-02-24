@@ -134,7 +134,7 @@ class GeometryToPointNode:
         if self.appendtype == "Replace":
             input_schema = input_schema.remove(self.geo_col)
         new_geo_col = knut.get_unique_column_name(self.geo_col, input_schema)
-        return input_schema.append(knext.Column(knext.logical(Point), new_geo_col))
+        return input_schema.append(knext.Column(knut.TYPE_POINT, new_geo_col))
 
     def execute(self, exec_context: knext.ExecutionContext, input_1):
         new_geo_col = knut.get_unique_column_name(self.geo_col, input_1.schema)
@@ -248,14 +248,14 @@ class PolygonToLineNode:
         "Geometry column",
         "Select the geometry column to transform.",
         # Allow only GeoValue compatible columns
-        column_filter=knut.is_geo_polygon,
+        column_filter=knut.is_geo_polygon_or_multi_polygon,
         include_row_key=False,
         include_none_column=False,
     )
 
     def configure(self, configure_context, input_schema_1):
         self.geo_col = knut.column_exists_or_preset(
-            configure_context, self.geo_col, input_schema_1, knut.is_geo_polygon
+            configure_context, self.geo_col, input_schema_1, knut.is_geo_polygon_or_multi_polygon
         )
         return None
 
