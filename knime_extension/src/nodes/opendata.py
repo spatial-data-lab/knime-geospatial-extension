@@ -293,9 +293,15 @@ class USCensus2020Node:
         enum=["block group", "block", "tract", "county"],
     )
     compatibleid = knext.BoolParameter(
-        label="Make GEO_ID compatible to Tiger/Line GEOID ",
-        description=" FIPS-based GEOID for  Block, Block group, Tract and County",
-        default_value=lambda v: False if v <= knext.Version(1, 0, 0) else True,
+        label="Make Census GEOIDs compatible to Tiger/Line GEOIDs",
+        description="""If enabled, the first nine characters of the Census GEOID column are removed to be compatible 
+with the GEOID of the Tiger/Line Shapefiles. This is useful if you want to join the result of this node with the 
+result of the
+[US2020 TIGER Map node.](https://hub.knime.com/spatialdatalab/extensions/sdl.harvard.features.geospatial/latest/org.knime.python3.nodes.extension.ExtensionNodeSetFactory$DynamicExtensionNodeFactory:6009c0c2/) 
+
+For more details about the format and the conversion see 
+[Understanding Geographic Identifiers.](https://www.census.gov/programs-surveys/geography/guidance/geo-identifiers.html)""",
+        default_value=lambda v: False if v < knext.Version(1, 1, 0) else True,
         since_version="1.1.0",
     )
 
