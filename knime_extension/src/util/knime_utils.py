@@ -240,6 +240,16 @@ def __is_type_x(column: knext.Column, type: str) -> bool:
         and type in column.ktype.logical_type
     )
 
+def is_int_or_string(column: knext.Column) -> bool:
+    """
+    Checks if column is int or string
+    @return: True if Column is numeric or string
+    """
+    return column.ktype in [
+        knext.int32(),
+        knext.int64(),
+        knext.string(),
+    ]
 
 def is_geo_polygon_or_multi_polygon(column: knext.Column) -> bool:
     """
@@ -558,6 +568,7 @@ class ResultSettings:
     """
     Group of settings that define the format of the result table.
     """
+<<<<<<< Upstream, based on main
 
     mode = knext.EnumParameter(
         label="Output column",
@@ -671,3 +682,25 @@ def get_env_path():
     exec_path = sys.executable
     env_path = os.dirname(exec_path)
     return env_path
+=======
+    # Transform the NA columns to string
+    NotNacol = list(gdf.dropna(axis=1, how="all").columns)
+    Nacol = gdf.loc[:, ~gdf.columns.isin(NotNacol)].columns.tolist()
+    if len(Nacol) > 0:
+        gdf[Nacol] = gdf[Nacol].astype(str)
+    gdf = gdf.reset_index(drop=True)
+    return gdf
+
+def validify_id_column(gdf,id_name) -> None:
+    """Checks if the column contain duplicate values which might can not be used for ID column.
+    if it is not valid, the index will be used as default"""
+    columnlist=gdf[id_name].to_list()
+    uniquelist = set(columnlist)
+    if len(columnlist)!=len(uniquelist):
+        gdf[id_name]=range(gdf.shape[0])
+        knext.ExecutionContext.set_warning("Duplicated value found in ID column, using index as default ID column.")
+    else:
+        gdf = gdf.set_index(id_name, drop=False).sort_index().rename_axis(None)
+    return gdf
+
+>>>>>>> 6d2f91b revise spatial network and utility

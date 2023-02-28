@@ -15,6 +15,126 @@ __category = knext.category(
 # Root path for all node icons in this file
 __NODE_ICON_PATH = "icons/icon/Spatialnetwork/"
 
+# short functions from momepy
+class SimpleMomepy:
+    # Use momepy function: generate_primal,gdf_to_nx,primal_to_gdf,nx_to_gdf
+    def generate_primal(G, gdf_network, fields, multigraph):
+        G.graph["approach"] = "primal"
+        key = 0
+        for row in gdf_network.itertuples():
+
+            first = row.geometry.coords[0]
+            last = row.geometry.coords[-1]
+
+            data = [r for r in row][1:]
+            attributes = dict(zip(fields, data))
+            if multigraph:
+                G.add_edge(first, last, key=key, **attributes)
+                key += 1
+            else:
+                G.add_edge(first, last, **attributes)
+
+    def gdf_to_nx(
+        gdf_network,
+        approach="primal",
+        length="mm_len",
+        multigraph=True,
+        directed=False,
+        angles=True,
+        angle="angle",
+    ):
+        import networkx as nx
+
+        gdf_network = gdf_network.copy()
+        if "key" in gdf_network.columns:
+            gdf_network.rename(columns={"key": "__key"}, inplace=True)
+
+        if multigraph and directed:
+            net = nx.MultiDiGraph()
+        elif multigraph and not directed:
+            net = nx.MultiGraph()
+        elif not multigraph and directed:
+            net = nx.DiGraph()
+        else:
+            net = nx.Graph()
+
+        net.graph["crs"] = gdf_network.crs
+        gdf_network[length] = gdf_network.geometry.length
+        fields = list(gdf_network.columns)
+        SimpleMomepy.generate_primal(net, gdf_network, fields, multigraph)
+
+        return net
+
+    def primal_to_gdf(net, points, lines, spatial_weights, nodeID):
+        import libpysal
+
+        if points is True:
+            gdf_nodes = SimpleMomepy.points_to_gdf(net)
+
+            if spatial_weights is True:
+                W = libpysal.weights.W.from_networkx(net)
+                W.transform = "b"
+
+        if lines is True:
+            gdf_edges = SimpleMomepy.lines_to_gdf(net, points, nodeID)
+
+        if points is True and lines is True:
+            if spatial_weights is True:
+                return gdf_nodes, gdf_edges, W
+            return gdf_nodes, gdf_edges
+        if points is True and lines is False:
+            if spatial_weights is True:
+                return gdf_nodes, W
+            return gdf_nodes
+        return gdf_edges
+
+    def nx_to_gdf(net, points=True, lines=True, spatial_weights=False, nodeID="nodeID"):
+        # generate nodes and edges geodataframes from graph
+        primal = True
+        for nid, n in enumerate(net):
+            net.nodes[n][nodeID] = nid
+        return SimpleMomepy.primal_to_gdf(
+            net,
+            points=points,
+            lines=lines,
+            spatial_weights=spatial_weights,
+            nodeID=nodeID,
+        )
+
+    def points_to_gdf(net):
+        from shapely.geometry import Point
+
+        node_xy, node_data = zip(*net.nodes(data=True))
+        if isinstance(node_xy[0], int) and "x" in node_data[0].keys():
+            geometry = [
+                Point(data["x"], data["y"]) for data in node_data
+            ]  # osmnx graph
+        else:
+            geometry = [Point(*p) for p in node_xy]
+        gdf_nodes = gp.GeoDataFrame(list(node_data), geometry=geometry)
+        if "crs" in net.graph.keys():
+            gdf_nodes.crs = net.graph["crs"]
+        return gdf_nodes
+
+    def lines_to_gdf(net, points, nodeID):
+        starts, ends, edge_data = zip(*net.edges(data=True))
+        gdf_edges = gp.GeoDataFrame(list(edge_data))
+
+        if points is True:
+            node_start = []
+            node_end = []
+            for s in starts:
+                node_start.append(net.nodes[s][nodeID])
+            for e in ends:
+                node_end.append(net.nodes[e][nodeID])
+            gdf_edges["node_start"] = node_start
+            gdf_edges["node_end"] = node_end
+
+        if "crs" in net.graph.keys():
+            gdf_edges.crs = net.graph["crs"]
+
+        return gdf_edges
+
 
 ############################################
 # Google Distance Matrix
@@ -59,6 +179,15 @@ class GoogleDistanceMatrix:
         include_row_key=False,
         include_none_column=False,
     )
+    O_id_col = knext.ColumnParameter(
+        "Unique origin ID Column",
+        "Select the ID column for origin points.",
+        # Allow only GeoValue compatible columns
+        port_index=0,
+        column_filter=knut.is_int_or_string,
+        include_row_key=False,
+        include_none_column=False,
+    )
 
     D_geo_col = knext.ColumnParameter(
         "Right geometry column",
@@ -66,6 +195,15 @@ class GoogleDistanceMatrix:
         # Allow only GeoValue compatible columns
         port_index=1,
         column_filter=knut.is_geo,
+        include_row_key=False,
+        include_none_column=False,
+    )
+    D_id_col = knext.ColumnParameter(
+        "Unique destination ID column",
+        "Select the ID  column for destination points.",
+        # Allow only GeoValue compatible columns
+        port_index=1,
+        column_filter=knut.is_int_or_string,
         include_row_key=False,
         include_none_column=False,
     )
@@ -80,6 +218,11 @@ class GoogleDistanceMatrix:
         "Driving",
         enum=["Driving", "Transit"],
     )
+    # Constant for distance matrix
+    _OID = "originid"
+    _DID = "destinationid"
+    _TIMECOST = "duration"
+    _DISTCOST = "distance"
 
     def configure(self, configure_context, input_schema_1, input_schema_2):
         self.O_geo_col = knut.column_exists_or_preset(
@@ -88,14 +231,7 @@ class GoogleDistanceMatrix:
         self.D_geo_col = knut.column_exists_or_preset(
             configure_context, self.D_geo_col, input_schema_2, knut.is_geo
         )
-        return knext.Schema.from_columns(
-            [
-                knext.Column(knext.int64(), "originid"),
-                knext.Column(knext.int64(), "destinationid"),
-                knext.Column(knext.double(), "duration"),
-                knext.Column(knext.double(), "distance"),
-            ]
-        )
+        return None
 
     def execute(self, exec_context: knext.ExecutionContext, left_input, right_input):
         # the output distance will have units of miles
@@ -104,6 +240,8 @@ class GoogleDistanceMatrix:
         # define function to derive travel time and distance from Google Maps API
         import urllib.request as urllib2  # for Google Drive
         import json  # for OSRM
+
+        knut.check_canceled(exec_context)
 
         def fetch_google_OD(download_link):
             nt_time = 0
@@ -125,24 +263,27 @@ class GoogleDistanceMatrix:
                 print("Empty value generated")
             return [nt_time, nt_dist]
 
-        O_gdf = knut.load_geo_data_frame(left_input, self.O_geo_col, exec_context)
-        D_gdf = knut.load_geo_data_frame(right_input, self.D_geo_col, exec_context)
-        O_gdf = O_gdf[[self.O_geo_col]].rename(columns={self.O_geo_col: "geometry"})
-        D_gdf = D_gdf[[self.D_geo_col]].rename(columns={self.D_geo_col: "geometry"})
+        Or_gdf = knut.load_geo_data_frame(left_input, self.O_geo_col, exec_context)
+        De_gdf = knut.load_geo_data_frame(right_input, self.D_geo_col, exec_context)
+        Or_gdf = knut.validify_id_column(Or_gdf, self.O_id_col)
+        De_gdf = knut.validify_id_column(De_gdf, self.D_id_col)
+        # Create new data
+        O_gdf = Or_gdf[[self.O_geo_col]].rename(columns={self.O_geo_col: "geometry"})
+        D_gdf = De_gdf[[self.D_geo_col]].rename(columns={self.D_geo_col: "geometry"})
 
         # Set a lat\Lon CRS
         O_gdf = O_gdf.to_crs(4326)
         D_gdf = D_gdf.to_crs(4326)
         # Generate ID
-        O_gdf["originid"] = range(1, (O_gdf.shape[0] + 1))
-        D_gdf["destinationid"] = range(1, (D_gdf.shape[0] + 1))
+        O_gdf[self._OID] = Or_gdf[self.O_id_col].to_list()
+        D_gdf[self._DID] = De_gdf[self.D_id_col].to_list()
         mergedf = O_gdf.merge(D_gdf, how="cross")
         mergedf_x = gp.GeoDataFrame(geometry=mergedf["geometry_x"])
         mergedf_y = gp.GeoDataFrame(geometry=mergedf["geometry_y"])
 
-        distance_matrix = mergedf[["originid", "destinationid"]]
-        distance_matrix["duration"] = 0
-        distance_matrix["distance"] = 0
+        distance_matrix = mergedf[[self._OID, self._DID]]
+        distance_matrix[self._TIMECOST] = 0
+        distance_matrix[self._DISTCOST] = 0
         # can process point or polygon features or both
         for i in range(0, len(distance_matrix)):
             Origins_latlon = "{},{}".format(
@@ -160,9 +301,9 @@ class GoogleDistanceMatrix:
             Google_Travel_Cost = fetch_google_OD(Google_Request_Link)
             distance_matrix.iloc[i, 2] = Google_Travel_Cost[0]
             distance_matrix.iloc[i, 3] = Google_Travel_Cost[1]
-        distance_matrix["duration"] = distance_matrix.duration / 1.0
-        distance_matrix["distance"] = distance_matrix.distance / 1.0
-        return knext.Table.from_pandas(distance_matrix)
+        distance_matrix[self._TIMECOST] /= 1.0
+        distance_matrix[self._DISTCOST] / 1.0
+        return knut.to_table(distance_matrix)
 
 
 ############################################
@@ -208,6 +349,15 @@ class OSRMDriveMatrix:
         include_row_key=False,
         include_none_column=False,
     )
+    O_id_col = knext.ColumnParameter(
+        "Unique origin ID Column",
+        "Select the ID column for origin points.",
+        # Allow only GeoValue compatible columns
+        port_index=0,
+        column_filter=knut.is_int_or_string,
+        include_row_key=False,
+        include_none_column=False,
+    )
 
     D_geo_col = knext.ColumnParameter(
         "Right geometry column",
@@ -218,7 +368,15 @@ class OSRMDriveMatrix:
         include_row_key=False,
         include_none_column=False,
     )
-
+    D_id_col = knext.ColumnParameter(
+        "Unique destination ID column",
+        "Select the ID  column for destination points.",
+        # Allow only GeoValue compatible columns
+        port_index=1,
+        column_filter=knut.is_int_or_string,
+        include_row_key=False,
+        include_none_column=False,
+    )
     osrmmodel = knext.StringParameter(
         label="Set Network Route Model",
         description="""Available Model are: 
@@ -236,6 +394,13 @@ class OSRMDriveMatrix:
         ],
     )
 
+    # Constant for distance matrix
+    _OID = "originid"
+    _DID = "destinationid"
+    _TIMECOST = "duration"
+    _DISTCOST = "distance"
+    _GEONAME = "geometry"
+
     def configure(self, configure_context, input_schema_1, input_schema_2):
         self.O_geo_col = knut.column_exists_or_preset(
             configure_context, self.O_geo_col, input_schema_1, knut.is_geo
@@ -243,33 +408,7 @@ class OSRMDriveMatrix:
         self.D_geo_col = knut.column_exists_or_preset(
             configure_context, self.D_geo_col, input_schema_2, knut.is_geo
         )
-        if self.osrmmodel == "Travel Cost":
-            return knext.Schema.from_columns(
-                [
-                    knext.Column(knext.int64(), "originid"),
-                    knext.Column(knext.int64(), "destinationid"),
-                    knext.Column(knext.double(), "duration"),
-                    knext.Column(knext.double(), "distance"),
-                ]
-            )
-        elif self.osrmmodel == "Route":
-            return knext.Schema.from_columns(
-                [
-                    knext.Column(knext.int64(), "originid"),
-                    knext.Column(knext.int64(), "destinationid"),
-                    knext.Column(knut.TYPE_LINE, "geometry"),
-                ]
-            )
-        else:
-            return knext.Schema.from_columns(
-                [
-                    knext.Column(knext.int64(), "originid"),
-                    knext.Column(knext.int64(), "destinationid"),
-                    knext.Column(knext.double(), "duration"),
-                    knext.Column(knext.double(), "distance"),
-                    knext.Column(knut.TYPE_LINE, "geometry"),
-                ]
-            )
+        return None
 
     def execute(self, exec_context: knext.ExecutionContext, left_input, right_input):
 
@@ -278,6 +417,7 @@ class OSRMDriveMatrix:
         import requests  # for OSRM
         import json  # for OSRM
         import polyline
+        import logging
 
         # set digits for coordinates
         def RoundCoordList(coordlist, digits):
@@ -361,21 +501,25 @@ class OSRMDriveMatrix:
                 print("error from:{} to :{}".format(ns, ne))
 
         # Cross join Data
-        O_gdf = knut.load_geo_data_frame(left_input, self.O_geo_col, exec_context)
-        D_gdf = knut.load_geo_data_frame(right_input, self.D_geo_col, exec_context)
-        O_gdf = O_gdf[[self.O_geo_col]].rename(columns={self.O_geo_col: "geometry"})
-        D_gdf = D_gdf[[self.D_geo_col]].rename(columns={self.D_geo_col: "geometry"})
+        Or_gdf = knut.load_geo_data_frame(left_input, self.O_geo_col, exec_context)
+        De_gdf = knut.load_geo_data_frame(right_input, self.D_geo_col, exec_context)
+        Or_gdf = knut.validify_id_column(Or_gdf, self.O_id_col)
+        De_gdf = knut.validify_id_column(De_gdf, self.D_id_col)
+        # Create new data and rename geometry
+        O_gdf = Or_gdf[[self.O_geo_col]].rename(columns={self.O_geo_col: "geometry"})
+        D_gdf = De_gdf[[self.D_geo_col]].rename(columns={self.D_geo_col: "geometry"})
+
         # Set a lat\Lon CRS
         O_gdf = O_gdf.to_crs(4326)
         D_gdf = D_gdf.to_crs(4326)
         # Generate ID
-        O_gdf["originid"] = range(1, (O_gdf.shape[0] + 1))
-        D_gdf["destinationid"] = range(1, (D_gdf.shape[0] + 1))
+        O_gdf[self._OID] = Or_gdf[self.O_id_col].to_list()
+        D_gdf[self._DID] = De_gdf[self.D_id_col].to_list()
+
         mergedf = O_gdf.merge(D_gdf, how="cross")
         mergedf_x = gp.GeoDataFrame(geometry=mergedf["geometry_x"])
         mergedf_y = gp.GeoDataFrame(geometry=mergedf["geometry_y"])
-
-        df = mergedf[["originid", "destinationid"]]
+        df = mergedf[[self._OID, self._DID]]
         df["StartX"] = mergedf_x.centroid.x
         df["StartY"] = mergedf_x.centroid.y
         df["EndX"] = mergedf_y.centroid.x
@@ -403,16 +547,17 @@ class OSRMDriveMatrix:
             updatePart(df, ns, ne)
 
         if self.osrmmodel == "Travel Cost":
-            gdf = df[["originid", "destinationid", "duration", "distance"]]
-            gdf["duration"] = gdf.duration / 60
+            gdf = df[[self._OID, self._DID, self._TIMECOST, self._DISTCOST]]
+            gdf[self._TIMECOST] /= 60
         else:
             if self.osrmmodel == "Route":
-                df1 = df[["originid", "destinationid"]]
+                df1 = df[[self._OID, self._DID]]
             else:
-                df1 = df[["originid", "destinationid", "duration", "distance"]]
-                df1["duration"] = df1.duration / 60
+                df1 = df[[self._OID, self._DID, self._TIMECOST, self._DISTCOST]]
+                df1[self._TIMECOST] /= 60
             gdf = gp.GeoDataFrame(df1, geometry=df.geometry, crs=4326)
-        return knext.Table.from_pandas(gdf)
+
+        return knut.to_table(gdf)
 
 
 ############################################
@@ -470,12 +615,31 @@ class StreetNetworkMatrix:
         include_none_column=False,
     )
 
+    O_id_col = knext.ColumnParameter(
+        "Unique origin ID Column",
+        "Select the ID column for origin points.",
+        # Allow only GeoValue compatible columns
+        port_index=0,
+        column_filter=knut.is_int_or_string,
+        include_row_key=False,
+        include_none_column=False,
+    )
+
     D_geo_col = knext.ColumnParameter(
-        "Destination geometry column",
+        "Right geometry column",
         "Select the geometry column as destination.",
         # Allow only GeoValue compatible columns
         port_index=1,
         column_filter=knut.is_geo,
+        include_row_key=False,
+        include_none_column=False,
+    )
+    D_id_col = knext.ColumnParameter(
+        "Unique destination ID column",
+        "Select the ID  column for destination points.",
+        # Allow only GeoValue compatible columns
+        port_index=1,
+        column_filter=knut.is_int_or_string,
         include_row_key=False,
         include_none_column=False,
     )
@@ -498,6 +662,14 @@ class StreetNetworkMatrix:
         include_none_column=False,
     )
 
+    # Constant for distance matrix
+    _OID = "originid"
+    _DID = "destinationid"
+    _TIMECOST = "duration"
+    _DISTCOST = "distance"
+    _OSNAP = "snap_o_dist"
+    _DSNAP = "snap_d_dist"
+
     def configure(
         self,
         configure_context,
@@ -514,16 +686,7 @@ class StreetNetworkMatrix:
         self.R_geo_col = knut.column_exists_or_preset(
             configure_context, self.R_geo_col, input_schema_3, knut.is_geo
         )
-        return knext.Schema.from_columns(
-            [
-                knext.Column(knext.int64(), "originid"),
-                knext.Column(knext.int64(), "destinationid"),
-                knext.Column(knext.double(), "duration"),
-                knext.Column(knext.double(), "distance"),
-                knext.Column(knext.double(), "snap_o_dist"),
-                knext.Column(knext.double(), "snap_d_dist"),
-            ]
-        )
+        return None
 
     def execute(self, exec_context: knext.ExecutionContext, input1, input2, input3):
 
@@ -537,123 +700,6 @@ class StreetNetworkMatrix:
         from scipy.spatial import cKDTree
         from pyproj import CRS  # For CRS Units check
         import logging
-
-        # Start ---------------Repeated code as those in Isochrone Map
-        # Use momepy function: generate_primal,gdf_to_nx,primal_to_gdf,nx_to_gdf
-        def generate_primal(G, gdf_network, fields, multigraph):
-            G.graph["approach"] = "primal"
-            key = 0
-            for row in gdf_network.itertuples():
-
-                first = row.geometry.coords[0]
-                last = row.geometry.coords[-1]
-
-                data = [r for r in row][1:]
-                attributes = dict(zip(fields, data))
-                if multigraph:
-                    G.add_edge(first, last, key=key, **attributes)
-                    key += 1
-                else:
-                    G.add_edge(first, last, **attributes)
-
-        def gdf_to_nx(
-            gdf_network,
-            approach="primal",
-            length="mm_len",
-            multigraph=True,
-            directed=False,
-            angles=True,
-            angle="angle",
-        ):
-            gdf_network = gdf_network.copy()
-            if "key" in gdf_network.columns:
-                gdf_network.rename(columns={"key": "__key"}, inplace=True)
-
-            if multigraph and directed:
-                net = nx.MultiDiGraph()
-            elif multigraph and not directed:
-                net = nx.MultiGraph()
-            elif not multigraph and directed:
-                net = nx.DiGraph()
-            else:
-                net = nx.Graph()
-
-            net.graph["crs"] = gdf_network.crs
-            gdf_network[length] = gdf_network.geometry.length
-            fields = list(gdf_network.columns)
-            generate_primal(net, gdf_network, fields, multigraph)
-
-            return net
-
-        def primal_to_gdf(net, points, lines, spatial_weights, nodeID):
-            if points is True:
-                gdf_nodes = points_to_gdf(net)
-
-                if spatial_weights is True:
-                    W = libpysal.weights.W.from_networkx(net)
-                    W.transform = "b"
-
-            if lines is True:
-                gdf_edges = lines_to_gdf(net, points, nodeID)
-
-            if points is True and lines is True:
-                if spatial_weights is True:
-                    return gdf_nodes, gdf_edges, W
-                return gdf_nodes, gdf_edges
-            if points is True and lines is False:
-                if spatial_weights is True:
-                    return gdf_nodes, W
-                return gdf_nodes
-            return gdf_edges
-
-        def nx_to_gdf(
-            net, points=True, lines=True, spatial_weights=False, nodeID="nodeID"
-        ):
-            # generate nodes and edges geodataframes from graph
-            primal = True
-            for nid, n in enumerate(net):
-                net.nodes[n][nodeID] = nid
-            return primal_to_gdf(
-                net,
-                points=points,
-                lines=lines,
-                spatial_weights=spatial_weights,
-                nodeID=nodeID,
-            )
-
-        def points_to_gdf(net):
-            node_xy, node_data = zip(*net.nodes(data=True))
-            if isinstance(node_xy[0], int) and "x" in node_data[0].keys():
-                geometry = [
-                    Point(data["x"], data["y"]) for data in node_data
-                ]  # osmnx graph
-            else:
-                geometry = [Point(*p) for p in node_xy]
-            gdf_nodes = gp.GeoDataFrame(list(node_data), geometry=geometry)
-            if "crs" in net.graph.keys():
-                gdf_nodes.crs = net.graph["crs"]
-            return gdf_nodes
-
-        def lines_to_gdf(net, points, nodeID):
-            starts, ends, edge_data = zip(*net.edges(data=True))
-            gdf_edges = gp.GeoDataFrame(list(edge_data))
-
-            if points is True:
-                node_start = []
-                node_end = []
-                for s in starts:
-                    node_start.append(net.nodes[s][nodeID])
-                for e in ends:
-                    node_end.append(net.nodes[e][nodeID])
-                gdf_edges["node_start"] = node_start
-                gdf_edges["node_end"] = node_end
-
-            if "crs" in net.graph.keys():
-                gdf_edges.crs = net.graph["crs"]
-
-            return gdf_edges
-
-        # End----------------Repeated code as those in Isochrone Map
 
         # Define locate nearest edge (kne) and projected point (pp)
         def find_kne(point, lines):
@@ -757,21 +803,33 @@ class StreetNetworkMatrix:
             return gdf
 
         # Cross join Data
-        O_gdf = knut.load_geo_data_frame(input1, self.O_geo_col, exec_context)
-        D_gdf = knut.load_geo_data_frame(input2, self.D_geo_col, exec_context)
+        Or_gdf = knut.load_geo_data_frame(input1, self.O_geo_col, exec_context)
+        De_gdf = knut.load_geo_data_frame(input2, self.D_geo_col, exec_context)
         R_gdf = knut.load_geo_data_frame(input3, self.R_geo_col, exec_context)
-        O_gdf = O_gdf[[self.O_geo_col]].rename(columns={self.O_geo_col: "geometry"})
-        D_gdf = D_gdf[[self.D_geo_col]].rename(columns={self.D_geo_col: "geometry"})
-        R_gdf = R_gdf[[self.R_geo_col,self.R_speed_col]].rename(columns={self.R_geo_col: "geometry",self.R_speed_col: "speed"})
+        # Valide Id column
+        Or_gdf = knut.validify_id_column(Or_gdf, self.O_id_col)
+        De_gdf = knut.validify_id_column(De_gdf, self.D_id_col)
+        # create new data with key columns
+        O_gdf = Or_gdf[[self.O_geo_col]].rename(columns={self.O_geo_col: "geometry"})
+        D_gdf = De_gdf[[self.D_geo_col]].rename(columns={self.D_geo_col: "geometry"})
+        R_gdf = R_gdf[[self.R_geo_col, self.R_speed_col]].rename(
+            columns={self.R_geo_col: "geometry", self.R_speed_col: "speed"}
+        )
 
         # Set a lat\Lon CRS
         crsinput = CRS.from_user_input(R_gdf.crs)
         if crsinput.is_geographic:
-            logging.warning("Input CRS has degree unit. Use default projected CRS epsg:3857")
+            logging.warning(
+                "Input CRS of road network has degree unit. Use default projected CRS epsg:3857"
+            )
             R_gdf = R_gdf.to_crs(3857)
 
         O_gdf = O_gdf.to_crs(R_gdf.crs)
         D_gdf = D_gdf.to_crs(R_gdf.crs)
+        # Generate ID
+        O_gdf[self._OID] = Or_gdf[self.O_id_col].to_list()
+        D_gdf[self._DID] = De_gdf[self.D_id_col].to_list()
+
         O_gdf["geometry"] = O_gdf.geometry.centroid
         D_gdf["geometry"] = D_gdf.geometry.centroid
 
@@ -781,18 +839,17 @@ class StreetNetworkMatrix:
         D_gdf["key"] = list(range((gdfmax + 1), (gdfmax + 1 + D_gdf.shape[0])))
         D_gdf["Category"] = "Destination"
 
-        O_gdf = O_gdf[["geometry", "key", "Category"]]
-        D_gdf = D_gdf[["geometry", "key", "Category"]]
-        POI = pd.concat([O_gdf, D_gdf], ignore_index=True)
-        # result = O_gdf.append(D_gdf)
-        # result = result.reset_index(drop=True)
-        # POI = result
+        O_gdf1 = O_gdf[["geometry", "key", "Category"]]
+        D_gdf1 = D_gdf[["geometry", "key", "Category"]]
+        POI = pd.concat([O_gdf1, D_gdf1], ignore_index=True)
 
         # Convert geoDataFrame to Graph with MomePy
         gdfroad = R_gdf
-        graph = gdf_to_nx(gdfroad)
-        nodes, edges = nx_to_gdf(graph, points=True, lines=True, spatial_weights=False)
-        graph = gdf_to_nx(edges)
+        graph = SimpleMomepy.gdf_to_nx(gdfroad)
+        nodes, edges = SimpleMomepy.nx_to_gdf(
+            graph, points=True, lines=True, spatial_weights=False
+        )
+        graph = SimpleMomepy.gdf_to_nx(edges)
 
         # build rtree
         Rtree = rtree.index.Index()
@@ -832,10 +889,10 @@ class StreetNetworkMatrix:
         edges["time"] = edges.length / edges.speed
 
         # Convert geoDataFrame to Graph with MomePy
-        graph = gdf_to_nx(edges)
+        graph = SimpleMomepy.gdf_to_nx(edges)
 
         # Save geoDataFrame back to Points and Edges
-        nodes1, edges1 = nx_to_gdf(
+        nodes1, edges1 = SimpleMomepy.nx_to_gdf(
             graph, points=True, lines=True, spatial_weights=False
         )
         # Difine function of nearest points
@@ -866,20 +923,39 @@ class StreetNetworkMatrix:
                 dist.append(all_dist[list(graph.nodes)[i2]])
                 lent.append(all_length[list(graph.nodes)[i2]])
             data = {
-                "originid": a["key"],
-                "destinationid": b["key"],
-                "duration": dist,
-                "distance": lent,
-                "snap_o_dist": a["dist"],
-                "snap_d_dist": b["dist"],
+                "originkey": a["key"],
+                "destinationkey": b["key"],
+                self._TIMECOST: dist,
+                self._DISTCOST: lent,
+                self._OSNAP: a["dist"],
+                self._DSNAP: b["dist"],
             }
             df = pd.DataFrame(data)
             dff = pd.concat([df, dff], ignore_index=True)
 
-        dff["destinationid"] = dff.destinationid - gdfmax
-        dff.sort_values(by=["originid", "destinationid"], inplace=True)
-        dff = dff.reset_index(drop=True)
-        return knext.Table.from_pandas(dff)
+        # dff["destinationid"] = dff.destinationid - gdfmax
+        O_gdf2 = O_gdf[["key", self._OID]]
+        D_gdf2 = D_gdf[["key", self._DID]]
+        # # join the tables on the 'key' column
+        result = pd.merge(dff, O_gdf2, left_on="originkey", right_on="key").drop(
+            "key", axis=1
+        )
+        result = pd.merge(
+            result, D_gdf2, left_on="destinationkey", right_on="key"
+        ).drop("key", axis=1)
+        result = result.copy()[
+            [
+                self._OID,
+                self._DID,
+                self._TIMECOST,
+                self._DISTCOST,
+                self._OSNAP,
+                self._DSNAP,
+            ]
+        ]
+        result.sort_values(by=[self._OID, self._DID], inplace=True)
+        result.reset_index(drop=True, inplace=True)
+        return knut.to_table(result)
 
 
 ############################################
@@ -963,12 +1039,7 @@ class IsochroneMap:
             configure_context, self.r_geo_col, input_schema_2, knut.is_geo
         )
 
-        return knext.Schema.from_columns(
-            [
-                knext.Column(knut.TYPE_MULTI_POLYGON, "geometry"),
-                knext.Column(knext.int64(), "isochrone"),
-            ]
-        )
+        return None
 
     def execute(self, exec_context: knext.ExecutionContext, input1, input2):
 
@@ -980,127 +1051,9 @@ class IsochroneMap:
         import logging
         import osmnx as ox
 
-        # Start----------------Repeated code as those in Street Network Matrix
-        # Use momepy function: generate_primal,gdf_to_nx,primal_to_gdf,nx_to_gdf
-        def generate_primal(G, gdf_network, fields, multigraph):
-            G.graph["approach"] = "primal"
-            key = 0
-            for row in gdf_network.itertuples():
-
-                first = row.geometry.coords[0]
-                last = row.geometry.coords[-1]
-
-                data = [r for r in row][1:]
-                attributes = dict(zip(fields, data))
-                if multigraph:
-                    G.add_edge(first, last, key=key, **attributes)
-                    key += 1
-                else:
-                    G.add_edge(first, last, **attributes)
-
-        def gdf_to_nx(
-            gdf_network,
-            approach="primal",
-            length="mm_len",
-            multigraph=True,
-            directed=False,
-            angles=True,
-            angle="angle",
-        ):
-            gdf_network = gdf_network.copy()
-            if "key" in gdf_network.columns:
-                gdf_network.rename(columns={"key": "__key"}, inplace=True)
-            import networkx as nx
-
-            if multigraph and directed:
-                net = nx.MultiDiGraph()
-            elif multigraph and not directed:
-                net = nx.MultiGraph()
-            elif not multigraph and directed:
-                net = nx.DiGraph()
-            else:
-                net = nx.Graph()
-
-            net.graph["crs"] = gdf_network.crs
-            gdf_network[length] = gdf_network.geometry.length
-            fields = list(gdf_network.columns)
-            generate_primal(net, gdf_network, fields, multigraph)
-
-            return net
-
-        def primal_to_gdf(net, points, lines, spatial_weights, nodeID):
-            if points is True:
-                gdf_nodes = points_to_gdf(net)
-
-                if spatial_weights is True:
-                    W = libpysal.weights.W.from_networkx(net)
-                    W.transform = "b"
-
-            if lines is True:
-                gdf_edges = lines_to_gdf(net, points, nodeID)
-
-            if points is True and lines is True:
-                if spatial_weights is True:
-                    return gdf_nodes, gdf_edges, W
-                return gdf_nodes, gdf_edges
-            if points is True and lines is False:
-                if spatial_weights is True:
-                    return gdf_nodes, W
-                return gdf_nodes
-            return gdf_edges
-
-        def nx_to_gdf(
-            net, points=True, lines=True, spatial_weights=False, nodeID="nodeID"
-        ):
-            # generate nodes and edges geodataframes from graph
-            primal = True
-            for nid, n in enumerate(net):
-                net.nodes[n][nodeID] = nid
-            return primal_to_gdf(
-                net,
-                points=points,
-                lines=lines,
-                spatial_weights=spatial_weights,
-                nodeID=nodeID,
-            )
-
-        def points_to_gdf(net):
-            node_xy, node_data = zip(*net.nodes(data=True))
-            if isinstance(node_xy[0], int) and "x" in node_data[0].keys():
-                geometry = [
-                    Point(data["x"], data["y"]) for data in node_data
-                ]  # osmnx graph
-            else:
-                geometry = [Point(*p) for p in node_xy]
-            gdf_nodes = gp.GeoDataFrame(list(node_data), geometry=geometry)
-            if "crs" in net.graph.keys():
-                gdf_nodes.crs = net.graph["crs"]
-            return gdf_nodes
-
-        def lines_to_gdf(net, points, nodeID):
-            starts, ends, edge_data = zip(*net.edges(data=True))
-            gdf_edges = gp.GeoDataFrame(list(edge_data))
-
-            if points is True:
-                node_start = []
-                node_end = []
-                for s in starts:
-                    node_start.append(net.nodes[s][nodeID])
-                for e in ends:
-                    node_end.append(net.nodes[e][nodeID])
-                gdf_edges["node_start"] = node_start
-                gdf_edges["node_end"] = node_end
-
-            if "crs" in net.graph.keys():
-                gdf_edges.crs = net.graph["crs"]
-
-            return gdf_edges
-
-        # End----------------Repeated code as those in Street Network Matrix
-
         def gdf_to_osmgraph(gdf):
-            graph = gdf_to_nx(gdf)
-            nodes, edges = nx_to_gdf(
+            graph = SimpleMomepy.gdf_to_nx(gdf)
+            nodes, edges = SimpleMomepy.nx_to_gdf(
                 graph, points=True, lines=True, spatial_weights=False
             )
             nodes["x"] = nodes.geometry.x
@@ -1123,7 +1076,9 @@ class IsochroneMap:
 
         crsinput = CRS.from_user_input(r_gdf.crs)
         if crsinput.is_geographic:
-            logging.warning("Input CRS has degree unit. Use default projected CRS epsg:3857")
+            logging.warning(
+                "Input CRS has degree unit. Use default projected CRS epsg:3857"
+            )
             r_gdf = r_gdf.to_crs(3857)
 
         c_gdf = c_gdf.to_crs(r_gdf.crs)
@@ -1134,7 +1089,9 @@ class IsochroneMap:
 
         # This example script simply outputs the node's input table.
         graph = gdf_to_osmgraph(r_gdf)
-        nodes, edges = nx_to_gdf(graph, points=True, lines=True, spatial_weights=False)
+        nodes, edges = SimpleMomepy.nx_to_gdf(
+            graph, points=True, lines=True, spatial_weights=False
+        )
 
         nearest_node = gp.sjoin_nearest(c_gdf, nodes)
         center_node = nearest_node["osmid"][0]
@@ -1147,7 +1104,9 @@ class IsochroneMap:
             subgraph = nx.ego_graph(
                 graph, center_node, radius=trip_time, undirected=True, distance="time"
             )
-            edgex = nx_to_gdf(subgraph, points=False, lines=True, spatial_weights=False)
+            edgex = SimpleMomepy.nx_to_gdf(
+                subgraph, points=False, lines=True, spatial_weights=False
+            )
             new_iso = Polygon(edgex.unary_union.buffer(50).exterior)
             isochrone_polys.append(new_iso)
 
@@ -1162,5 +1121,5 @@ class IsochroneMap:
                 gdfx.at[i, "geometry"] = cd
 
         gdfx.crs = r_gdf.crs
-        gdfx = gdfx.reset_index(drop=True)
-        return knext.Table.from_pandas(gdfx)
+        gdfx.reset_index(drop=True, inplace=True)
+        return knut.to_table(gdfx)
