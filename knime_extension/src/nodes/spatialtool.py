@@ -313,13 +313,15 @@ class SpatialJoinNode:
                 right_gdf, how=self.join_mode.lower(), predicate=self.match_mode.lower()
             )
         elif self.match_mode.lower() == "have_their_center_in":
-            left_gdf["rep_center"] = left_gdf.representative_point()
-            left_gdf_temp = left_gdf.set_geometry("rep_center")
+            REP_Center= knut.get_unique_column_name("rep_center", left_input.schema) 
+            left_gdf[REP_Center] = left_gdf.representative_point()
+            left_gdf_temp = left_gdf.set_geometry(REP_Center)
             gdf = gp.sjoin(left_gdf_temp, right_gdf, predicate="within")
-            gdf = gdf.set_geometry(self.left_geo_col).drop(columns=["rep_center"])
+            gdf = gdf.set_geometry(self.left_geo_col).drop(columns=[REP_Center])
         else:
-            right_gdf["rep_center"] = right_gdf.representative_point()
-            right_gdf_temp = right_gdf.set_geometry("rep_center").drop(
+            REP_Center= knut.get_unique_column_name("rep_center", right_input.schema) 
+            right_gdf[REP_Center] = right_gdf.representative_point()
+            right_gdf_temp = right_gdf.set_geometry(REP_Center).drop(
                 columns=[self.right_geo_col]
             )
             gdf = gp.sjoin(left_gdf, right_gdf_temp, predicate="contains")
