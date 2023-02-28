@@ -1071,7 +1071,7 @@ class HaversineDistGrid:
     description="Output table of Voronoi (Thiessen) Polygon",
 )
 class CreateVoronoi:
-    """Create Grid node.
+    """Create Voronoi (Thiessen) Polygon.
     This node creates Voronoi (Thiessen) polygons from the input point data according to the reference boundary.
     The input data for boundary reference should be Polygon or MultiPolygon.
     The buffer distance (in Kilometers) is used to create virtual points to generate dummy points and
@@ -1084,7 +1084,7 @@ class CreateVoronoi:
         "Select the geometry column to create Voronoi (Thiessen) Polygon.",
         # Allow only GeoValue compatible columns
         port_index=0,
-        column_filter=knut.is_geo,
+        column_filter=knut.is_geo_point,
         include_row_key=False,
         include_none_column=False,
     )
@@ -1100,7 +1100,7 @@ class CreateVoronoi:
     )
 
     control_buffer = knext.IntParameter(
-        "Buffer distance (kilometers) for Voronoi polygons",
+        "Buffered distance (kilometers) for controlling Voronoi polygons",
         "The buffere distance for bounding box of input boundary data to generate dummy points.",
         default_value=100,
     )
@@ -1120,13 +1120,9 @@ class CreateVoronoi:
         from shapely.geometry import Point, Polygon
         import numpy as np
         from scipy.spatial import Voronoi
+        originpoint= knut.load_geo_data_frame(input_table1, self.point_geo_col, exec_context)
+        boundary= knut.load_geo_data_frame(input_table2, self.boundary_geo_col, exec_context)
 
-        originpoint = gp.GeoDataFrame(
-            input_table1.to_pandas(), geometry=self.point_geo_col
-        )
-        boundary = gp.GeoDataFrame(
-            input_table2.to_pandas(), geometry=self.boundary_geo_col
-        )
         pointproj = originpoint.to_crs(3857)
         boundaryproj = boundary.to_crs(3857)
 
@@ -1171,4 +1167,4 @@ class CreateVoronoi:
         gdf["ThiessenID"] = range(1, (gdf.shape[0] + 1))
         gdf.reset_index(drop=True, inplace=True)
 
-        return knext.Table.from_pandas(gdf)
+        return knut.to_table(gdf, exec_context)
