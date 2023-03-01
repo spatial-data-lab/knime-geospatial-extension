@@ -566,7 +566,7 @@ def Turn_all_NA_column_as_str(gdf) -> None:
     return gdf
 
 
-@knext.parameter_group(label="Result")
+@knext.parameter_group(label="Result table")
 class ResultSettings:
     """
     Group of settings that define the format of the result table.
@@ -575,7 +575,7 @@ class ResultSettings:
     class Mode(knext.EnumParameterOptions):
         REPLACE = (
             "Replace selected column",
-            "Replaces the selected column with the new computed column.",
+            "Replaces the selected input column with the new computed values.",
         )
         APPEND = (
             "Append new column",
@@ -587,8 +587,9 @@ class ResultSettings:
             return cls.REPLACE
 
     mode = knext.EnumParameter(
-        label="Result column",
-        description="The join mode determines of which input table the rows should be retained.",
+        label="Result column handling",
+        description="""Defines if the selected geometry column from the input table should be replaced or a new 
+        column should be appended.""",
         default_value=Mode.get_default().name,
         enum=Mode,
     )
@@ -658,9 +659,31 @@ def get_computed_result_table(
     selected_col: knext.Column,
     func: Callable,
 ) -> knext.Table:
+    """
+    Uses the given function to either append a new column or replace the existing column to the given input table and
+    returns the result as a table depending on the user chosen settings.
+    """
     gdf = load_geo_data_frame(input_table, selected_col, exec_context)
-    result_col = selected_col
-    if self.mode == ResultSettings.Mode.REPLACE.name:
-        result_col = get_unique_column_name(self.new_column_name, input_table.schema)
-    gdf[result_col] = gdf.apply(lambda l: func(l[selected_col]), axis=1)
+    gdf = get_computed_result_frame(
+        self, exec_context, input_table.schema, gdf, selected_col, func
+    )
     return to_table(gdf, exec_context)
+
+
+def get_computed_result_frame(
+    self: ResultSettings,
+    exec_context: knext.ExecutionContext,
+    schema: knext.Schema,
+    gdf: gp.GeoDataFrame,
+    selected_col: knext.Column,
+    func: Callable,
+) -> knext.Table:
+    """
+    Uses the given function to either append a new column or replace the existing column to the given input
+    GeoDataFrame and returns the result as a table depending on the user chosen settings.
+    """
+    result_col = selected_col
+    if self.mode == ResultSettings.Mode.APPEND.name:
+        result_col = get_unique_column_name(self.new_column_name, schema)
+    gdf[result_col] = gdf.apply(lambda l: func(l[selected_col]), axis=1)
+    return gdf
