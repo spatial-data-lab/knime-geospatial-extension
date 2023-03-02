@@ -566,7 +566,7 @@ def Turn_all_NA_column_as_str(gdf) -> None:
     return gdf
 
 
-@knext.parameter_group(label="Result table")
+@knext.parameter_group(label="Output")
 class ResultSettings:
     """
     Group of settings that define the format of the result table.
@@ -574,12 +574,12 @@ class ResultSettings:
 
     class Mode(knext.EnumParameterOptions):
         REPLACE = (
-            "Replace selected column",
-            "Replaces the selected input column with the new computed values.",
+            "Replace",
+            "Replace the selected input column with the result.",
         )
         APPEND = (
-            "Append new column",
-            "Appends a new column with the entered name at the end of the input table.",
+            "Append",
+            "Append a new column with the name provided below.",
         )
 
         @classmethod
@@ -587,16 +587,15 @@ class ResultSettings:
             return cls.REPLACE
 
     mode = knext.EnumParameter(
-        label="Result column handling",
-        description="""Defines if the selected geometry column from the input table should be replaced or a new 
-        column should be appended.""",
+        label="Output column",
+        description="Choose where to place the result column:",
         default_value=Mode.get_default().name,
         enum=Mode,
     )
 
     new_column_name = knext.StringParameter(
-        "Appended column name",
-        "The name of the new column that is appended if 'Replace input column' is not selected.",
+        "New column name",
+        "The name of the new column that is appended if 'Append' is selected.",
         default_value="geometry",
     )
 
