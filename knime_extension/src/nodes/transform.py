@@ -141,41 +141,38 @@ class GeometryToPointNode:
         enum=["centroid", "representative_point"],
     )
 
-    appendtype = knext.StringParameter(
-        "Geometry Attach Type Selection",
-        "The way to attach point geometry.",
-        "Replace",
-        enum=["Replace", "Append"],
+    result_settings = knut.ResultSettings(
+        "Result", "1.1.0", None, knut.ResultSettings.Mode.REPLACE.name, "point"
     )
+
+    def __init__(self):
+        # set twice as workaround until fixed in KNIME framework
+        self.result_settings.mode = knut.ResultSettings.Mode.REPLACE.name
+        self.result_settings.new_column_name = "point"
 
     def configure(self, configure_context, input_schema):
         self.geo_col = knut.column_exists_or_preset(
             configure_context, self.geo_col, input_schema, knut.is_geo
         )
-        if self.appendtype == "Replace":
-            input_schema = input_schema.remove(self.geo_col)
-        new_geo_col = knut.get_unique_column_name(self.geo_col, input_schema)
-        return input_schema.append(knext.Column(knut.TYPE_POINT, new_geo_col))
+
+        return knut.get_result_schema(
+            self.result_settings,
+            configure_context,
+            input_schema,
+            self.geo_col,
+            knut.TYPE_POINT,
+        )
 
     def execute(self, exec_context: knext.ExecutionContext, input_1):
-        new_geo_col = knut.get_unique_column_name(self.geo_col, input_1.schema)
-        gdf = gp.GeoDataFrame(input_1.to_pandas(), geometry=self.geo_col)
-        exec_context.set_progress(
-            0.3, "Geo data frame loaded. Starting transformation..."
-        )
+
         if self.pointtype == "centroid":
-            gdf["point"] = gdf.centroid
+            func = lambda l: l.centroid
         else:
-            gdf["point"] = gdf.representative_point()
-        gdf = gdf.set_geometry("point")
-        # gdf = gdf.drop(columns=self.geo_col)
-        gdf = gdf.rename(columns={"point": new_geo_col})
-        exec_context.set_progress(0.1, "Transformation done")
-        LOGGER.debug("Feature converted to " + self.pointtype)
-        if self.appendtype == "Replace":
-            gdf = gdf.drop(columns=self.geo_col)
-            gdf = gdf.rename(columns={new_geo_col: self.geo_col})
-        return knext.Table.from_pandas(gdf)
+            func = lambda l: l.representative_point()
+
+        return knut.get_computed_result_table(
+            self.result_settings, exec_context, input_1, self.geo_col, func
+        )
 
 
 ############################################
@@ -454,14 +451,14 @@ class GeometryToMultiPointNode:
         self.result_settings.mode = knut.ResultSettings.Mode.APPEND.name
         self.result_settings.new_column_name = "multipoint"
 
-    def configure(self, configure_context, input_schema_1):
+    def configure(self, configure_context, input_schema):
         self.geo_col = knut.column_exists_or_preset(
-            configure_context, self.geo_col, input_schema_1, knut.is_geo_line
+            configure_context, self.geo_col, input_schema, knut.is_geo_line
         )
         return knut.get_result_schema(
             self.result_settings,
             configure_context,
-            input_schema_1,
+            input_schema,
             self.geo_col,
             knut.TYPE_MULTI_POINT,
         )
