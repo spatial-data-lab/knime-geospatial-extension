@@ -195,11 +195,11 @@ class DissolveNode:
 )
 @knext.input_table(
     name="Left geo table",
-    description="Left table with geometry column to join on",
+    description="Left (top) table with geometry column to join on",
 )
 @knext.input_table(
     name="Right geo table",
-    description="Right table with geometry column to join on",
+    description="Right (bottom) table with geometry column to join on",
 )
 @knext.output_table(
     name="Joined geo table",
@@ -223,8 +223,13 @@ class SpatialJoinNode:
     class MatchModes(knext.EnumParameterOptions):
         CONTAINS = (
             "Contains",
-            """Matches if no points of the right object lies in the exterior of the left object and at least one point 
+            """Matches if no point of the right object lies in the exterior of the left object and at least one point 
             of the interior of right object lies in the interior of the left object.""",
+        )
+        CONTAINS_CENTER_OF = (
+            "Contains the center of",
+            """Matches if the right object's representative point intersects only with the interior of the left object 
+            (not its boundary or exterior).""",
         )
         CONTAINS_PROPERLY = (
             "Contains properly",
@@ -239,9 +244,14 @@ class SpatialJoinNode:
             """Matches if the interior of the left object intersects the interior of the right object but does not 
             contain it, and the dimension of the intersection is less than the dimension of the one or the other.""",
         )
+        HAS_ITS_CENTER_IN = (
+            "Has its center in",
+            """Matches if the left object's representative point intersects only with the interior of the right object 
+            (not its boundary or exterior).""",
+        )
         INTERSECTS = (
             "Intersects",
-            "Matches if the boundary or interior of the left object intersect in any way with those of the right object.",
+            "Matches if the boundary or interior of the left object intersects in any way with those of the right object.",
         )
         OVERLAPS = (
             "Overlaps",
@@ -258,16 +268,7 @@ class SpatialJoinNode:
             """Matches if the left object's boundary and interior intersect only with the interior of the right object 
             (not its boundary or exterior).""",
         )
-        HAVE_THEIR_CENTER_IN = (
-            "Have their center in",
-            """Matches if the left object's representative points intersect only with the interior of the right object 
-            (not its boundary or exterior).""",
-        )
-        CONTAIN_CENTER_OF = (
-            "Contain the center of",
-            """Matches if the right object's representative points intersect only with the interior of the left object 
-            (not its boundary or exterior).""",
-        )
+
         @classmethod
         def get_default(cls):
             return cls.INTERSECTS
@@ -317,26 +318,29 @@ class SpatialJoinNode:
         return None
 
     def execute(self, exec_context: knext.ExecutionContext, left_input, right_input):
-        left_gdf = gp.GeoDataFrame(left_input.to_pandas(), geometry=self.left_geo_col)
-        right_gdf = gp.GeoDataFrame(
-            right_input.to_pandas(), geometry=self.right_geo_col
+        left_gdf = knut.load_geo_data_frame(left_input, self.left_geo_col, exec_context)
+        right_gdf = knut.load_geo_data_frame(
+            right_input, self.right_geo_col, exec_context
         )
         knut.check_canceled(exec_context)
         right_gdf.to_crs(left_gdf.crs, inplace=True)
-        if self.match_mode.lower() not in ["have_their_center_in", "contain_center_of"]:
+        if self.match_mode not in [
+            SpatialJoinNode.MatchModes.HAS_ITS_CENTER_IN.name,
+            SpatialJoinNode.MatchModes.CONTAINS_CENTER_OF.name,
+        ]:
             gdf = left_gdf.sjoin(
                 right_gdf, how=self.join_mode.lower(), predicate=self.match_mode.lower()
             )
-        elif self.match_mode.lower() == "have_their_center_in":
-            REP_Center= knut.get_unique_column_name("rep_center", left_input.schema) 
-            left_gdf[REP_Center] = left_gdf.representative_point()
-            left_gdf_temp = left_gdf.set_geometry(REP_Center)
+        elif self.match_mode == SpatialJoinNode.MatchModes.HAS_ITS_CENTER_IN.name:
+            rep_center = knut.get_unique_column_name("rep_center", left_input.schema)
+            left_gdf[rep_center] = left_gdf.representative_point()
+            left_gdf_temp = left_gdf.set_geometry(rep_center)
             gdf = gp.sjoin(left_gdf_temp, right_gdf, predicate="within")
-            gdf = gdf.set_geometry(self.left_geo_col).drop(columns=[REP_Center])
+            gdf = gdf.set_geometry(self.left_geo_col).drop(columns=[rep_center])
         else:
-            REP_Center= knut.get_unique_column_name("rep_center", right_input.schema) 
-            right_gdf[REP_Center] = right_gdf.representative_point()
-            right_gdf_temp = right_gdf.set_geometry(REP_Center).drop(
+            rep_center = knut.get_unique_column_name("rep_center", right_input.schema)
+            right_gdf[rep_center] = right_gdf.representative_point()
+            right_gdf_temp = right_gdf.set_geometry(rep_center).drop(
                 columns=[self.right_geo_col]
             )
             gdf = gp.sjoin(left_gdf, right_gdf_temp, predicate="contains")
@@ -344,7 +348,7 @@ class SpatialJoinNode:
         gdf.reset_index(drop=True, inplace=True)
         # drop additional index columns if they exist
         gdf.drop(["index_right", "index_left"], axis=1, errors="ignore", inplace=True)
-        return knext.Table.from_pandas(gdf)
+        return knut.to_table(gdf, exec_context)
 
 
 ############################################
