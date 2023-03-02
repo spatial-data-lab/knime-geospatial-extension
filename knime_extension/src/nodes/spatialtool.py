@@ -66,7 +66,7 @@ class _JoinModes(knext.EnumParameterOptions):
         "Shapley object.buffer": "https://shapely.readthedocs.io/en/latest/manual.html#object.buffer",
     },
 )
-class BufferNode:
+class BufferNode2:
     """
     This node aggregate generate buffer zone based on a given distance.
     """
@@ -78,13 +78,13 @@ class BufferNode:
     )
 
     result_settings = knut.ResultSettings(
-        "Result", "1.1.0", None, knut.ResultSettings.Mode.APPEND.name, "geometry"
+        "Result", "1.1.0", None, knut.ResultSettings.Mode.APPEND.name, "buffered"
     )
 
     def __init__(self):
         # set twice as workaround until fixed in KNIME framework
         self.result_settings.mode = knut.ResultSettings.Mode.APPEND.name
-        self.result_settings.new_column_name = "geometry"
+        self.result_settings.new_column_name = "buffered"
 
     def configure(self, configure_context, input_schema):
         self.geo_col = knut.column_exists_or_preset(
@@ -910,7 +910,7 @@ class MultiRingBufferNode:
         "Shapely object.simplify": "http://shapely.readthedocs.io/en/latest/manual.html#object.simplify",
     },
 )
-class SimplifyNode:
+class SimplifyNode2:
     """
     This node returns a geometry feature containing a simplified representation of each geometry.
     """
@@ -928,13 +928,13 @@ class SimplifyNode:
     )
 
     result_settings = knut.ResultSettings(
-        "Result", "1.1.0", None, knut.ResultSettings.Mode.APPEND.name, "geometry"
+        "Result", "1.1.0", None, knut.ResultSettings.Mode.APPEND.name, "simplified"
     )
 
     def __init__(self):
         # set twice as workaround until fixed in KNIME framework
         self.result_settings.mode = knut.ResultSettings.Mode.APPEND.name
-        self.result_settings.new_column_name = "geometry"
+        self.result_settings.new_column_name = "simplified"
 
     def configure(self, configure_context, input_schema_1):
         self.geo_col = knut.column_exists_or_preset(
