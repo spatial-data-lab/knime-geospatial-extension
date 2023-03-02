@@ -59,14 +59,14 @@ class _JoinModes(knext.EnumParameterOptions):
 @knut.geo_node_description(
     short_description="Generate buffer zone based on a given distance.",
     description="""This node generates polygons representing all points within a given distance of each geometric object 
-    based on geopandas.GeoSeries.buffer() with default parameters (resolution=16), which derives from Shapley object.buffer.
+    based on geopandas.GeoSeries.buffer() with default parameters (resolution=16), which derives from Shapely object.buffer.
     """,
     references={
         "GeoSeries.buffer": "https://geopandas.org/en/stable/docs/reference/api/geopandas.GeoSeries.buffer.html",
         "Shapley object.buffer": "https://shapely.readthedocs.io/en/latest/manual.html#object.buffer",
     },
 )
-class BufferNode:
+class BufferNode2:
     """
     This node aggregate generate buffer zone based on a given distance.
     """
@@ -77,14 +77,29 @@ class BufferNode:
         "Buffer distance", "The buffer distance for geometry. ", 1000.0
     )
 
+    result_settings = knut.ResultSettings(
+        "Result", "1.1.0", None, knut.ResultSettings.Mode.APPEND.name, "buffered"
+    )
+
+    def __init__(self):
+        # set twice as workaround until fixed in KNIME framework
+        self.result_settings.mode = knut.ResultSettings.Mode.APPEND.name
+        self.result_settings.new_column_name = "buffered"
+
     def configure(self, configure_context, input_schema):
         self.geo_col = knut.column_exists_or_preset(
             configure_context, self.geo_col, input_schema, knut.is_geo
         )
-        return None
+        return knut.get_result_schema(
+            self.result_settings,
+            configure_context,
+            input_schema,
+            self.geo_col,
+            knut.TYPE_POLYGON,
+        )
 
     def execute(self, exec_context: knext.ExecutionContext, input):
-        gdf = gp.GeoDataFrame(input.to_pandas(), geometry=self.geo_col)
+        gdf = knut.load_geo_data_frame(input, self.geo_col, exec_context)
 
         from pyproj import CRS  # For CRS Units check
 
@@ -92,14 +107,17 @@ class BufferNode:
         if crsinput.is_geographic:
             logging.warning("Unit as Degree, Please use Projected CRS")
         exec_context.set_progress(0.3, "Geo data frame loaded. Starting buffering...")
-        gdf[knut.get_unique_column_name("geometry", input.schema)] = gdf.buffer(
-            self.bufferdist
+
+        gdf = knut.get_computed_result_frame(
+            self.result_settings,
+            exec_context,
+            input.schema,
+            gdf,
+            self.geo_col,
+            lambda l: l.buffer(self.bufferdist),
         )
-        exec_context.set_progress(0.1, "Buffering done")
-        LOGGER.debug(
-            "Feature geometry " + self.geo_col + " buffered with" + str(self.bufferdist)
-        )
-        return knext.Table.from_pandas(gdf)
+        exec_context.set_progress(1, "Buffering done")
+        return knut.to_table(gdf, exec_context)
 
 
 ############################################
@@ -154,16 +172,13 @@ class DissolveNode:
         )
         return None
 
-    def execute(self, exec_context: knext.ExecutionContext, input_1):
-        gdf = gp.GeoDataFrame(input_1.to_pandas(), geometry=self.geo_col)
+    def execute(self, exec_context: knext.ExecutionContext, input_table):
+        gdf = knut.load_geo_data_frame(input_table, self.geo_col, exec_context)
         exec_context.set_progress(0.3, "Geo data frame loaded. Starting dissolve...")
         gdf_dissolve = gdf.dissolve(self.dissolve_col, as_index=False)
         gdf = gdf_dissolve[[self.dissolve_col, self.geo_col]]
-        exec_context.set_progress(0.1, "Dissolve done")
-        LOGGER.debug(
-            "Feature geometry " + self.geo_col + "dissolved by " + self.dissolve_col
-        )
-        return knext.Table.from_pandas(gdf)
+        exec_context.set_progress(1, "Dissolve done")
+        return knut.to_table(gdf, exec_context)
 
 
 ############################################
@@ -398,9 +413,9 @@ class NearestJoinNode:
         return None
 
     def execute(self, exec_context: knext.ExecutionContext, left_input, right_input):
-        left_gdf = gp.GeoDataFrame(left_input.to_pandas(), geometry=self.left_geo_col)
-        right_gdf = gp.GeoDataFrame(
-            right_input.to_pandas(), geometry=self.right_geo_col
+        left_gdf = knut.load_geo_data_frame(left_input, self.left_geo_col, exec_context)
+        right_gdf = knut.load_geo_data_frame(
+            right_input, self.right_geo_col, exec_context
         )
         knut.check_canceled(exec_context)
         left_gdf.to_crs(self.crs_info, inplace=True)
@@ -418,7 +433,7 @@ class NearestJoinNode:
         gdf.reset_index(drop=True, inplace=True)
         # drop additional index columns if they exist
         gdf.drop(["index_1", "index_2"], axis=1, errors="ignore", inplace=True)
-        return knext.Table.from_pandas(gdf)
+        return knut.to_table(gdf, exec_context)
 
 
 ############################################
@@ -435,15 +450,15 @@ class NearestJoinNode:
 )
 @knext.input_table(
     name="Left geo table",
-    description="Left table with geometry column to be clipped",
+    description="Left (top) table with geometry column to be clipped",
 )
 @knext.input_table(
     name="Right geo table",
-    description="Right table with geometry column to clip",
+    description="Right (bottom) table with geometry column to clip",
 )
 @knext.output_table(
-    name="Joined geo table",
-    description="Joined geo table",
+    name="Clipped geo table",
+    description="Clipped geo table",
 )
 @knut.geo_node_description(
     short_description="This node will clip target geometries to the mask extent.",
@@ -454,6 +469,7 @@ class NearestJoinNode:
     will be clipped to the total boundary of all mask polygons.
     """,
     references={
+        "Clip vector data with GeoPandas": "https://geopandas.org/en/stable/gallery/plot_clip.html",
         "Clip": "https://geopandas.org/en/stable/docs/reference/api/geopandas.clip.html",
     },
 )
@@ -478,6 +494,15 @@ class ClipNode:
         include_none_column=False,
     )
 
+    result_settings = knut.ResultSettings(
+        "Result", "1.1.0", None, knut.ResultSettings.Mode.REPLACE.name, "clipped"
+    )
+
+    def __init__(self):
+        # set twice as workaround until fixed in KNIME framework
+        self.result_settings.mode = knut.ResultSettings.Mode.REPLACE.name
+        self.result_settings.new_column_name = "clipped"
+
     def configure(self, configure_context, left_input_schema, right_input_schema):
         self.left_geo_col = knut.column_exists_or_preset(
             configure_context, self.left_geo_col, left_input_schema, knut.is_geo
@@ -485,8 +510,14 @@ class ClipNode:
         self.right_geo_col = knut.column_exists_or_preset(
             configure_context, self.right_geo_col, right_input_schema, knut.is_geo
         )
-        # TODO Create combined schema
-        return None
+
+        return knut.get_result_schema(
+            self.result_settings,
+            configure_context,
+            left_input_schema,
+            self.left_geo_col,
+            knut.TYPE_GEO,
+        )
 
     def execute(self, exec_context: knext.ExecutionContext, left_input, right_input):
         left_gdf = gp.GeoDataFrame(left_input.to_pandas(), geometry=self.left_geo_col)
@@ -494,12 +525,17 @@ class ClipNode:
             right_input.to_pandas(), geometry=self.right_geo_col
         )
         knut.check_canceled(exec_context)
+        # ensure that both dataframe use the same projection
         right_gdf.to_crs(left_gdf.crs, inplace=True)
         try:
-            gdf_clipnew = gp.clip(left_gdf, right_gdf, keep_geom_type=True)
-            return knext.Table.from_pandas(gdf_clipnew)
+            gdf_clip = gp.clip(left_gdf, right_gdf, keep_geom_type=True)
         except:
             raise ValueError("Improper Mask Geometry")
+
+        if self.result_settings.mode == knut.ResultSettings.Mode.APPEND.name:
+            left_gdf[self.result_settings.new_column_name] = gdf_clip[self.left_geo_col]
+            gdf_clip = left_gdf
+        return knut.to_table(gdf_clip, exec_context)
 
 
 ############################################
@@ -516,15 +552,15 @@ class ClipNode:
 )
 @knext.input_table(
     name="Left geo table",
-    description="Left table with geometry column to join on",
+    description="Left (top) table with geometry column to join on",
 )
 @knext.input_table(
     name="Right geo table",
-    description="Right table with geometry column to join on",
+    description="Right (bottom) table with geometry column to join on",
 )
 @knext.output_table(
-    name="Joined geo table",
-    description="Joined geo table",
+    name="Overlayed geo table",
+    description="Overlayed geo table",
 )
 @knut.geo_node_description(
     short_description="Performs spatial overlay between two geometries.",
@@ -535,7 +571,7 @@ class ClipNode:
     """,
     references={
         "Set-Operations with Overlay": "https://geopandas.org/en/stable/docs/user_guide/set_operations.html",
-        "overlay": "https://geopandas.org/en/stable/docs/reference/api/geopandas.overlay.html",
+        "Overlay": "https://geopandas.org/en/stable/docs/reference/api/geopandas.overlay.html",
     },
 )
 class OverlayNode:
@@ -613,9 +649,9 @@ class OverlayNode:
         return None
 
     def execute(self, exec_context: knext.ExecutionContext, left_input, right_input):
-        left_gdf = gp.GeoDataFrame(left_input.to_pandas(), geometry=self.left_geo_col)
-        right_gdf = gp.GeoDataFrame(
-            right_input.to_pandas(), geometry=self.right_geo_col
+        left_gdf = knut.load_geo_data_frame(left_input, self.left_geo_col, exec_context)
+        right_gdf = knut.load_geo_data_frame(
+            right_input, self.right_geo_col, exec_context
         )
         knut.check_canceled(exec_context)
         right_gdf.to_crs(left_gdf.crs, inplace=True)
@@ -626,7 +662,7 @@ class OverlayNode:
             keep_geom_type=self.keep_geom_type,
         )
         gdf.reset_index(drop=True, inplace=True)
-        return knext.Table.from_pandas(gdf)
+        return knut.to_table(gdf, exec_context)
 
 
 ############################################
@@ -731,7 +767,7 @@ class EuclideanDistanceNode:
         mergedf = mergedf[["originid", "destinationid", "EuDist"]].reset_index(
             drop=True
         )
-        return knext.Table.from_pandas(mergedf)
+        return knut.to_table(mergedf, exec_context)
 
 
 ############################################
@@ -799,8 +835,7 @@ class MultiRingBufferNode:
         return None
 
     def execute(self, exec_context: knext.ExecutionContext, input_1):
-        gdf = gp.GeoDataFrame(input_1.to_pandas(), geometry=self.geo_col)
-        gdf = gp.GeoDataFrame(geometry=gdf.geometry)
+        gdf = knut.load_geo_data_frame(input_1, self.geo_col, exec_context)
         gdf.to_crs(self.crs_info, inplace=True)
 
         from pyproj import CRS  # For CRS Units check
@@ -839,7 +874,7 @@ class MultiRingBufferNode:
         gdf0["dist"] = bufferlist
         gdf0 = gdf0.reset_index(drop=True)
         exec_context.set_progress(0.1, "Buffering done")
-        return knext.Table.from_pandas(gdf0)
+        return knut.to_table(gdf0, exec_context)
 
 
 ############################################
@@ -875,7 +910,7 @@ class MultiRingBufferNode:
         "Shapely object.simplify": "http://shapely.readthedocs.io/en/latest/manual.html#object.simplify",
     },
 )
-class SimplifyNode:
+class SimplifyNode2:
     """
     This node returns a geometry feature containing a simplified representation of each geometry.
     """
@@ -892,21 +927,35 @@ class SimplifyNode:
         default_value=1.0,
     )
 
+    result_settings = knut.ResultSettings(
+        "Result", "1.1.0", None, knut.ResultSettings.Mode.APPEND.name, "simplified"
+    )
+
+    def __init__(self):
+        # set twice as workaround until fixed in KNIME framework
+        self.result_settings.mode = knut.ResultSettings.Mode.APPEND.name
+        self.result_settings.new_column_name = "simplified"
+
     def configure(self, configure_context, input_schema_1):
         self.geo_col = knut.column_exists_or_preset(
             configure_context, self.geo_col, input_schema_1, knut.is_geo
         )
-        return None
+        return knut.get_result_schema(
+            self.result_settings,
+            configure_context,
+            input_schema_1,
+            self.geo_col,
+            knut.TYPE_GEO,
+        )
 
     def execute(self, exec_context: knext.ExecutionContext, input):
-        gdf = gp.GeoDataFrame(input.to_pandas(), geometry=self.geo_col)
-        gdf[
-            knut.get_unique_column_name("geometry", input.schema)
-        ] = gdf.geometry.simplify(self.simplifydist)
-        gdf = gdf.reset_index(drop=True)
-        exec_context.set_progress(0.1, "Transformation done")
-        LOGGER.debug("Feature Simplified")
-        return knext.Table.from_pandas(gdf)
+        return knut.get_computed_result_table(
+            self.result_settings,
+            exec_context,
+            input,
+            self.geo_col,
+            lambda l: l.simplify(self.simplifydist),
+        )
 
 
 ############################################
@@ -950,7 +999,7 @@ class CreateGrid:
 
     def execute(self, exec_context: knext.ExecutionContext, input_table):
 
-        gdf = gp.GeoDataFrame(input_table.to_pandas(), geometry=self.geo_col)
+        gdf = knut.load_geo_data_frame(input_table, self.geo_col, exec_context)
 
         xmin, ymin, xmax, ymax = gdf.total_bounds
         width = self.grid_length
@@ -988,7 +1037,7 @@ class CreateGrid:
 
         grid = gp.GeoDataFrame({"geometry": polygons}, crs=gdf.crs)
         grid["gridid"] = list(range(1, grid.shape[0] + 1))
-        return knext.Table.from_pandas(grid)
+        return knut.to_table(grid, exec_context)
 
 
 ############################################
@@ -1024,7 +1073,7 @@ class HaversineDistGrid:
 
     Lat1 = knext.ColumnParameter(
         "The first latitude column",
-        "The column containing the first Latitude coordinates. ",
+        "The column containing the first latitude coordinates. ",
         column_filter=knut.is_numeric,
         include_row_key=False,
         include_none_column=False,
@@ -1032,7 +1081,7 @@ class HaversineDistGrid:
 
     Lon2 = knext.ColumnParameter(
         "The second longitude column",
-        "The column containing the second  longitude coordinates. ",
+        "The column containing the second longitude coordinates. ",
         column_filter=knut.is_numeric,
         include_row_key=False,
         include_none_column=False,
@@ -1040,7 +1089,7 @@ class HaversineDistGrid:
 
     Lat2 = knext.ColumnParameter(
         "The second latitude column",
-        "The column containing the second  Latitude coordinates. ",
+        "The column containing the second latitude coordinates. ",
         column_filter=knut.is_numeric,
         include_row_key=False,
         include_none_column=False,
@@ -1068,7 +1117,8 @@ class HaversineDistGrid:
             return Q * EarthR_km
 
         df = input_table.to_pandas()
-        df["HDist"] = df.apply(
+        result_col = knut.get_unique_column_name("HDist", input_table.schema)
+        df[result_col] = df.apply(
             lambda x: HaversineDist(
                 x[self.Lon1], x[self.Lat1], x[self.Lon2], x[self.Lat2]
             ),

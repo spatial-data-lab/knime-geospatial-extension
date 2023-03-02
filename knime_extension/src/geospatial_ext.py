@@ -25,4 +25,7 @@ import nodes.transform
 import nodes.visualize
 import nodes.spatialnetwork
 
+# collection of deprecated nodes
+import nodes.deprecated
+
 # import nodes.geolab

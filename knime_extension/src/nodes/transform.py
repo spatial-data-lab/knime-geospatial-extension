@@ -61,17 +61,38 @@ class CrsTransformerNode:
         "New CRS", knut.DEF_CRS_DESCRIPTION, knut.DEFAULT_CRS
     )
 
-    def configure(self, configure_context, input_schema_1):
+    result_settings = knut.ResultSettings(
+        "Result", "1.1.0", None, knut.ResultSettings.Mode.REPLACE.name, "projected"
+    )
+
+    def __init__(self):
+        # set twice as workaround until fixed in KNIME framework
+        self.result_settings.mode = knut.ResultSettings.Mode.REPLACE.name
+        self.result_settings.new_column_name = "projected"
+
+    def configure(self, configure_context, input_schema):
         self.geo_col = knut.column_exists_or_preset(
-            configure_context, self.geo_col, input_schema_1, knut.is_geo
+            configure_context, self.geo_col, input_schema, knut.is_geo
         )
-        return input_schema_1
+        # use the data type of the selected column as result type
+        result_type = input_schema[self.geo_col].ktype
+        return knut.get_result_schema(
+            self.result_settings,
+            configure_context,
+            input_schema,
+            self.geo_col,
+            result_type,
+        )
 
     def execute(self, exec_context: knext.ExecutionContext, input_table):
         gdf = knut.load_geo_data_frame(input_table, self.geo_col, exec_context)
+        if self.result_settings.mode == knut.ResultSettings.Mode.APPEND.name:
+            result_col = knut.get_unique_column_name(
+                self.result_settings.new_column_name, input_table.schema
+            )
+            gdf[result_col] = gdf[self.geo_col]
+            gdf.set_geometry(result_col, inplace=True)
         gdf.to_crs(self.new_crs, inplace=True)
-        crs = gdf.crs
-        LOGGER.debug("CRS converted to " + self.new_crs)
         return knut.to_table(gdf, exec_context)
 
 
@@ -120,41 +141,38 @@ class GeometryToPointNode:
         enum=["centroid", "representative_point"],
     )
 
-    appendtype = knext.StringParameter(
-        "Geometry Attach Type Selection",
-        "The way to attach point geometry.",
-        "Replace",
-        enum=["Replace", "Append"],
+    result_settings = knut.ResultSettings(
+        "Result", "1.1.0", None, knut.ResultSettings.Mode.REPLACE.name, "point"
     )
+
+    def __init__(self):
+        # set twice as workaround until fixed in KNIME framework
+        self.result_settings.mode = knut.ResultSettings.Mode.REPLACE.name
+        self.result_settings.new_column_name = "point"
 
     def configure(self, configure_context, input_schema):
         self.geo_col = knut.column_exists_or_preset(
             configure_context, self.geo_col, input_schema, knut.is_geo
         )
-        if self.appendtype == "Replace":
-            input_schema = input_schema.remove(self.geo_col)
-        new_geo_col = knut.get_unique_column_name(self.geo_col, input_schema)
-        return input_schema.append(knext.Column(knut.TYPE_POINT, new_geo_col))
+
+        return knut.get_result_schema(
+            self.result_settings,
+            configure_context,
+            input_schema,
+            self.geo_col,
+            knut.TYPE_POINT,
+        )
 
     def execute(self, exec_context: knext.ExecutionContext, input_1):
-        new_geo_col = knut.get_unique_column_name(self.geo_col, input_1.schema)
-        gdf = gp.GeoDataFrame(input_1.to_pandas(), geometry=self.geo_col)
-        exec_context.set_progress(
-            0.3, "Geo data frame loaded. Starting transformation..."
-        )
+
         if self.pointtype == "centroid":
-            gdf["point"] = gdf.centroid
+            func = lambda l: l.centroid
         else:
-            gdf["point"] = gdf.representative_point()
-        gdf = gdf.set_geometry("point")
-        # gdf = gdf.drop(columns=self.geo_col)
-        gdf = gdf.rename(columns={"point": new_geo_col})
-        exec_context.set_progress(0.1, "Transformation done")
-        LOGGER.debug("Feature converted to " + self.pointtype)
-        if self.appendtype == "Replace":
-            gdf = gdf.drop(columns=self.geo_col)
-            gdf = gdf.rename(columns={new_geo_col: self.geo_col})
-        return knext.Table.from_pandas(gdf)
+            func = lambda l: l.representative_point()
+
+        return knut.get_computed_result_table(
+            self.result_settings, exec_context, input_1, self.geo_col, func
+        )
 
 
 ############################################
@@ -253,19 +271,39 @@ class PolygonToLineNode:
         include_none_column=False,
     )
 
+    result_settings = knut.ResultSettings(
+        "Result", "1.1.0", None, knut.ResultSettings.Mode.REPLACE.name, "line"
+    )
+
+    def __init__(self):
+        # set twice as workaround until fixed in KNIME framework
+        self.result_settings.mode = knut.ResultSettings.Mode.REPLACE.name
+        self.result_settings.new_column_name = "line"
+
     def configure(self, configure_context, input_schema_1):
         self.geo_col = knut.column_exists_or_preset(
-            configure_context, self.geo_col, input_schema_1, knut.is_geo_polygon_or_multi_polygon
+            configure_context,
+            self.geo_col,
+            input_schema_1,
+            knut.is_geo_polygon_or_multi_polygon,
         )
-        return None
+        return knut.get_result_schema(
+            self.result_settings,
+            configure_context,
+            input_schema_1,
+            self.geo_col,
+            knut.TYPE_LINE,
+        )
 
-    def execute(self, exec_context: knext.ExecutionContext, input_1):
-        gdf = gp.GeoDataFrame(input_1.to_pandas(), geometry=self.geo_col)
-        exec_context.set_progress(0.3, "Geo data frame loaded. Starting explosion...")
-        gdf[self.geo_col] = gdf.boundary
-        exec_context.set_progress(0.1, "PolygonToLine done")
-        LOGGER.debug("Polygon feature " + self.geo_col + "transformed to line")
-        return knext.Table.from_pandas(gdf)
+    def execute(self, exec_context: knext.ExecutionContext, input_table):
+        # extract the boundary for each geometry
+        return knut.get_computed_result_table(
+            self.result_settings,
+            exec_context,
+            input_table,
+            self.geo_col,
+            lambda l: l.boundary,
+        )
 
 
 ############################################
@@ -339,7 +377,7 @@ class PointsToLineNode:
     def execute(self, exec_context: knext.ExecutionContext, input):
         gdf = gp.GeoDataFrame(input.to_pandas(), geometry=self.geo_col)
         gdf = gdf.rename(columns={self.geo_col: "geometry"})
-        exec_context.set_progress(0.3, "Geo data frame loaded. Starting explosion...")
+        exec_context.set_progress(0.3, "Geo data frame loaded. Starting grouping...")
         from shapely.geometry import MultiPoint, LineString
 
         line_gdf = (
@@ -404,20 +442,35 @@ class GeometryToMultiPointNode:
         include_none_column=False,
     )
 
-    def configure(self, configure_context, input_schema_1):
-        self.geo_col = knut.column_exists_or_preset(
-            configure_context, self.geo_col, input_schema_1, knut.is_geo_line
-        )
-        return input_schema_1
+    result_settings = knut.ResultSettings(
+        "Result", "1.1.0", None, knut.ResultSettings.Mode.APPEND.name, "multipoint"
+    )
 
-    def execute(self, exec_context: knext.ExecutionContext, input_1):
-        gdf = gp.GeoDataFrame(input_1.to_pandas(), geometry=self.geo_col)
-        exec_context.set_progress(0.3, "Geo data frame loaded. Starting explosion...")
-        gdf["points"] = gdf.apply(lambda l: l["geometry"].coords, axis=1)
+    def __init__(self):
+        # set twice as workaround until fixed in KNIME framework
+        self.result_settings.mode = knut.ResultSettings.Mode.APPEND.name
+        self.result_settings.new_column_name = "multipoint"
+
+    def configure(self, configure_context, input_schema):
+        self.geo_col = knut.column_exists_or_preset(
+            configure_context, self.geo_col, input_schema, knut.is_geo_line
+        )
+        return knut.get_result_schema(
+            self.result_settings,
+            configure_context,
+            input_schema,
+            self.geo_col,
+            knut.TYPE_MULTI_POINT,
+        )
+
+    def execute(self, exec_context: knext.ExecutionContext, input_table):
+        # extract coordinates of each geometry into a new MultiPoint geometry
         from shapely.geometry import MultiPoint
 
-        gdf["geometry"] = gdf["points"].apply(lambda l: MultiPoint(l))
-        gdf = gdf.drop(columns="points")
-        exec_context.set_progress(0.1, "LineToMultiPoint done")
-        LOGGER.debug("Line feature " + self.geo_col + "transformed to MultiPoint")
-        return knext.Table.from_pandas(gdf)
+        return knut.get_computed_result_table(
+            self.result_settings,
+            exec_context,
+            input_table,
+            self.geo_col,
+            lambda l: MultiPoint(l.coords),
+        )
