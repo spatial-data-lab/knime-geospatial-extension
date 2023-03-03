@@ -1018,11 +1018,16 @@ class CreateGrid:
         default_value=100,
     )
 
+    _COL_ID = "gridID"
+    _COL_GEOMETRY = "geometry"
+
     def configure(self, configure_context, input_schema):
         self.geo_col = knut.column_exists_or_preset(
             configure_context, self.geo_col, input_schema, knut.is_geo
         )
-        return None
+        return knext.Schema(
+            [knut.TYPE_POLYGON, knext.int64()], [self._COL_GEOMETRY, self._COL_ID]
+        )
 
     def execute(self, exec_context: knext.ExecutionContext, input_table):
 
@@ -1062,8 +1067,8 @@ class CreateGrid:
             XleftOrigin = XleftOrigin + width
             XrightOrigin = XrightOrigin + width
 
-        grid = gp.GeoDataFrame({"geometry": polygons}, crs=gdf.crs)
-        grid["gridid"] = list(range(1, grid.shape[0] + 1))
+        grid = gp.GeoDataFrame({self._COL_GEOMETRY: polygons}, crs=gdf.crs)
+        grid[self._COL_ID] = list(range(1, grid.shape[0] + 1))
         return knut.to_table(grid, exec_context)
 
 
@@ -1180,16 +1185,16 @@ class HaversineDistGrid:
 )
 class CreateVoronoi:
     """Create Voronoi (Thiessen) Polygon.
-    This node creates Voronoi (Thiessen) polygons from the input point data according to the reference boundary.
-    The input data for boundary reference should be Polygon or MultiPolygon.
-    The buffer distance (in Kilometers) is used to create virtual points to generate dummy points and
-    control the output of Voronoi polygons.
-    If the final output polygon is smaller than the reference boundary, users may consider increasing the buffer distance.
+    This node creates [Voronoi (Thiessen) polygons](https://en.wikipedia.org/wiki/Voronoi_diagram) from the input
+    point data according to the reference boundary. The input data for the boundary reference should be a
+    Polygon or MultiPolygon. The buffer distance (in kilometers) is used to create virtual points to generate dummy
+    points and control the output of Voronoi polygons. If the final output polygon is smaller than the reference
+    boundary, users may consider increasing the buffer distance.
     """
 
     point_geo_col = knext.ColumnParameter(
         "Point geometry column",
-        "Select the geometry column to create Voronoi (Thiessen) Polygon.",
+        "Select the geometry column with the points for the Voronoi (Thiessen) polygons.",
         # Allow only GeoValue compatible columns
         port_index=0,
         column_filter=knut.is_geo_point,
@@ -1198,8 +1203,8 @@ class CreateVoronoi:
     )
 
     boundary_geo_col = knext.ColumnParameter(
-        "Geometry column for boundary",
-        "Select the geometry column as boundary for Voronoi (Thiessen) polygons.",
+        "Boundary geometry column",
+        "Select the geometry column with the boundary polygon for the Voronoi (Thiessen) polygons.",
         # Allow only GeoValue compatible columns
         port_index=1,
         column_filter=knut.is_geo,
@@ -1208,10 +1213,19 @@ class CreateVoronoi:
     )
 
     control_buffer = knext.IntParameter(
-        "Buffered distance (kilometers) for controlling Voronoi polygons",
-        "The buffere distance for bounding box of input boundary data to generate dummy points.",
+        "Buffered distance in kilometers for the Voronoi polygon boundaries.",
+        "The buffer distance for the bounding box of the boundary geometry column.",
         default_value=100,
     )
+
+    @control_buffer.validator
+    def validate_reps(value):
+        if value < 1:
+            raise ValueError("The buffer distance must be greater 0")
+
+    _COL_ID = "ThiessenID"
+    _COL_GEOMETRY = "geometry"
+    _CRS = 3857
 
     def configure(self, configure_context, input_schema1, input_schema2):
         self.point_geo_col = knut.column_exists_or_preset(
@@ -1220,7 +1234,9 @@ class CreateVoronoi:
         self.boundary_geo_col = knut.column_exists_or_preset(
             configure_context, self.boundary_geo_col, input_schema2, knut.is_geo_polygon
         )
-        return None
+        return knext.Schema(
+            [knut.TYPE_POLYGON, knext.int64()], [self._COL_GEOMETRY, self._COL_ID]
+        )
 
     def execute(self, exec_context: knext.ExecutionContext, input_table1, input_table2):
 
@@ -1228,18 +1244,24 @@ class CreateVoronoi:
         from shapely.geometry import Point, Polygon
         import numpy as np
         from scipy.spatial import Voronoi
-        originpoint= knut.load_geo_data_frame(input_table1, self.point_geo_col, exec_context)
-        boundary= knut.load_geo_data_frame(input_table2, self.boundary_geo_col, exec_context)
 
-        pointproj = originpoint.to_crs(3857)
-        boundaryproj = boundary.to_crs(3857)
+        origin_point = knut.load_geo_data_frame(
+            input_table1, self.point_geo_col, exec_context
+        )
+        boundary = knut.load_geo_data_frame(
+            input_table2, self.boundary_geo_col, exec_context
+        )
+        origin_crs = origin_point.crs
+        point_proj = origin_point.to_crs(self._CRS)
+        boundary_proj = boundary.to_crs(self._CRS)
 
-        distbuffer = self.control_buffer * 1000
+        dist_buffer = self.control_buffer * 1000
         # Convert the GeoDataFrame to a numpy array
-        points = np.array([[pt.x, pt.y] for pt in pointproj.geometry])
+        points = np.array([[pt.x, pt.y] for pt in point_proj.geometry])
 
         # get the envelope of the union of the points with a buffer of 1
-        envelope = boundaryproj.unary_union.envelope.buffer(distbuffer).envelope
+        boundary_union = boundary_proj.unary_union
+        envelope = boundary_union.envelope.buffer(dist_buffer).envelope
 
         # get the coordinates of the envelope
         xmin, ymin, xmax, ymax = envelope.bounds
@@ -1256,23 +1278,21 @@ class CreateVoronoi:
         # extract the vertices of each Voronoi region
         polygons = []
         for region in vor.regions:
-            if not -1 in region:
+            if -1 not in region:
                 polygon = Polygon([vor.vertices[i] for i in region])
                 polygons.append(polygon)
 
         # convert the list of Polygon objects to a GeoSeries object
         geo_series = gp.GeoSeries(polygons)
         # create GeoDataFrame
-        gdf = pd.DataFrame({"geometry": geo_series})
-        gdf = gp.GeoDataFrame(gdf, geometry="geometry", crs=3857)
+        gdf = pd.DataFrame({self._COL_GEOMETRY: geo_series})
+        gdf = gp.GeoDataFrame(gdf, geometry=self._COL_GEOMETRY, crs=self._CRS)
 
         gdf = gdf[~gdf.geometry.is_empty]
-        extent = gp.GeoDataFrame(
-            geometry=gp.GeoSeries(boundaryproj.unary_union), crs=3857
-        )
+        extent = gp.GeoDataFrame(geometry=gp.GeoSeries(boundary_union), crs=self._CRS)
         gdf = gp.overlay(gdf, extent, how="intersection")
-        gdf = gdf.to_crs(originpoint.crs)
-        gdf["ThiessenID"] = range(1, (gdf.shape[0] + 1))
-        gdf.reset_index(drop=True, inplace=True)
-
+        # project back to original CRS
+        gdf = gdf.to_crs(origin_crs)
+        # append region id column
+        gdf[self._COL_ID] = range(1, (gdf.shape[0] + 1))
         return knut.to_table(gdf, exec_context)
