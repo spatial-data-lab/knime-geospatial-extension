@@ -325,13 +325,13 @@ class SpatialJoinNode:
         knut.check_canceled(exec_context)
         right_gdf.to_crs(left_gdf.crs, inplace=True)
         if self.match_mode not in [
-            SpatialJoinNode.MatchModes.HAS_ITS_CENTER_IN.name,
-            SpatialJoinNode.MatchModes.CONTAINS_CENTER_OF.name,
+            self.MatchModes.HAS_ITS_CENTER_IN.name,
+            self.MatchModes.CONTAINS_CENTER_OF.name,
         ]:
             gdf = left_gdf.sjoin(
                 right_gdf, how=self.join_mode.lower(), predicate=self.match_mode.lower()
             )
-        elif self.match_mode == SpatialJoinNode.MatchModes.HAS_ITS_CENTER_IN.name:
+        elif self.match_mode == self.MatchModes.HAS_ITS_CENTER_IN.name:
             rep_center = knut.get_unique_column_name("rep_center", left_input.schema)
             left_gdf[rep_center] = left_gdf.representative_point()
             left_gdf_temp = left_gdf.set_geometry(rep_center)
