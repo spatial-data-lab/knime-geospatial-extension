@@ -7,4 +7,6 @@ data: *.arcgisonline.com *.autonavi.com *.basemaps.cartocdn.com *.cloudfront.net
 stamen-tiles-a.a.ssl.fastly.net *.strava.com *.earthdata.nasa.gov; connect-src 'self' *.mapbox.com *.cloudfront.net/kepler.gl/; 
 font-src 'self' data:;worker-src blob: 'self';
 ```
-For further information see the [WebPortal Admin Guide](https://docs.knime.com/latest/webportal_admin_guide/index.html#knime-server-configuration-file-options-webportal).
+This will allow the views to load the required libraries from the KNIME Server and the background tile images from the different providers such as MapBox or OpenstreetMap.
+
+For further information about the different options see the [WebPortal Admin Guide](https://docs.knime.com/latest/webportal_admin_guide/index.html#knime-server-configuration-file-options-webportal).
