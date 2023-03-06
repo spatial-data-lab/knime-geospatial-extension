@@ -661,7 +661,17 @@ class StreetNetworkMatrix:
         include_row_key=False,
         include_none_column=False,
     )
-
+    speedunit = knext.StringParameter(
+        label="Speed unit",
+        description="The unit for speed column",
+        default_value="Meters/second(m/s)",
+        enum=[
+            "Meter/second(m/s)",
+            "Miles/hour(mph)",
+            "kilometers/hour(km/h)",
+            "None",
+        ],
+    )
     # Constant for distance matrix
     _OID = "originid"
     _DID = "destinationid"
@@ -815,7 +825,15 @@ class StreetNetworkMatrix:
         R_gdf = R_gdf[[self.R_geo_col, self.R_speed_col]].rename(
             columns={self.R_geo_col: "geometry", self.R_speed_col: "speed"}
         )
-
+        R_gdf = R_gdf.dropna(subset=["geometry"], how="any")
+        if self.speedunit == "Meter/second(m/s)":
+            R_gdf["speed"] = R_gdf.speed * 60
+        elif self.speedunit == "Miles/hour(mph)":
+            R_gdf["speed"] = R_gdf.speed * 26.8224
+        elif self.speedunit == "kilometers/hour(km/h)":
+            R_gdf["speed"] = R_gdf.speed * 16.6667
+        else:
+            R_gdf["speed"] = R_gdf.speed * 1
         # Set a lat\Lon CRS
         crsinput = CRS.from_user_input(R_gdf.crs)
         if crsinput.is_geographic:
