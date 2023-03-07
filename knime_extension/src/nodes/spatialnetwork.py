@@ -938,8 +938,12 @@ class StreetNetworkMatrix:
             )
             for j in range(len(b)):
                 i2 = b.iloc[j]["nodeID"]
-                dist.append(all_dist[list(graph.nodes)[i2]])
-                lent.append(all_length[list(graph.nodes)[i2]])
+                if list(graph.nodes)[i2] in all_dist:
+                    dist.append(all_dist[list(graph.nodes)[i2]])
+                    lent.append(all_length[list(graph.nodes)[i2]])
+                else:
+                    dist.append(999999)
+                    lent.append(999999)  
             data = {
                 "originkey": a["key"],
                 "destinationkey": b["key"],
