@@ -1193,7 +1193,7 @@ class CreateVoronoi:
     given reference boundary that controls the output of the Voronoi polygons. If the final Voronoi polygons are
     smaller than the given reference boundary, you might want to increase the buffer distance. For an illustration
     of the buffer distance see
-    [here.](https://github.com/spatial-data-lab/knime-geospatial-extension/raw/main/docs/imgs/voronoiDistance.PNG)
+    [here.](https://raw.githubusercontent.com/spatial-data-lab/knime-geospatial-extension/main/docs/imgs/voronoiDistance.png)
     """
 
     point_geo_col = knext.ColumnParameter(
@@ -1227,7 +1227,7 @@ class CreateVoronoi:
         the boundary the Voronoi polygons will be generated, and if the distance is too small, some 
         of the polygons may not intersect with the boundary or may only partially intersect with it.
         For an illustration of the buffer distance see 
-        [here.](https://github.com/spatial-data-lab/knime-geospatial-extension/raw/main/docs/imgs/voronoiDistance.PNG)""",
+        [here.](https://raw.githubusercontent.com/spatial-data-lab/knime-geospatial-extension/main/docs/imgs/voronoiDistance.png)""",
         default_value=100,
     )
 

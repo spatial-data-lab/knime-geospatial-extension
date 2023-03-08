@@ -505,11 +505,10 @@ class UnaryUnionNode:
         return knext.Table.from_pandas(gdfunion)
 
 
-
-
 ############################################
 # MinimumBoundingCircle
 ############################################
+
 
 @knext.node(
     name="Bounding Circle",
@@ -520,22 +519,21 @@ class UnaryUnionNode:
 )
 @knext.input_table(
     name="Geo table",
-    description="Table with geometry column to transform",
+    description="Table with the geometry column to compute the bounding circle for",
 )
 @knext.output_table(
-    name="Transformed geo table",
-    description="Transformed Geo input table",
+    name="Geo table with bounding circle",
+    description="Input table with the computed bounding circle",
 )
 @knut.geo_node_description(
-    short_description="This node generates the minimum bounding circle containing all the points in each geometry.",
-    description="""This node generates a circle that circumscribes a set of points within each geometry. The circle 
-    is the minimum bounding circle that covers all the points in the geometry. The minimum bounding circle is 
-    determined by finding the two points that are farthest apart, and the center and radius of the circle are 
-    calculated from these points.""",
+    short_description="For each input geometry this node generates the minimum bounding circle that contains all its points.",
+    description="""For each input geometry this node generates the minimum bounding circle that contains all its 
+    points. The minimum bounding circle is determined by finding the two points that are farthest apart, and the 
+    center and radius of the circle are calculated from these points.""",
     references={
-        "Minimum bounding circle": " https://en.wikipedia.org/wiki/Smallest-circle_problem",
-        "Scipy distance matrix": " https://docs.scipy.org/doc/scipy/reference/generated/scipy.spatial.distance_matrix.html",
-        "Shapely convex hull": " https://shapely.readthedocs.io/en/stable/manual.html#object.convex_hull",
+        "Minimum bounding circle": "https://en.wikipedia.org/wiki/Smallest-circle_problem",
+        "Scipy distance matrix": "https://docs.scipy.org/doc/scipy/reference/generated/scipy.spatial.distance_matrix.html",
+        "Shapely convex hull": "https://shapely.readthedocs.io/en/stable/manual.html#object.convex_hull",
     },
 )
 class BoundCircleNode:
@@ -544,14 +542,28 @@ class BoundCircleNode:
         description="Select the geometry column to compute the minimum bounding circle."
     )
 
+    result_settings = knut.ResultSettings(
+        "Result", "1.1.0", None, knut.ResultSettings.Mode.APPEND.name, "circle"
+    )
+
+    def __init__(self):
+        # set twice as workaround until fixed in KNIME framework
+        self.result_settings.mode = knut.ResultSettings.Mode.APPEND.name
+        self.result_settings.new_column_name = "circle"
+
     def configure(self, configure_context, input_schema):
         self.geo_col = knut.column_exists_or_preset(
             configure_context, self.geo_col, input_schema, knut.is_geo
         )
-        return None
+        return knut.get_result_schema(
+            self.result_settings,
+            configure_context,
+            input_schema,
+            self.geo_col,
+            knut.TYPE_POLYGON,
+        )
 
     def execute(self, exec_context: knext.ExecutionContext, input):
-        gdf = gp.GeoDataFrame(input.to_pandas(), geometry=self.geo_col)
         from shapely.geometry import Point, Polygon
         import numpy as np
         from scipy.spatial import distance_matrix
@@ -574,8 +586,7 @@ class BoundCircleNode:
                 radius = 1e-6  # set a small radius to avoid divide-by-zero errors
             return center, radius
 
-        def compute_circle(row):
-            geom = row.geometry
+        def compute_circle(geom):
             # Get the points of the convex hull
             hull = geom.convex_hull
             points = np.array(hull.boundary.coords)
@@ -583,10 +594,6 @@ class BoundCircleNode:
             center, radius = minimum_bounding_circle(points)
             return center.buffer(radius)
 
-        # Apply the function to each row of the GeoDataFrame
-        circles = gdf.apply(compute_circle, axis=1)
-
-        # Create a new GeoDataFrame with the circles as the geometry column
-        circle_gdf = gp.GeoDataFrame(geometry=circles, crs=gdf.crs)
-        gdf[self.geo_col] = circle_gdf.geometry
-        return knext.Table.from_pandas(gdf)
+        return knut.get_computed_result_table(
+            self.result_settings, exec_context, input, self.geo_col, compute_circle
+        )
