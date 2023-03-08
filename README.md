@@ -24,6 +24,8 @@ If you want to test the latest version you can follow the instructions in the Se
 
 [Here are some examples of workflows](https://hub.knime.com/center%20for%20geographic%20analysis%20at%20harvard%20university/spaces/Geospatial%20Analytics%20Examples/latest/~ieq2yfgeQUshNTi-/) that use the extension. You can also find some videos on the [YouTube channel](https://www.youtube.com/watch?v=6jz-YIGMsKM&list=PLnFUy1r9kH-20dWQGVKKiUAOlbPGxyBUv).
 
+If you want to use the Geospatial Views in a KNIME Data App please have a look at this [guide](https://github.com/spatial-data-lab/knime-geospatial-extension/blob/main/docs/geospatialViewsWebPortal.md).
+
 ## How to Contribute
 
 ### Package Organization
