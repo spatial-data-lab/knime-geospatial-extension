@@ -1173,23 +1173,27 @@ class HaversineDistGrid:
 )
 @knext.input_table(
     name="Input Point Table",
-    description="Input point data of Voronoi (Thiessen) Polygon",
+    description="Input point data for Voronoi (Thiessen) polygons",
 )
 @knext.input_table(
-    name="Input Boundary Table",
-    description="Input boundary data for Voronoi (Thiessen) Polygon",
+    name="Reference Boundary Table",
+    description="Input boundary data for Voronoi (Thiessen) polygons",
 )
 @knext.output_table(
-    name="Voronoi (Thiessen) Polygon",
-    description="Output table of Voronoi (Thiessen) Polygon",
+    name="Voronoi (Thiessen) polygons",
+    description="Output table of Voronoi (Thiessen) polygons",
 )
 class CreateVoronoi:
-    """Create Voronoi (Thiessen) Polygon.
+    """Create Voronoi (Thiessen) polygons.
     This node creates [Voronoi (Thiessen) polygons](https://en.wikipedia.org/wiki/Voronoi_diagram) from the input
-    point data according to the reference boundary. The input data for the boundary reference should be a
-    Polygon or MultiPolygon. The buffer distance (in kilometers) is used to create virtual points to generate dummy
-    points and control the output of Voronoi polygons. If the final output polygon is smaller than the reference
-    boundary, users may consider increasing the buffer distance.
+    point data according to the reference boundary. The input data for the reference boundary should be a
+    Polygon or MultiPolygon.
+
+    The buffer distance (in kilometers) is used to create dummy points that define a virtual boundary around the
+    given reference boundary that controls the output of the Voronoi polygons. If the final Voronoi polygons are
+    smaller than the given reference boundary, you might want to increase the buffer distance. For an illustration
+    of the buffer distance see
+    [here.](https://github.com/spatial-data-lab/knime-geospatial-extension/raw/main/docs/imgs/voronoiDistance.PNG)
     """
 
     point_geo_col = knext.ColumnParameter(
@@ -1204,7 +1208,8 @@ class CreateVoronoi:
 
     boundary_geo_col = knext.ColumnParameter(
         "Boundary geometry column",
-        "Select the geometry column with the boundary polygon for the Voronoi (Thiessen) polygons.",
+        """Select the geometry column with the Polygon or MultiPolygon that defines the reference boundary for the 
+        Voronoi (Thiessen) polygons.""",
         # Allow only GeoValue compatible columns
         port_index=1,
         column_filter=knut.is_geo,
@@ -1213,8 +1218,16 @@ class CreateVoronoi:
     )
 
     control_buffer = knext.IntParameter(
-        "Buffered distance in kilometers for the Voronoi polygon boundaries.",
-        "The buffer distance for the bounding box of the boundary geometry column.",
+        "Buffered distance in kilometers for the virtual Voronoi polygon boundaries.",
+        """The buffer distance defines the distance of the dummy points that define the virtual boundary from the 
+        given reference boundary.
+              
+        If the buffer distance is too small, the resulting polygons may not fill the entire boundary, and there may 
+        be gaps or missing parts within the boundary. This is because the buffer distance determines how far away from 
+        the boundary the Voronoi polygons will be generated, and if the distance is too small, some 
+        of the polygons may not intersect with the boundary or may only partially intersect with it.
+        For an illustration of the buffer distance see 
+        [here.](https://github.com/spatial-data-lab/knime-geospatial-extension/raw/main/docs/imgs/voronoiDistance.PNG)""",
         default_value=100,
     )
 
