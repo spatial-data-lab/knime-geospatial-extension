@@ -139,170 +139,213 @@ class SimpleMomepy:
 ############################################
 # Google Distance Matrix
 ############################################
+
+
+class _GoogleTravelModes(knext.EnumParameterOptions):
+    BICYCLING = (
+        "Bicycling",
+        """Requests bicycling directions or distance via bicycle paths & preferred streets (where available).
+        Bicycling directions may sometimes not include clear bicycling paths.""",
+    )
+    DRIVING = (
+        "Driving",
+        "Indicates standard driving directions or distance using the road network.",
+    )
+    TRANSIT = (
+        "Transit",
+        """Requests directions or distance via public transit routes (where available). 
+        The used departure time is now.""",
+    )
+    WALKING = (
+        "Walking",
+        """Requests walking directions or distance via pedestrian paths & sidewalks (where available).
+        Walking directions may sometimes not include clear pedestrian paths.""",
+    )
+
+    @classmethod
+    def get_default(cls):
+        return cls.DRIVING
+
+
 @knext.node(
     name="Google Distance Matrix",
     node_type=knext.NodeType.MANIPULATOR,
-    # node_type=knext.NodeType.MANIPULATOR,
     category=__category,
     icon_path=__NODE_ICON_PATH + "GoogleDistMatrix.png",
 )
 @knext.input_table(
-    name="Input Table as origin",
-    description="Input origin table with geometry.",
+    name="Input table with origins",
+    description="Input table with origin geometry and ID column.",
 )
 @knext.input_table(
-    name="Input Table as destination",
-    description="Input destination table with geometry.",
+    name="Input table with destinations",
+    description="Input table with destination geometry and ID column.",
 )
 @knext.output_table(
-    name="Output Table",
-    description="Output table with travel Cost in Minutes and Meters.",
+    name="Output table",
+    description="""Output table with the selected origin and destination ID columns and the corresponding travel costs
+    in minutes and meters.""",
 )
 class GoogleDistanceMatrix:
     """
-    Google Distance Matrix.
-    The [Distance Matrix API](https://developers.google.com/maps/documentation/distance-matrix/overview)
+    Google Distance Matrix with travel distance and time for a matrix of origins and destinations.
+    The [Google Distance Matrix API](https://developers.google.com/maps/documentation/distance-matrix/overview)
     provides travel distance and time for a matrix of origins and destinations,
-    and consists of rows containing duration and distance values for each pair.
-    The API returns information based on the recommended route between start and end points.
-    This node provides two travel modes: driving and transit. The units of distance and time are Meters and Minutes.
-    If the input geometry is not a point feature, the centroids will be used.
-    The output includes numerical indices for the origin and destination data that will serve as a common key for merging the data.
+    and consists of rows containing duration and distance values for each pair. The distance unit is meter and the
+    estimated travel time is returned in minutes.
+    The API returns information based on the recommended route between start and end points and provides different
+    travel modes.
+
+    If the input geometry is not a point feature, the centroids will be automatically computed and used.
     """
 
-    O_geo_col = knext.ColumnParameter(
-        "Origin Geometry Column",
-        "Select the geometry column as origin.",
+    o_geo_col = knext.ColumnParameter(
+        "Origin geometry column",
+        "Select the geometry column that describes the origins.",
         # Allow only GeoValue compatible columns
         port_index=0,
         column_filter=knut.is_geo,
         include_row_key=False,
         include_none_column=False,
     )
-    O_id_col = knext.ColumnParameter(
-        "Unique origin ID Column",
-        "Select the ID column for origin points.",
-        # Allow only GeoValue compatible columns
+    o_id_col = knext.ColumnParameter(
+        "Origin ID column",
+        """Select the column which contains for each origin a unique ID. The selected column will be returned
+        in the result table and can be used to link back to the original data.""",
         port_index=0,
-        column_filter=knut.is_int_or_string,
+        column_filter=knut.is_numeric_or_string,
         include_row_key=False,
         include_none_column=False,
     )
 
-    D_geo_col = knext.ColumnParameter(
-        "Right geometry column",
-        "Select the geometry column as destination.",
+    d_geo_col = knext.ColumnParameter(
+        "Destination geometry column",
+        "Select the geometry column that describes the destinations.",
         # Allow only GeoValue compatible columns
         port_index=1,
         column_filter=knut.is_geo,
         include_row_key=False,
         include_none_column=False,
     )
-    D_id_col = knext.ColumnParameter(
-        "Unique destination ID column",
-        "Select the ID  column for destination points.",
-        # Allow only GeoValue compatible columns
+    d_id_col = knext.ColumnParameter(
+        "Destination ID column",
+        """Select the column which contains for each destination a unique ID. The selected column will be returned
+        in the result table and can be used to link back to the original data.""",
         port_index=1,
-        column_filter=knut.is_int_or_string,
+        column_filter=knut.is_numeric_or_string,
         include_row_key=False,
         include_none_column=False,
     )
-    API_Key = knext.StringParameter(
-        "Google API Key",
-        "[Google API Key](https://developers.google.com/maps/documentation/distance-matrix/overview)  for distance matrix",
+    api_key = knext.StringParameter(
+        "Google API key",
+        """Click [here](https://developers.google.com/maps/documentation/distance-matrix/get-api-key) for details on
+        how to obtain and use a Google API key for the Distance Matrix API.""",
         "",
     )
-    Travel_Mode = knext.StringParameter(
-        "Travel Mode",
-        "Set [Trave Mode](https://developers.google.com/maps/documentation/distance-matrix/distance-matrix) ",
-        "Driving",
-        enum=["Driving", "Transit"],
+    travel_mode = knext.EnumParameter(
+        "Travel mode",
+        """The following 
+        [travel modes](https://developers.google.com/maps/documentation/distance-matrix/distance-matrix#mode) 
+        are supported: """,
+        default_value=_GoogleTravelModes.get_default().name,
+        enum=_GoogleTravelModes,
     )
     # Constant for distance matrix
-    _OID = "originid"
-    _DID = "destinationid"
-    _TIMECOST = "duration"
-    _DISTCOST = "distance"
+    _COL_DURATION = "duration"
+    _COL_DISTANCE = "distance"
+    _BASE_URL = "https://maps.googleapis.com/maps/api/distancematrix/json?language=en&units=imperial&origins={0}&destinations={1}&key={2}&mode={3}"
 
-    def configure(self, configure_context, input_schema_1, input_schema_2):
-        self.O_geo_col = knut.column_exists_or_preset(
-            configure_context, self.O_geo_col, input_schema_1, knut.is_geo
+    def configure(self, configure_context, o_schema, d_schema):
+        self.o_geo_col = knut.column_exists_or_preset(
+            configure_context, self.o_geo_col, o_schema, knut.is_geo
         )
-        self.D_geo_col = knut.column_exists_or_preset(
-            configure_context, self.D_geo_col, input_schema_2, knut.is_geo
+        knut.column_exists(self.o_id_col, o_schema)
+        o_id_type = o_schema[self.o_id_col].ktype
+
+        self.d_geo_col = knut.column_exists_or_preset(
+            configure_context, self.d_geo_col, d_schema, knut.is_geo
         )
-        return None
+        knut.column_exists(self.d_id_col, d_schema)
+        d_id_type = d_schema[self.d_id_col].ktype
+
+        return knext.Schema(
+            [o_id_type, d_id_type, knext.double(), knext.int64()],
+            [self.o_id_col, self.d_id_col, self._COL_DURATION, self._COL_DISTANCE],
+        )
 
     def execute(self, exec_context: knext.ExecutionContext, left_input, right_input):
-        # the output distance will have units of miles
-        basestring = "https://maps.googleapis.com/maps/api/distancematrix/json?language=en&units=imperial&origins={0}&destinations={1}&key={2}&mode={3}"
-
         # define function to derive travel time and distance from Google Maps API
         import urllib.request as urllib2  # for Google Drive
         import json  # for OSRM
 
         knut.check_canceled(exec_context)
 
-        def fetch_google_OD(download_link):
-            nt_time = 0
-            nt_dist = 0
+        def fetch_google_od(download_link):
+            nt_duration = 0
+            nt_distance = 0
             try:
                 req = urllib2.urlopen(download_link)
                 jsonout = json.loads(req.read())
-                nt_time = jsonout["rows"][0]["elements"][0]["duration"][
+                nt_duration = jsonout["rows"][0]["elements"][0]["duration"][
                     "value"
                 ]  # meters
-                nt_dist = jsonout["rows"][0]["elements"][0]["distance"][
+                nt_distance = jsonout["rows"][0]["elements"][0]["distance"][
                     "value"
                 ]  # seconds
 
-                # transform seconds to minutes and meters to miles
-                nt_time = round(nt_time / 60, 2)
-                nt_dist = round(nt_dist, 2)
-            except:
-                print("Empty value generated")
-            return [nt_time, nt_dist]
+                # transform seconds to minutes
+                nt_duration = round(nt_duration / 60, 2)
+                nt_distance = round(nt_distance, 2)
+            except Exception as err:
+                knut.LOGGER.warning(f"Exception while calling Google Matrix API: {err}")
+            return [nt_duration, nt_distance]
 
-        Or_gdf = knut.load_geo_data_frame(left_input, self.O_geo_col, exec_context)
-        De_gdf = knut.load_geo_data_frame(right_input, self.D_geo_col, exec_context)
-        Or_gdf = knut.validify_id_column(Or_gdf, self.O_id_col)
-        De_gdf = knut.validify_id_column(De_gdf, self.D_id_col)
-        # Create new data
-        O_gdf = Or_gdf[[self.O_geo_col]].rename(columns={self.O_geo_col: "geometry"})
-        D_gdf = De_gdf[[self.D_geo_col]].rename(columns={self.D_geo_col: "geometry"})
+        o_gdf = knut.load_geo_data_frame(left_input, self.o_geo_col, exec_context)
+        d_gdf = knut.load_geo_data_frame(right_input, self.d_geo_col, exec_context)
+        o_gdf = knut.validify_id_column(o_gdf, self.o_id_col)
+        d_gdf = knut.validify_id_column(d_gdf, self.d_id_col)
 
-        # Set a lat\Lon CRS
-        O_gdf = O_gdf.to_crs(4326)
-        D_gdf = D_gdf.to_crs(4326)
-        # Generate ID
-        O_gdf[self._OID] = Or_gdf[self.O_id_col].to_list()
-        D_gdf[self._DID] = De_gdf[self.D_id_col].to_list()
-        mergedf = O_gdf.merge(D_gdf, how="cross")
-        mergedf_x = gp.GeoDataFrame(geometry=mergedf["geometry_x"])
-        mergedf_y = gp.GeoDataFrame(geometry=mergedf["geometry_y"])
+        # Set a lat\Lon CRS before renaming the geometry column
+        o_gdf = o_gdf.to_crs(4326)
+        d_gdf = d_gdf.to_crs(4326)
 
-        distance_matrix = mergedf[[self._OID, self._DID]]
-        distance_matrix[self._TIMECOST] = 0
-        distance_matrix[self._DISTCOST] = 0
-        # can process point or polygon features or both
+        # Filter all columns except the needed once and rename the geometry column to have a consistent result in merge
+        o_gdf = o_gdf.filter(items=[self.o_geo_col, self.o_id_col]).rename(
+            columns={self.o_geo_col: "geometry"}
+        )
+        d_gdf = d_gdf.filter(items=[self.d_geo_col, self.d_id_col]).rename(
+            columns={self.d_geo_col: "geometry"}
+        )
+
+        # Generate origin destination matrix via cross join
+        merge_df = o_gdf.merge(d_gdf, how="cross")
+        merge_df_x = gp.GeoDataFrame(geometry=merge_df["geometry_x"])
+        merge_df_y = gp.GeoDataFrame(geometry=merge_df["geometry_y"])
+
+        # create the result matrix with the two id columns...
+        distance_matrix = merge_df[[self.o_id_col, self.d_id_col]]
+        # ... and default value 0 for the duration and distance column
+        distance_matrix[self._COL_DURATION] = 0
+        distance_matrix[self._COL_DISTANCE] = 0
+        # can process any geometry since it computes the centroid first
         for i in range(0, len(distance_matrix)):
-            Origins_latlon = "{},{}".format(
-                mergedf_x.centroid.y[i], mergedf_x.centroid.x[i]
+            origins_lat_lon = "{},{}".format(
+                merge_df_x.centroid.y[i], merge_df_x.centroid.x[i]
             )
-            Destinations_latlon = "{},{}".format(
-                mergedf_y.centroid.y[i], mergedf_y.centroid.x[i]
+            destinations_lat_lon = "{},{}".format(
+                merge_df_y.centroid.y[i], merge_df_y.centroid.x[i]
             )
-            Google_Request_Link = basestring.format(
-                Origins_latlon,
-                Destinations_latlon,
-                self.API_Key,
-                self.Travel_Mode.lower(),
+            google_request_link = self._BASE_URL.format(
+                origins_lat_lon,
+                destinations_lat_lon,
+                self.api_key,
+                self.travel_mode.lower(),
             )
-            Google_Travel_Cost = fetch_google_OD(Google_Request_Link)
-            distance_matrix.iloc[i, 2] = Google_Travel_Cost[0]
-            distance_matrix.iloc[i, 3] = Google_Travel_Cost[1]
-        distance_matrix[self._TIMECOST] /= 1.0
-        distance_matrix[self._DISTCOST] / 1.0
+            google_travel_cost = fetch_google_od(google_request_link)
+            # add duration result in minutes
+            distance_matrix.iat[i, 2] = google_travel_cost[0]
+            # add distance result in meters
+            distance_matrix.iat[i, 3] = google_travel_cost[1]
         return knut.to_table(distance_matrix)
 
 
@@ -354,7 +397,7 @@ class OSRMDriveMatrix:
         "Select the ID column for origin points.",
         # Allow only GeoValue compatible columns
         port_index=0,
-        column_filter=knut.is_int_or_string,
+        column_filter=knut.is_numeric_or_string,
         include_row_key=False,
         include_none_column=False,
     )
@@ -373,7 +416,7 @@ class OSRMDriveMatrix:
         "Select the ID  column for destination points.",
         # Allow only GeoValue compatible columns
         port_index=1,
-        column_filter=knut.is_int_or_string,
+        column_filter=knut.is_numeric_or_string,
         include_row_key=False,
         include_none_column=False,
     )
@@ -620,7 +663,7 @@ class StreetNetworkMatrix:
         "Select the ID column for origin points.",
         # Allow only GeoValue compatible columns
         port_index=0,
-        column_filter=knut.is_int_or_string,
+        column_filter=knut.is_numeric_or_string,
         include_row_key=False,
         include_none_column=False,
     )
@@ -639,7 +682,7 @@ class StreetNetworkMatrix:
         "Select the ID  column for destination points.",
         # Allow only GeoValue compatible columns
         port_index=1,
-        column_filter=knut.is_int_or_string,
+        column_filter=knut.is_numeric_or_string,
         include_row_key=False,
         include_none_column=False,
     )
@@ -943,7 +986,7 @@ class StreetNetworkMatrix:
                     lent.append(all_length[list(graph.nodes)[i2]])
                 else:
                     dist.append(999999)
-                    lent.append(999999)  
+                    lent.append(999999)
             data = {
                 "originkey": a["key"],
                 "destinationkey": b["key"],
