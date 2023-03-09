@@ -106,6 +106,30 @@ def negate(function):
     return new_function
 
 
+def boolean_or(*functions):
+    """
+    Return True if any of the given functions returns True
+    @return: True if any of the functions returns True
+    """
+
+    def new_function(*args, **kwargs):
+        return any(f(*args, **kwargs) for f in functions)
+
+    return new_function
+
+
+def boolean_and(*functions):
+    """
+    Return True if all of the given functions return True
+    @return: True if all of the functions return True
+    """
+
+    def new_function(*args, **kwargs):
+        return all(f(*args, **kwargs) for f in functions)
+
+    return new_function
+
+
 def is_numeric(column: knext.Column) -> bool:
     """
     Checks if column is numeric e.g. int, long or double.
@@ -139,12 +163,7 @@ def is_numeric_or_string(column: knext.Column) -> bool:
     Checks if column is numeric or string
     @return: True if Column is numeric or string
     """
-    return column.ktype in [
-        knext.double(),
-        knext.int32(),
-        knext.int64(),
-        knext.string(),
-    ]
+    return boolean_or(is_numeric, is_string)(column)
 
 
 def is_binary(column: knext.Column) -> bool:
@@ -240,6 +259,7 @@ def __is_type_x(column: knext.Column, type: str) -> bool:
         and type in column.ktype.logical_type
     )
 
+<<<<<<< Upstream, based on main
 def is_int_or_string(column: knext.Column) -> bool:
     """
     Checks if column is int or string
@@ -260,6 +280,8 @@ def is_geo_polygon_or_multi_polygon(column: knext.Column) -> bool:
         column, __CELL_TYPE_MULTI_POLYGON
     )
 
+=======
+>>>>>>> 348eada boolean_or and boolean_and function added
 
 ############################################
 # GeoPandas node class decorator
@@ -691,16 +713,147 @@ def get_env_path():
     gdf = gdf.reset_index(drop=True)
     return gdf
 
+<<<<<<< Upstream, based on main
 def validify_id_column(gdf,id_name) -> None:
+=======
+
+def validify_id_column(gdf, id_name) -> None:
+>>>>>>> 348eada boolean_or and boolean_and function added
     """Checks if the column contain duplicate values which might can not be used for ID column.
     if it is not valid, the index will be used as default"""
-    columnlist=gdf[id_name].to_list()
+    columnlist = gdf[id_name].to_list()
     uniquelist = set(columnlist)
-    if len(columnlist)!=len(uniquelist):
-        gdf[id_name]=range(gdf.shape[0])
-        knext.ExecutionContext.set_warning("Duplicated value found in ID column, using index as default ID column.")
+    if len(columnlist) != len(uniquelist):
+        gdf[id_name] = range(gdf.shape[0])
+        knext.ExecutionContext.set_warning(
+            "Duplicated value found in ID column, using index as default ID column."
+        )
     else:
         gdf = gdf.set_index(id_name, drop=False).sort_index().rename_axis(None)
     return gdf
 
+<<<<<<< Upstream, based on main
 >>>>>>> 6d2f91b revise spatial network and utility
+=======
+
+@knext.parameter_group(label="Output")
+class ResultSettings:
+    """
+    Group of settings that define the format of the result table.
+    """
+
+    class Mode(knext.EnumParameterOptions):
+        REPLACE = (
+            "Replace",
+            "Replace the selected input column with the result.",
+        )
+        APPEND = (
+            "Append",
+            "Append a new column with the name provided below.",
+        )
+
+        @classmethod
+        def get_default(cls):
+            return cls.REPLACE
+
+    mode = knext.EnumParameter(
+        label="Output column",
+        description="Choose where to place the result column:",
+        default_value=Mode.get_default().name,
+        enum=Mode,
+    )
+
+    new_column_name = knext.StringParameter(
+        "New column name",
+        "The name of the new column that is appended if 'Append' is selected.",
+        default_value="geometry",
+    )
+
+    def __init__(self, mode=Mode.get_default().name, new_name="geometry"):
+        self.mode = mode
+        self.new_column_name = new_name
+
+
+def get_result_schema(
+    self: ResultSettings,
+    configure_context: knext.ConfigurationContext,
+    schema: knext.Schema,
+    selected_col: knext.Column,
+    result_type,
+) -> knext.Schema:
+    """
+    Either replaces the selected column or appends a new column to the end.
+    """
+    if self.mode == ResultSettings.Mode.REPLACE.name:
+        col_names = schema.column_names
+        i = 0
+        while i < len(col_names):
+            if col_names[i] == selected_col:
+                result_schema = schema.remove(i)
+                return result_schema.insert(knext.Column(result_type, selected_col), i)
+            i += 1
+        raise knext.InvalidParametersError(
+            f"Selected column '{selected_col}' not found"
+        )
+    # make sure the appended column is unique
+    result_col = get_unique_column_name(self.new_column_name, schema)
+    return schema.append(knext.Column(result_type, result_col))
+
+
+def get_result_table(
+    self: ResultSettings,
+    exec_context: knext.ExecutionContext,
+    gdf: gp.GeoDataFrame,
+    selected_col: knext.Column,
+    result_col: str,
+) -> gp.GeoDataFrame:
+    """
+    Assumes that the result_col and the select_col are part of the input data frame.
+    The (altered) input data frame is returned.
+    """
+    if self.mode == ResultSettings.Mode.REPLACE.name:
+        check_canceled(exec_context)
+        exec_context.set_progress(0.9, "Replace input column with result column")
+        gdf[selected_col] = gdf[result_col]
+        gdf.drop(result_col, axis=1, inplace=True)
+        gdf.rename(columns={self.new_column_name: selected_col}, inplace=True)
+        return gdf
+    return gdf
+
+
+def get_computed_result_table(
+    self: ResultSettings,
+    exec_context: knext.ExecutionContext,
+    input_table: knext.Table,
+    selected_col: knext.Column,
+    func: Callable,
+) -> knext.Table:
+    """
+    Uses the given function to either append a new column or replace the existing column to the given input table and
+    returns the result as a table depending on the user chosen settings.
+    """
+    gdf = load_geo_data_frame(input_table, selected_col, exec_context)
+    gdf = get_computed_result_frame(
+        self, exec_context, input_table.schema, gdf, selected_col, func
+    )
+    return to_table(gdf, exec_context)
+
+
+def get_computed_result_frame(
+    self: ResultSettings,
+    exec_context: knext.ExecutionContext,
+    schema: knext.Schema,
+    gdf: gp.GeoDataFrame,
+    selected_col: knext.Column,
+    func: Callable,
+) -> knext.Table:
+    """
+    Uses the given function to either append a new column or replace the existing column to the given input
+    GeoDataFrame and returns the result as a table depending on the user chosen settings.
+    """
+    result_col = selected_col
+    if self.mode == ResultSettings.Mode.APPEND.name:
+        result_col = get_unique_column_name(self.new_column_name, schema)
+    gdf[result_col] = gdf.apply(lambda l: func(l[selected_col]), axis=1)
+    return gdf
+>>>>>>> 348eada boolean_or and boolean_and function added
