@@ -141,7 +141,7 @@ class SimpleMomepy:
 ############################################
 
 
-class _GoogleTravelModes(knext.EnumParameterOptions):
+class _GoogleTravelMode(knext.EnumParameterOptions):
     BICYCLING = (
         "Bicycling",
         """Requests bicycling directions or distance via bicycle paths & preferred streets (where available).
@@ -188,15 +188,13 @@ class _GoogleTravelModes(knext.EnumParameterOptions):
 )
 class GoogleDistanceMatrix:
     """
-    Google Distance Matrix with travel distance and time for a matrix of origins and destinations.
-    The [Google Distance Matrix API](https://developers.google.com/maps/documentation/distance-matrix/overview)
-    provides travel distance and time for a matrix of origins and destinations,
-    and consists of rows containing duration and distance values for each pair. The distance unit is meter and the
-    estimated travel time is returned in minutes.
-    The API returns information based on the recommended route between start and end points and provides different
-    travel modes.
+    This node uses the
+    [Google Distance Matrix API](https://developers.google.com/maps/documentation/distance-matrix/overview)
+    to create a distance matrix for the provided origins and destinations. The matrix is created by pairing each
+    input origin with each input destination and will contain the travel distance and time for each pair.
+    The distance unit is meter and the estimated travel time is returned in minutes.
 
-    If the input geometry is not a point feature, the centroids will be automatically computed and used.
+    If the input geometry is not a point geometry, the centroids will be automatically computed and used.
     """
 
     o_geo_col = knext.ColumnParameter(
@@ -247,8 +245,8 @@ class GoogleDistanceMatrix:
         """The following 
         [travel modes](https://developers.google.com/maps/documentation/distance-matrix/distance-matrix#mode) 
         are supported: """,
-        default_value=_GoogleTravelModes.get_default().name,
-        enum=_GoogleTravelModes,
+        default_value=_GoogleTravelMode.get_default().name,
+        enum=_GoogleTravelMode,
     )
     # Constant for distance matrix
     _COL_DURATION = "duration"
@@ -352,49 +350,93 @@ class GoogleDistanceMatrix:
 ############################################
 # OSRM
 ############################################
+
+
+class _OSRMResultModel(knext.EnumParameterOptions):
+    ROUTE = (
+        "Route",
+        "Returns only the travel route.",
+    )
+    TRAVEL = (
+        "Travel cost",
+        "Returns the drive distance in meters and travel time in minutes.",
+    )
+    TRAVEL_ROUTE = (
+        "Travel cost and route",
+        "Returns the drive distance in meters and travel time in minutes as well as the travel route.",
+    )
+
+    @classmethod
+    def get_default(cls):
+        return cls.TRAVEL
+
+    def append_route(self) -> bool:
+        return self is not _OSRMResultModel.TRAVEL
+
+    def append_distance(self) -> bool:
+        return self is not _OSRMResultModel.ROUTE
+
+
 @knext.node(
-    name="OSRM Matrix",
+    name="OSRM Distance Matrix",
     node_type=knext.NodeType.MANIPULATOR,
-    # node_type=knext.NodeType.MANIPULATOR,
     category=__category,
     icon_path=__NODE_ICON_PATH + "OSRMdistMatrix.png",
 )
 @knext.input_table(
-    name="Input Table as origin",
-    description="Input origin table with geometry.",
+    name="Input table with origins",
+    description="Input table with origin geometry and ID column.",
 )
 @knext.input_table(
-    name="Input Table as destination",
-    description="Input destination table with geometry.",
+    name="Input table with destinations",
+    description="Input table with destination geometry and ID column.",
 )
 @knext.output_table(
     name="Output Table",
-    description="Output table with driving Cost in Minutes and Meters.",
+    description="""Output table with the selected origin and destination ID columns and the corresponding travel costs
+    in minutes and meters as well as the travel route.""",
 )
-class OSRMDriveMatrix:
+class OSRMDistanceMatrix:
     """
-    This node can calculate the driving time, distance, or route of the shortest paths between the origin (left or upper input port)
-    and destination (right or lower input port) points based on the Open Source Routing Machine or [OSRM](https://project-osrm.org/),
-    which is a C++ implementation of a high-performance routing engine for shortest paths in road networks. It combines sophisticated
-    routing algorithms with the open and free road network data of the OpenStreetMap (OSM) project.
-    If the input geometry is not a point feature, the centroids will be used.
-    The output includes numerical indices for the source and destination that will serve as a common key for merging the data.
+    This node uses the [Open Source Routing Machine (OSRM)](https://project-osrm.org/) to create a distance matrix
+    for the provided origins and destinations. The matrix is created by pairing each input origin with each input
+    destination and will contain the driving travel distance and time as well as the
+    [route](http://project-osrm.org/docs/v5.5.1/api/?language=Python#route-service) for each pair.
+    The travel distance unit is meter and the estimated drive time is returned in minutes.
 
+    OSRM is a C++ implementation of a high-performance routing engine for shortest paths in road networks.
+    It combines sophisticated routing algorithms with the open and free road network data of the
+    [OpenStreetMap (OSM) project.](https://www.openstreetmap.org/about)
+
+    If the input geometry is not a point geometry, the centroids will be automatically computed and used.
+
+    #Usage Policy
+    The general usage policy and limitations of the OSRM service that is used by this node can be found
+    [here.](https://github.com/Project-OSRM/osrm-backend/wiki/Api-usage-policy) The current demo server is hosted
+    by [FOSSGIS](https://www.fossgis.de/) with the following
+    [terms of use (German).](https://www.fossgis.de/arbeitsgruppen/osm-server/nutzungsbedingungen/)
+
+    #Copyright
+    Data provided by [OpenStreetMap](https://www.openstreetmap.org/copyright)
+    [(ODbl)](https://opendatacommons.org/licenses/odbl/index.html) under
+    [CC-BY-SA](https://creativecommons.org/licenses/by-sa/2.0/).
+    To report a problem and contribute to OpenStreetMap click [here.](https://www.openstreetmap.org/fixthemap)
     """
 
     # input parameters
-    O_geo_col = knext.ColumnParameter(
-        "Origin Geometry Column(Points)",
-        "Select the geometry column as origin.",
+    o_geo_col = knext.ColumnParameter(
+        "Origin geometry column",
+        "Select the geometry column that describes the origins.",
         # Allow only GeoValue compatible columns
         port_index=0,
         column_filter=knut.is_geo,
         include_row_key=False,
         include_none_column=False,
     )
-    O_id_col = knext.ColumnParameter(
-        "Unique origin ID Column",
-        "Select the ID column for origin points.",
+    o_id_col = knext.ColumnParameter(
+        "Origin ID column",
+        """Select the column which contains for each origin a unique ID. The selected column will be returned
+        in the result table and can be used to link back to the original data.""",
         # Allow only GeoValue compatible columns
         port_index=0,
         column_filter=knut.is_numeric_or_string,
@@ -402,77 +444,101 @@ class OSRMDriveMatrix:
         include_none_column=False,
     )
 
-    D_geo_col = knext.ColumnParameter(
-        "Right geometry column",
-        "Select the geometry column as destination.",
+    d_geo_col = knext.ColumnParameter(
+        "Destination geometry column",
+        "Select the geometry column that describes the destinations.",
         # Allow only GeoValue compatible columns
         port_index=1,
         column_filter=knut.is_geo,
         include_row_key=False,
         include_none_column=False,
     )
-    D_id_col = knext.ColumnParameter(
-        "Unique destination ID column",
-        "Select the ID  column for destination points.",
+    d_id_col = knext.ColumnParameter(
+        "Destination ID column",
+        """Select the column which contains for each destination a unique ID. The selected column will be returned
+        in the result table and can be used to link back to the original data.""",
         # Allow only GeoValue compatible columns
         port_index=1,
         column_filter=knut.is_numeric_or_string,
         include_row_key=False,
         include_none_column=False,
     )
-    osrmmodel = knext.StringParameter(
-        label="Set Network Route Model",
-        description="""Available Model are: 
-        
-        - **Travel Cost:** contains drive distance in meters and travel time in minutes.
-        - **Route:** contains line feature for driving routes.
-        - **Travel Cost and Route:** contains both travel cost and route.
-
-""",
-        default_value="Travel Cost",
-        enum=[
-            "Travel Cost",
-            "Route",
-            "Travel Cost and Route",
-        ],
+    result_model = knext.EnumParameter(
+        label="Result model",
+        description="Supports the following result models:",
+        default_value=_OSRMResultModel.get_default().name,
+        enum=_OSRMResultModel,
     )
 
     # Constant for distance matrix
-    _OID = "originid"
-    _DID = "destinationid"
-    _TIMECOST = "duration"
-    _DISTCOST = "distance"
-    _GEONAME = "geometry"
+    _COL_DURATION = "duration"
+    _COL_DISTANCE = "distance"
+    _COL_GEOMETRY = "route"
 
-    def configure(self, configure_context, input_schema_1, input_schema_2):
-        self.O_geo_col = knut.column_exists_or_preset(
-            configure_context, self.O_geo_col, input_schema_1, knut.is_geo
+    # For details see: http://project-osrm.org/docs/v5.5.1/api/#route-service
+    _BASE_URL = "https://router.project-osrm.org"
+    # only supports car as profile: https://github.com/Project-OSRM/osrm-backend/issues/4034
+    _PROFILE = "driving"
+    # For details see: http://project-osrm.org/docs/v5.5.1/api/#route-service
+    _REQUEST_PARAMETER = {"continue_straight": "false"}
+
+    # number of pairs send per request
+    _BATCH_SIZE = 50
+    # Number of seconds to wait after each request
+    _REQUEST_DELAY = 1
+    # Request timeout
+    # do not send more than 1 request per second https://github.com/Project-OSRM/osrm-backend/wiki/Demo-server
+    _REQUEST_TIMEOUT = None
+
+    def configure(self, configure_context, o_schema, d_schema):
+        self.o_geo_col = knut.column_exists_or_preset(
+            configure_context, self.o_geo_col, o_schema, knut.is_geo
         )
-        self.D_geo_col = knut.column_exists_or_preset(
-            configure_context, self.D_geo_col, input_schema_2, knut.is_geo
+        knut.column_exists(self.o_id_col, o_schema)
+        o_id_type = o_schema[self.o_id_col].ktype
+
+        self.d_geo_col = knut.column_exists_or_preset(
+            configure_context, self.d_geo_col, d_schema, knut.is_geo
         )
-        return None
+        knut.column_exists(self.d_id_col, d_schema)
+        d_id_type = d_schema[self.d_id_col].ktype
+
+        model = _OSRMResultModel[self.result_model]
+
+        result_types = [o_id_type, d_id_type]
+        result_names = [self.o_id_col, self.d_id_col]
+        if model.append_distance():
+            result_types += [knext.double(), knext.double()]
+            result_names += [self._COL_DURATION, self._COL_DISTANCE]
+        if model.append_route():
+            result_types += [knut.TYPE_LINE]
+            result_names += [self._COL_GEOMETRY]
+        # check which model is selected
+        return knext.Schema(
+            result_types,
+            result_names,
+        )
 
     def execute(self, exec_context: knext.ExecutionContext, left_input, right_input):
 
         import pandas as pd
         from shapely.geometry import LineString
         import requests  # for OSRM
+        import time
         import json  # for OSRM
         import polyline
-        import logging
 
         # set digits for coordinates
-        def RoundCoordList(coordlist, digits):
-            coordlist = list(map(lambda x: [round(i, digits) for i in x], coordlist))
-            coordlist = [tuple(i) for i in coordlist]
-            return coordlist
+        def round_coord_list(coord_list, digits):
+            coord_list = list(map(lambda x: [round(i, digits) for i in x], coord_list))
+            coord_list = [tuple(i) for i in coord_list]
+            return coord_list
 
         # extract route geometry
-        def extractRoute(data):
+        def extract_route(data):
             from shapely.geometry import LineString
 
-            decodeline = polyline.decode(data["routes"][0]["geometry"])
+            decode_line = polyline.decode(data["routes"][0]["geometry"])
             # Extract the location coordinates from the 'waypoints' field
             coordinates = [
                 round(coord, 5)
@@ -483,124 +549,141 @@ class OSRMDriveMatrix:
                 (coordinates[i + 1], coordinates[i])
                 for i in range(0, len(coordinates), 2)
             ]
-            decodeline4 = RoundCoordList(decodeline, 4)
-            points4 = RoundCoordList(points, 4)
+            decode_line4 = round_coord_list(decode_line, 4)
+            points4 = round_coord_list(points, 4)
             indexes = []
             tag = 0
             for i in points4:
-                newline = decodeline4[tag:]
+                newline = decode_line4[tag:]
                 for j, p in enumerate(newline):
                     if i == p:
                         tag = j + tag
                         break
                 indexes.append(tag)
                 tag = tag + 1
-            redecodeline = [(y, x) for x, y in decodeline]
-            getRoutes = [
-                LineString(redecodeline[indexes[i] : (indexes[(i + 1)] + 1)])
+            re_decode_line = [(y, x) for x, y in decode_line]
+            routes = [
+                LineString(re_decode_line[indexes[i] : (indexes[(i + 1)] + 1)])
                 for i in range(0, len(indexes), 2)
             ]
-            return getRoutes
+            return routes
 
         # update travel cost and route geometry
-        def updatePart(df, ns, ne):
-            dfs = df.copy().loc[ns:ne]
-            dfs = dfs[["StartX", "StartY", "EndX", "EndY"]]
-            dfs = dfs.astype(str)
-            dfs["period"] = (
-                dfs["StartX"]
+        def update_part(model: _OSRMResultModel, df, ns, ne):
+            df_batch = df.copy().loc[ns:ne]
+            df_batch = df_batch[["StartX", "StartY", "EndX", "EndY"]]
+            df_batch = df_batch.astype(str)
+            df_batch["period"] = (
+                df_batch["StartX"]
                 + ","
-                + dfs["StartY"]
+                + df_batch["StartY"]
                 + ";"
-                + dfs["EndX"]
+                + df_batch["EndX"]
                 + ","
-                + dfs["EndY"]
+                + df_batch["EndY"]
             )
-            Querylist = [";".join(dfs["period"])]
-            address = osrm_route_service + Querylist[0]
+            # http://project-osrm.org/docs/v5.5.1/api/#route-service
+            coordinate_query_list = [";".join(df_batch["period"])]
+            request_url = (
+                self._BASE_URL
+                + "/route/v1/"
+                + self._PROFILE
+                + "/"
+                + coordinate_query_list[0]
+            )
+
             try:
                 r = requests.get(
-                    address, params={"continue_straight": "false"}, timeout=None
+                    request_url,
+                    params=self._REQUEST_PARAMETER,
+                    headers=knut.WEB_REQUEST_HEADER,
+                    timeout=self._REQUEST_TIMEOUT,
                 )
+                time.sleep(self._REQUEST_DELAY)
                 data = json.loads(r.text)
                 if data["code"] == "Ok":
-                    if self.osrmmodel != "Route":
+                    if model.append_distance():
                         dfr = pd.DataFrame(data["routes"][0]["legs"])[
-                            ["duration", "distance"]
+                            [self._COL_DURATION, self._COL_DISTANCE]
                         ].iloc[::2]
-                        df.loc[ns:ne, "duration"] = dfr.duration.to_list()
-                        df.loc[ns:ne, "distance"] = dfr.distance.to_list()
-                    if self.osrmmodel != "Travel Cost":
+                        # convert seconds to minutes
+                        dfr.duration /= 60
+                        df.loc[ns:ne, self._COL_DURATION] = dfr.duration.to_list()
+                        df.loc[ns:ne, self._COL_DISTANCE] = dfr.distance.to_list()
+                    if model.append_route():
                         # get route
-                        temproute = extractRoute(data)
+                        temp_route = extract_route(data)
                         # get route
-                        if len(temproute) == 1:
-                            df.loc[ns:ne, "geometry"] = temproute[0]
+                        if len(temp_route) == 1:
+                            df.loc[ns:ne, self._COL_GEOMETRY] = temp_route[0]
                         else:
-                            df.loc[ns:ne, "geometry"] = temproute
+                            df.loc[ns:ne, self._COL_GEOMETRY] = temp_route
                 else:
-                    print("error from:{} to :{}".format(ns, ne))
-            except:
-                print("error from:{} to :{}".format(ns, ne))
+                    knut.LOGGER.warning(f"No route found from:{ns} to :{ne}")
+            except Exception as err:
+                knut.LOGGER.warning(
+                    f"Error finding route from:{ns} to :{ne}. Error: {err}"
+                )
 
         # Cross join Data
-        Or_gdf = knut.load_geo_data_frame(left_input, self.O_geo_col, exec_context)
-        De_gdf = knut.load_geo_data_frame(right_input, self.D_geo_col, exec_context)
-        Or_gdf = knut.validify_id_column(Or_gdf, self.O_id_col)
-        De_gdf = knut.validify_id_column(De_gdf, self.D_id_col)
-        # Create new data and rename geometry
-        O_gdf = Or_gdf[[self.O_geo_col]].rename(columns={self.O_geo_col: "geometry"})
-        D_gdf = De_gdf[[self.D_geo_col]].rename(columns={self.D_geo_col: "geometry"})
+        o_gdf = knut.load_geo_data_frame(left_input, self.o_geo_col, exec_context)
+        d_gdf = knut.load_geo_data_frame(right_input, self.d_geo_col, exec_context)
+        o_gdf = knut.validify_id_column(o_gdf, self.o_id_col)
+        d_gdf = knut.validify_id_column(d_gdf, self.d_id_col)
 
-        # Set a lat\Lon CRS
-        O_gdf = O_gdf.to_crs(4326)
-        D_gdf = D_gdf.to_crs(4326)
-        # Generate ID
-        O_gdf[self._OID] = Or_gdf[self.O_id_col].to_list()
-        D_gdf[self._DID] = De_gdf[self.D_id_col].to_list()
+        # Set a lat\Lon CRS before renaming the geometry column
+        o_gdf = o_gdf.to_crs(4326)
+        d_gdf = d_gdf.to_crs(4326)
 
-        mergedf = O_gdf.merge(D_gdf, how="cross")
-        mergedf_x = gp.GeoDataFrame(geometry=mergedf["geometry_x"])
-        mergedf_y = gp.GeoDataFrame(geometry=mergedf["geometry_y"])
-        df = mergedf[[self._OID, self._DID]]
-        df["StartX"] = mergedf_x.centroid.x
-        df["StartY"] = mergedf_x.centroid.y
-        df["EndX"] = mergedf_y.centroid.x
-        df["EndY"] = mergedf_y.centroid.y
+        # Filter all columns except the needed once and rename the geometry column to have a consistent result in merge
+        o_gdf = o_gdf.filter(items=[self.o_geo_col, self.o_id_col]).rename(
+            columns={self.o_geo_col: "geometry"}
+        )
+        d_gdf = d_gdf.filter(items=[self.d_geo_col, self.d_id_col]).rename(
+            columns={self.d_geo_col: "geometry"}
+        )
+
+        # Generate origin destination matrix via cross join
+        merge_df = o_gdf.merge(d_gdf, how="cross")
+        merge_df_x = gp.GeoDataFrame(geometry=merge_df["geometry_x"])
+        merge_df_y = gp.GeoDataFrame(geometry=merge_df["geometry_y"])
+        df = merge_df[[self.o_id_col, self.d_id_col]]
+        df["StartX"] = merge_df_x.centroid.x
+        df["StartY"] = merge_df_x.centroid.y
+        df["EndX"] = merge_df_y.centroid.x
+        df["EndY"] = merge_df_y.centroid.y
         df = df.reset_index(drop=True)
-        # set minimun set
-        slnum = 50
-        nlength = df.shape[0]
-        nloop = nlength // slnum
-        ntail = nlength % slnum
-        if self.osrmmodel != "Route":
-            df["duration"] = 0.0
-            df["distance"] = 0.0
-        if self.osrmmodel != "Travel Cost":
-            df["geometry"] = LineString([(0, 0), (1, 1)])
-        osrm_route_service = "http://router.project-osrm.org/route/v1/driving/"
-        if nloop >= 1:
-            for i in range(nloop):
-                ns = slnum * i
-                ne = ns + slnum - 1
-                updatePart(df, ns, ne)
-        if ntail > 0:
-            ns = slnum * nloop
-            ne = ns + ntail - 1
-            updatePart(df, ns, ne)
+        # compute the batches
+        n_length = df.shape[0]
+        n_loop = n_length // self._BATCH_SIZE
+        n_tail = n_length % self._BATCH_SIZE
 
-        if self.osrmmodel == "Travel Cost":
-            gdf = df[[self._OID, self._DID, self._TIMECOST, self._DISTCOST]]
-            gdf[self._TIMECOST] /= 60
+        model = _OSRMResultModel[self.result_model]
+
+        if model.append_distance():
+            df[self._COL_DURATION] = 0.0
+            df[self._COL_DISTANCE] = 0.0
+        if model.append_route():
+            df[self._COL_GEOMETRY] = LineString([(0, 0), (1, 1)])
+
+        if n_loop >= 1:
+            for i in range(n_loop):
+                ns = self._BATCH_SIZE * i
+                ne = ns + self._BATCH_SIZE - 1
+                update_part(model, df, ns, ne)
+        if n_tail > 0:
+            ns = self._BATCH_SIZE * n_loop
+            ne = ns + n_tail - 1
+            update_part(model, df, ns, ne)
+
+        # remove the origin and destination columns
+        rdf = df.loc[:, ~df.columns.isin(["StartX", "StartY", "EndX", "EndY"])]
+        if model.append_route():
+            gdf = gp.GeoDataFrame(rdf, geometry=self._COL_GEOMETRY, crs=4326)
         else:
-            if self.osrmmodel == "Route":
-                df1 = df[[self._OID, self._DID]]
-            else:
-                df1 = df[[self._OID, self._DID, self._TIMECOST, self._DISTCOST]]
-                df1[self._TIMECOST] /= 60
-            gdf = gp.GeoDataFrame(df1, geometry=df.geometry, crs=4326)
+            gdf = rdf
 
-        return knut.to_table(gdf)
+        return knut.to_table(gdf, exec_context)
 
 
 ############################################
