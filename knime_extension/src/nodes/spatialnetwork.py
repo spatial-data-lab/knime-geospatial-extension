@@ -519,111 +519,110 @@ class OSRMDistanceMatrix:
             result_names,
         )
 
+    # set digits for coordinates
+    def round_coord_list(self, coord_list, digits):
+        coord_list = list(map(lambda x: [round(i, digits) for i in x], coord_list))
+        coord_list = [tuple(i) for i in coord_list]
+        return coord_list
+
+    # extract route geometry
+    def extract_route(self, data):
+
+        import polyline
+        from shapely.geometry import LineString
+
+        decode_line = polyline.decode(data["routes"][0]["geometry"])
+        # Extract the location coordinates from the 'waypoints' field
+        coordinates = [
+            round(coord, 5)
+            for waypoint in data["waypoints"]
+            for coord in waypoint["location"]
+        ]
+        points = [
+            (coordinates[i + 1], coordinates[i]) for i in range(0, len(coordinates), 2)
+        ]
+        decode_line4 = self.round_coord_list(decode_line, 4)
+        points4 = self.round_coord_list(points, 4)
+        indexes = []
+        tag = 0
+        for i in points4:
+            newline = decode_line4[tag:]
+            for j, p in enumerate(newline):
+                if i == p:
+                    tag = j + tag
+                    break
+            indexes.append(tag)
+            tag = tag + 1
+        re_decode_line = [(y, x) for x, y in decode_line]
+        routes = [
+            LineString(re_decode_line[indexes[i] : (indexes[(i + 1)] + 1)])
+            for i in range(0, len(indexes), 2)
+        ]
+        return routes
+
+    # update travel cost and route geometry for the given batch of the given dataframe
+    def update_part(self, model: _OSRMResultModel, df, ns, ne):
+        import requests
+        import time
+        import json
+        import pandas as pd
+
+        df_batch = df.copy().loc[ns:ne]
+        df_batch = df_batch[["StartX", "StartY", "EndX", "EndY"]]
+        df_batch = df_batch.astype(str)
+        df_batch["period"] = (
+            df_batch["StartX"]
+            + ","
+            + df_batch["StartY"]
+            + ";"
+            + df_batch["EndX"]
+            + ","
+            + df_batch["EndY"]
+        )
+        # http://project-osrm.org/docs/v5.5.1/api/#route-service
+        coordinate_query_list = [";".join(df_batch["period"])]
+        request_url = (
+            self._BASE_URL
+            + "/route/v1/"
+            + self._PROFILE
+            + "/"
+            + coordinate_query_list[0]
+        )
+
+        try:
+            r = requests.get(
+                request_url,
+                params=self._REQUEST_PARAMETER,
+                headers=knut.WEB_REQUEST_HEADER,
+                timeout=self._REQUEST_TIMEOUT,
+            )
+            time.sleep(self._REQUEST_DELAY)
+            data = json.loads(r.text)
+            if data["code"] == "Ok":
+                if model.append_distance():
+                    dfr = pd.DataFrame(data["routes"][0]["legs"])[
+                        [self._COL_DURATION, self._COL_DISTANCE]
+                    ].iloc[::2]
+                    # convert seconds to minutes
+                    dfr.duration /= 60
+                    df.loc[ns:ne, self._COL_DURATION] = dfr.duration.to_list()
+                    df.loc[ns:ne, self._COL_DISTANCE] = dfr.distance.to_list()
+                if model.append_route():
+                    # get route
+                    temp_route = self.extract_route(data)
+                    # get route
+                    if len(temp_route) == 1:
+                        df.loc[ns:ne, self._COL_GEOMETRY] = temp_route[0]
+                    else:
+                        df.loc[ns:ne, self._COL_GEOMETRY] = temp_route
+            else:
+                knut.LOGGER.warning(f"No route found from:{ns} to :{ne}")
+        except Exception as err:
+            knut.LOGGER.warning(f"Error finding route from:{ns} to :{ne}. Error: {err}")
+
     def execute(self, exec_context: knext.ExecutionContext, left_input, right_input):
 
-        import pandas as pd
         from shapely.geometry import LineString
-        import requests  # for OSRM
-        import time
-        import json  # for OSRM
-        import polyline
-
-        # set digits for coordinates
-        def round_coord_list(coord_list, digits):
-            coord_list = list(map(lambda x: [round(i, digits) for i in x], coord_list))
-            coord_list = [tuple(i) for i in coord_list]
-            return coord_list
-
-        # extract route geometry
-        def extract_route(data):
-            from shapely.geometry import LineString
-
-            decode_line = polyline.decode(data["routes"][0]["geometry"])
-            # Extract the location coordinates from the 'waypoints' field
-            coordinates = [
-                round(coord, 5)
-                for waypoint in data["waypoints"]
-                for coord in waypoint["location"]
-            ]
-            points = [
-                (coordinates[i + 1], coordinates[i])
-                for i in range(0, len(coordinates), 2)
-            ]
-            decode_line4 = round_coord_list(decode_line, 4)
-            points4 = round_coord_list(points, 4)
-            indexes = []
-            tag = 0
-            for i in points4:
-                newline = decode_line4[tag:]
-                for j, p in enumerate(newline):
-                    if i == p:
-                        tag = j + tag
-                        break
-                indexes.append(tag)
-                tag = tag + 1
-            re_decode_line = [(y, x) for x, y in decode_line]
-            routes = [
-                LineString(re_decode_line[indexes[i] : (indexes[(i + 1)] + 1)])
-                for i in range(0, len(indexes), 2)
-            ]
-            return routes
-
-        # update travel cost and route geometry
-        def update_part(model: _OSRMResultModel, df, ns, ne):
-            df_batch = df.copy().loc[ns:ne]
-            df_batch = df_batch[["StartX", "StartY", "EndX", "EndY"]]
-            df_batch = df_batch.astype(str)
-            df_batch["period"] = (
-                df_batch["StartX"]
-                + ","
-                + df_batch["StartY"]
-                + ";"
-                + df_batch["EndX"]
-                + ","
-                + df_batch["EndY"]
-            )
-            # http://project-osrm.org/docs/v5.5.1/api/#route-service
-            coordinate_query_list = [";".join(df_batch["period"])]
-            request_url = (
-                self._BASE_URL
-                + "/route/v1/"
-                + self._PROFILE
-                + "/"
-                + coordinate_query_list[0]
-            )
-
-            try:
-                r = requests.get(
-                    request_url,
-                    params=self._REQUEST_PARAMETER,
-                    headers=knut.WEB_REQUEST_HEADER,
-                    timeout=self._REQUEST_TIMEOUT,
-                )
-                time.sleep(self._REQUEST_DELAY)
-                data = json.loads(r.text)
-                if data["code"] == "Ok":
-                    if model.append_distance():
-                        dfr = pd.DataFrame(data["routes"][0]["legs"])[
-                            [self._COL_DURATION, self._COL_DISTANCE]
-                        ].iloc[::2]
-                        # convert seconds to minutes
-                        dfr.duration /= 60
-                        df.loc[ns:ne, self._COL_DURATION] = dfr.duration.to_list()
-                        df.loc[ns:ne, self._COL_DISTANCE] = dfr.distance.to_list()
-                    if model.append_route():
-                        # get route
-                        temp_route = extract_route(data)
-                        # get route
-                        if len(temp_route) == 1:
-                            df.loc[ns:ne, self._COL_GEOMETRY] = temp_route[0]
-                        else:
-                            df.loc[ns:ne, self._COL_GEOMETRY] = temp_route
-                else:
-                    knut.LOGGER.warning(f"No route found from:{ns} to :{ne}")
-            except Exception as err:
-                knut.LOGGER.warning(
-                    f"Error finding route from:{ns} to :{ne}. Error: {err}"
-                )
 
         # Cross join Data
         o_gdf = knut.load_geo_data_frame(left_input, self.o_geo_col, exec_context)
@@ -666,15 +665,26 @@ class OSRMDistanceMatrix:
         if model.append_route():
             df[self._COL_GEOMETRY] = LineString([(0, 0), (1, 1)])
 
+        # loop over the different batches
         if n_loop >= 1:
             for i in range(n_loop):
                 ns = self._BATCH_SIZE * i
                 ne = ns + self._BATCH_SIZE - 1
-                update_part(model, df, ns, ne)
+                self.update_part(model, df, ns, ne)
+                # i starts with 0
+                process_counter = i + 1
+                exec_context.set_progress(
+                    0.9 * process_counter / n_loop,
+                    f"Batch {process_counter} of {n_loop} processed",
+                )
+                knut.check_canceled(exec_context)
+        # process the remaining rows
         if n_tail > 0:
+            exec_context.set_progress(0.95, "Processing left over batch")
+            knut.check_canceled(exec_context)
             ns = self._BATCH_SIZE * n_loop
             ne = ns + n_tail - 1
-            update_part(model, df, ns, ne)
+            self.update_part(model, df, ns, ne)
 
         # remove the origin and destination columns
         rdf = df.loc[:, ~df.columns.isin(["StartX", "StartY", "EndX", "EndY"])]
