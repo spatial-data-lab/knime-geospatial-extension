@@ -456,7 +456,11 @@ def load_geo_data_frame(
         exec_context.set_progress(0.0, load_msg)
     gdf = gp.GeoDataFrame(input_table.to_pandas(), geometry=column)
     if exec_context:
+<<<<<<< Upstream, based on main
         exec_context.set_progress(0.2, done_msg)
+=======
+        exec_context.set_progress(0.1, done_msg)
+>>>>>>> 0626608 Change data frame conversion process form 0.3 to 0.1
     return gdf
 
 
