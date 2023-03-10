@@ -17,6 +17,39 @@ from shapely.geometry import GeometryCollection
 
 LOGGER = logging.getLogger(__name__)
 
+<<<<<<< Upstream, based on main
+=======
+DEFAULT_CRS = "epsg:4326"
+"""Default coordinate reference system."""
+
+DEF_CRS_DESCRIPTION = """Enter the 
+        [Coordinate reference system (CRS)](https://en.wikipedia.org/wiki/Spatial_reference_system) to use.
+
+        Common [EPSG codes](https://en.wikipedia.org/wiki/EPSG_Geodetic_Parameter_Dataset) that can be universally 
+        used for mapping coordinates everywhere in the world are 
+        [epsg:4326 (WGS 84, Unit: degree)](https://epsg.io/4326) (Latitude/longitude coordinate system based 
+        on the Earth's center of mass;  Used by the Global Positioning System among others) and 
+        [epsg:3857 (Unit: meter)](https://epsg.io/3857) (Web Mercator projection used by many web-based mapping tools,
+        including Google Maps and OpenStreetMap.). 
+        
+        There are EPSG codes for specific regions that provide a higher accuracy in these regions, such as 
+        [epsg:4269 (NAD83, Unit: degree)](https://epsg.io/4269) 
+        and [epsg:26918 (NAD83 18N, Unit: meter)](https://epsg.io/26918) for North America, 
+        and [epsg:4490 (CGCS2000, Unit: degree)](https://epsg.io/4490) 
+        and [epsg:4479 (CGCS2000, Unit: meter)](https://epsg.io/4479) for China.
+        
+        The input field supports the following input types:
+        
+        - An authority string [i.e. 'epsg:4326']
+        - An EPSG integer code [i.e. 4326]
+        - A tuple of ('auth_name': 'auth_code') [i.e ('epsg', '4326')]
+        - [CRS WKT string](https://www.ogc.org/standards/wkt-crs)
+        - [PROJ string](https://proj.org/usage/quickstart.html)
+        - JSON string with [PROJ parameters](https://proj.org/specifications/projjson.html)
+        """
+
+WEB_REQUEST_HEADER = {"User-Agent": "KNIME-Geospatial/1.1"}
+>>>>>>> 0691d87 Add web request header and copyright and attribution to osm and census
 
 ############################################
 # Geometry value types
@@ -310,13 +343,15 @@ def geo_node_description(short_description: str, description: str, references: d
 
 def census_node_description(short_description: str, description: str, references: dict):
     """This decorator takes the provided information and generates a standardized node description
-    for nodes that are based on GeoPandas functionality."""
+    for nodes that are based on US Census data."""
 
     def set_description(node_factory):
         s = f"{short_description}\n"
         s += f"{description}\n\n"
         # s += "___\n\n"  # separator line between description and general part
-        s += "The node is based on the data from [US Census](https://www.census.gov/) and [FIPS code](https://www.census.gov/library/reference/code-lists/ansi.html) and here are related data sources and references"
+        s += "The node is based on the data from [US Census](https://www.census.gov/) and "
+        s += "[FIPS code](https://www.census.gov/library/reference/code-lists/ansi.html) "
+        s += "and uses the following related information and functions:"
         if references is not None:
             if len(references) > 1:
                 s += "s"
@@ -324,6 +359,9 @@ def census_node_description(short_description: str, description: str, references
             s += "\n\n"
             for key in references:
                 s += f"- [{key}]({references[key]})\n"
+        s += "\n\n#Attribution\n"
+        s += "This product uses the Census Bureau Data API but is not endorsed or certified by the Census Bureau."
+        s += "For the terms of service click [here.](https://www.census.gov/data/developers/about/terms-of-service.html)"
         node_factory.__doc__ = s
         return node_factory
 
@@ -332,13 +370,15 @@ def census_node_description(short_description: str, description: str, references
 
 def osm_node_description(short_description: str, description: str, references: dict):
     """This decorator takes the provided information and generates a standardized node description
-    for nodes that are based on GeoPandas functionality."""
+    for nodes that are based on OpenStreetMap data. It also places the proper copyright notice which
+    is necessary."""
 
     def set_description(node_factory):
         s = f"{short_description}\n"
         s += f"{description}\n\n"
         # s += "___\n\n"  # separator line between description and general part
-        s += "The node is based on the project [OSMnx](https://github.com/gboeing/osmnx)  and here are related tools and references"
+        s += "The node is based on the [OpenStreetMap project](https://www.openstreetmap.org/about) "
+        s += "and uses the following related information and functions:"
         if references is not None:
             if len(references) > 1:
                 s += "s"
@@ -346,6 +386,11 @@ def osm_node_description(short_description: str, description: str, references: d
             s += "\n\n"
             for key in references:
                 s += f"- [{key}]({references[key]})\n"
+        s += "\n\n#Copyright\n"
+        s += "Data provided by [OpenStreetMap](https://www.openstreetmap.org/copyright)"
+        s += "[(ODbl)](https://opendatacommons.org/licenses/odbl/index.html) under "
+        s += "[CC-BY-SA.](https://creativecommons.org/licenses/by-sa/2.0/)"
+        s += "To report a problem and contribute to OpenStreetMap click [here.](https://www.openstreetmap.org/fixthemap)"
         node_factory.__doc__ = s
         return node_factory
 
