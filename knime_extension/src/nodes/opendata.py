@@ -16,6 +16,7 @@ __category = knext.category(
 # Root path for all node icons in this file
 __NODE_ICON_PATH = "icons/icon/OpenDataset/"
 
+
 ############################################
 # US2020 TIGER/Line for states
 ############################################
@@ -32,11 +33,11 @@ __NODE_ICON_PATH = "icons/icon/OpenDataset/"
 )
 @knut.census_node_description(
     short_description="Retrieve geospatial data from US Census TIGER/Line",
-    description="This node retrieves the specific geospatial boundaries for one specific state of the United States."
-    + "The popular TIGER/Line levels are Block group, Roads, Blocks,Tracts."
-    + "When the same State FIPS (2-digits) or * is used for County FIPS(3-digits), the geodata of all counties in the state will be retrieved,"
-    + "county10/20 and state10/20 can only be applicable in this case. "
-    + "This node can help user to get the FIPS codes of target study area. Linking it to Geospatial View node will be more helpful. ",
+    description="""This node retrieves the specific geospatial boundaries for one specific state of the United States.
+        The popular TIGER/Line levels are Block group, Roads, Blocks,Tracts.
+        When the same State FIPS (2-digits) or * is used for County FIPS(3-digits), the geodata of all counties in the state will be retrieved,
+        county10/20 and state10/20 can only be applicable in this case. 
+        This node can help user to get the FIPS codes of target study area. Linking it to Geospatial View node will be more helpful. """,
     references={
         "TIGER/Line Shapefiles": "https://www.census.gov/geographies/mapping-files/time-series/geo/tiger-line-file.2020.html",
         "FTP Archive by State": "https://www2.census.gov/geo/tiger/TIGER2020PL/STATE/",
@@ -240,12 +241,12 @@ class US2020TIGERNode:
 )
 @knut.census_node_description(
     short_description="Retrieve US 2020 Census Redistricting Data for one specific state of United States.",
-    description="This node retrieve US 2020 Census Redistricting Data (Decennial Census P.L. 94-171 Redistricting Data)."
-    + "This node provides all variables such as population and household information in US Census 2020 data base."
-    + "The default variable names are GEO_ID (geography), P1_001N(Total Population), P1_003N(Population of one race:!!White alone),"
-    + "P1_004N(Black or African American alone), H1_001N(Total Housing Units), H1_002 (Total Occupied Housing Units)."
-    + "Only if county is chosen for geography, then * can be input in  State FIPS (2-digits) to retrieve all the county level data of all states."
-    + "Before using the node, user need to sign up and get a census api key first by clicking the following hyperlink",
+    description="""This node retrieve US 2020 Census Redistricting Data (Decennial Census P.L. 94-171 Redistricting Data).
+        This node provides all variables such as population and household information in US Census 2020 data base.
+        The default variable names are GEO_ID (geography), P1_001N(Total Population), P1_003N(Population of one race:!!White alone),
+        P1_004N(Black or African American alone), H1_001N(Total Housing Units), H1_002 (Total Occupied Housing Units).
+        Only if county is chosen for geography, then * can be input in  State FIPS (2-digits) to retrieve all the county level data of all states.
+        Before using the node, user need to sign up and get a census api key first by clicking the following hyperlink""",
     references={
         "Census API Key Sign Up": "https://api.census.gov/data/key_signup.html",
         "Decennial Census P.L. 94-171 Redistricting Data": "https://www.census.gov/programs-surveys/decennial-census/about/rdo/summary-files.html",
@@ -347,14 +348,14 @@ For more details about the format and the conversion see
 )
 @knut.census_node_description(
     short_description="Retrieve American Community Survey 5-Year Data (2009-2020) of United States.",
-    description="This node retrieve American Community Survey 5-Year Data (2009-2020)."
-    + "The American Community Survey (ACS) is an ongoing survey that provides data every year -- giving "
-    + "communities the current information they need to plan investments and services. The ACS covers a broad "
-    + "range of topics about social, economic, demographic, and housing characteristics of the U.S. population."
-    + "The 5-year estimates from the ACS are period estimates that represent data collected over a period of "
-    + "time. The primary advantage of using multiyear estimates is the increased statistical reliability of the data "
-    + "for less populated areas and small population subgroups. "
-    + " The 5-year estimates are available for all geographies down to the block group level.",
+    description="""This node retrieve American Community Survey 5-Year Data (2009-2020).
+        The American Community Survey (ACS) is an ongoing survey that provides data every year -- giving 
+        communities the current information they need to plan investments and services. The ACS covers a broad 
+        range of topics about social, economic, demographic, and housing characteristics of the U.S. population.
+        The 5-year estimates from the ACS are period estimates that represent data collected over a period of 
+        time. The primary advantage of using multiyear estimates is the increased statistical reliability of the data 
+        for less populated areas and small population subgroups. 
+        The 5-year estimates are available for all geographies down to the block group level.""",
     references={
         "Census API Key Sign Up": "https://api.census.gov/data/key_signup.html",
         "American Community Survey 5-Year Data (2009-2020)": "https://www.census.gov/data/developers/data-sets/acs-5year.html",
@@ -485,16 +486,18 @@ def get_osmnx():
 )
 @knut.osm_node_description(
     short_description="Get Points of Interests(POIs) from the Open Street Map.",
-    description="This node downloads geospatial entities’ geometries and attributes from OpenStreetMap."
-    + "Results returned are the union, not intersection of each individual tag. Each result matches at least one given tag. "
-    + "The dict keys should be OSM tags, (e.g., building, landuse, highway, etc) and the dict values should be either True "
-    + "to retrieve all items with the given tag, or a string to get a single tag-value combination, or a list of strings to get"
-    + " multiple values for the given tag. For example, tags = {‘building’: True} would return all building footprints in the area."
-    + " tags = {‘amenity’:True, ‘landuse’:[‘retail’,’commercial’], ‘highway’:’bus_stop’} would return all amenities, landuse=retail, "
-    + "landuse=commercial, and highway=bus_stop.",
+    description="""This node downloads geospatial entities’ geometries and attributes from [OpenStreetMap](https://www.openstreetmap.org/about).
+Results returned are the union, not intersection of each individual tag. Each result matches at least one given tag. 
+The dict keys should be OSM tags, (e.g., building, landuse, highway, etc) and the dict values should be either True 
+to retrieve all items with the given tag, or a string to get a single tag-value combination, or a list of strings to get
+multiple values for the given tag. For example, tags = {‘building’: True} would return all building footprints in the area.
+tags = {‘amenity’:True, ‘landuse’:[‘retail’,’commercial’], ‘highway’:’bus_stop’} would return all amenities, landuse=retail, 
+landuse=commercial, and highway=bus_stop.
+""",
     references={
+        "OSMnx": "https://github.com/gboeing/osmnx",
         "osmnx.geometries_from_place": "https://osmnx.readthedocs.io/en/stable/osmnx.html#module-osmnx.geometries",
-        "Open Street Map Taginfo": "https://taginfo.openstreetmap.org/ ",
+        "OpenStreetMap Taginfo": "https://taginfo.openstreetmap.org/ ",
     },
 )
 class OSMdataNode:
@@ -562,10 +565,12 @@ class OSMdataNode:
 )
 @knut.osm_node_description(
     short_description="Get Road Network from the Open Street Map.",
-    description="This node downloads a geospatial network and its attributes from OpenStreetMap."
-    + "If the network type of drive is used for query, it will use the module add_edge_speeds to append the speed information directly. "
-    + "The total travel time for the segment will be calculated as well with the module add_edge_travel_times. ",
+    description="""This node downloads a geospatial network and its attributes from [OpenStreetMap](https://www.openstreetmap.org/about).
+If the network type of drive is used for query, it will use the module add_edge_speeds to append the speed information directly. 
+The total travel time for the segment will be calculated as well with the module add_edge_travel_times. 
+""",
     references={
+        "OSMnx": "https://github.com/gboeing/osmnx",
         "osmnx.graph.graph_from_polygon": "https://osmnx.readthedocs.io/en/stable/osmnx.html#module-osmnx.graph",
         "osmnx.speed.add_edge_speeds": "https://osmnx.readthedocs.io/en/stable/osmnx.html#module-osmnx.speed ",
     },
@@ -636,12 +641,14 @@ class OSMnetworkNode:
     description="Boundary of places from the Open Street Map",
 )
 @knut.osm_node_description(
-    short_description="Get Boundary from the Open Street Map with Geocoding.",
-    description="This node gets place boundary from OpenStreetMap by the geocoding place name."
-    + "If the query argument is a list, then which_result should be either a single value or a list with the same length as the query."
-    + "The queries you provide must be resolvable to places in the [Nominatim database](https://nominatim.org/). "
-    + " The resulting GeoDataFrame’s geometry column contains place boundaries if they exist in OpenStreetMap.",
+    short_description="Get Boundary from OpenStreetMap with Geocoding.",
+    description="""This node gets place boundary from [OpenStreetMap](https://www.openstreetmap.org/about) by the geocoding place name.
+If the query argument is a list, then which_result should be either a single value or a list with the same length as the query.
+The queries you provide must be resolvable to places in the [Nominatim database](https://nominatim.org/).
+The resulting GeoDataFrame’s geometry column contains place boundaries if they exist in OpenStreetMap.
+""",
     references={
+        "OSMnx": "https://github.com/gboeing/osmnx",
         "osmnx.geocoder.geocode_to_gdf": "https://osmnx.readthedocs.io/en/stable/osmnx.html?highlight=geocode_to_gdf#module-osmnx.geocoder",
     },
 )
