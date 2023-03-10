@@ -359,8 +359,8 @@ def census_node_description(short_description: str, description: str, references
             s += "\n\n"
             for key in references:
                 s += f"- [{key}]({references[key]})\n"
-        s += "\n\n#Attribution\n"
-        s += "This product uses the Census Bureau Data API but is not endorsed or certified by the Census Bureau."
+        s += "\n\n##Note\n"
+        s += "This node uses the Census Bureau Data API but is not endorsed or certified by the Census Bureau. "
         s += "For the terms of service click [here.](https://www.census.gov/data/developers/about/terms-of-service.html)"
         node_factory.__doc__ = s
         return node_factory
@@ -386,11 +386,15 @@ def osm_node_description(short_description: str, description: str, references: d
             s += "\n\n"
             for key in references:
                 s += f"- [{key}]({references[key]})\n"
-        s += "\n\n#Copyright\n"
-        s += "Data provided by [OpenStreetMap](https://www.openstreetmap.org/copyright)"
-        s += "[(ODbl)](https://opendatacommons.org/licenses/odbl/index.html) under "
+        s += "\n\n##Note\n"
+        s += (
+            "Data copyright by [OpenStreetMap](https://www.openstreetmap.org/copyright)"
+        )
+        s += "[(ODbl)](https://opendatacommons.org/licenses/odbl/index.html) and provided under "
         s += "[CC-BY-SA.](https://creativecommons.org/licenses/by-sa/2.0/)"
         s += "To report a problem and contribute to OpenStreetMap click [here.](https://www.openstreetmap.org/fixthemap)"
+        s += "Please note the OpenStreetMap licence and attribution guidelines as described "
+        s += "[here.](https://wiki.osmfoundation.org/wiki/Licence/Attribution_Guidelines)"
         node_factory.__doc__ = s
         return node_factory
 
