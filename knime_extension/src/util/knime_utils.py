@@ -770,8 +770,12 @@ def get_env_path():
 def validify_id_column(gdf,id_name) -> None:
 =======
 
+<<<<<<< Upstream, based on main
 def validify_id_column(gdf, id_name) -> None:
 >>>>>>> 348eada boolean_or and boolean_and function added
+=======
+def valid_id_column(gdf, id_name) -> None:
+>>>>>>> fad7c86 validify_id_column -> valid_id_column
     """Checks if the column contain duplicate values which might can not be used for ID column.
     if it is not valid, the index will be used as default"""
     columnlist = gdf[id_name].to_list()
