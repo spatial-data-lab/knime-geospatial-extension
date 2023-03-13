@@ -565,7 +565,7 @@ class OSMdataNode:
 )
 @knut.osm_node_description(
     short_description="Get Road Network from the Open Street Map.",
-    description="""This node downloads a geospatial network and its attributes from [OpenStreetMap](https://www.openstreetmap.org/about).
+    description="""This node downloads a geospatial network and its attributes from [OpenStreetMap.](https://www.openstreetmap.org/about)
 If the network type of drive is used for query, it will use the module add_edge_speeds to append the speed information directly. 
 The total travel time for the segment will be calculated as well with the module add_edge_travel_times. 
 """,
