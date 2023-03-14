@@ -1,7 +1,7 @@
 import geopandas as gp
 import knime_extension as knext
 import util.knime_utils as knut
-
+import util.modeling_utils as mut
 
 __category = knext.category(
     path="/community/geo",
@@ -280,20 +280,20 @@ class VariableSetting:
     )
 
 
-@knext.parameter_group(label="ID Setting")
-class IDSetting:
-    """
-    The unique ID column. It should always keep the same as the ID column in the spatial weights matrix node.
-    The selected column should contain unique IDs for each observation in the input data.
+# @knext.parameter_group(label="ID Setting")
+# class IDSetting:
+#     """
+#     The unique ID column. It should always keep the same as the ID column in the spatial weights matrix node.
+#     The selected column should contain unique IDs for each observation in the input data.
 
-    """
+#     """
 
-    Field_col = knext.ColumnParameter(
-        "ID column",
-        "The selected column should contain unique IDs for each observation in the input data. It should always keep the same as the ID column in the spatial weights matrix node.",
-        # column_filter=knut.is_numeric,
-        include_none_column=True,
-    )
+# Field_col = knext.ColumnParameter(
+#     "ID column",
+#     "The selected column should contain unique IDs for each observation in the input data. It should always keep the same as the ID column in the spatial weights matrix node.",
+#     # column_filter=knut.is_numeric,
+#     include_none_column=True,
+# )
 
 
 ############################################
@@ -341,7 +341,12 @@ class GlobalMoransI:
         description="The column containing the geometry to use for the spatial weights matrix."
     )
 
-    id_col_setting = IDSetting()
+    Field_col = knext.ColumnParameter(
+        "ID column",
+        "The selected column should contain unique IDs for each observation in the input data. It should always keep the same as the ID column in the spatial weights matrix node.",
+        # column_filter=knut.is_numeric,
+        include_none_column=True,
+    )
 
     variable_setting = VariableSetting()
 
@@ -355,9 +360,9 @@ class GlobalMoransI:
         gdf = gp.GeoDataFrame(input_1.to_pandas(), geometry=self.geo_col)
         adjust_list = input_2.to_pandas()
 
-        if "none" not in str(self.id_col_setting.Field_col).lower():
-            adjust_list = knut.re_order_weight_rows(
-                gdf=gdf, adjust_list=adjust_list, id_col=self.id_col_setting.Field_col
+        if "none" not in str(self.Field_col).lower():
+            adjust_list = mut.re_order_weight_rows(
+                gdf=gdf, adjust_list=adjust_list, id_col=self.Field_col
             )
 
         from libpysal.weights import W
@@ -433,7 +438,12 @@ class LocalMoransI:
         description="The column containing the geometry to use for local Moran's I.",
     )
 
-    id_col_setting = IDSetting()
+    Field_col = knext.ColumnParameter(
+        "ID column",
+        "The selected column should contain unique IDs for each observation in the input data. It should always keep the same as the ID column in the spatial weights matrix node.",
+        # column_filter=knut.is_numeric,
+        include_none_column=True,
+    )
 
     variable_setting = VariableSetting()
 
@@ -447,9 +457,9 @@ class LocalMoransI:
         gdf = gp.GeoDataFrame(input_1.to_pandas(), geometry=self.geo_col)
         adjust_list = input_2.to_pandas()
 
-        if "none" not in str(self.id_col_setting.Field_col).lower():
-            adjust_list = knut.re_order_weight_rows(
-                gdf=gdf, adjust_list=adjust_list, id_col=self.id_col_setting.Field_col
+        if "none" not in str(self.Field_col).lower():
+            adjust_list = mut.re_order_weight_rows(
+                gdf=gdf, adjust_list=adjust_list, id_col=self.Field_col
             )
 
         from libpysal.weights import W
@@ -556,7 +566,12 @@ class GlobalGearysC:
         description="The column containing the geometry to use for global Geary’s C.",
     )
 
-    id_col_setting = IDSetting()
+    Field_col = knext.ColumnParameter(
+        "ID column",
+        "The selected column should contain unique IDs for each observation in the input data. It should always keep the same as the ID column in the spatial weights matrix node.",
+        # column_filter=knut.is_numeric,
+        include_none_column=True,
+    )
 
     variable_setting = VariableSetting()
 
@@ -570,9 +585,9 @@ class GlobalGearysC:
         gdf = gp.GeoDataFrame(input_1.to_pandas(), geometry=self.geo_col)
         adjust_list = input_2.to_pandas()
 
-        if "none" not in str(self.id_col_setting.Field_col).lower():
-            adjust_list = knut.re_order_weight_rows(
-                gdf=gdf, adjust_list=adjust_list, id_col=self.id_col_setting.Field_col
+        if "none" not in str(self.Field_col).lower():
+            adjust_list = mut.re_order_weight_rows(
+                gdf=gdf, adjust_list=adjust_list, id_col=self.Field_col
             )
 
         from libpysal.weights import W
@@ -653,7 +668,12 @@ class GlobalGetisOrd:
         description="The column containing the geometry to use for global Getis-Ord.",
     )
 
-    id_col_setting = IDSetting()
+    Field_col = knext.ColumnParameter(
+        "ID column",
+        "The selected column should contain unique IDs for each observation in the input data. It should always keep the same as the ID column in the spatial weights matrix node.",
+        # column_filter=knut.is_numeric,
+        include_none_column=True,
+    )
 
     variable_setting = VariableSetting()
 
@@ -667,9 +687,9 @@ class GlobalGetisOrd:
         gdf = gp.GeoDataFrame(input_1.to_pandas(), geometry=self.geo_col)
         adjust_list = input_2.to_pandas()
 
-        if "none" not in str(self.id_col_setting.Field_col).lower():
-            adjust_list = knut.re_order_weight_rows(
-                gdf=gdf, adjust_list=adjust_list, id_col=self.id_col_setting.Field_col
+        if "none" not in str(self.Field_col).lower():
+            adjust_list = mut.re_order_weight_rows(
+                gdf=gdf, adjust_list=adjust_list, id_col=self.Field_col
             )
 
         from libpysal.weights import W
@@ -750,7 +770,12 @@ class LocalGetisOrd:
         description="The column containing the geometry to use for local Getis-Ord.",
     )
 
-    id_col_setting = IDSetting()
+    Field_col = knext.ColumnParameter(
+        "ID column",
+        "The selected column should contain unique IDs for each observation in the input data. It should always keep the same as the ID column in the spatial weights matrix node.",
+        # column_filter=knut.is_numeric,
+        include_none_column=True,
+    )
 
     variable_setting = VariableSetting()
 
@@ -764,9 +789,9 @@ class LocalGetisOrd:
         gdf = gp.GeoDataFrame(input_1.to_pandas(), geometry=self.geo_col)
         adjust_list = input_2.to_pandas()
 
-        if "none" not in str(self.id_col_setting.Field_col).lower():
-            adjust_list = knut.re_order_weight_rows(
-                gdf=gdf, adjust_list=adjust_list, id_col=self.id_col_setting.Field_col
+        if "none" not in str(self.Field_col).lower():
+            adjust_list = mut.re_order_weight_rows(
+                gdf=gdf, adjust_list=adjust_list, id_col=self.Field_col
             )
 
         from libpysal.weights import W

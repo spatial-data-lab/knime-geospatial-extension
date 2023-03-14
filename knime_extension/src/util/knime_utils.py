@@ -121,15 +121,19 @@ def typed_geo_col_parameter(
         include_none_column=False,
     )
 
+
 def negate(function):
     """
-    Negates the incoming function e.g. negate(is_numeric) can be used in a column parameter to allow the user 
-    to select from all none numeric columns. 
+    Negates the incoming function e.g. negate(is_numeric) can be used in a column parameter to allow the user
+    to select from all none numeric columns.
     @return: the negated input function e.g. if the input function returns true this function returns false
     """
+
     def new_function(*args, **kwargs):
-       return not function(*args, **kwargs)
+        return not function(*args, **kwargs)
+
     return new_function
+
 
 def is_numeric(column: knext.Column) -> bool:
     """
@@ -550,25 +554,3 @@ def Turn_all_NA_column_as_str(gdf) -> None:
         gdf[Nacol] = gdf[Nacol].astype(str)
     gdf = gdf.reset_index(drop=True)
     return gdf
-
-def re_order_weight_rows(gdf,adjust_list,id_col):
-    """
-    Reorder the spatial weight according to the id_col.
-    """
-    # Reorder the rows based on the weight column
-    import libpysal
-
-    gdf.index = range(len(gdf))
-    w_ref = libpysal.weights.Rook.from_dataframe(gdf)
-    id_map = gdf[id_col].to_dict()
-    w_ref.transform = "r"
-    adjust_list_ref = w_ref.to_adjlist()
-    for k, row in adjust_list_ref.iterrows():
-        focal = id_map[row["focal"]]
-        neighbor = id_map[row["neighbor"]]
-        row["weight"] = adjust_list[
-            (adjust_list["focal"] == focal)
-            & (adjust_list["neighbor"] == neighbor)
-        ]["weight"]
-
-    return adjust_list_ref
