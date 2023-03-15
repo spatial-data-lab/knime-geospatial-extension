@@ -62,7 +62,7 @@ class ColorSettings:
 
     color_map = knext.StringParameter(
         "Color map",
-        """Select the color map to use for the color column. `xxx_r` mean the reverse of the `xxx` colormap. 
+        """Select the color map to use for the color column. `xxx_r` mean the reverse of the `xxx` color map. 
         See [Colormaps in Matplotlib](https://matplotlib.org/stable/tutorials/colors/colormaps.html)""",
         default_value="viridis",
         enum=[
