@@ -1,5 +1,22 @@
 # The root category of all Geospatial categories
 import knime_extension as knext
+import util.knime_utils as knut
+
+
+# this section is used for things that need to be executed prior any of the nodes is used e.g. global setups such as
+# setting lookup directories etc.
+def __initialize_pyproj():
+    """
+    Attach the bundled pyproj_db
+    """
+    import pyproj
+    import os.path as os
+
+    pyproj_path = os.join(knut.get_env_path(), "Library\share\proj")
+    pyproj.datadir.set_data_dir(pyproj_path)
+
+
+__initialize_pyproj()
 
 # This defines the root Geospatial KNIME category that is displayed in the node repository
 category = knext.category(
@@ -27,5 +44,6 @@ import nodes.spatialnetwork
 
 # collection of deprecated nodes
 import nodes.deprecated
+
 
 # import nodes.geolab

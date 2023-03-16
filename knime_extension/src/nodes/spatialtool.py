@@ -776,7 +776,6 @@ class EuclideanDistanceNode:
         )
         import pyproj
 
-        knut.attach_pyproj_db()
         if self.crs_info != "":
             newcrs = pyproj.CRS.from_user_input(self.crs_info)
             right_gdf.to_crs(newcrs, inplace=True)
