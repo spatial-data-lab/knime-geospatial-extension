@@ -220,10 +220,8 @@ class US2020TIGERNode:
                 self.geofile = "prisecroads"
             data_url = f"{base_url}{Statepath}/{County5Fips}/tl_2020_{County5Fips}_{self.geofile}.zip"
         gdf = gp.read_file(data_url)
-        gdf1 = gdf.reset_index(drop=True)
-        # Transform the NA columns to string
-        gdf1 = knut.Turn_all_NA_column_as_str(gdf1)
-        return knext.Table.from_pandas(gdf1)
+        gdf.reset_index(drop=True, inplace=True)
+        return knext.Table.from_pandas(gdf)
 
 
 ############################################
