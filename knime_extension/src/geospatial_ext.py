@@ -1,6 +1,7 @@
 # The root category of all Geospatial categories
 import knime_extension as knext
 import util.knime_utils as knut
+import sys
 
 
 # this section is used for things that need to be executed prior any of the nodes is used e.g. global setups such as
@@ -17,6 +18,15 @@ def __initialize_pyproj():
 
 
 __initialize_pyproj()
+
+# Fake the libpysal.examples import to prevent it from downloading data from the internet which might cause problems
+# in environments without internet access: https://github.com/spatial-data-lab/knime-geospatial-extension/issues/165
+class __LibpysalExamplesModuleMock:
+    pass
+
+
+sys.modules["libpysal.examples"] = __LibpysalExamplesModuleMock()
+
 
 # This defines the root Geospatial KNIME category that is displayed in the node repository
 category = knext.category(
