@@ -687,12 +687,3 @@ def get_env_path():
     exec_path = sys.executable
     env_path = os.dirname(exec_path)
     return env_path
-
-def attach_pyproj_db():
-    """
-    Attach the bundled pyproj_db
-    """
-    import pyproj
-    import os.path as os
-    pyproj_path = os.join(get_env_path(), "Library\share\proj")
-    pyproj.datadir.set_data_dir(pyproj_path)

@@ -85,7 +85,6 @@ class CrsTransformerNode:
         )
 
     def execute(self, exec_context: knext.ExecutionContext, input_table):
-        knut.attach_pyproj_db()
         gdf = knut.load_geo_data_frame(input_table, self.geo_col, exec_context)
         if self.result_settings.mode == knut.ResultSettings.Mode.APPEND.name:
             result_col = knut.get_unique_column_name(
