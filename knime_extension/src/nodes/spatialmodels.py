@@ -77,6 +77,7 @@ class Spatial2SLSModel:
         "The selected column should contain unique IDs for each observation in the input data. It should always keep the same as the ID column in the spatial weights matrix node.",
         # column_filter=knut.is_numeric,
         include_none_column=True,
+        since_version="1.1.0",
     )
 
     dependent_variable = knext.ColumnParameter(

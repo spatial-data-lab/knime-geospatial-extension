@@ -76,6 +76,7 @@ class spatialWeights:
     
         """,
         include_none_column=True,
+        since_version="1.1.0",
     )
 
     category = knext.StringParameter(
@@ -148,7 +149,8 @@ class spatialWeights:
     Nearest_k = knext.IntParameter(
         "Nearest k",
         "The number of nearest neighbors to use for constructing k-nearest neighbors weights. Defaults to 4.",
-        4,
+        default_value=4,
+        since_version="1.1.0",
     )
 
     Kernel_K = knext.IntParameter(
