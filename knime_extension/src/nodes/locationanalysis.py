@@ -635,3 +635,202 @@ class MCLPNode:
         DemandPt = DemandPt.drop(columns=["linxy", "SIDcoord"])
         DemandPt = DemandPt.reset_index(drop=True)
         return knext.Table.from_pandas(DemandPt)
+
+
+
+############################################
+# Location-allocation MAEP Solver
+############################################
+@knext.node(
+    name="MAEP Solver",
+    node_type=knext.NodeType.PREDICTOR,
+    icon_path=__NODE_ICON_PATH + "MAEP.png",
+    category=__category,
+    after="",
+)
+@knext.input_table(
+    name="Input tabale for demand and new facilities",
+    description="""The table MUST contain m rows and (k+1) columns, 
+    with the first column representing demand (e.g., population) 
+    and the remaining k columns representing the distance 
+    between each demand location and each new facility.
+    """,
+)
+@knext.input_table(
+    name="Input OD matrix for existing facilities ",
+    description="""The table contains the origin-destination (OD) matrix for demand locations(m) to all existing facilities(n) .
+    This table MUST have m rows and n columns, with each entry representing the distance between a demand location and an existing facility.
+    """,
+)
+@knext.input_table(
+    name="Input capacity table for existing facilities ",
+    description="""The table provides information on the supply capacity of each existing facility.
+    This table can be used in conjunction with the other input tables to determine the optimal location of 
+    new facilities while taking into account the capacity constraints of existing facilities.
+    Please ensure that the order of rows in the capacity column is consistent with the order of columns OD Matrix for Existing Facilities.
+    """,
+)
+@knext.output_table(
+    name="P-median result table",
+    description="candidate column name and chosen status(1/0)",
+)
+@knut.pulp_node_description(
+    short_description="maximal accessibility equality problem (MAEP)",
+    description="""The optimization objective of MAEP is to minimize inequality in accessibility of facilities 
+    and is currently formulated as minimal variance across geographic areas. Specifically, 
+    it becomes a nonlinear programming (NLP) or quadratic programming (QP).
+    The MAEP problem will be solved by cvxopt package. 
+    """,
+    references={
+        "cvxopt": "https://cvxopt.org/",
+    },
+)
+class MAEPSolverNode:
+
+    Newcapacity = knext.DoubleParameter(
+        "Input new capacity",
+        "New resource or capacility for facilities .",
+    )
+    Demand = knext.ColumnParameter(
+        "Demand column",
+        "The column for demand(e.g.,population). ",
+        port_index=0,
+        column_filter=knut.is_numeric,
+        include_row_key=False,
+        include_none_column=False,
+    )
+
+    Supply = knext.ColumnParameter(
+        "Column for supply facility",
+        "Travel cost column of  required facility or Travel cost column of nearest required facilities. ",
+        port_index=2,
+        column_filter=knut.is_numeric,
+        include_row_key=False,
+        include_none_column=False,
+    )
+
+    Decaymodel = knext.StringParameter(
+        label="Distance decay model",
+        description="The model representing distance decay effect. ",
+        default_value="Power",
+        enum=[
+            "Power",
+            "Exponential",
+            "2SFCA",
+        ],
+    )
+    Decaypara = knext.DoubleParameter(
+        "Distance decay parameters",
+        "It works for the parameters for the chosen corresponding models",
+    )
+
+    def configure(
+        self, configure_context, input_schema_1, input_schema_2, input_schema_3
+    ):
+        return knext.Schema.from_columns(
+            [
+                knext.Column(knext.string(), "FacilityID"),
+                knext.Column(knext.double(), "All"),
+                knext.Column(knext.double(), "Fixed"),
+            ]
+        )
+
+    def execute(self, exec_context: knext.ExecutionContext, input_1, input_2, input_3):
+        df1 = gp.GeoDataFrame(input_1.to_pandas()).reset_index(drop=True)
+        df2 = gp.GeoDataFrame(input_2.to_pandas()).reset_index(drop=True)
+        df3 = gp.GeoDataFrame(input_3.to_pandas()).reset_index(drop=True)
+        import numpy as np
+        import math
+        import cvxopt
+        import pandas as pd
+
+        D = df1[self.Demand]
+
+        dist = pd.concat([df2, df1.drop(columns=[self.Demand])], axis=1)
+        fixhosp = df3[self.Supply]
+
+        # Calcualte indicators
+        fixH = fixhosp.shape[0]
+        fixcapacity = fixhosp.sum()
+        demand_popu = D.sum()
+        NewCapacity = 7200
+        Totalcapacity = fixcapacity + self.Newcapacity
+        ave_accessibility = Totalcapacity / demand_popu
+        supplypt = dist.shape[1]
+        demandpt = D.shape[0]
+        newH = supplypt - fixH
+        # Convert D dataframe to matrix
+        dij = dist.values
+        if self.Decaymodel == "Power":
+            fij = np.power(dij, (-1 * self.Decaypara))
+        elif self.Decaymodel == "Exponential":
+            math.exp(-1 * self.Decaypara * dij)
+            fij = np.power(dij, (-1 * self.Decaypara))
+        else:
+            fij = np.where(fij <= self.Decaypara, 1, 0)
+
+        Dfij = fij * D.values.reshape(-1, 1)
+        # Compute the row sums
+        Dfij_sums = Dfij.sum(axis=0)
+        # Divide each value by its corresponding row sum
+        Fij = np.divide(fij, Dfij_sums)
+
+        vec_D = D.values.squeeze()
+        D = np.diag(vec_D)
+        A = np.ones((demandpt, 1)) @ np.reshape(
+            ave_accessibility, (1,)
+        )  # compute average accessibility
+
+        # Compute optimization problem parameters
+        Dmat = Fij.T @ D @ Fij
+        dvec = Fij.T @ D @ A
+        dvec = dvec * -1
+
+        # Ax = b, Gx ≤ h, here, B=E, x=S, d=supply_popu
+        A1 = np.ones((1, supplypt))
+        b1 = np.array([Totalcapacity])
+        # AA = np.diag(np.ones(supplypt))
+        G1 = np.identity(supplypt)
+        np.fill_diagonal(G1, -1)
+        h1 = np.zeros((supplypt, 1))
+
+        # Define the quadratic objective function
+        Q = cvxopt.matrix(Dmat)
+        p = cvxopt.matrix(dvec)
+
+        # Define the constraints
+        G = cvxopt.matrix(G1)
+        h = cvxopt.matrix(h1)
+        A = cvxopt.matrix(A1)
+        b = cvxopt.matrix(b1)
+
+        # Solve the QP problem
+        solution = cvxopt.solvers.qp(Q, p, G, h, A, b)
+
+        # Extract the solution
+        x = solution["x"]
+        A2 = np.identity(supplypt)
+        A2 = A2[:fixH, :]
+        G2 = np.identity(supplypt)
+        np.fill_diagonal(G2, -1)
+        G2 = G2[fixH:, :]
+        h2 = np.zeros((newH, 1))
+
+        print(G2.shape)
+
+        # build constraints
+        A3 = np.vstack((A1, A2))
+        b2 = np.hstack((b1, fixhosp.values.flatten()))
+        # Define the constraints
+        Gn = cvxopt.matrix(G2)
+        hn = cvxopt.matrix(h2)
+        An = cvxopt.matrix(A3)
+        bn = cvxopt.matrix(b2)
+
+        # Solve the QP problem
+        solution = cvxopt.solvers.qp(Q, p, Gn, hn, An, bn)
+        # Extract the solution
+        x1 = solution["x"]
+        dff = pd.DataFrame({"FacilityID": dist.columns, "All": x, "Fixed": x1})
+
+        return knext.Table.from_pandas(dff)
