@@ -374,7 +374,7 @@ class PointsToLineNode:
         self.seiral_col = knut.column_exists_or_preset(
             configure_context, self.seiral_col, input_schema, knut.is_numeric
         )
-        return None
+        return gNone
 
     def execute(self, exec_context: knext.ExecutionContext, input):
         gdf = gp.GeoDataFrame(input.to_pandas(), geometry=self.geo_col)
@@ -465,3 +465,154 @@ class GeometryToMultiPointNode:
         return self.result_settings.get_computed_result_table(
             exec_context, input_table, self.geo_col, lambda l: MultiPoint(l.coords)
         )
+    
+
+############################################
+# Create points in polygon
+############################################
+
+
+@knext.node(
+    name="Create Random Points",
+    node_type=knext.NodeType.MANIPULATOR,
+    icon_path="icons/icon/GeometryTransformation/RandomPoint.png",
+    category=category,
+    after="",
+)
+@knext.input_table(
+    name="Geo table",
+    description="Table with geometry column.",
+)
+@knext.output_table(
+    name="Transformed geo table",
+    description="Table with transformed geometry column.",
+)
+@knut.geo_node_description(
+    short_description="This node generate random points in polygons.",
+    description="""This node generate random points in polygons.
+    The list of coordinates that describe a geometry are represented as the CoordinateSequence object in Shapely 
+    which is the dependence of GeoPandas. 
+    The Create Random Points node enables you to generate random points inside polygons based on a numerical value column and an ID column.
+    It allows you to create a more realistic representation of geographic data.
+    The numerical value column is used to determine the number of points to be generated inside each polygon.
+      Additionally, you will need to provide an ID column that will be used to identify each polygon.
+      The node will create a new MultiPoint geometry that includes a random set of points for each polygon,which can be exploded into Points by the node Multipart To Singlepart.
+    """,
+    references={
+        "Coordinate sequences": "https://shapely.readthedocs.io/en/stable/manual.html",
+    },
+)
+class RandomPointNode:
+    """
+    This node generate points from the polygons.
+    """
+
+    geo_col = knext.ColumnParameter(
+        "Geometry column",
+        "Select the geometry column to transform.",
+        # Allow only GeoValue compatible columns
+        column_filter=knut.is_geo,
+        include_row_key=False,
+        include_none_column=False,
+    )
+    num_col = knext.ColumnParameter(
+        "Number column",
+        "Select the integer column for the number of points.",
+        # Allow only GeoValue compatible columns
+        column_filter=knut.is_int,
+        include_row_key=False,
+        include_none_column=False,
+    )
+    id_col = knext.ColumnParameter(
+        "Unique ID column",
+        "Select the column as polygon ID for points.",
+        # Allow only GeoValue compatible columns
+        column_filter=knut.is_int_or_string,
+        include_row_key=False,
+        include_none_column=False,
+    )
+
+    def configure(self, configure_context, input_schema_1):
+        self.geo_col = knut.column_exists_or_preset(
+            configure_context, self.geo_col, input_schema_1, knut.is_geo
+        )
+        return None
+
+    def execute(self, exec_context: knext.ExecutionContext, input_1):
+        gdf = gp.GeoDataFrame(input_1.to_pandas(), geometry=self.geo_col)
+        gdf = gdf[(gdf[self.num_col] >= 1) & (gdf.area > 0)].reset_index(drop=True)
+
+        import random
+        from shapely.geometry import box, Point, MultiPoint
+        import pandas as pd
+        import numpy as np
+        import math
+        from itertools import product
+
+        def off(n, x):
+            return np.array([random.uniform(-0.5 * x, 0.5 * x) for _ in range(n)])
+
+        def offset_sample(pt, n, grid_size_x, grid_size_y):
+            indices = np.random.choice(len(pt), size=n)
+            x = pt.x[indices] + off(n, grid_size_x)
+            y = pt.y[indices] + off(n, grid_size_y)
+            pointf = gp.GeoSeries(gp.points_from_xy(x, y)).unary_union
+            return pointf
+
+        def offset_point(pt, n, grid_size_x, grid_size_y, polygon):
+            points0 = []
+            loop = math.ceil(n / len(pt)) + 1
+            for i in range(loop):
+                x = pt.x + off(len(pt), grid_size_x)
+                y = pt.y + off(len(pt), grid_size_y)
+                pointx = gp.GeoSeries(gp.points_from_xy(x, y))
+                points0.extend(pointx)
+            points1 = gp.GeoSeries(points0).unary_union.intersection(polygon)
+            points1 = gp.GeoSeries(points1).explode(index_parts=True).values
+            pointf = offset_sample(points1, n, grid_size_x, grid_size_y)
+            return pointf
+
+        # define a function to generate grid cells for a single row
+        def generate_points(row, num_col):
+            polygon = row.geometry
+            n = int(row[num_col])
+            bbox = polygon.bounds
+            ncol = 10 if n < 30 else 30
+            x_grid = np.linspace(bbox[0], bbox[2], ncol + 1)
+            y_grid = np.linspace(bbox[1], bbox[3], ncol + 1)
+            grid_size_x = (bbox[2] - bbox[0]) / ncol
+            grid_size_y = (bbox[3] - bbox[1]) / ncol
+            grid = pd.DataFrame(list(product(x_grid, y_grid)), columns=["x", "y"])
+            pointinter = (
+                gp.points_from_xy(grid.x, grid.y).unary_union().intersection(polygon)
+            )
+            points = gp.GeoSeries(pointinter).explode(index_parts=True).values
+            if len(points) >= n:
+                return offset_sample(points, n, grid_size_x, grid_size_y)
+            else:
+                return offset_point(points, n, grid_size_x, grid_size_y, polygon)
+
+        exec_context.set_progress(0.2, "Geo data frame loaded. Starting explosion...")
+
+        # Generate all representative_point for point =1
+        gdf1 = gdf[gdf[self.num_col] == 1]
+        if gdf1.shape[0] > 0:
+            gdf1 = gp.GeoDataFrame(
+                gdf1[self.id_col], geometry=gdf1.representative_point(), crs=gdf.crs
+            )
+        else:
+            gdf1 = gp.GeoDataFrame()
+        exec_context.set_progress(0.3, "Geo data frame loaded. Starting explosion...")
+        gdf2 = gdf[gdf[self.num_col] > 1]
+        if gdf1.shape[0] > 0:
+            points_df = gdf2.apply(
+                lambda row: generate_points(row, self.num_col), axis=1
+            )
+            gdf3 = gp.GeoDataFrame(gdf2[self.id_col], geometry=points_df, crs=gdf.crs)
+        else:
+            gdf3 = gp.GeoDataFrame()
+        dfs = pd.concat([gdf1, gdf3], axis=0)
+        dfs.sort_values(by=[self.id_col], inplace=True)
+        dfs.reset_index(drop=True, inplace=True)
+        return knext.Table.from_pandas(dfs)
+
