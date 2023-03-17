@@ -917,7 +917,52 @@ class RoadNetworkDistanceMatrix:
             axis=1,
         )
         return gdf
+    
+    # check isolated node
+    def connectgraph(G, threshold=1):
+        import math
+        import networkx as nx
+        from shapely.geometry import  LineString
+        def distance(node1, node2):
+            x1, y1 = node1
+            x2, y2 = node2
+            dx = x2 - x1
+            dy = y2 - y1
+            return math.sqrt(dx * dx + dy * dy)
 
+        # check if the graph is connected
+        if not nx.is_connected(G):
+            print("The graph is not connected.")
+            # find the connected components
+            components = list(nx.connected_components(G))
+            # add edges between the unconnected components
+            for i in range(len(components)):
+                for j in range(i + 1, len(components)):
+                    component_i = components[i]
+                    component_j = components[j]
+                    edges = []
+                    for node_i in component_i:
+                        for node_j in component_j:
+                            # check if the nodes are close to each other (optional)
+                            if distance(node_i, node_j) < threshold:
+                                line = LineString([node_i, node_j])
+                                # add the edge with geometry and other attributes
+                                G.add_edge(
+                                    node_i,
+                                    node_j,
+                                    geometry=line,
+                                    time=0,
+                                    length=0,
+                                    mm_len=0,
+                                )
+                                edges.append((node_i, node_j))
+            # check if the graph is now connected
+            if nx.is_connected(G):
+                print("The graph is now connected.")
+            else:
+                print("The graph is still not connected.")
+        return G
+    
     def configure(
         self,
         configure_context,
@@ -1056,7 +1101,7 @@ class RoadNetworkDistanceMatrix:
 
         # Convert geoDataFrame to Graph with MomePy
         graph = SimpleMomepy.gdf_to_nx(edges)
-
+        graph = self.connectgraph(graph)
         # Save geoDataFrame back to Points and Edges
         nodes1, edges1 = SimpleMomepy.nx_to_gdf(
             graph, points=True, lines=True, spatial_weights=False
