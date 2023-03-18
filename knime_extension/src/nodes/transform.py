@@ -490,16 +490,13 @@ class GeometryToMultiPointNode:
 @knut.geo_node_description(
     short_description="This node generate random points in polygons.",
     description="""This node generate random points in polygons.
-    The list of coordinates that describe a geometry are represented as the CoordinateSequence object in Shapely 
-    which is the dependence of GeoPandas. 
     The Create Random Points node enables you to generate random points inside polygons based on a numerical value column and an ID column.
-    It allows you to create a more realistic representation of geographic data.
     The numerical value column is used to determine the number of points to be generated inside each polygon.
-      Additionally, you will need to provide an ID column that will be used to identify each polygon.
-      The node will create a new MultiPoint geometry that includes a random set of points for each polygon,which can be exploded into Points by the node Multipart To Singlepart.
+    Additionally, you will need to provide an ID column that will be used to identify each polygon.
+    The node will create a new MultiPoint geometry that includes a random set of points for each polygon,which can be exploded into Points by the node Multipart To Singlepart.
     """,
     references={
-        "Coordinate sequences": "https://shapely.readthedocs.io/en/stable/manual.html",
+        "Spatial Relationships": "https://shapely.readthedocs.io/en/stable/manual.html",
     },
 )
 class RandomPointNode:
