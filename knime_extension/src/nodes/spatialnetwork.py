@@ -739,6 +739,27 @@ class RoadNetworkDistanceMatrix:
 
     If the input geometry is not a point geometry, the centroids will be automatically computed and used.
     """
+    class UnitModes(knext.EnumParameterOptions):
+        METER_SECOND = (
+            "Meter/second(m/s)",
+            "Meters per second.",
+        )
+        MILE_HOUR = (
+            "Miles/hour(mph)",
+            "Miles per hour.",
+        )
+        KM_HOUR = (
+            "kilometers/hour(km/h)",
+            "Kilometers per hour.",
+        )
+        DEFAULT_UNIT = (
+            "Default unit",
+            "Default unit of selected speed column.",
+        )
+
+        @classmethod
+        def get_default(cls):
+            return cls.KM_HOUR
 
     # input parameters
     o_geo_col = knext.ColumnParameter(
@@ -800,7 +821,12 @@ class RoadNetworkDistanceMatrix:
         include_row_key=False,
         include_none_column=False,
     )
-
+    speedunit = knext.EnumParameter(
+        label="Speed unit",
+        description="The unit for speed column",
+        default_value=UnitModes.get_default().name,
+        enum=UnitModes,
+    )
     # Constant for distance matrix
     _COL_O_SNAP = "Origin snap distance"
     _COL_D_SNAP = "Destination snap distance"
@@ -919,7 +945,7 @@ class RoadNetworkDistanceMatrix:
         return gdf
     
     # check isolated node
-    def connectgraph(G, threshold=1):
+    def connectgraph(self, G, threshold=1):
         import math
         import networkx as nx
         from shapely.geometry import  LineString
@@ -1041,6 +1067,15 @@ class RoadNetworkDistanceMatrix:
 
         r_gdf = r_gdf.dropna(subset=["geometry"], how="any")
 
+        if self.speedunit == self.UnitModes.METER_SECOND.name:
+            r_gdf["speed"] = r_gdf.speed * 60
+        elif self.speedunit == self.UnitModes.MILE_HOUR.name:
+            r_gdf["speed"] = r_gdf.speed * 26.8224
+        elif self.speedunit == self.UnitModes.KM_HOUR.name:
+            r_gdf["speed"] = r_gdf.speed * 16.6667
+        else:
+            r_gdf["speed"] = r_gdf.speed * 1
+            
         # ensure that origin and destination are points
         o_gdf["geometry"] = o_gdf.geometry.centroid
         d_gdf["geometry"] = d_gdf.geometry.centroid
