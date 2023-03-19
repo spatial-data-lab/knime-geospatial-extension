@@ -601,7 +601,7 @@ class RandomPointNode:
             gdf1 = gp.GeoDataFrame()
         exec_context.set_progress(0.3, "Geo data frame loaded. Starting explosion...")
         gdf2 = gdf[gdf[self.num_col] > 1]
-        if gdf1.shape[0] > 0:
+        if gdf2.shape[0] > 0:
             points_df = gdf2.apply(
                 lambda row: generate_points(row, self.num_col), axis=1
             )
