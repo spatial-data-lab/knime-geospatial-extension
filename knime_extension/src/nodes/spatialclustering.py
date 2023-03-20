@@ -8,7 +8,7 @@ __category = knext.category(
     name="Spatial Clustering",
     description="Spatial Clustering (Regionalization).",
     # starting at the root folder of the extension_module parameter in the knime.yml file
-    icon="icons/icon/SpatialclusterCategroy.png",
+    icon="icons/icon/SpatialclusteringCategory.png",
     after="opendataset",
 )
 
