@@ -78,7 +78,7 @@ class BufferNode2:
     )
 
     result_settings = knut.ResultSettings(
-        "Result", "1.1.0", None, knut.ResultSettings.Mode.APPEND.name, "buffered"
+        "Result", "1.1.0", None, False, knut.ResultSettings.Mode.APPEND.name, "buffered"
     )
 
     def __init__(self):
@@ -522,7 +522,7 @@ class ClipNode:
     )
 
     result_settings = knut.ResultSettings(
-        "Result", "1.1.0", None, knut.ResultSettings.Mode.REPLACE.name, "clipped"
+        "Result", "1.1.0", None, False, knut.ResultSettings.Mode.REPLACE.name, "clipped"
     )
 
     def __init__(self):
@@ -954,7 +954,7 @@ class SimplifyNode2:
     )
 
     result_settings = knut.ResultSettings(
-        "Result", "1.1.0", None, knut.ResultSettings.Mode.APPEND.name, "simplified"
+        "Result", "1.1.0", None, False, knut.ResultSettings.Mode.APPEND.name, "simplified"
     )
 
     def __init__(self):

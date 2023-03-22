@@ -62,7 +62,12 @@ class CrsTransformerNode:
     )
 
     result_settings = knut.ResultSettings(
-        "Result", "1.1.0", None, knut.ResultSettings.Mode.REPLACE.name, "projected"
+        "Result",
+        "1.1.0",
+        None,
+        False,
+        knut.ResultSettings.Mode.REPLACE.name,
+        "projected",
     )
 
     def __init__(self):
@@ -142,7 +147,7 @@ class GeometryToPointNode:
     )
 
     result_settings = knut.ResultSettings(
-        "Result", "1.1.0", None, knut.ResultSettings.Mode.REPLACE.name, "point"
+        "Result", "1.1.0", None, False, knut.ResultSettings.Mode.REPLACE.name, "point"
     )
 
     def __init__(self):
@@ -272,7 +277,7 @@ class PolygonToLineNode:
     )
 
     result_settings = knut.ResultSettings(
-        "Result", "1.1.0", None, knut.ResultSettings.Mode.REPLACE.name, "line"
+        "Result", "1.1.0", None, False, knut.ResultSettings.Mode.REPLACE.name, "line"
     )
 
     def __init__(self):
@@ -443,7 +448,12 @@ class GeometryToMultiPointNode:
     )
 
     result_settings = knut.ResultSettings(
-        "Result", "1.1.0", None, knut.ResultSettings.Mode.APPEND.name, "multipoint"
+        "Result",
+        "1.1.0",
+        None,
+        False,
+        knut.ResultSettings.Mode.APPEND.name,
+        "multipoint",
     )
 
     def __init__(self):
