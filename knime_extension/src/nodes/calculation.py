@@ -543,7 +543,7 @@ class BoundCircleNode:
     )
 
     result_settings = knut.ResultSettings(
-        "Result", "1.1.0", None, knut.ResultSettings.Mode.APPEND.name, "circle"
+        "Result", "1.1.0", None, False, knut.ResultSettings.Mode.APPEND.name, "circle"
     )
 
     def __init__(self):
