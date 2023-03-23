@@ -27,9 +27,9 @@ def replace_external_js_css_paths(
     URL. The second matching group is the file name.
     The method will also add the closing ".
 
-    For example if the HTML code is <script src="https://cdn.jsdelivr.net/npm/leaflet@1.6.0/dist/leaflet.js">
+    For example if the HTML code is <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.3/dist/leaflet.js">
     the first group is <script src=" and the second group is leaflet.js so using the following replacement
-    r'\1./libs/leaflet/1.6.0/\3"\4' will lead to this URL: <script src="./libs/leaflet/1.6.0/leaflet.js">.
+    r'\1./libs/leaflet/1.9.3/\3"\4' will lead to this URL: <script src="./libs/leaflet/1.9.3/leaflet.js">.
     """
     import re
 
@@ -365,7 +365,7 @@ class BaseMapSettings:
 @knext.output_view(
     name="Geospatial View",
     description="Showing an interactive map with the geospatial data",
-    static_resources="libs/leaflet/1.6.0",
+    static_resources="libs/leaflet/1.9.3",
 )
 class ViewNode:
     """Creates an interactive map view based on the selected geometric elements of the input table.
@@ -540,7 +540,7 @@ class ViewNode:
         # replace css and JavaScript paths
         html = map.get_root().render()
         html = replace_external_js_css_paths(
-            r'\1./libs/leaflet/1.6.0/\3"\4',
+            r'\1./libs/leaflet/1.9.3/\3"\4',
             html,
         )
 
@@ -1168,7 +1168,7 @@ class ViewNodeKepler:
 @knext.output_view(
     name="Heatmap View",
     description="Showing a heatmap with the data",
-    static_resources="libs/leaflet/1.6.0",
+    static_resources="libs/leaflet/1.9.3",
 )
 class ViewNodeHeatmap:
     """This node will visualize the given data on a heatmap.
@@ -1568,7 +1568,7 @@ class ViewNodeHeatmap:
         # replace css and JavaScript paths
         html = map.get_root().render()
         html = replace_external_js_css_paths(
-            r'\1./libs/leaflet/1.6.0/\3"\4',
+            r'\1./libs/leaflet/1.9.3/\3"\4',
             html,
         )
 
