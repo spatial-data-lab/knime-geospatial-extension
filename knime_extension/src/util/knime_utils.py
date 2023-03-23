@@ -21,29 +21,46 @@ DEFAULT_CRS = "epsg:4326"
 """Default coordinate reference system."""
 
 DEF_CRS_DESCRIPTION = """Enter the 
-        [Coordinate reference system (CRS)](https://en.wikipedia.org/wiki/Spatial_reference_system) to use.
-
-        Common [EPSG codes](https://en.wikipedia.org/wiki/EPSG_Geodetic_Parameter_Dataset) that can be universally 
-        used for mapping coordinates everywhere in the world are 
-        [epsg:4326 (WGS 84, Unit: degree)](https://epsg.io/4326) (Latitude/longitude coordinate system based 
-        on the Earth's center of mass;  Used by the Global Positioning System among others) and 
-        [epsg:3857 (Unit: meter)](https://epsg.io/3857) (Web Mercator projection used by many web-based mapping tools,
-        including Google Maps and OpenStreetMap.). 
+        [Coordinate reference system (CRS)](https://en.wikipedia.org/wiki/Spatial_reference_system) to use. 
+        The input field supports the following types:
         
-        There are EPSG codes for specific regions that provide a higher accuracy in these regions, such as 
-        [epsg:4269 (NAD83, Unit: degree)](https://epsg.io/4269) 
-        and [epsg:26918 (NAD83 18N, Unit: meter)](https://epsg.io/26918) for North America, 
-        and [epsg:4490 (CGCS2000, Unit: degree)](https://epsg.io/4490) 
-        and [epsg:4479 (CGCS2000, Unit: meter)](https://epsg.io/4479) for China.
-        
-        The input field supports the following input types:
-        
-        - An authority string [i.e. 'epsg:4326']
-        - An EPSG integer code [i.e. 4326]
-        - A tuple of ('auth_name': 'auth_code') [i.e ('epsg', '4326')]
+        - An authority string (i.e. 'epsg:4326')
+        - An EPSG code (i.e. 4326)
         - [CRS WKT string](https://www.ogc.org/standards/wkt-crs)
         - [PROJ string](https://proj.org/usage/quickstart.html)
         - JSON string with [PROJ parameters](https://proj.org/specifications/projjson.html)
+
+        Common [EPSG codes](https://en.wikipedia.org/wiki/EPSG_Geodetic_Parameter_Dataset) that can be universally 
+        used for mapping coordinates everywhere in the world are:
+
+        - [epsg:4326 (WGS 84, Unit: degree)](https://epsg.io/4326): Latitude/longitude coordinate system based 
+        on the Earth's center of mass;  Used by the Global Positioning System among others. 
+        This is also the default projection that the geospatial nodes use if not otherwise specified.
+        - [epsg:3857 (Unit: meter)](https://epsg.io/3857): Web Mercator projection used by many web-based mapping tools,
+        including Google Maps and OpenStreetMap.
+        
+        There are EPSG codes for specific regions that provide a higher accuracy in the corresponding regions:
+
+        - North America:
+            - [epsg:4269 (NAD83, Unit: degree)](https://epsg.io/4269) 
+            - [epsg:26918 (NAD83 18N, Unit: meter)](https://epsg.io/26918)
+        - China
+            - [epsg:4490 (CGCS2000, Unit: degree)](https://epsg.io/4490) 
+            - [epsg:4479 (CGCS2000, Unit: meter)](https://epsg.io/4479)
+
+        For a selection of projections that preserve different properties see this 
+        [Wikipedia article.](https://en.wikipedia.org/wiki/Map_projection#Projections_by_preservation_of_a_metric_property)
+        Once you have found the appropriate projection name or coordinate reference system you can search for its 
+        EPSG code at [https://epsg.io/.](https://epsg.io/) To do so simply type the projection name into the search 
+        field (e.g. [Pseudo-Mercator).](https://epsg.io/?q=Pseudo-Mercator) The result page will show you the EPSG 
+        code that you can enter in this field (e.g. EPSG:3857) but also the distance unit e.g. meter or degree and 
+        the area of use where the projection works best.
+
+        If you are looking for a projection for a specific area, try out the 
+        [Projection wizard page](https://projectionwizard.org/) which suggests projection with specific properties 
+        for a defined area on the globe. Once you have found the appropriate projection simply click on the 
+        [PROJ](https://proj.org/usage/quickstart.html) link next to the suggested projection name, 
+        copy it to your clipboard and paste it into this field.
         """
 
 
@@ -69,7 +86,7 @@ TYPE_GEO_COLLECTION = knext.logical(GeometryCollection)
 ############################################
 
 __DEF_GEO_COL_LABEL = "Geometry column"
-__DEF_GEO_COL_DESC = "Select the geometry column to use"
+__DEF_GEO_COL_DESC = "Select the geometry column to use."
 
 __CELL_TYPE_GEO = "org.knime.geospatial.core.data.cell.Geo"
 __CELL_TYPE_POINT = "GeoPointCell"

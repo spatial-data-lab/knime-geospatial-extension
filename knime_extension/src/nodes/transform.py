@@ -39,15 +39,20 @@ category = knext.category(
 )
 @knut.geo_node_description(
     short_description="Projection Transformation",
-    description="""This node transforms the Coordinate Reference System (CRS) of the geometry column  with the input 
-    parameter by geopandas.to_crs(). This method will transform all points in all objects. 
-    It has no notion or projecting entire geometries. 
-    All segments joining points are assumed to be lines in the current projection, not geodesics. 
-    Objects crossing the dateline (or other projection boundary) will have undesirable behavior.
+    description="""This node transforms the 
+    [Coordinate reference system (CRS)](https://en.wikipedia.org/wiki/Spatial_reference_system) of the selected 
+    geometry column to the entered new coordinate reference system. The node will transform the points in all 
+    objects individually. It has no notion of projecting entire geometries. All segments joining points are assumed 
+    to be lines in the current projection, not geodesics. Objects crossing the dateline (or other projection boundary) 
+    will have undesirable behavior.
     """,
     references={
-        "geopandas.GeoSeries.to_crs()": "https://geopandas.org/en/stable/docs/reference/api/geopandas.GeoSeries.to_crs.html",
+        "Map projection (Wikipedia)": "https://en.wikipedia.org/wiki/Map_projection",
+        "Comparison of map projection": "https://map-projections.net/index.php",
+        "Collection of common map projections and their properties": "https://www.icsm.gov.au/sites/default/files/projections.pdf",
+        "Projection wizard that helps to find a good projection": "https://projectionwizard.org/",
         "Coordinate Reference System (CRS) EPSG:4326": "https://epsg.io/4326",
+        "geopandas.GeoSeries.to_crs()": "https://geopandas.org/en/stable/docs/reference/api/geopandas.GeoSeries.to_crs.html",
     },
 )
 class CrsTransformerNode:
