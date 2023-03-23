@@ -78,12 +78,12 @@ class BufferNode2:
     )
 
     result_settings = knut.ResultSettings(
-        "Result", "1.1.0", None, False, knut.ResultSettings.Mode.APPEND.name, "buffered"
+        knut.ResultSettingsMode.APPEND.name, "buffered"
     )
 
     def __init__(self):
         # set twice as workaround until fixed in KNIME framework
-        self.result_settings.mode = knut.ResultSettings.Mode.APPEND.name
+        self.result_settings.mode = knut.ResultSettingsMode.APPEND.name
         self.result_settings.new_column_name = "buffered"
 
     def configure(self, configure_context, input_schema):
@@ -522,12 +522,12 @@ class ClipNode:
     )
 
     result_settings = knut.ResultSettings(
-        "Result", "1.1.0", None, False, knut.ResultSettings.Mode.REPLACE.name, "clipped"
+        knut.ResultSettingsMode.REPLACE.name, "clipped"
     )
 
     def __init__(self):
         # set twice as workaround until fixed in KNIME framework
-        self.result_settings.mode = knut.ResultSettings.Mode.REPLACE.name
+        self.result_settings.mode = knut.ResultSettingsMode.REPLACE.name
         self.result_settings.new_column_name = "clipped"
 
     def configure(self, configure_context, left_input_schema, right_input_schema):
@@ -559,7 +559,7 @@ class ClipNode:
         except:
             raise ValueError("Improper Mask Geometry")
 
-        if self.result_settings.mode == knut.ResultSettings.Mode.APPEND.name:
+        if self.result_settings.mode == knut.ResultSettingsMode.APPEND.name:
             left_gdf[self.result_settings.new_column_name] = gdf_clip[self.left_geo_col]
             gdf_clip = left_gdf
         return knut.to_table(gdf_clip, exec_context)
@@ -954,12 +954,13 @@ class SimplifyNode2:
     )
 
     result_settings = knut.ResultSettings(
-        "Result", "1.1.0", None, False, knut.ResultSettings.Mode.APPEND.name, "simplified"
+        knut.ResultSettingsMode.APPEND.name,
+        "simplified",
     )
 
     def __init__(self):
         # set twice as workaround until fixed in KNIME framework
-        self.result_settings.mode = knut.ResultSettings.Mode.APPEND.name
+        self.result_settings.mode = knut.ResultSettingsMode.APPEND.name
         self.result_settings.new_column_name = "simplified"
 
     def configure(self, configure_context, input_schema_1):

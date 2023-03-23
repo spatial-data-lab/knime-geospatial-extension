@@ -543,12 +543,12 @@ class BoundCircleNode:
     )
 
     result_settings = knut.ResultSettings(
-        "Result", "1.1.0", None, False, knut.ResultSettings.Mode.APPEND.name, "circle"
+        knut.ResultSettingsMode.APPEND.name, "circle"
     )
 
     def __init__(self):
         # set twice as workaround until fixed in KNIME framework
-        self.result_settings.mode = knut.ResultSettings.Mode.APPEND.name
+        self.result_settings.mode = knut.ResultSettingsMode.APPEND.name
         self.result_settings.new_column_name = "circle"
 
     def configure(self, configure_context, input_schema):

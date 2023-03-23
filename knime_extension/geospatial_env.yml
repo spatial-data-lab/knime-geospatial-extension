@@ -5,15 +5,19 @@ channels:
 dependencies:
   - packaging
   - python=3.9
+  - curl=7.88.1 #required by libgdal which includes an older version with vulnerabilities
   - fiona=1.9.1
   - folium=0.14.0
   - geopandas=0.12.2
   - geopy=2.3.0
+  - ipykernel=6.22.0 #required by kepler but not included in its dependencies it seems
   - keplergl=0.3.2
   - knime-extension
   - knime-python-base
+  - libgdal=3.6.3
   - libpysal=4.7.0
   - mgwr=2.1.2
+  - numpy=1.23.5 #required to fix problem with latest version of numpy
   - osmnx=1.2.3
   - pulp=2.7.0
   - pyproj=3.4.1

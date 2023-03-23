@@ -62,17 +62,13 @@ class CrsTransformerNode:
     )
 
     result_settings = knut.ResultSettings(
-        "Result",
-        "1.1.0",
-        None,
-        False,
-        knut.ResultSettings.Mode.REPLACE.name,
+        knut.ResultSettingsMode.REPLACE.name,
         "projected",
     )
 
     def __init__(self):
         # set twice as workaround until fixed in KNIME framework
-        self.result_settings.mode = knut.ResultSettings.Mode.REPLACE.name
+        self.result_settings.mode = knut.ResultSettingsMode.REPLACE.name
         self.result_settings.new_column_name = "projected"
 
     def configure(self, configure_context, input_schema):
@@ -91,7 +87,7 @@ class CrsTransformerNode:
 
     def execute(self, exec_context: knext.ExecutionContext, input_table):
         gdf = knut.load_geo_data_frame(input_table, self.geo_col, exec_context)
-        if self.result_settings.mode == knut.ResultSettings.Mode.APPEND.name:
+        if self.result_settings.mode == knut.ResultSettingsMode.APPEND.name:
             result_col = knut.get_unique_column_name(
                 self.result_settings.new_column_name, input_table.schema
             )
@@ -146,13 +142,11 @@ class GeometryToPointNode:
         enum=["centroid", "representative_point"],
     )
 
-    result_settings = knut.ResultSettings(
-        "Result", "1.1.0", None, False, knut.ResultSettings.Mode.REPLACE.name, "point"
-    )
+    result_settings = knut.ResultSettings(knut.ResultSettingsMode.REPLACE.name, "point")
 
     def __init__(self):
         # set twice as workaround until fixed in KNIME framework
-        self.result_settings.mode = knut.ResultSettings.Mode.REPLACE.name
+        self.result_settings.mode = knut.ResultSettingsMode.REPLACE.name
         self.result_settings.new_column_name = "point"
 
     def configure(self, configure_context, input_schema):
@@ -276,13 +270,11 @@ class PolygonToLineNode:
         include_none_column=False,
     )
 
-    result_settings = knut.ResultSettings(
-        "Result", "1.1.0", None, False, knut.ResultSettings.Mode.REPLACE.name, "line"
-    )
+    result_settings = knut.ResultSettings(knut.ResultSettingsMode.REPLACE.name, "line")
 
     def __init__(self):
         # set twice as workaround until fixed in KNIME framework
-        self.result_settings.mode = knut.ResultSettings.Mode.REPLACE.name
+        self.result_settings.mode = knut.ResultSettingsMode.REPLACE.name
         self.result_settings.new_column_name = "line"
 
     def configure(self, configure_context, input_schema_1):
@@ -448,17 +440,13 @@ class GeometryToMultiPointNode:
     )
 
     result_settings = knut.ResultSettings(
-        "Result",
-        "1.1.0",
-        None,
-        False,
-        knut.ResultSettings.Mode.APPEND.name,
+        knut.ResultSettingsMode.APPEND.name,
         "multipoint",
     )
 
     def __init__(self):
         # set twice as workaround until fixed in KNIME framework
-        self.result_settings.mode = knut.ResultSettings.Mode.APPEND.name
+        self.result_settings.mode = knut.ResultSettingsMode.APPEND.name
         self.result_settings.new_column_name = "multipoint"
 
     def configure(self, configure_context, input_schema):
