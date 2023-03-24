@@ -543,20 +543,20 @@ class BoundCircleNode:
     )
 
     result_settings = knut.ResultSettings(
-        knut.ResultSettingsMode.APPEND.name, "circle"
+        mode=knut.ResultSettingsMode.APPEND.name,
+        new_name="Circle",
     )
 
     def __init__(self):
         # set twice as workaround until fixed in KNIME framework
         self.result_settings.mode = knut.ResultSettingsMode.APPEND.name
-        self.result_settings.new_column_name = "circle"
+        self.result_settings.new_column_name = "Circle"
 
     def configure(self, configure_context, input_schema):
         self.geo_col = knut.column_exists_or_preset(
             configure_context, self.geo_col, input_schema, knut.is_geo
         )
-        return knut.get_result_schema(
-            self.result_settings,
+        return self.result_settings.get_result_schema(
             configure_context,
             input_schema,
             self.geo_col,
@@ -594,6 +594,6 @@ class BoundCircleNode:
             center, radius = minimum_bounding_circle(points)
             return center.buffer(radius)
 
-        return knut.get_computed_result_table(
-            self.result_settings, exec_context, input, self.geo_col, compute_circle
+        return self.result_settings.get_computed_result_table(
+            exec_context, input, self.geo_col, compute_circle
         )

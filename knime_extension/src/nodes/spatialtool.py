@@ -3,6 +3,7 @@ import geopandas as gp
 import logging
 import knime_extension as knext
 import util.knime_utils as knut
+import util.projection as kproj
 
 LOGGER = logging.getLogger(__name__)
 
@@ -73,25 +74,27 @@ class BufferNode2:
 
     geo_col = knut.geo_col_parameter()
 
-    bufferdist = knext.DoubleParameter(
-        "Buffer distance", "The buffer distance for geometry. ", 1000.0
-    )
+    distance = kproj.Distance.get_distance_parameter()
+
+    unit = kproj.Distance.get_unit_parameter()
+
+    keep_input_crs = kproj.Distance.get_keep_input_crs_parameter()
 
     result_settings = knut.ResultSettings(
-        knut.ResultSettingsMode.APPEND.name, "buffered"
+        mode=knut.ResultSettingsMode.APPEND.name,
+        new_name="Buffered",
     )
 
     def __init__(self):
         # set twice as workaround until fixed in KNIME framework
         self.result_settings.mode = knut.ResultSettingsMode.APPEND.name
-        self.result_settings.new_column_name = "buffered"
+        self.result_settings.new_column_name = "Buffered"
 
     def configure(self, configure_context, input_schema):
         self.geo_col = knut.column_exists_or_preset(
             configure_context, self.geo_col, input_schema, knut.is_geo
         )
-        return knut.get_result_schema(
-            self.result_settings,
+        return self.result_settings.get_result_schema(
             configure_context,
             input_schema,
             self.geo_col,
@@ -100,22 +103,19 @@ class BufferNode2:
 
     def execute(self, exec_context: knext.ExecutionContext, input):
         gdf = knut.load_geo_data_frame(input, self.geo_col, exec_context)
-
-        from pyproj import CRS  # For CRS Units check
-
-        crsinput = CRS.from_user_input(gdf.crs)
-        if crsinput.is_geographic:
-            logging.warning("Unit as Degree, Please use Projected CRS")
-        exec_context.set_progress(0.3, "Geo data frame loaded. Starting buffering...")
-
-        gdf = knut.get_computed_result_frame(
-            self.result_settings,
+        helper = kproj.Distance(self.distance, self.unit, self.keep_input_crs)
+        projected_gdf = helper.pre_processing(exec_context, gdf, False)
+        new_distance = helper.get_distance()
+        knut.check_canceled(exec_context)
+        exec_context.set_progress(0.6, "Computing buffer")
+        gdf = self.result_settings.get_computed_result_frame(
             exec_context,
             input.schema,
-            gdf,
+            projected_gdf,
             self.geo_col,
-            lambda l: l.buffer(self.bufferdist),
+            lambda l: l.buffer(new_distance),
         )
+        gdf = helper.post_processing(exec_context, gdf)
         exec_context.set_progress(1, "Buffering done")
         return knut.to_table(gdf, exec_context)
 
@@ -522,13 +522,14 @@ class ClipNode:
     )
 
     result_settings = knut.ResultSettings(
-        knut.ResultSettingsMode.REPLACE.name, "clipped"
+        mode=knut.ResultSettingsMode.APPEND.name,
+        new_name="Clipped",
     )
 
     def __init__(self):
         # set twice as workaround until fixed in KNIME framework
-        self.result_settings.mode = knut.ResultSettingsMode.REPLACE.name
-        self.result_settings.new_column_name = "clipped"
+        self.result_settings.mode = knut.ResultSettingsMode.APPEND.name
+        self.result_settings.new_column_name = "Clipped"
 
     def configure(self, configure_context, left_input_schema, right_input_schema):
         self.left_geo_col = knut.column_exists_or_preset(
@@ -538,8 +539,7 @@ class ClipNode:
             configure_context, self.right_geo_col, right_input_schema, knut.is_geo
         )
 
-        return knut.get_result_schema(
-            self.result_settings,
+        return self.result_settings.get_result_schema(
             configure_context,
             left_input_schema,
             self.left_geo_col,
@@ -954,21 +954,20 @@ class SimplifyNode2:
     )
 
     result_settings = knut.ResultSettings(
-        knut.ResultSettingsMode.APPEND.name,
-        "simplified",
+        mode=knut.ResultSettingsMode.APPEND.name,
+        new_name="Simplified",
     )
 
     def __init__(self):
         # set twice as workaround until fixed in KNIME framework
         self.result_settings.mode = knut.ResultSettingsMode.APPEND.name
-        self.result_settings.new_column_name = "simplified"
+        self.result_settings.new_column_name = "Simplified"
 
     def configure(self, configure_context, input_schema_1):
         self.geo_col = knut.column_exists_or_preset(
             configure_context, self.geo_col, input_schema_1, knut.is_geo
         )
-        return knut.get_result_schema(
-            self.result_settings,
+        return self.result_settings.get_result_schema(
             configure_context,
             input_schema_1,
             self.geo_col,
@@ -976,12 +975,8 @@ class SimplifyNode2:
         )
 
     def execute(self, exec_context: knext.ExecutionContext, input):
-        return knut.get_computed_result_table(
-            self.result_settings,
-            exec_context,
-            input,
-            self.geo_col,
-            lambda l: l.simplify(self.simplifydist),
+        return self.result_settings.get_computed_result_table(
+            exec_context, input, self.geo_col, lambda l: l.simplify(self.simplifydist)
         )
 
 

@@ -585,7 +585,7 @@ class ResultSettingsMode(knext.EnumParameterOptions):
         return cls.REPLACE
 
 
-@knext.parameter_group(label="Output")
+@knext.parameter_group(label="Output", since_version="1.1.0")
 class ResultSettings:
     """
     Group of settings that define the format of the result table.
@@ -608,89 +608,87 @@ class ResultSettings:
         self.mode = mode
         self.new_column_name = new_name
 
-
-def get_result_schema(
-    self: ResultSettings,
-    configure_context: knext.ConfigurationContext,
-    schema: knext.Schema,
-    selected_col: knext.Column,
-    result_type,
-) -> knext.Schema:
-    """
-    Either replaces the selected column or appends a new column to the end.
-    """
-    if self.mode == ResultSettingsMode.REPLACE.name:
-        col_names = schema.column_names
-        i = 0
-        while i < len(col_names):
-            if col_names[i] == selected_col:
-                result_schema = schema.remove(i)
-                return result_schema.insert(knext.Column(result_type, selected_col), i)
-            i += 1
-        raise knext.InvalidParametersError(
-            f"Selected column '{selected_col}' not found"
-        )
-    # make sure the appended column is unique
-    result_col = get_unique_column_name(self.new_column_name, schema)
-    return schema.append(knext.Column(result_type, result_col))
-
-
-def get_result_table(
-    self: ResultSettings,
-    exec_context: knext.ExecutionContext,
-    gdf: gp.GeoDataFrame,
-    selected_col: knext.Column,
-    result_col: str,
-) -> gp.GeoDataFrame:
-    """
-    Assumes that the result_col and the select_col are part of the input data frame.
-    The (altered) input data frame is returned.
-    """
-    if self.mode == ResultSettingsMode.REPLACE.name:
-        check_canceled(exec_context)
-        exec_context.set_progress(0.9, "Replace input column with result column")
-        gdf[selected_col] = gdf[result_col]
-        gdf.drop(result_col, axis=1, inplace=True)
-        gdf.rename(columns={self.new_column_name: selected_col}, inplace=True)
-        return gdf
-    return gdf
-
-
-def get_computed_result_table(
-    self: ResultSettings,
-    exec_context: knext.ExecutionContext,
-    input_table: knext.Table,
-    selected_col: knext.Column,
-    func: Callable,
-) -> knext.Table:
-    """
-    Uses the given function to either append a new column or replace the existing column to the given input table and
-    returns the result as a table depending on the user chosen settings.
-    """
-    gdf = load_geo_data_frame(input_table, selected_col, exec_context)
-    gdf = get_computed_result_frame(
-        self, exec_context, input_table.schema, gdf, selected_col, func
-    )
-    return to_table(gdf, exec_context)
-
-
-def get_computed_result_frame(
-    self: ResultSettings,
-    exec_context: knext.ExecutionContext,
-    schema: knext.Schema,
-    gdf: gp.GeoDataFrame,
-    selected_col: knext.Column,
-    func: Callable,
-) -> knext.Table:
-    """
-    Uses the given function to either append a new column or replace the existing column to the given input
-    GeoDataFrame and returns the result as a table depending on the user chosen settings.
-    """
-    result_col = selected_col
-    if self.mode == ResultSettingsMode.APPEND.name:
+    def get_result_schema(
+        self,
+        configure_context: knext.ConfigurationContext,
+        schema: knext.Schema,
+        selected_col: knext.Column,
+        result_type,
+    ) -> knext.Schema:
+        """
+        Either replaces the selected column or appends a new column to the end.
+        """
+        if self.mode == ResultSettingsMode.REPLACE.name:
+            col_names = schema.column_names
+            i = 0
+            while i < len(col_names):
+                if col_names[i] == selected_col:
+                    result_schema = schema.remove(i)
+                    return result_schema.insert(
+                        knext.Column(result_type, selected_col), i
+                    )
+                i += 1
+            raise knext.InvalidParametersError(
+                f"Selected column '{selected_col}' not found"
+            )
+        # make sure the appended column is unique
         result_col = get_unique_column_name(self.new_column_name, schema)
-    gdf[result_col] = gdf.apply(lambda l: func(l[selected_col]), axis=1)
-    return gdf
+        return schema.append(knext.Column(result_type, result_col))
+
+    def get_result_table(
+        self,
+        exec_context: knext.ExecutionContext,
+        gdf: gp.GeoDataFrame,
+        selected_col: knext.Column,
+        result_col: str,
+    ) -> gp.GeoDataFrame:
+        """
+        Assumes that the result_col and the select_col are part of the input data frame.
+        The (altered) input data frame is returned.
+        """
+        if self.mode == ResultSettingsMode.REPLACE.name:
+            check_canceled(exec_context)
+            exec_context.set_progress(0.9, "Replace input column with result column")
+            gdf[selected_col] = gdf[result_col]
+            gdf.drop(result_col, axis=1, inplace=True)
+            gdf.rename(columns={self.new_column_name: selected_col}, inplace=True)
+            return gdf
+        return gdf
+
+    def get_computed_result_table(
+        self,
+        exec_context: knext.ExecutionContext,
+        input_table: knext.Table,
+        selected_col: knext.Column,
+        func: Callable,
+    ) -> knext.Table:
+        """
+        Uses the given function to either append a new column or replace the existing column to the given input table and
+        returns the result as a table depending on the user chosen settings.
+        """
+        gdf = load_geo_data_frame(input_table, selected_col, exec_context)
+        gdf = self.get_computed_result_frame(
+            exec_context, input_table.schema, gdf, selected_col, func
+        )
+        return to_table(gdf, exec_context)
+
+    def get_computed_result_frame(
+        self,
+        exec_context: knext.ExecutionContext,
+        schema: knext.Schema,
+        gdf: gp.GeoDataFrame,
+        selected_col: knext.Column,
+        func: Callable,
+    ) -> knext.Table:
+        """
+        Uses the given function to either append a new column or replace the existing column to the given input
+        GeoDataFrame and returns the result as a table depending on the user chosen settings.
+        """
+        result_col = selected_col
+        if self.mode == ResultSettingsMode.APPEND.name:
+            result_col = get_unique_column_name(self.new_column_name, schema)
+        gdf[result_col] = gdf.apply(lambda l: func(l[selected_col]), axis=1)
+        return gdf
 
 
 def get_env_path():
