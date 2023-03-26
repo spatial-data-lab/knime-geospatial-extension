@@ -211,33 +211,44 @@ class Distance:
         else:
             return gdf.to_crs(new_crs, inplace=False)
 
-    def get_distance(self) -> float:
+    def get_distance_factor(self) -> float:
+        "Returns the factor to use for the given unit."
         unit = self.unit
+        factor = None
         if (
             unit == Distance.Unit.INPUT.name
             or unit == Distance.Unit.DEGREE.name
             or unit == Distance.Unit.METER.name
         ):
-            return self.distance
-
-        factor = None
-        if unit == Distance.Unit.KILOMETER.name:
+            factor = 1
+        elif unit == Distance.Unit.KILOMETER.name:
             factor = 1000
-
-        if unit == Distance.Unit.MILES.name:
+        elif unit == Distance.Unit.MILES.name:
             factor = 1609.34
-
-        if factor is None:
-            # this should not happen
+        else:
             raise ValueError(f"Invalid distance unit: {unit}")
+        return factor
+
+    def get_distance(self) -> float:
+        "Returns the given distance converted to the given unit."
+        factor = self.get_distance_factor()
         return self.distance * factor
 
+    def convert_distance(self, distance: float) -> float:
+        return distance / self.get_distance_factor()
+
     def post_processing(
-        self, exec_context: knext.ExecutionContext, gdf: gp.GeoDataFrame
+        self,
+        exec_context: knext.ExecutionContext,
+        gdf: gp.GeoDataFrame,
+        in_place: bool = False,
     ) -> gp.GeoDataFrame:
         if not self.keep_input_crs:
             return gdf
         knut.check_canceled(exec_context)
-        exec_context.set_progress(0.8, "Projecting back to input CRS")
-        gdf.to_crs(self.orig_crs, inplace=True)
-        return gdf
+        exec_context.set_progress(0.9, "Projecting back to input CRS")
+        if in_place:
+            gdf.to_crs(self.orig_crs, inplace=True)
+            return gdf
+        else:
+            return gdf.to_crs(self.orig_crs, inplace=False)
