@@ -86,12 +86,16 @@ class Distance:
     """
 
     @staticmethod
-    def get_distance_parameter():
+    def get_distance_parameter(
+        label: str = "Distance",
+        description: str = "The buffer distance for the input geometry.",
+        default_value: float = 1000,
+    ):
         "Double parameter that stores the distance value. Usually named 'distance'."
         return knext.DoubleParameter(
-            label="Distance",
-            description="The buffer distance for geometry.",
-            default_value=1000.0,
+            label=label,
+            description=description,
+            default_value=default_value,
         )
 
     @staticmethod
