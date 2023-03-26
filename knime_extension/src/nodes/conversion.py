@@ -1,6 +1,7 @@
 import geopandas as gp
 import knime_extension as knext
 import util.knime_utils as knut
+import util.projection as kproj
 
 
 __category = knext.category(
@@ -23,13 +24,13 @@ __NODE_ICON_PATH = "icons/icon/GeometryConversion/"
 
 def crs_input_parameter(
     label: str = "CRS",
-    description: str = knut.DEF_CRS_DESCRIPTION,
+    description: str = kproj.DEF_CRS_DESCRIPTION,
 ) -> knext.StringParameter:
     """Returns a CRS (coordinate reference system) string input parameter."""
     return knext.StringParameter(
         label=label,
         description=description,
-        default_value=knut.DEFAULT_CRS,
+        default_value=kproj.DEFAULT_CRS,
     )
 
 

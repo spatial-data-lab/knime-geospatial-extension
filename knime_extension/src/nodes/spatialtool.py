@@ -425,7 +425,7 @@ class NearestJoinNode:
 
     crs_info = knext.StringParameter(
         label="CRS for distance calculation",
-        description=knut.DEF_CRS_DESCRIPTION,
+        description=kproj.DEF_CRS_DESCRIPTION,
         default_value="EPSG:3857",
     )
 
@@ -748,7 +748,7 @@ class EuclideanDistanceNode:
 
     crs_info = knext.StringParameter(
         label="CRS for distance calculation",
-        description=knut.DEF_CRS_DESCRIPTION,
+        description=kproj.DEF_CRS_DESCRIPTION,
         default_value="",
     )
 
@@ -849,7 +849,7 @@ class MultiRingBufferNode:
 
     crs_info = knext.StringParameter(
         label="CRS for buffering distance calculation",
-        description=knut.DEF_CRS_DESCRIPTION,
+        description=kproj.DEF_CRS_DESCRIPTION,
         default_value="EPSG:3857",
     )
 

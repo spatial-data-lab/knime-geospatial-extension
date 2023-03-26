@@ -3,6 +3,7 @@ import geopandas as gp
 import logging
 import knime_extension as knext
 import util.knime_utils as knut
+import util.projection as kproj
 
 LOGGER = logging.getLogger(__name__)
 
@@ -63,7 +64,7 @@ class CrsTransformerNode:
     geo_col = knut.geo_col_parameter()
 
     new_crs = knext.StringParameter(
-        "New CRS", knut.DEF_CRS_DESCRIPTION, knut.DEFAULT_CRS
+        "New CRS", kproj.DEF_CRS_DESCRIPTION, kproj.DEFAULT_CRS
     )
 
     result_settings = knut.ResultSettings(
