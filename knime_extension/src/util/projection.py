@@ -99,24 +99,32 @@ class Distance:
         )
 
     @staticmethod
-    def get_unit_parameter():
+    def get_unit_parameter(
+        label: str = "Distance unit",
+        description: str = "Choose distance unit to use.",
+        default_value: str = "INPUT",
+    ):
         "Distance unit parameter. Usually named 'unit'"
         return knext.EnumParameter(
-            label="Distance unit",
-            description="Choose distance unit to use.",
-            default_value=Distance.Unit.get_default().name,
+            label=label,
+            description=description,
+            default_value=default_value,
             enum=Distance.Unit,
             since_version="1.1.0",
         )
 
     @staticmethod
-    def get_keep_input_crs_parameter():
+    def get_keep_input_crs_parameter(
+        label: str = "Keep CRS from input table",
+        description: str = "If checked the CRS of the input table is retained even if a re-projection was necessary "
+        + "for the selected distance unit.",
+        default_value: bool = False,
+    ):
         "Boolean parameter that indicates if the input CRS should be retained. Usually named 'keep_input_crs'."
         return knext.BoolParameter(
-            label="Keep input CRS",
-            description="If checked the CRS of the input table is retained even if a re-projection was necessary "
-            + "for the selected distance unit.",
-            default_value=False,
+            label=label,
+            description=description,
+            default_value=default_value,
             since_version="1.1.0",
         )
 
@@ -148,6 +156,7 @@ class Distance:
 
         @classmethod
         def get_default(cls):
+            # update default value of get_unit_parameter() if this changes!
             return cls.INPUT
 
     orig_crs = None
