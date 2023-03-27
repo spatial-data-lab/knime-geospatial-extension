@@ -13,8 +13,6 @@ DEF_CRS_DESCRIPTION = """Enter the
         - An authority string (i.e. 'epsg:4326')
         - An EPSG code (i.e. 4326)
         - [CRS WKT string](https://www.ogc.org/standards/wkt-crs)
-        - [PROJ string](https://proj.org/usage/quickstart.html)
-        - JSON string with [PROJ parameters](https://proj.org/specifications/projjson.html)
 
         Common [EPSG codes](https://en.wikipedia.org/wiki/EPSG_Geodetic_Parameter_Dataset) that can be universally 
         used for mapping coordinates everywhere in the world are:
@@ -45,7 +43,7 @@ DEF_CRS_DESCRIPTION = """Enter the
         If you are looking for a projection for a specific area, try out the 
         [Projection wizard page](https://projectionwizard.org/) which suggests projection with specific properties 
         for a defined area on the globe. Once you have found the appropriate projection simply click on the 
-        [PROJ](https://proj.org/usage/quickstart.html) link next to the suggested projection name, 
+        [WKT](https://www.ogc.org/standards/wkt-crs) link next to the suggested projection name, 
         copy it to your clipboard and paste it into this field.
         """
 

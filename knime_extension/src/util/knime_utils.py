@@ -379,7 +379,7 @@ def load_geo_data_frame(
         exec_context.set_progress(0.0, load_msg)
     gdf = gp.GeoDataFrame(input_table.to_pandas(), geometry=column)
     if exec_context:
-        exec_context.set_progress(0.3, done_msg)
+        exec_context.set_progress(0.2, done_msg)
     return gdf
 
 
