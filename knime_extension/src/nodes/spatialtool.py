@@ -22,14 +22,17 @@ __category = knext.category(
 
 
 class _JoinModes(knext.EnumParameterOptions):
-    INNER = ("Inner", "Retains only matching rows from both input tables.")
+    INNER = (
+        "Inner",
+        "Use intersection of index values and retain only the geometry column from the left (top) input table.",
+    )
     LEFT = (
         "Left",
-        "Retains all rows form the left and only matching rows from the right input tables.",
+        "Use the index and retain the geometry column from the left (top) input table.",
     )
     RIGHT = (
         "Right",
-        "Retains all rows form the right and only matching rows from the left input tables.",
+        "Use the index and retain the geometry column from the right (bottom) input table.",
     )
 
     @classmethod
@@ -388,9 +391,9 @@ class SpatialJoinNode:
         "sjoin_nearest": "https://geopandas.org/en/stable/docs/reference/api/geopandas.sjoin_nearest.html",
     },
 )
-class NearestJoinNode:
+class NearestJoinNode2:
 
-    left_geo_col = knext.ColumnParameter(
+    left_geo_column = knext.ColumnParameter(
         "Left geometry column",
         "Select the geometry column from the left (top) input table to join on.",
         # Allow only GeoValue compatible columns
@@ -400,7 +403,7 @@ class NearestJoinNode:
         include_none_column=False,
     )
 
-    right_geo_col = knext.ColumnParameter(
+    right_geo_column = knext.ColumnParameter(
         "Right geometry column",
         "Select the geometry column from the right (bottom) input table to join on.",
         # Allow only GeoValue compatible columns
@@ -412,54 +415,115 @@ class NearestJoinNode:
 
     join_mode = knext.EnumParameter(
         label="Join mode",
-        description="The join mode determines of which input table the rows should be retained.",
+        description="The join mode specifies the type of join that will occur and which geometry column is "
+        + "retained in the output table.",
         default_value=_JoinModes.get_default().name,
         enum=_JoinModes,
     )
 
-    maxdist = knext.DoubleParameter(
+    distance = kproj.Distance.get_distance_parameter(
         "Maximum distance",
         "Maximum distance within which to query for nearest geometry. Must be greater than 0 ",
         1000.0,
     )
 
-    crs_info = knext.StringParameter(
-        label="CRS for distance calculation",
-        description=kproj.DEF_CRS_DESCRIPTION,
-        default_value="EPSG:3857",
+    unit = kproj.Distance.get_unit_parameter()
+
+    keep_input_crs = kproj.Distance.get_keep_input_crs_parameter(
+        label="Keep CRS from left input table",
+        description="If checked the CRS of the left input table is retained even if a re-projection was necessary "
+        + "for the selected distance unit.",
     )
+
+    # left_include_columns = knext.MultiColumnParameter(
+    #     "Left columns",
+    #     "Select columns which should be included in the join result from the left (top) input table.",
+    #     port_index=0,
+    # )
+
+    # right_include_columns = knext.MultiColumnParameter(
+    #     "Right columns",
+    #     "Select columns which should be included in the join result from the right (bottom) input table.",
+    #     port_index=1,
+    # )
 
     def configure(self, configure_context, left_input_schema, right_input_schema):
         self.left_geo_col = knut.column_exists_or_preset(
-            configure_context, self.left_geo_col, left_input_schema, knut.is_geo
+            configure_context, self.left_geo_column, left_input_schema, knut.is_geo
         )
         self.right_geo_col = knut.column_exists_or_preset(
-            configure_context, self.right_geo_col, right_input_schema, knut.is_geo
+            configure_context, self.right_geo_column, right_input_schema, knut.is_geo
         )
         # TODO Create combined schema
         return None
 
     def execute(self, exec_context: knext.ExecutionContext, left_input, right_input):
-        left_gdf = knut.load_geo_data_frame(left_input, self.left_geo_col, exec_context)
+        # keep only selected columns
+        # left_include_columns = {self.left_geo_column}
+        # if self.left_include_columns is not None:
+        #     left_include_columns.update(self.left_include_columns)
+        # filtered_left = left_input[list(left_include_columns)]
+        # right_include_columns = {self.right_geo_column}
+        # if self.right_include_columns is not None:
+        #     right_include_columns.update(self.right_include_columns)
+        # filtered_right = right_input[list(right_include_columns)]
+
+        # left_gdf = knut.load_geo_data_frame(
+        #     filtered_left, self.left_geo_column, exec_context
+        # )
+        # right_gdf = knut.load_geo_data_frame(
+        #     filtered_right, self.right_geo_column, exec_context
+        # )
+        left_gdf = knut.load_geo_data_frame(
+            left_input, self.left_geo_column, exec_context
+        )
         right_gdf = knut.load_geo_data_frame(
-            right_input, self.right_geo_col, exec_context
+            right_input, self.right_geo_column, exec_context
         )
         knut.check_canceled(exec_context)
-        left_gdf.to_crs(self.crs_info, inplace=True)
-        right_gdf.to_crs(self.crs_info, inplace=True)
+        dist = kproj.Distance(self.distance, self.unit, self.keep_input_crs)
+        dist.pre_processing(exec_context, right_gdf, True)
+        # process left last to keep its CRS as described in the node description
+        dist.pre_processing(exec_context, left_gdf, True)
+
+        # left_include_columns.update(right_include_columns)
+        # distance_col_name = knut.get_unique_name("Distance", left_include_columns)
+        col_names = set(left_input.column_names)
+        col_names.update(right_input.column_names)
+        distance_col_name = knut.get_unique_name("Distance", col_names)
+
+        left_suffix = "left"
+        right_suffix = "right"
+
         gdf = gp.sjoin_nearest(
             left_gdf,
             right_gdf,
             how=self.join_mode.lower(),
-            max_distance=self.maxdist,
-            distance_col="NearDist",
-            lsuffix="1",
-            rsuffix="2",
+            max_distance=dist.get_distance(),
+            distance_col=distance_col_name,
+            lsuffix=left_suffix,
+            rsuffix=right_suffix,
         )
+
+        # convert returned distance to selected distance unit
+        knut.check_canceled(exec_context)
+        exec_context.set_progress(
+            0.8, f"Convert {distance_col_name} column to selected unit"
+        )
+        gdf[distance_col_name] = gdf[distance_col_name] / dist.get_distance_factor()
+
         # reset the index since it might contain duplicates after joining
         gdf.reset_index(drop=True, inplace=True)
         # drop additional index columns if they exist
-        gdf.drop(["index_1", "index_2"], axis=1, errors="ignore", inplace=True)
+        gdf.drop(
+            ["index_" + left_suffix, "index_" + right_suffix],
+            axis=1,
+            errors="ignore",
+            inplace=True,
+        )
+
+        dist.post_processing(exec_context, gdf, True)
+
         return knut.to_table(gdf, exec_context)
 
 
