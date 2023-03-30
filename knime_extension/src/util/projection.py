@@ -260,3 +260,14 @@ class Distance:
             return gdf
         else:
             return gdf.to_crs(self.orig_crs, inplace=False)
+
+
+def string_distances_parser(value: str, separator: str = ","):
+    """Parses the value as a comma separated list of double values."""
+    try:
+        distances = [float(i) for i in value.split(separator)]
+        return distances
+    except ValueError:
+        raise ValueError(
+            f"'{value}' is not a valid buffer distance. Enter numbers separated by a comma."
+        )
