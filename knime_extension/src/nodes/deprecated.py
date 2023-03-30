@@ -274,3 +274,111 @@ class NearestJoinNode:
         # drop additional index columns if they exist
         gdf.drop(["index_1", "index_2"], axis=1, errors="ignore", inplace=True)
         return knut.to_table(gdf, exec_context)
+
+
+############################################
+# Multiple Ring Buffer
+############################################
+
+
+@knext.node(
+    name="Multiple Ring Buffer",
+    node_type=knext.NodeType.MANIPULATOR,
+    icon_path=__NODE_ICON_PATH + "MultipleRingBuffer.png",
+    category=__category,
+    after="",
+    is_deprecated=True,
+)
+@knext.input_table(
+    name="Geo table",
+    description="Table with geometry column to buffer",
+)
+@knext.output_table(
+    name="Transformed geo table",
+    description="Transformed table by Multiple Ring Buffer",
+)
+@knut.geo_node_description(
+    short_description="This node generate multiple polygons with a series distances of each geometric object.",
+    description="""This node generate multiple polygons with a series distances of each geometric object.
+
+**Note:** If the input table contains multiple rows the node first computes the union of all geometries before 
+computing the buffers from the union.
+    """,
+    references={
+        "Buffer": "https://geopandas.org/en/stable/docs/reference/api/geopandas.GeoSeries.buffer.html",
+    },
+)
+class MultiRingBufferNode:
+    geo_col = knut.geo_col_parameter()
+
+    bufferdist = knext.StringParameter(
+        "Serial buffer distances with coma",
+        "The buffer distances for geometry ",
+        "10,20,30",
+    )
+
+    bufferunit = knext.StringParameter(
+        label="Serial buffer distances",
+        description="The buffer distances for geometry ",
+        default_value="Meter",
+        enum=[
+            "Meter",
+            "KiloMeter",
+            "Mile",
+        ],
+    )
+
+    crs_info = knext.StringParameter(
+        label="CRS for buffering distance calculation",
+        description=kproj.DEF_CRS_DESCRIPTION,
+        default_value="EPSG:3857",
+    )
+
+    def configure(self, configure_context, input_schema_1):
+        self.geo_col = knut.column_exists_or_preset(
+            configure_context, self.geo_col, input_schema_1, knut.is_geo
+        )
+        # TODO Create combined schema
+        return None
+
+    def execute(self, exec_context: knext.ExecutionContext, input_1):
+        gdf = knut.load_geo_data_frame(input_1, self.geo_col, exec_context)
+        gdf.to_crs(self.crs_info, inplace=True)
+
+        from pyproj import CRS  # For CRS Units check
+
+        crsinput = CRS.from_user_input(gdf.crs)
+        if crsinput.is_geographic:
+            logging.warning("Unit as Degree, Please use Projected CRS")
+        exec_context.set_progress(0.3, "Geo data frame loaded. Starting buffering...")
+        # transfrom string list to number
+        import numpy as np
+
+        bufferlist = np.array(self.bufferdist.split(","), dtype=np.int64)
+        if self.bufferunit == "Meter":
+            bufferlist = bufferlist
+        elif self.bufferunit == "KiloMeter":
+            bufferlist = bufferlist * 1000
+        else:
+            bufferlist = bufferlist * 1609.34
+        # sort list
+        bufferlist = bufferlist.tolist()
+        bufferlist.sort()
+        if gdf.shape[0] > 1:
+            gdf_union = gdf.unary_union
+            gdfunion = gp.GeoDataFrame(geometry=gp.GeoSeries(gdf_union), crs=gdf.crs)
+        else:
+            gdfunion = gdf
+        c1 = gp.GeoDataFrame(geometry=gdfunion.buffer(bufferlist[0]))
+        c2 = gp.GeoDataFrame(geometry=gdfunion.buffer(bufferlist[1]))
+        gdf0 = gp.overlay(c1, c2, how="union")
+        if len(bufferlist) > 2:
+            # Construct all other rings by loop
+            for i in range(2, len(bufferlist)):
+                ci = gp.GeoDataFrame(geometry=gdfunion.buffer(bufferlist[i]))
+                gdf0 = gp.overlay(gdf0, ci, how="union")
+        # Add ring radius values as a new column
+        gdf0["dist"] = bufferlist
+        gdf0 = gdf0.reset_index(drop=True)
+        exec_context.set_progress(0.1, "Buffering done")
+        return knut.to_table(gdf0, exec_context)
