@@ -47,6 +47,9 @@ DEF_CRS_DESCRIPTION = """Enter the
         copy it to your clipboard and paste it into this field.
         """
 
+DEFAULT_DISTANCE_COLUMN_NAME = "Distance"
+"""Default column name that contains a distance."""
+
 
 def is_geographic(crs):
     """
@@ -87,7 +90,7 @@ class Distance:
     def get_distance_parameter(
         label: str = "Distance",
         description: str = "The buffer distance for the input geometry.",
-        default_value: float = 1000,
+        default_value: float = 1000.0,
     ):
         "Double parameter that stores the distance value. Usually named 'distance'."
         return knext.DoubleParameter(
@@ -159,8 +162,7 @@ class Distance:
 
     orig_crs = None
 
-    def __init__(self, distance: float, unit: str, keep_orig_crs: bool):
-        self.distance = distance
+    def __init__(self, unit: str, keep_orig_crs: bool):
         self.unit = unit
         self.keep_input_crs = keep_orig_crs
 
@@ -211,7 +213,7 @@ class Distance:
             raise ValueError(f"Invalid distance unit: {unit}")
 
         knut.check_canceled(exec_context)
-        exec_context.set_progress(0.5, "Projection to new CRS for distance computation")
+        exec_context.set_progress(0.3, "Projection to new CRS for distance computation")
         if in_place:
             gdf.to_crs(new_crs, inplace=True)
             return gdf
@@ -236,12 +238,11 @@ class Distance:
             raise ValueError(f"Invalid distance unit: {unit}")
         return factor
 
-    def get_distance(self) -> float:
+    def convert_input_distance(self, distance: float) -> float:
         "Returns the given distance converted to the given unit."
-        factor = self.get_distance_factor()
-        return self.distance * factor
+        return distance * self.get_distance_factor()
 
-    def convert_distance(self, distance: float) -> float:
+    def convert_result_distance(self, distance: float) -> float:
         return distance / self.get_distance_factor()
 
     def post_processing(
