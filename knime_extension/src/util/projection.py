@@ -91,12 +91,16 @@ class Distance:
         label: str = "Distance",
         description: str = "The buffer distance for the input geometry.",
         default_value: float = 1000.0,
+        min_distance: float = 0,
+        max_distance: float = None,
     ):
         "Double parameter that stores the distance value. Usually named 'distance'."
         return knext.DoubleParameter(
             label=label,
             description=description,
             default_value=default_value,
+            min_value=min_distance,
+            max_value=max_distance,
         )
 
     @staticmethod
