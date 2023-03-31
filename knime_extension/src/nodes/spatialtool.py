@@ -1312,7 +1312,7 @@ class CreateVoronoi:
     point data according to the reference boundary. The input data for the reference boundary should be a
     Polygon or MultiPolygon.
 
-    The buffer distance (in kilometers) is used to create dummy points that define a virtual boundary around the
+    The buffer distance with the provided unit is used to create dummy points that define a virtual boundary around the
     given reference boundary that controls the output of the Voronoi polygons. If the final Voronoi polygons are
     smaller than the given reference boundary, you might want to increase the buffer distance. For an illustration
     of the buffer distance see
@@ -1340,28 +1340,27 @@ class CreateVoronoi:
         include_none_column=False,
     )
 
-    control_buffer = knext.IntParameter(
-        "Buffered distance in kilometers for the virtual Voronoi polygon boundaries.",
-        """The buffer distance defines the distance of the dummy points that define the virtual boundary from the 
-        given reference boundary.
+    distance = kproj.Distance.get_distance_parameter(
+        label="Buffer distance",
+        description="""The buffer distance defines the distance of the dummy points that define the virtual boundary 
+        from the given reference boundary.
               
-        If the buffer distance is too small, the resulting polygons may not fill the entire boundary, and there may 
-        be gaps or missing parts within the boundary. This is because the buffer distance determines how far away from 
-        the boundary the Voronoi polygons will be generated, and if the distance is too small, some 
-        of the polygons may not intersect with the boundary or may only partially intersect with it.
-        For an illustration of the buffer distance see 
+        If the buffer distance is too small, the resulting polygons may not fill the entire reference 
+        boundary, resulting in gaps or missing parts within it. This is because the buffer distance 
+        determines how far away from the reference boundary the Voronoi polygons will be generated, and if the 
+        distance is too small, some of the polygons may not intersect with the reference boundary or may only 
+        partially intersect with it. For an illustration of the buffer distance see 
         [here.](https://raw.githubusercontent.com/spatial-data-lab/knime-geospatial-extension/main/docs/imgs/voronoiDistance.png)""",
         default_value=100,
+        min_distance=1,
     )
 
-    @control_buffer.validator
-    def validate_reps(value):
-        if value < 1:
-            raise ValueError("The buffer distance must be greater 0")
+    unit = kproj.Distance.get_unit_parameter()
 
-    _COL_ID = "ThiessenID"
-    _COL_GEOMETRY = "geometry"
-    _CRS = 3857
+    keep_input_crs = kproj.Distance.get_keep_input_crs_parameter()
+
+    _COL_GEOMETRY = "Geometry"
+    _COL_ID = "Thiessen ID"
 
     def configure(self, configure_context, input_schema1, input_schema2):
         self.point_geo_col = knut.column_exists_or_preset(
@@ -1387,16 +1386,19 @@ class CreateVoronoi:
         boundary = knut.load_geo_data_frame(
             input_table2, self.boundary_geo_col, exec_context
         )
-        origin_crs = origin_point.crs
-        point_proj = origin_point.to_crs(self._CRS)
-        boundary_proj = boundary.to_crs(self._CRS)
 
-        dist_buffer = self.control_buffer * 1000
+        helper = kproj.Distance(self.unit, self.keep_input_crs)
+        helper.pre_processing(exec_context, boundary, True)
+        helper.pre_processing(exec_context, origin_point, True)
+        dist_buffer = helper.convert_input_distance(self.distance)
+
         # Convert the GeoDataFrame to a numpy array
-        points = np.array([[pt.x, pt.y] for pt in point_proj.geometry])
+        points = np.array([[pt.x, pt.y] for pt in origin_point.geometry])
 
         # get the envelope of the union of the points with a buffer of 1
-        boundary_union = boundary_proj.unary_union
+        knut.check_canceled(exec_context)
+        exec_context.set_progress(0.3, "Computing virtual boundary")
+        boundary_union = boundary.unary_union
         envelope = boundary_union.envelope.buffer(dist_buffer).envelope
 
         # get the coordinates of the envelope
@@ -1408,9 +1410,12 @@ class CreateVoronoi:
         # combine the sample points and the dummy points
         points = np.concatenate((points, dummy_points))
 
+        knut.check_canceled(exec_context)
+        exec_context.set_progress(0.4, "Computing Voronoi regions")
         # compute Voronoi tessellation
         vor = Voronoi(points)
-
+        knut.check_canceled(exec_context)
+        exec_context.set_progress(0.8, "Converting Voronoi regions to table")
         # extract the vertices of each Voronoi region
         polygons = []
         for region in vor.regions:
@@ -1418,17 +1423,22 @@ class CreateVoronoi:
                 polygon = Polygon([vor.vertices[i] for i in region])
                 polygons.append(polygon)
 
+        knut.check_canceled(exec_context)
         # convert the list of Polygon objects to a GeoSeries object
         geo_series = gp.GeoSeries(polygons)
         # create GeoDataFrame
         gdf = pd.DataFrame({self._COL_GEOMETRY: geo_series})
-        gdf = gp.GeoDataFrame(gdf, geometry=self._COL_GEOMETRY, crs=self._CRS)
+        gdf = gp.GeoDataFrame(gdf, geometry=self._COL_GEOMETRY, crs=origin_point.crs)
 
         gdf = gdf[~gdf.geometry.is_empty]
-        extent = gp.GeoDataFrame(geometry=gp.GeoSeries(boundary_union), crs=self._CRS)
+        extent = gp.GeoDataFrame(
+            geometry=gp.GeoSeries(boundary_union), crs=origin_point.crs
+        )
         gdf = gp.overlay(gdf, extent, how="intersection")
-        # project back to original CRS
-        gdf = gdf.to_crs(origin_crs)
+        gdf.rename_geometry(self._COL_GEOMETRY, inplace=True)
+
+        # project back if necessary
+        helper.post_processing(exec_context, gdf, True)
         # append region id column
         gdf[self._COL_ID] = range(1, (gdf.shape[0] + 1))
         return knut.to_table(gdf, exec_context)
