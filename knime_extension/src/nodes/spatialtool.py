@@ -984,19 +984,19 @@ class MultipleRingBufferNode:
 )
 @knext.input_table(
     name="Geo table",
-    description="Table with geometry column to simplify",
+    description="Table with geometries to simplify.",
 )
 @knext.output_table(
     name="Transformed geo table",
-    description="Transformed geo input table",
+    description="Input table with simplified geometries.",
 )
 @knut.geo_node_description(
     short_description="Simplify the geometry",
-    description="""This node returns a geometry feature containing a simplified representation of each geometry 
-    with geopandas.simplify(). The algorithm (Douglas-Peucker) recursively splits the original line into smaller 
-    parts and connects these parts’ endpoints by a straight line. Then, it removes all points whose distance 
-    to the straight line is smaller than tolerance. It does not move any points and it always preserves endpoints 
-    of the original line or polygon.
+    description="""This node returns for each input geometry a simplified representation. 
+    The applied [algorithm](https://en.wikipedia.org/wiki/Ramer%E2%80%93Douglas%E2%80%93Peucker_algorithm) 
+    recursively splits the original lines into smaller parts and connects the endpoints of each part by a straight line. 
+    Then, it removes all points whose distance to the straight line is smaller than the provided tolerance distance. 
+    It does not move any points and it always preserves endpoints of the original line or polygon.
     """,
     references={
         "GeoSeries.simplify": "https://geopandas.org/en/stable/docs/reference/api/geopandas.GeoSeries.simplify.html",
@@ -1010,15 +1010,16 @@ class SimplifyNode2:
 
     geo_col = knut.geo_col_parameter()
 
-    simplifydist = knext.DoubleParameter(
-        label="Simplification tolerance",
-        description="""The simplification tolerance distances for geometry.
-        All parts of a simplified geometry will be no more than tolerance distance from the original. 
-        It has the same units as the coordinate reference system of the GeoSeries. 
-        For example, using tolerance=100 in a projected CRS with meters as units means a distance of 100 meters in reality. 
-        """,
+    distance = kproj.Distance.get_distance_parameter(
+        label="Tolerance distance",
+        description="The tolerance distances in the selected distance unit. "
+        + "All parts of a simplified geometry will be no more than tolerance distance from their original position.",
         default_value=1.0,
     )
+
+    unit = kproj.Distance.get_unit_parameter()
+
+    keep_input_crs = kproj.Distance.get_keep_input_crs_parameter()
 
     result_settings = knut.ResultSettings(
         mode=knut.ResultSettingsMode.APPEND.name,
@@ -1042,9 +1043,20 @@ class SimplifyNode2:
         )
 
     def execute(self, exec_context: knext.ExecutionContext, input):
-        return self.result_settings.get_computed_result_table(
-            exec_context, input, self.geo_col, lambda l: l.simplify(self.simplifydist)
+        gdf = knut.load_geo_data_frame(input, self.geo_col, exec_context)
+        helper = kproj.Distance(self.unit, self.keep_input_crs)
+        helper.pre_processing(exec_context, gdf, True)
+        new_distance = helper.convert_input_distance(self.distance)
+
+        result_gdf = self.result_settings.get_computed_result_frame(
+            exec_context,
+            input.schema,
+            gdf,
+            self.geo_col,
+            lambda l: l.simplify(new_distance),
         )
+        helper.post_processing(exec_context, result_gdf, True)
+        return knut.to_table(result_gdf, exec_context)
 
 
 ############################################
