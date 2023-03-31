@@ -382,3 +382,108 @@ class MultiRingBufferNode:
         gdf0 = gdf0.reset_index(drop=True)
         exec_context.set_progress(0.1, "Buffering done")
         return knut.to_table(gdf0, exec_context)
+
+
+############################################
+# Euclidean Distance
+############################################
+
+
+@knext.node(
+    name="Euclidean Distance",
+    node_type=knext.NodeType.MANIPULATOR,
+    icon_path=__NODE_ICON_PATH + "EuclideanDistance.png",
+    category=__category,
+    after="",
+    is_deprecated=True,
+)
+@knext.input_table(
+    name="Left geo table",
+    description="Left table with geometry column. ",
+)
+@knext.input_table(
+    name="Right geo table",
+    description="Right table with geometry column.",
+)
+@knext.output_table(
+    name="Geo table distance",
+    description="Euclidean distance between geometry objects.",
+)
+@knut.geo_node_description(
+    short_description="This node will calculate the Euclidean distance between two geometries.",
+    description="""This node will calculate the Euclidean distance between two geometries. 
+    If the input CRS is empty, the CRS of Top(left) input GeoDataFrame will be used as the default.
+    """,
+    references={
+        "Distance": "https://geopandas.org/en/stable/docs/reference/api/geopandas.GeoSeries.distance.html",
+    },
+)
+class EuclideanDistanceNode:
+    left_geo_col = knext.ColumnParameter(
+        "Left geometry column",
+        "Select the geometry column from the left (top) input table to calculate.",
+        # Allow only GeoValue compatible columns
+        port_index=0,
+        column_filter=knut.is_geo,
+        include_row_key=False,
+        include_none_column=False,
+    )
+
+    right_geo_col = knext.ColumnParameter(
+        "Right geometry column",
+        "Select the geometry column from the right (bottom) input table to calculate.",
+        # Allow only GeoValue compatible columns
+        port_index=1,
+        column_filter=knut.is_geo,
+        include_row_key=False,
+        include_none_column=False,
+    )
+
+    crs_info = knext.StringParameter(
+        label="CRS for distance calculation",
+        description=kproj.DEF_CRS_DESCRIPTION,
+        default_value="",
+    )
+
+    def configure(self, configure_context, left_input_schema, right_input_schema):
+        self.left_geo_col = knut.column_exists_or_preset(
+            configure_context, self.left_geo_col, left_input_schema, knut.is_geo
+        )
+        self.right_geo_col = knut.column_exists_or_preset(
+            configure_context, self.right_geo_col, right_input_schema, knut.is_geo
+        )
+        return knext.Schema.from_columns(
+            [
+                knext.Column(knext.int64(), "originid"),
+                knext.Column(knext.int64(), "destinationid"),
+                knext.Column(knext.double(), "EuDist"),
+            ]
+        )
+
+    def execute(self, exec_context: knext.ExecutionContext, left_input, right_input):
+        left_gdf = gp.GeoDataFrame(
+            left_input.to_pandas()[self.left_geo_col], geometry=self.left_geo_col
+        )
+        right_gdf = gp.GeoDataFrame(
+            right_input.to_pandas()[self.right_geo_col], geometry=self.right_geo_col
+        )
+        import pyproj
+
+        if self.crs_info != "":
+            newcrs = pyproj.CRS.from_user_input(self.crs_info)
+            right_gdf.to_crs(newcrs, inplace=True)
+            left_gdf.to_crs(newcrs, inplace=True)
+        else:
+            right_gdf.to_crs(left_gdf.crs, inplace=True)
+        knut.check_canceled(exec_context)
+
+        left_gdf["originid"] = range(1, (left_gdf.shape[0] + 1))
+        right_gdf["destinationid"] = range(1, (right_gdf.shape[0] + 1))
+        mergedf = left_gdf.merge(right_gdf, how="cross")
+        mergedf_x = gp.GeoDataFrame(geometry=mergedf["geometry_x"])
+        mergedf_y = gp.GeoDataFrame(geometry=mergedf["geometry_y"])
+        mergedf["EuDist"] = mergedf_x.distance(mergedf_y, align=False)
+        mergedf = mergedf[["originid", "destinationid", "EuDist"]].reset_index(
+            drop=True
+        )
+        return knut.to_table(mergedf, exec_context)

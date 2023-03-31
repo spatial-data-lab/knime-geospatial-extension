@@ -771,30 +771,28 @@ class OverlayNode:
     after="",
 )
 @knext.input_table(
-    name="Left geo table",
-    description="Left table with geometry column. ",
+    name="Origin geo table",
+    description="Origin table with geometry column. ",
 )
 @knext.input_table(
-    name="Right geo table",
-    description="Right table with geometry column.",
+    name="Destination geo table",
+    description="Destination table with geometry column.",
 )
 @knext.output_table(
-    name="Geo table distance",
-    description="Euclidean distance between geometry objects.",
+    name="Euclidean distance table",
+    description="Euclidean distance between all origin and destination geometry objects.",
 )
 @knut.geo_node_description(
-    short_description="This node will calculate the Euclidean distance between two geometries.",
-    description="""This node will calculate the Euclidean distance between two geometries. 
-    If the input CRS is empty, the CRS of Top(left) input GeoDataFrame will be used as the default.
-    """,
+    short_description="This node will calculate the Euclidean distance between each origin and destination pair.",
+    description="This node will calculate the Euclidean distance in the selected unit between each origin and destination pair.",
     references={
         "Distance": "https://geopandas.org/en/stable/docs/reference/api/geopandas.GeoSeries.distance.html",
     },
 )
-class EuclideanDistanceNode:
-    left_geo_col = knext.ColumnParameter(
-        "Left geometry column",
-        "Select the geometry column from the left (top) input table to calculate.",
+class EuclideanDistanceNode2:
+    o_geo_col = knext.ColumnParameter(
+        "Origin geometry column",
+        "Select the geometry column from the origin table to calculate.",
         # Allow only GeoValue compatible columns
         port_index=0,
         column_filter=knut.is_geo,
@@ -802,9 +800,18 @@ class EuclideanDistanceNode:
         include_none_column=False,
     )
 
-    right_geo_col = knext.ColumnParameter(
-        "Right geometry column",
-        "Select the geometry column from the right (bottom) input table to calculate.",
+    o_id_col = knext.ColumnParameter(
+        "Origin ID column",
+        """Select the column which contains for each origin a unique ID. The selected column will be returned
+        in the result table and can be used to link back to the original data.""",
+        port_index=0,
+        include_row_key=False,
+        include_none_column=False,
+    )
+
+    d_geo_col = knext.ColumnParameter(
+        "Destination geometry column",
+        "Select the geometry column from the destination table to calculate.",
         # Allow only GeoValue compatible columns
         port_index=1,
         column_filter=knut.is_geo,
@@ -812,54 +819,96 @@ class EuclideanDistanceNode:
         include_none_column=False,
     )
 
-    crs_info = knext.StringParameter(
-        label="CRS for distance calculation",
-        description=kproj.DEF_CRS_DESCRIPTION,
-        default_value="",
+    d_id_col = knext.ColumnParameter(
+        "Destination ID column",
+        """Select the column which contains for each destination a unique ID. The selected column will be returned
+        in the result table and can be used to link back to the original data.""",
+        port_index=1,
+        include_row_key=False,
+        include_none_column=False,
     )
 
-    def configure(self, configure_context, left_input_schema, right_input_schema):
-        self.left_geo_col = knut.column_exists_or_preset(
-            configure_context, self.left_geo_col, left_input_schema, knut.is_geo
+    unit = kproj.Distance.get_unit_parameter()
+
+    __COL_ORIGIN = "Origin ID"
+    __COL_DESTINATION = "Destination ID"
+    __COL_DISTANCE = "Distance"
+
+    def configure(self, configure_context, o_schema, d_schema):
+        self.o_geo_col = knut.column_exists_or_preset(
+            configure_context, self.o_geo_col, o_schema, knut.is_geo
         )
-        self.right_geo_col = knut.column_exists_or_preset(
-            configure_context, self.right_geo_col, right_input_schema, knut.is_geo
+        self.d_geo_col = knut.column_exists_or_preset(
+            configure_context, self.d_geo_col, d_schema, knut.is_geo
         )
+        knut.column_exists(self.o_id_col, o_schema)
+        o_id_type = o_schema[self.o_id_col].ktype
+        knut.column_exists(self.d_id_col, d_schema)
+        d_id_type = o_schema[self.d_id_col].ktype
         return knext.Schema.from_columns(
             [
-                knext.Column(knext.int64(), "originid"),
-                knext.Column(knext.int64(), "destinationid"),
-                knext.Column(knext.double(), "EuDist"),
+                knext.Column(o_id_type, self.__COL_ORIGIN),
+                knext.Column(d_id_type, self.__COL_DESTINATION),
+                knext.Column(knext.double(), self.__COL_DISTANCE),
             ]
         )
 
-    def execute(self, exec_context: knext.ExecutionContext, left_input, right_input):
-        left_gdf = gp.GeoDataFrame(
-            left_input.to_pandas()[self.left_geo_col], geometry=self.left_geo_col
+    def execute(self, exec_context: knext.ExecutionContext, o_input, d_input):
+        o_gdf = gp.GeoDataFrame(
+            o_input.to_pandas()[[self.o_geo_col, self.o_id_col]],
+            geometry=self.o_geo_col,
         )
-        right_gdf = gp.GeoDataFrame(
-            right_input.to_pandas()[self.right_geo_col], geometry=self.right_geo_col
+        d_gdf = gp.GeoDataFrame(
+            d_input.to_pandas()[[self.d_geo_col, self.d_id_col]],
+            geometry=self.d_geo_col,
         )
-        import pyproj
+        # rename the id columns to origin and destination
+        o_gdf.rename(columns={self.o_id_col: self.__COL_ORIGIN}, inplace=True)
+        d_gdf.rename(columns={self.d_id_col: self.__COL_DESTINATION}, inplace=True)
 
-        if self.crs_info != "":
-            newcrs = pyproj.CRS.from_user_input(self.crs_info)
-            right_gdf.to_crs(newcrs, inplace=True)
-            left_gdf.to_crs(newcrs, inplace=True)
-        else:
-            right_gdf.to_crs(left_gdf.crs, inplace=True)
-        knut.check_canceled(exec_context)
+        helper = kproj.Distance(self.unit, True)
+        helper.pre_processing(exec_context, o_gdf, True)
+        helper.pre_processing(exec_context, d_gdf, True)
 
-        left_gdf["originid"] = range(1, (left_gdf.shape[0] + 1))
-        right_gdf["destinationid"] = range(1, (right_gdf.shape[0] + 1))
-        mergedf = left_gdf.merge(right_gdf, how="cross")
-        mergedf_x = gp.GeoDataFrame(geometry=mergedf["geometry_x"])
-        mergedf_y = gp.GeoDataFrame(geometry=mergedf["geometry_y"])
-        mergedf["EuDist"] = mergedf_x.distance(mergedf_y, align=False)
-        mergedf = mergedf[["originid", "destinationid", "EuDist"]].reset_index(
-            drop=True
+        # this could happen if the user selects to keep the input projection
+        if o_gdf.crs != d_gdf.crs:
+            d_gdf.to_crs(o_gdf.crs, inplace=True)
+
+        merged_df = o_gdf.merge(d_gdf, how="cross")
+        merged_df_x = gp.GeoDataFrame(geometry=merged_df["geometry_x"])
+        merged_df_y = gp.GeoDataFrame(geometry=merged_df["geometry_y"])
+        # compute and adjust distance if necessary
+        merged_df[self.__COL_DISTANCE] = (
+            merged_df_x.distance(merged_df_y, align=False)
+            / helper.get_distance_factor()
         )
-        return knut.to_table(mergedf, exec_context)
+        merged_df = merged_df[
+            [self.__COL_ORIGIN, self.__COL_DESTINATION, self.__COL_DISTANCE]
+        ].reset_index(drop=True)
+
+        # computes only the upper part of the distance matrix
+        # data = []
+        # idx = 1
+        # length = len(o_gdf)
+        # for o_id, o_geo in zip(o_gdf[self.__COL_ORIGIN], o_gdf[self.o_geo_col]):
+        #     knut.check_canceled(exec_context)
+        #     exec_context.set_progress(
+        #         0.9 * idx / float(length), f"Processing origin row {idx} of {length}"
+        #     )
+        #     for d_id, d_geo in zip(
+        #         d_gdf[self.__COL_DESTINATION], d_gdf[self.d_geo_col]
+        #     ):
+        #         data.append(
+        #             (o_id, d_id, o_geo.distance(d_geo) / helper.get_distance_factor())
+        #         )
+        #     idx = idx + 1
+        # import pandas as pd
+
+        # merged_df = pd.DataFrame(
+        #     data,
+        #     columns=(self.__COL_ORIGIN, self.__COL_DESTINATION, self.__COL_DISTANCE),
+        # )
+        return knut.to_table(merged_df, exec_context)
 
 
 ############################################
