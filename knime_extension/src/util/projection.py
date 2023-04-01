@@ -106,7 +106,7 @@ class Distance:
     @staticmethod
     def get_unit_parameter(
         label: str = "Distance unit",
-        description: str = "Choose distance unit to use.",
+        description: str = "Choose the distance unit to use.",
         default_value: str = "INPUT",
     ):
         "Distance unit parameter. Usually named 'unit'"
@@ -144,19 +144,28 @@ class Distance:
         )
         METER = (
             "Meter",
-            "Use the default projection and convert distances to meter.",
+            """Use the default projection with meter as unit. The projection is the UTM CRS for the UTM zone in 
+            which the centroid of the input geometries lies. This projection works well for most latitudes but may 
+            not work for some extreme northern locations like Svalbard or far northern Norway in which case you
+            might want to use your own projection prior using this node.""",
         )
         KILOMETER = (
             "Kilometer",
-            "Use the default projection and convert distances to kilometer.",
+            """Use the default projection with kilometer as unit. The projection is the UTM CRS for the UTM zone in 
+            which the centroid of the input geometries lies. This projection works well for most latitudes but may 
+            not work for some extreme northern locations like Svalbard or far northern Norway in which case you
+            might want to use your own projection prior using this node.""",
         )
         MILES = (
             "Miles",
-            "Use the default projection and convert distances to miles.",
+            """Use the default projection with miles as unit. The projection is the UTM CRS for the UTM zone in 
+            which the centroid of the input geometries lies. This projection works well for most latitudes but may 
+            not work for some extreme northern locations like Svalbard or far northern Norway in which case you
+            might want to use your own projection prior using this node.""",
         )
         DEGREE = (
             "Degree",
-            "Use the epsg:4326 which uses degree as distance unit.",
+            "Use the [epsg:4326](https://epsg.io/4326) with degree as unit.",
         )
 
         @classmethod
