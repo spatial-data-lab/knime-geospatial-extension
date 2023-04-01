@@ -3,6 +3,7 @@ import geopandas as gp
 import logging
 import knime_extension as knext
 import util.knime_utils as knut
+import util.projection as kproj
 
 LOGGER = logging.getLogger(__name__)
 
@@ -63,18 +64,18 @@ class CrsTransformerNode:
     geo_col = knut.geo_col_parameter()
 
     new_crs = knext.StringParameter(
-        "New CRS", knut.DEF_CRS_DESCRIPTION, knut.DEFAULT_CRS
+        "New CRS", kproj.DEF_CRS_DESCRIPTION, kproj.DEFAULT_CRS
     )
 
     result_settings = knut.ResultSettings(
-        knut.ResultSettingsMode.REPLACE.name,
-        "projected",
+        mode=knut.ResultSettingsMode.APPEND.name,
+        new_name="Projected",
     )
 
     def __init__(self):
         # set twice as workaround until fixed in KNIME framework
-        self.result_settings.mode = knut.ResultSettingsMode.REPLACE.name
-        self.result_settings.new_column_name = "projected"
+        self.result_settings.mode = knut.ResultSettingsMode.APPEND.name
+        self.result_settings.new_column_name = "Projected"
 
     def configure(self, configure_context, input_schema):
         self.geo_col = knut.column_exists_or_preset(
@@ -82,8 +83,7 @@ class CrsTransformerNode:
         )
         # use the data type of the selected column as result type
         result_type = input_schema[self.geo_col].ktype
-        return knut.get_result_schema(
-            self.result_settings,
+        return self.result_settings.get_result_schema(
             configure_context,
             input_schema,
             self.geo_col,
@@ -147,20 +147,22 @@ class GeometryToPointNode:
         enum=["centroid", "representative_point"],
     )
 
-    result_settings = knut.ResultSettings(knut.ResultSettingsMode.REPLACE.name, "point")
+    result_settings = knut.ResultSettings(
+        mode=knut.ResultSettingsMode.APPEND.name,
+        new_name="Point",
+    )
 
     def __init__(self):
         # set twice as workaround until fixed in KNIME framework
-        self.result_settings.mode = knut.ResultSettingsMode.REPLACE.name
-        self.result_settings.new_column_name = "point"
+        self.result_settings.mode = knut.ResultSettingsMode.APPEND.name
+        self.result_settings.new_column_name = "Point"
 
     def configure(self, configure_context, input_schema):
         self.geo_col = knut.column_exists_or_preset(
             configure_context, self.geo_col, input_schema, knut.is_geo
         )
 
-        return knut.get_result_schema(
-            self.result_settings,
+        return self.result_settings.get_result_schema(
             configure_context,
             input_schema,
             self.geo_col,
@@ -174,8 +176,8 @@ class GeometryToPointNode:
         else:
             func = lambda l: l.representative_point()
 
-        return knut.get_computed_result_table(
-            self.result_settings, exec_context, input_1, self.geo_col, func
+        return self.result_settings.get_computed_result_table(
+            exec_context, input_1, self.geo_col, func
         )
 
 
@@ -275,12 +277,15 @@ class PolygonToLineNode:
         include_none_column=False,
     )
 
-    result_settings = knut.ResultSettings(knut.ResultSettingsMode.REPLACE.name, "line")
+    result_settings = knut.ResultSettings(
+        mode=knut.ResultSettingsMode.APPEND.name,
+        new_name="Line",
+    )
 
     def __init__(self):
         # set twice as workaround until fixed in KNIME framework
-        self.result_settings.mode = knut.ResultSettingsMode.REPLACE.name
-        self.result_settings.new_column_name = "line"
+        self.result_settings.mode = knut.ResultSettingsMode.APPEND.name
+        self.result_settings.new_column_name = "Line"
 
     def configure(self, configure_context, input_schema_1):
         self.geo_col = knut.column_exists_or_preset(
@@ -289,8 +294,7 @@ class PolygonToLineNode:
             input_schema_1,
             knut.is_geo_polygon_or_multi_polygon,
         )
-        return knut.get_result_schema(
-            self.result_settings,
+        return self.result_settings.get_result_schema(
             configure_context,
             input_schema_1,
             self.geo_col,
@@ -299,12 +303,8 @@ class PolygonToLineNode:
 
     def execute(self, exec_context: knext.ExecutionContext, input_table):
         # extract the boundary for each geometry
-        return knut.get_computed_result_table(
-            self.result_settings,
-            exec_context,
-            input_table,
-            self.geo_col,
-            lambda l: l.boundary,
+        return self.result_settings.get_computed_result_table(
+            exec_context, input_table, self.geo_col, lambda l: l.boundary
         )
 
 
@@ -445,21 +445,20 @@ class GeometryToMultiPointNode:
     )
 
     result_settings = knut.ResultSettings(
-        knut.ResultSettingsMode.APPEND.name,
-        "multipoint",
+        mode=knut.ResultSettingsMode.APPEND.name,
+        new_name="Multipoint",
     )
 
     def __init__(self):
         # set twice as workaround until fixed in KNIME framework
         self.result_settings.mode = knut.ResultSettingsMode.APPEND.name
-        self.result_settings.new_column_name = "multipoint"
+        self.result_settings.new_column_name = "Multipoint"
 
     def configure(self, configure_context, input_schema):
         self.geo_col = knut.column_exists_or_preset(
             configure_context, self.geo_col, input_schema, knut.is_geo_line
         )
-        return knut.get_result_schema(
-            self.result_settings,
+        return self.result_settings.get_result_schema(
             configure_context,
             input_schema,
             self.geo_col,
@@ -470,10 +469,6 @@ class GeometryToMultiPointNode:
         # extract coordinates of each geometry into a new MultiPoint geometry
         from shapely.geometry import MultiPoint
 
-        return knut.get_computed_result_table(
-            self.result_settings,
-            exec_context,
-            input_table,
-            self.geo_col,
-            lambda l: MultiPoint(l.coords),
+        return self.result_settings.get_computed_result_table(
+            exec_context, input_table, self.geo_col, lambda l: MultiPoint(l.coords)
         )

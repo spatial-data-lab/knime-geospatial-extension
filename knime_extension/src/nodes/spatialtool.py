@@ -3,6 +3,7 @@ import geopandas as gp
 import logging
 import knime_extension as knext
 import util.knime_utils as knut
+import util.projection as kproj
 
 LOGGER = logging.getLogger(__name__)
 
@@ -21,14 +22,17 @@ __category = knext.category(
 
 
 class _JoinModes(knext.EnumParameterOptions):
-    INNER = ("Inner", "Retains only matching rows from both input tables.")
+    INNER = (
+        "Inner",
+        "Use intersection of index values and retain only the geometry column from the left (top) input table.",
+    )
     LEFT = (
         "Left",
-        "Retains all rows form the left and only matching rows from the right input tables.",
+        "Use the index and retain the geometry column from the left (top) input table.",
     )
     RIGHT = (
         "Right",
-        "Retains all rows form the right and only matching rows from the left input tables.",
+        "Use the index and retain the geometry column from the right (bottom) input table.",
     )
 
     @classmethod
@@ -57,10 +61,8 @@ class _JoinModes(knext.EnumParameterOptions):
     description="Table with transformed geodata",
 )
 @knut.geo_node_description(
-    short_description="Generate buffer zone based on a given distance.",
-    description="""This node generates polygons representing all points within a given distance of each geometric object 
-    based on geopandas.GeoSeries.buffer() with default parameters (resolution=16), which derives from Shapely object.buffer.
-    """,
+    short_description="Generates a buffer based on a given distance.",
+    description="""This node generates a buffer with the given distance for each geometric object.""",
     references={
         "GeoSeries.buffer": "https://geopandas.org/en/stable/docs/reference/api/geopandas.GeoSeries.buffer.html",
         "Shapley object.buffer": "https://shapely.readthedocs.io/en/latest/manual.html#object.buffer",
@@ -73,25 +75,27 @@ class BufferNode2:
 
     geo_col = knut.geo_col_parameter()
 
-    bufferdist = knext.DoubleParameter(
-        "Buffer distance", "The buffer distance for geometry. ", 1000.0
-    )
+    distance = kproj.Distance.get_distance_parameter()
+
+    unit = kproj.Distance.get_unit_parameter()
+
+    keep_input_crs = kproj.Distance.get_keep_input_crs_parameter()
 
     result_settings = knut.ResultSettings(
-        knut.ResultSettingsMode.APPEND.name, "buffered"
+        mode=knut.ResultSettingsMode.APPEND.name,
+        new_name="Buffer",
     )
 
     def __init__(self):
         # set twice as workaround until fixed in KNIME framework
         self.result_settings.mode = knut.ResultSettingsMode.APPEND.name
-        self.result_settings.new_column_name = "buffered"
+        self.result_settings.new_column_name = "Buffer"
 
     def configure(self, configure_context, input_schema):
         self.geo_col = knut.column_exists_or_preset(
             configure_context, self.geo_col, input_schema, knut.is_geo
         )
-        return knut.get_result_schema(
-            self.result_settings,
+        return self.result_settings.get_result_schema(
             configure_context,
             input_schema,
             self.geo_col,
@@ -100,22 +104,19 @@ class BufferNode2:
 
     def execute(self, exec_context: knext.ExecutionContext, input):
         gdf = knut.load_geo_data_frame(input, self.geo_col, exec_context)
-
-        from pyproj import CRS  # For CRS Units check
-
-        crsinput = CRS.from_user_input(gdf.crs)
-        if crsinput.is_geographic:
-            logging.warning("Unit as Degree, Please use Projected CRS")
-        exec_context.set_progress(0.3, "Geo data frame loaded. Starting buffering...")
-
-        gdf = knut.get_computed_result_frame(
-            self.result_settings,
+        helper = kproj.Distance(self.unit, self.keep_input_crs)
+        projected_gdf = helper.pre_processing(exec_context, gdf, False)
+        new_distance = helper.convert_input_distance(self.distance)
+        knut.check_canceled(exec_context)
+        exec_context.set_progress(0.6, "Computing buffer")
+        gdf = self.result_settings.get_computed_result_frame(
             exec_context,
             input.schema,
-            gdf,
+            projected_gdf,
             self.geo_col,
-            lambda l: l.buffer(self.bufferdist),
+            lambda l: l.buffer(new_distance),
         )
+        gdf = helper.post_processing(exec_context, gdf)
         exec_context.set_progress(1, "Buffering done")
         return knut.to_table(gdf, exec_context)
 
@@ -388,9 +389,9 @@ class SpatialJoinNode:
         "sjoin_nearest": "https://geopandas.org/en/stable/docs/reference/api/geopandas.sjoin_nearest.html",
     },
 )
-class NearestJoinNode:
+class NearestJoinNode2:
 
-    left_geo_col = knext.ColumnParameter(
+    left_geo_column = knext.ColumnParameter(
         "Left geometry column",
         "Select the geometry column from the left (top) input table to join on.",
         # Allow only GeoValue compatible columns
@@ -400,7 +401,7 @@ class NearestJoinNode:
         include_none_column=False,
     )
 
-    right_geo_col = knext.ColumnParameter(
+    right_geo_column = knext.ColumnParameter(
         "Right geometry column",
         "Select the geometry column from the right (bottom) input table to join on.",
         # Allow only GeoValue compatible columns
@@ -412,54 +413,119 @@ class NearestJoinNode:
 
     join_mode = knext.EnumParameter(
         label="Join mode",
-        description="The join mode determines of which input table the rows should be retained.",
+        description="The join mode specifies the type of join that will occur and which geometry column is "
+        + "retained in the output table.",
         default_value=_JoinModes.get_default().name,
         enum=_JoinModes,
     )
 
-    maxdist = knext.DoubleParameter(
+    distance = kproj.Distance.get_distance_parameter(
         "Maximum distance",
         "Maximum distance within which to query for nearest geometry. Must be greater than 0 ",
         1000.0,
     )
 
-    crs_info = knext.StringParameter(
-        label="CRS for distance calculation",
-        description=knut.DEF_CRS_DESCRIPTION,
-        default_value="EPSG:3857",
+    unit = kproj.Distance.get_unit_parameter()
+
+    keep_input_crs = kproj.Distance.get_keep_input_crs_parameter(
+        label="Keep CRS from left input table",
+        description="If checked the CRS of the left input table is retained even if a re-projection was necessary "
+        + "for the selected distance unit.",
     )
+
+    # left_include_columns = knext.MultiColumnParameter(
+    #     "Left columns",
+    #     "Select columns which should be included in the join result from the left (top) input table.",
+    #     port_index=0,
+    # )
+
+    # right_include_columns = knext.MultiColumnParameter(
+    #     "Right columns",
+    #     "Select columns which should be included in the join result from the right (bottom) input table.",
+    #     port_index=1,
+    # )
 
     def configure(self, configure_context, left_input_schema, right_input_schema):
         self.left_geo_col = knut.column_exists_or_preset(
-            configure_context, self.left_geo_col, left_input_schema, knut.is_geo
+            configure_context, self.left_geo_column, left_input_schema, knut.is_geo
         )
         self.right_geo_col = knut.column_exists_or_preset(
-            configure_context, self.right_geo_col, right_input_schema, knut.is_geo
+            configure_context, self.right_geo_column, right_input_schema, knut.is_geo
         )
         # TODO Create combined schema
         return None
 
     def execute(self, exec_context: knext.ExecutionContext, left_input, right_input):
-        left_gdf = knut.load_geo_data_frame(left_input, self.left_geo_col, exec_context)
+        # keep only selected columns
+        # left_include_columns = {self.left_geo_column}
+        # if self.left_include_columns is not None:
+        #     left_include_columns.update(self.left_include_columns)
+        # filtered_left = left_input[list(left_include_columns)]
+        # right_include_columns = {self.right_geo_column}
+        # if self.right_include_columns is not None:
+        #     right_include_columns.update(self.right_include_columns)
+        # filtered_right = right_input[list(right_include_columns)]
+
+        # left_gdf = knut.load_geo_data_frame(
+        #     filtered_left, self.left_geo_column, exec_context
+        # )
+        # right_gdf = knut.load_geo_data_frame(
+        #     filtered_right, self.right_geo_column, exec_context
+        # )
+        left_gdf = knut.load_geo_data_frame(
+            left_input, self.left_geo_column, exec_context
+        )
         right_gdf = knut.load_geo_data_frame(
-            right_input, self.right_geo_col, exec_context
+            right_input, self.right_geo_column, exec_context
         )
         knut.check_canceled(exec_context)
-        left_gdf.to_crs(self.crs_info, inplace=True)
-        right_gdf.to_crs(self.crs_info, inplace=True)
+        distance_helper = kproj.Distance(self.unit, self.keep_input_crs)
+        distance_helper.pre_processing(exec_context, right_gdf, True)
+        # process left last to keep its CRS as described in the node description
+        distance_helper.pre_processing(exec_context, left_gdf, True)
+
+        # left_include_columns.update(right_include_columns)
+        # distance_col_name = knut.get_unique_name("Distance", left_include_columns)
+        col_names = set(left_input.column_names)
+        col_names.update(right_input.column_names)
+        distance_col_name = knut.get_unique_name(
+            kproj.DEFAULT_DISTANCE_COLUMN_NAME, col_names
+        )
+
+        left_suffix = "left"
+        right_suffix = "right"
+
         gdf = gp.sjoin_nearest(
             left_gdf,
             right_gdf,
             how=self.join_mode.lower(),
-            max_distance=self.maxdist,
-            distance_col="NearDist",
-            lsuffix="1",
-            rsuffix="2",
+            max_distance=distance_helper.convert_input_distance(self.distance),
+            distance_col=distance_col_name,
+            lsuffix=left_suffix,
+            rsuffix=right_suffix,
         )
+
+        # convert returned distance to selected distance unit
+        knut.check_canceled(exec_context)
+        exec_context.set_progress(
+            0.8, f"Convert {distance_col_name} column to selected unit"
+        )
+        gdf[distance_col_name] = (
+            gdf[distance_col_name] / distance_helper.get_distance_factor()
+        )
+
         # reset the index since it might contain duplicates after joining
         gdf.reset_index(drop=True, inplace=True)
         # drop additional index columns if they exist
-        gdf.drop(["index_1", "index_2"], axis=1, errors="ignore", inplace=True)
+        gdf.drop(
+            ["index_" + left_suffix, "index_" + right_suffix],
+            axis=1,
+            errors="ignore",
+            inplace=True,
+        )
+
+        distance_helper.post_processing(exec_context, gdf, True)
+
         return knut.to_table(gdf, exec_context)
 
 
@@ -522,13 +588,14 @@ class ClipNode:
     )
 
     result_settings = knut.ResultSettings(
-        knut.ResultSettingsMode.REPLACE.name, "clipped"
+        mode=knut.ResultSettingsMode.APPEND.name,
+        new_name="Clipped",
     )
 
     def __init__(self):
         # set twice as workaround until fixed in KNIME framework
-        self.result_settings.mode = knut.ResultSettingsMode.REPLACE.name
-        self.result_settings.new_column_name = "clipped"
+        self.result_settings.mode = knut.ResultSettingsMode.APPEND.name
+        self.result_settings.new_column_name = "Clipped"
 
     def configure(self, configure_context, left_input_schema, right_input_schema):
         self.left_geo_col = knut.column_exists_or_preset(
@@ -538,8 +605,7 @@ class ClipNode:
             configure_context, self.right_geo_col, right_input_schema, knut.is_geo
         )
 
-        return knut.get_result_schema(
-            self.result_settings,
+        return self.result_settings.get_result_schema(
             configure_context,
             left_input_schema,
             self.left_geo_col,
@@ -705,30 +771,28 @@ class OverlayNode:
     after="",
 )
 @knext.input_table(
-    name="Left geo table",
-    description="Left table with geometry column. ",
+    name="Origin geo table",
+    description="Origin table with geometry column. ",
 )
 @knext.input_table(
-    name="Right geo table",
-    description="Right table with geometry column.",
+    name="Destination geo table",
+    description="Destination table with geometry column.",
 )
 @knext.output_table(
-    name="Geo table distance",
-    description="Euclidean distance between geometry objects.",
+    name="Euclidean distance table",
+    description="Euclidean distance between all origin and destination geometry objects.",
 )
 @knut.geo_node_description(
-    short_description="This node will calculate the Euclidean distance between two geometries.",
-    description="""This node will calculate the Euclidean distance between two geometries. 
-    If the input CRS is empty, the CRS of Top(left) input GeoDataFrame will be used as the default.
-    """,
+    short_description="This node will calculate the Euclidean distance between each origin and destination pair.",
+    description="This node will calculate the Euclidean distance in the selected unit between each origin and destination pair.",
     references={
         "Distance": "https://geopandas.org/en/stable/docs/reference/api/geopandas.GeoSeries.distance.html",
     },
 )
-class EuclideanDistanceNode:
-    left_geo_col = knext.ColumnParameter(
-        "Left geometry column",
-        "Select the geometry column from the left (top) input table to calculate.",
+class EuclideanDistanceNode2:
+    o_geo_col = knext.ColumnParameter(
+        "Origin geometry column",
+        "Select the geometry column from the origin table to calculate.",
         # Allow only GeoValue compatible columns
         port_index=0,
         column_filter=knut.is_geo,
@@ -736,9 +800,18 @@ class EuclideanDistanceNode:
         include_none_column=False,
     )
 
-    right_geo_col = knext.ColumnParameter(
-        "Right geometry column",
-        "Select the geometry column from the right (bottom) input table to calculate.",
+    o_id_col = knext.ColumnParameter(
+        "Origin ID column",
+        """Select the column which contains for each origin a unique ID. The selected column will be returned
+        in the result table and can be used to link back to the original data.""",
+        port_index=0,
+        include_row_key=False,
+        include_none_column=False,
+    )
+
+    d_geo_col = knext.ColumnParameter(
+        "Destination geometry column",
+        "Select the geometry column from the destination table to calculate.",
         # Allow only GeoValue compatible columns
         port_index=1,
         column_filter=knut.is_geo,
@@ -746,54 +819,96 @@ class EuclideanDistanceNode:
         include_none_column=False,
     )
 
-    crs_info = knext.StringParameter(
-        label="CRS for distance calculation",
-        description=knut.DEF_CRS_DESCRIPTION,
-        default_value="",
+    d_id_col = knext.ColumnParameter(
+        "Destination ID column",
+        """Select the column which contains for each destination a unique ID. The selected column will be returned
+        in the result table and can be used to link back to the original data.""",
+        port_index=1,
+        include_row_key=False,
+        include_none_column=False,
     )
 
-    def configure(self, configure_context, left_input_schema, right_input_schema):
-        self.left_geo_col = knut.column_exists_or_preset(
-            configure_context, self.left_geo_col, left_input_schema, knut.is_geo
+    unit = kproj.Distance.get_unit_parameter()
+
+    __COL_ORIGIN = "Origin ID"
+    __COL_DESTINATION = "Destination ID"
+    __COL_DISTANCE = "Distance"
+
+    def configure(self, configure_context, o_schema, d_schema):
+        self.o_geo_col = knut.column_exists_or_preset(
+            configure_context, self.o_geo_col, o_schema, knut.is_geo
         )
-        self.right_geo_col = knut.column_exists_or_preset(
-            configure_context, self.right_geo_col, right_input_schema, knut.is_geo
+        self.d_geo_col = knut.column_exists_or_preset(
+            configure_context, self.d_geo_col, d_schema, knut.is_geo
         )
+        knut.column_exists(self.o_id_col, o_schema)
+        o_id_type = o_schema[self.o_id_col].ktype
+        knut.column_exists(self.d_id_col, d_schema)
+        d_id_type = o_schema[self.d_id_col].ktype
         return knext.Schema.from_columns(
             [
-                knext.Column(knext.int64(), "originid"),
-                knext.Column(knext.int64(), "destinationid"),
-                knext.Column(knext.double(), "EuDist"),
+                knext.Column(o_id_type, self.__COL_ORIGIN),
+                knext.Column(d_id_type, self.__COL_DESTINATION),
+                knext.Column(knext.double(), self.__COL_DISTANCE),
             ]
         )
 
-    def execute(self, exec_context: knext.ExecutionContext, left_input, right_input):
-        left_gdf = gp.GeoDataFrame(
-            left_input.to_pandas()[self.left_geo_col], geometry=self.left_geo_col
+    def execute(self, exec_context: knext.ExecutionContext, o_input, d_input):
+        o_gdf = gp.GeoDataFrame(
+            o_input.to_pandas()[[self.o_geo_col, self.o_id_col]],
+            geometry=self.o_geo_col,
         )
-        right_gdf = gp.GeoDataFrame(
-            right_input.to_pandas()[self.right_geo_col], geometry=self.right_geo_col
+        d_gdf = gp.GeoDataFrame(
+            d_input.to_pandas()[[self.d_geo_col, self.d_id_col]],
+            geometry=self.d_geo_col,
         )
-        import pyproj
+        # rename the id columns to origin and destination
+        o_gdf.rename(columns={self.o_id_col: self.__COL_ORIGIN}, inplace=True)
+        d_gdf.rename(columns={self.d_id_col: self.__COL_DESTINATION}, inplace=True)
 
-        if self.crs_info != "":
-            newcrs = pyproj.CRS.from_user_input(self.crs_info)
-            right_gdf.to_crs(newcrs, inplace=True)
-            left_gdf.to_crs(newcrs, inplace=True)
-        else:
-            right_gdf.to_crs(left_gdf.crs, inplace=True)
-        knut.check_canceled(exec_context)
+        helper = kproj.Distance(self.unit, True)
+        helper.pre_processing(exec_context, o_gdf, True)
+        helper.pre_processing(exec_context, d_gdf, True)
 
-        left_gdf["originid"] = range(1, (left_gdf.shape[0] + 1))
-        right_gdf["destinationid"] = range(1, (right_gdf.shape[0] + 1))
-        mergedf = left_gdf.merge(right_gdf, how="cross")
-        mergedf_x = gp.GeoDataFrame(geometry=mergedf["geometry_x"])
-        mergedf_y = gp.GeoDataFrame(geometry=mergedf["geometry_y"])
-        mergedf["EuDist"] = mergedf_x.distance(mergedf_y, align=False)
-        mergedf = mergedf[["originid", "destinationid", "EuDist"]].reset_index(
-            drop=True
+        # this could happen if the user selects to keep the input projection
+        if o_gdf.crs != d_gdf.crs:
+            d_gdf.to_crs(o_gdf.crs, inplace=True)
+
+        merged_df = o_gdf.merge(d_gdf, how="cross")
+        merged_df_x = gp.GeoDataFrame(geometry=merged_df["geometry_x"])
+        merged_df_y = gp.GeoDataFrame(geometry=merged_df["geometry_y"])
+        # compute and adjust distance if necessary
+        merged_df[self.__COL_DISTANCE] = (
+            merged_df_x.distance(merged_df_y, align=False)
+            / helper.get_distance_factor()
         )
-        return knut.to_table(mergedf, exec_context)
+        merged_df = merged_df[
+            [self.__COL_ORIGIN, self.__COL_DESTINATION, self.__COL_DISTANCE]
+        ].reset_index(drop=True)
+
+        # computes only the upper part of the distance matrix
+        # data = []
+        # idx = 1
+        # length = len(o_gdf)
+        # for o_id, o_geo in zip(o_gdf[self.__COL_ORIGIN], o_gdf[self.o_geo_col]):
+        #     knut.check_canceled(exec_context)
+        #     exec_context.set_progress(
+        #         0.9 * idx / float(length), f"Processing origin row {idx} of {length}"
+        #     )
+        #     for d_id, d_geo in zip(
+        #         d_gdf[self.__COL_DESTINATION], d_gdf[self.d_geo_col]
+        #     ):
+        #         data.append(
+        #             (o_id, d_id, o_geo.distance(d_geo) / helper.get_distance_factor())
+        #         )
+        #     idx = idx + 1
+        # import pandas as pd
+
+        # merged_df = pd.DataFrame(
+        #     data,
+        #     columns=(self.__COL_ORIGIN, self.__COL_DESTINATION, self.__COL_DISTANCE),
+        # )
+        return knut.to_table(merged_df, exec_context)
 
 
 ############################################
@@ -810,97 +925,98 @@ class EuclideanDistanceNode:
 )
 @knext.input_table(
     name="Geo table",
-    description="Table with geometry column to buffer",
+    description="Table with geometry column to compute the buffers for.",
 )
 @knext.output_table(
     name="Transformed geo table",
-    description="Transformed table by Multiple Ring Buffer",
+    description="Transformed table with multiple ring buffers.",
 )
 @knut.geo_node_description(
-    short_description="This node generate multiple polygons with a series distances of each geometric object.",
-    description="""This node generate multiple polygons with a series distances of each geometric object.
-
-**Note:** If the input table contains multiple rows the node first computes the union of all geometries before 
-computing the buffers from the union.
+    short_description="This node generates a buffer for each of the given distances for the input geometric object.",
+    description="""This node generates a buffer for each of the given distances for the input geometric 
+    object. If the input table contains multiple rows the node first computes the union of all geometries before 
+    computing the buffers from the union.
     """,
     references={
-        "Buffer": "https://geopandas.org/en/stable/docs/reference/api/geopandas.GeoSeries.buffer.html",
+        "GeoSeries.buffer": "https://geopandas.org/en/stable/docs/reference/api/geopandas.GeoSeries.buffer.html",
+        "Shapley object.buffer": "https://shapely.readthedocs.io/en/latest/manual.html#object.buffer",
     },
 )
-class MultiRingBufferNode:
+class MultipleRingBufferNode:
+
     geo_col = knut.geo_col_parameter()
 
-    bufferdist = knext.StringParameter(
-        "Serial buffer distances with coma",
-        "The buffer distances for geometry ",
+    distance = knext.StringParameter(
+        "Buffer distances (comma separated)",
+        "Comma separated list of buffer distances in the selected distance unit.",
         "10,20,30",
+        validator=kproj.string_distances_parser,
     )
 
-    bufferunit = knext.StringParameter(
-        label="Serial buffer distances",
-        description="The buffer distances for geometry ",
-        default_value="Meter",
-        enum=[
-            "Meter",
-            "KiloMeter",
-            "Mile",
-        ],
-    )
+    unit = kproj.Distance.get_unit_parameter()
 
-    crs_info = knext.StringParameter(
-        label="CRS for buffering distance calculation",
-        description=knut.DEF_CRS_DESCRIPTION,
-        default_value="EPSG:3857",
-    )
+    keep_input_crs = kproj.Distance.get_keep_input_crs_parameter()
+
+    __BUFFER_COL_NAME = "Buffer"
 
     def configure(self, configure_context, input_schema_1):
         self.geo_col = knut.column_exists_or_preset(
             configure_context, self.geo_col, input_schema_1, knut.is_geo
         )
-        # TODO Create combined schema
-        return None
+
+        return knext.Schema(
+            [knut.TYPE_GEO, knext.double()],
+            [self.__BUFFER_COL_NAME, kproj.DEFAULT_DISTANCE_COLUMN_NAME],
+        )
 
     def execute(self, exec_context: knext.ExecutionContext, input_1):
+        # parse and sort the buffer distances
+        distances = kproj.string_distances_parser(self.distance)
+        distances.sort()
+        dist_length = len(distances)
+
         gdf = knut.load_geo_data_frame(input_1, self.geo_col, exec_context)
-        gdf.to_crs(self.crs_info, inplace=True)
-
-        from pyproj import CRS  # For CRS Units check
-
-        crsinput = CRS.from_user_input(gdf.crs)
-        if crsinput.is_geographic:
-            logging.warning("Unit as Degree, Please use Projected CRS")
-        exec_context.set_progress(0.3, "Geo data frame loaded. Starting buffering...")
-        # transfrom string list to number
-        import numpy as np
-
-        bufferlist = np.array(self.bufferdist.split(","), dtype=np.int64)
-        if self.bufferunit == "Meter":
-            bufferlist = bufferlist
-        elif self.bufferunit == "KiloMeter":
-            bufferlist = bufferlist * 1000
-        else:
-            bufferlist = bufferlist * 1609.34
-        # sort list
-        bufferlist = bufferlist.tolist()
-        bufferlist.sort()
+        # compute union of all shape if the input table has multiple rows
         if gdf.shape[0] > 1:
             gdf_union = gdf.unary_union
-            gdfunion = gp.GeoDataFrame(geometry=gp.GeoSeries(gdf_union), crs=gdf.crs)
+            gdf_union = gp.GeoDataFrame(geometry=gp.GeoSeries(gdf_union), crs=gdf.crs)
         else:
-            gdfunion = gdf
-        c1 = gp.GeoDataFrame(geometry=gdfunion.buffer(bufferlist[0]))
-        c2 = gp.GeoDataFrame(geometry=gdfunion.buffer(bufferlist[1]))
-        gdf0 = gp.overlay(c1, c2, how="union")
-        if len(bufferlist) > 2:
-            # Construct all other rings by loop
-            for i in range(2, len(bufferlist)):
-                ci = gp.GeoDataFrame(geometry=gdfunion.buffer(bufferlist[i]))
-                gdf0 = gp.overlay(gdf0, ci, how="union")
-        # Add ring radius values as a new column
-        gdf0["dist"] = bufferlist
-        gdf0 = gdf0.reset_index(drop=True)
-        exec_context.set_progress(0.1, "Buffering done")
-        return knut.to_table(gdf0, exec_context)
+            gdf_union = gdf
+
+        # initialize distance helper to adjust distances and project if necessary
+        distance_helper = kproj.Distance(self.unit, self.keep_input_crs)
+        projected_gdf = distance_helper.pre_processing(exec_context, gdf_union, False)
+
+        exec_context.set_progress(0.4, f"Processing distance 1 of {dist_length}")
+        knut.check_canceled(exec_context)
+        # Compute the buffers and append them to the result table
+        result_gdf = gp.GeoDataFrame(
+            geometry=projected_gdf.buffer(
+                distance_helper.convert_input_distance(distances[0])
+            )
+        )
+        if dist_length > 1:
+            for i in range(1, dist_length):
+                exec_context.set_progress(
+                    (i + 1) * 1.0 / dist_length,
+                    f"Processing distance {i + 1} of {dist_length}",
+                )
+                knut.check_canceled(exec_context)
+                gdf_plus = gp.GeoDataFrame(
+                    geometry=projected_gdf.buffer(
+                        distance_helper.convert_input_distance(distances[i])
+                    )
+                )
+                result_gdf = gp.overlay(
+                    result_gdf, gdf_plus, how="union", keep_geom_type=False
+                )
+
+        # Append original distances as new column
+        result_gdf[kproj.DEFAULT_DISTANCE_COLUMN_NAME] = distances
+        result_gdf.rename_geometry(self.__BUFFER_COL_NAME, inplace=True)
+        result_gdf = result_gdf.reset_index(drop=True)
+        distance_helper.post_processing(exec_context, result_gdf, in_place=True)
+        return knut.to_table(result_gdf, exec_context)
 
 
 ############################################
@@ -917,19 +1033,19 @@ class MultiRingBufferNode:
 )
 @knext.input_table(
     name="Geo table",
-    description="Table with geometry column to simplify",
+    description="Table with geometries to simplify.",
 )
 @knext.output_table(
     name="Transformed geo table",
-    description="Transformed geo input table",
+    description="Input table with simplified geometries.",
 )
 @knut.geo_node_description(
     short_description="Simplify the geometry",
-    description="""This node returns a geometry feature containing a simplified representation of each geometry 
-    with geopandas.simplify(). The algorithm (Douglas-Peucker) recursively splits the original line into smaller 
-    parts and connects these parts’ endpoints by a straight line. Then, it removes all points whose distance 
-    to the straight line is smaller than tolerance. It does not move any points and it always preserves endpoints 
-    of the original line or polygon.
+    description="""This node returns for each input geometry a simplified representation. 
+    The applied [algorithm](https://en.wikipedia.org/wiki/Ramer%E2%80%93Douglas%E2%80%93Peucker_algorithm) 
+    recursively splits the original lines into smaller parts and connects the endpoints of each part by a straight line. 
+    Then, it removes all points whose distance to the straight line is smaller than the provided tolerance distance. 
+    It does not move any points and it always preserves endpoints of the original line or polygon.
     """,
     references={
         "GeoSeries.simplify": "https://geopandas.org/en/stable/docs/reference/api/geopandas.GeoSeries.simplify.html",
@@ -943,32 +1059,32 @@ class SimplifyNode2:
 
     geo_col = knut.geo_col_parameter()
 
-    simplifydist = knext.DoubleParameter(
-        label="Simplification tolerance",
-        description="""The simplification tolerance distances for geometry.
-        All parts of a simplified geometry will be no more than tolerance distance from the original. 
-        It has the same units as the coordinate reference system of the GeoSeries. 
-        For example, using tolerance=100 in a projected CRS with meters as units means a distance of 100 meters in reality. 
-        """,
+    distance = kproj.Distance.get_distance_parameter(
+        label="Tolerance distance",
+        description="The tolerance distances in the selected distance unit. "
+        + "All parts of a simplified geometry will be no more than tolerance distance from their original position.",
         default_value=1.0,
     )
 
+    unit = kproj.Distance.get_unit_parameter()
+
+    keep_input_crs = kproj.Distance.get_keep_input_crs_parameter()
+
     result_settings = knut.ResultSettings(
-        knut.ResultSettingsMode.APPEND.name,
-        "simplified",
+        mode=knut.ResultSettingsMode.APPEND.name,
+        new_name="Simplified",
     )
 
     def __init__(self):
         # set twice as workaround until fixed in KNIME framework
         self.result_settings.mode = knut.ResultSettingsMode.APPEND.name
-        self.result_settings.new_column_name = "simplified"
+        self.result_settings.new_column_name = "Simplified"
 
     def configure(self, configure_context, input_schema_1):
         self.geo_col = knut.column_exists_or_preset(
             configure_context, self.geo_col, input_schema_1, knut.is_geo
         )
-        return knut.get_result_schema(
-            self.result_settings,
+        return self.result_settings.get_result_schema(
             configure_context,
             input_schema_1,
             self.geo_col,
@@ -976,13 +1092,20 @@ class SimplifyNode2:
         )
 
     def execute(self, exec_context: knext.ExecutionContext, input):
-        return knut.get_computed_result_table(
-            self.result_settings,
+        gdf = knut.load_geo_data_frame(input, self.geo_col, exec_context)
+        helper = kproj.Distance(self.unit, self.keep_input_crs)
+        helper.pre_processing(exec_context, gdf, True)
+        new_distance = helper.convert_input_distance(self.distance)
+
+        result_gdf = self.result_settings.get_computed_result_frame(
             exec_context,
-            input,
+            input.schema,
+            gdf,
             self.geo_col,
-            lambda l: l.simplify(self.simplifydist),
+            lambda l: l.simplify(new_distance),
         )
+        helper.post_processing(exec_context, result_gdf, True)
+        return knut.to_table(result_gdf, exec_context)
 
 
 ############################################
@@ -1189,7 +1312,7 @@ class CreateVoronoi:
     point data according to the reference boundary. The input data for the reference boundary should be a
     Polygon or MultiPolygon.
 
-    The buffer distance (in kilometers) is used to create dummy points that define a virtual boundary around the
+    The buffer distance with the provided unit is used to create dummy points that define a virtual boundary around the
     given reference boundary that controls the output of the Voronoi polygons. If the final Voronoi polygons are
     smaller than the given reference boundary, you might want to increase the buffer distance. For an illustration
     of the buffer distance see
@@ -1217,28 +1340,27 @@ class CreateVoronoi:
         include_none_column=False,
     )
 
-    control_buffer = knext.IntParameter(
-        "Buffered distance in kilometers for the virtual Voronoi polygon boundaries.",
-        """The buffer distance defines the distance of the dummy points that define the virtual boundary from the 
-        given reference boundary.
+    distance = kproj.Distance.get_distance_parameter(
+        label="Buffer distance",
+        description="""The buffer distance defines the distance of the dummy points that define the virtual boundary 
+        from the given reference boundary.
               
-        If the buffer distance is too small, the resulting polygons may not fill the entire boundary, and there may 
-        be gaps or missing parts within the boundary. This is because the buffer distance determines how far away from 
-        the boundary the Voronoi polygons will be generated, and if the distance is too small, some 
-        of the polygons may not intersect with the boundary or may only partially intersect with it.
-        For an illustration of the buffer distance see 
+        If the buffer distance is too small, the resulting polygons may not fill the entire reference 
+        boundary, resulting in gaps or missing parts within it. This is because the buffer distance 
+        determines how far away from the reference boundary the Voronoi polygons will be generated, and if the 
+        distance is too small, some of the polygons may not intersect with the reference boundary or may only 
+        partially intersect with it. For an illustration of the buffer distance see 
         [here.](https://raw.githubusercontent.com/spatial-data-lab/knime-geospatial-extension/main/docs/imgs/voronoiDistance.png)""",
         default_value=100,
+        min_distance=1,
     )
 
-    @control_buffer.validator
-    def validate_reps(value):
-        if value < 1:
-            raise ValueError("The buffer distance must be greater 0")
+    unit = kproj.Distance.get_unit_parameter()
 
-    _COL_ID = "ThiessenID"
-    _COL_GEOMETRY = "geometry"
-    _CRS = 3857
+    keep_input_crs = kproj.Distance.get_keep_input_crs_parameter()
+
+    _COL_GEOMETRY = "Geometry"
+    _COL_ID = "Thiessen ID"
 
     def configure(self, configure_context, input_schema1, input_schema2):
         self.point_geo_col = knut.column_exists_or_preset(
@@ -1264,16 +1386,19 @@ class CreateVoronoi:
         boundary = knut.load_geo_data_frame(
             input_table2, self.boundary_geo_col, exec_context
         )
-        origin_crs = origin_point.crs
-        point_proj = origin_point.to_crs(self._CRS)
-        boundary_proj = boundary.to_crs(self._CRS)
 
-        dist_buffer = self.control_buffer * 1000
+        helper = kproj.Distance(self.unit, self.keep_input_crs)
+        helper.pre_processing(exec_context, boundary, True)
+        helper.pre_processing(exec_context, origin_point, True)
+        dist_buffer = helper.convert_input_distance(self.distance)
+
         # Convert the GeoDataFrame to a numpy array
-        points = np.array([[pt.x, pt.y] for pt in point_proj.geometry])
+        points = np.array([[pt.x, pt.y] for pt in origin_point.geometry])
 
         # get the envelope of the union of the points with a buffer of 1
-        boundary_union = boundary_proj.unary_union
+        knut.check_canceled(exec_context)
+        exec_context.set_progress(0.3, "Computing virtual boundary")
+        boundary_union = boundary.unary_union
         envelope = boundary_union.envelope.buffer(dist_buffer).envelope
 
         # get the coordinates of the envelope
@@ -1285,9 +1410,12 @@ class CreateVoronoi:
         # combine the sample points and the dummy points
         points = np.concatenate((points, dummy_points))
 
+        knut.check_canceled(exec_context)
+        exec_context.set_progress(0.4, "Computing Voronoi regions")
         # compute Voronoi tessellation
         vor = Voronoi(points)
-
+        knut.check_canceled(exec_context)
+        exec_context.set_progress(0.8, "Converting Voronoi regions to table")
         # extract the vertices of each Voronoi region
         polygons = []
         for region in vor.regions:
@@ -1295,17 +1423,22 @@ class CreateVoronoi:
                 polygon = Polygon([vor.vertices[i] for i in region])
                 polygons.append(polygon)
 
+        knut.check_canceled(exec_context)
         # convert the list of Polygon objects to a GeoSeries object
         geo_series = gp.GeoSeries(polygons)
         # create GeoDataFrame
         gdf = pd.DataFrame({self._COL_GEOMETRY: geo_series})
-        gdf = gp.GeoDataFrame(gdf, geometry=self._COL_GEOMETRY, crs=self._CRS)
+        gdf = gp.GeoDataFrame(gdf, geometry=self._COL_GEOMETRY, crs=origin_point.crs)
 
         gdf = gdf[~gdf.geometry.is_empty]
-        extent = gp.GeoDataFrame(geometry=gp.GeoSeries(boundary_union), crs=self._CRS)
+        extent = gp.GeoDataFrame(
+            geometry=gp.GeoSeries(boundary_union), crs=origin_point.crs
+        )
         gdf = gp.overlay(gdf, extent, how="intersection")
-        # project back to original CRS
-        gdf = gdf.to_crs(origin_crs)
+        gdf.rename_geometry(self._COL_GEOMETRY, inplace=True)
+
+        # project back if necessary
+        helper.post_processing(exec_context, gdf, True)
         # append region id column
         gdf[self._COL_ID] = range(1, (gdf.shape[0] + 1))
         return knut.to_table(gdf, exec_context)
