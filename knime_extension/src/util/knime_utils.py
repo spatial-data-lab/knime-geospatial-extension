@@ -558,7 +558,6 @@ class ResultSettings:
     """
     Group of settings that define the format of the result table.
     """
-<<<<<<< HEAD
 
     mode = knext.EnumParameter(
         label="Output column",
@@ -672,16 +671,9 @@ def get_env_path():
     exec_path = sys.executable
     env_path = os.dirname(exec_path)
     return env_path
-=======
-    # Transform the NA columns to string
-    NotNacol = list(gdf.dropna(axis=1, how="all").columns)
-    Nacol = gdf.loc[:, ~gdf.columns.isin(NotNacol)].columns.tolist()
-    if len(Nacol) > 0:
-        gdf[Nacol] = gdf[Nacol].astype(str)
-    gdf = gdf.reset_index(drop=True)
-    return gdf
 
-def re_order_weight_rows(gdf,adjust_list,id_col):
+
+def re_order_weight_rows(gdf, adjust_list, id_col):
     """
     Reorder the spatial weight according to the id_col.
     """
@@ -697,9 +689,7 @@ def re_order_weight_rows(gdf,adjust_list,id_col):
         focal = id_map[row["focal"]]
         neighbor = id_map[row["neighbor"]]
         row["weight"] = adjust_list[
-            (adjust_list["focal"] == focal)
-            & (adjust_list["neighbor"] == neighbor)
+            (adjust_list["focal"] == focal) & (adjust_list["neighbor"] == neighbor)
         ]["weight"]
 
     return adjust_list_ref
->>>>>>> 6ae6076 (put reorder code into utls)
