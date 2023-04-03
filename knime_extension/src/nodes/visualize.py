@@ -229,21 +229,23 @@ class ColorSettings:
     )
 
 
-@knext.parameter_group(label="Legend Settings")
+@knext.parameter_group(label="Color Legend Settings")
 class LegendSettings:
     """
-    Group of settings that define if a legend is shown on the map and if so how it should be formatted.
+    Group of settings that define if a color legend is shown on the map and if so how it should be formatted.
+    The color legend is only shown if you have selected a color column.
     """
 
     plot = knext.BoolParameter(
-        "Show legend",
-        "If checked, a legend will be shown in the plot.",
+        "Show color legend",
+        "If checked, the color legend will be shown in the plot.",
         default_value=False,
     )
 
     caption = knext.StringParameter(
         "Legend caption",
-        "Set the caption for the legend. By default, the caption is the name of the selected color column or empty for heat map.",
+        "Set the caption for the color legend. By default, the caption is the name of the selected color column or "
+        + "empty for heat map.",
         default_value="",
     )
 
@@ -682,29 +684,32 @@ class StaticColorSettings:
     )
 
 
-@knext.parameter_group(label="Legend Settings")
+@knext.parameter_group(label="Color Legend Settings")
 class StaticLegendSettings:
     """
-    Group of settings that define if a legend is shown on the map and if so how it should be formatted.
+    Group of settings that define if a color legend is shown on the map and if so how it should be formatted.
+    The color legend is only shown if you have selected a color column.
+
     More details about the legend settings can be found [matplotlib.pyplot.legend](https://matplotlib.org/stable/api/_as_gen/matplotlib.pyplot.legend.html#matplotlib.pyplot.legend)
     and [matplotlib.pyplot.colorbar](https://matplotlib.org/stable/api/_as_gen/matplotlib.pyplot.colorbar.html#matplotlib.pyplot.colorbar).
     """
 
     plot = knext.BoolParameter(
-        "Show legend",
-        "If checked, a legend will be shown in the plot.",
+        "Show color legend",
+        "If checked, the color legend will be shown in the plot.",
         default_value=True,
     )
 
     caption = knext.StringParameter(
         "Legend caption",
-        "Set the caption for the legend. By default, the caption is the name of the selected color column or empty for heat map.",
+        "Set the caption for the legend. By default, the caption is the name of the selected color column or "
+        + "empty for heat map.",
         default_value="",
         # default_value=color_col,
     )
 
     caption_fontsize = knext.IntParameter(
-        "Legend caption font size",
+        "Caption font size",
         "Set the font size for the legend caption.",
         default_value=10,
         min_value=1,
@@ -800,16 +805,16 @@ class StaticLegendSettings:
     )
 
     colorbar_shrink = knext.DoubleParameter(
-        "Colorbar legend shrink",
-        "Select the shrinking value for the colorbar legend. Only work for colorbar.",
+        "Color bar legend shrink",
+        "Select the shrinking value for the color bar legend. Only works for color bar.",
         default_value=1.0,
         min_value=0.0,
         max_value=1.0,
     )
 
     colorbar_pad = knext.DoubleParameter(
-        "Colorbar legend pad",
-        "Select the pad value for the colorbar legend. Only work for colorbar",
+        "Color bar legend pad",
+        "Select the pad value for the color bar legend. Only works for color bar",
         default_value=0.1,
         min_value=0.0,
         max_value=0.99,
