@@ -9,11 +9,11 @@ category = knext.category(
     name="Spatial Visualization",  # Spatial Visualization
     description="Spatial view nodes",
     # starting at the root folder of the extension_module parameter in the knime.yml file
-    icon="icons/icon/VisulizationCategory.png",
+    icon="icons/icon/VisualizationCategory.png",
     after="conversion",
 )
 # Root path for all node icons in this file
-__NODE_ICON_PATH = "icons/icon/Visulization/"
+__NODE_ICON_PATH = "icons/icon/Visualization/"
 
 
 def replace_external_js_css_paths(
