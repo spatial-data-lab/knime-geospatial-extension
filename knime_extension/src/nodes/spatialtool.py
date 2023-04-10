@@ -1141,7 +1141,7 @@ class CreateGrid:
         default_value=100,
     )
 
-    _COL_ID = "gridID"
+    _COL_ID = "Grid ID"
     _COL_GEOMETRY = "geometry"
 
     def configure(self, configure_context, input_schema):
