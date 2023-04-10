@@ -65,17 +65,14 @@ class spatialWeights:
     )
 
     id_col = knext.ColumnParameter(
-        "Unique ID column",
-        """The unique ID column. 
-        The name of the column containing unique IDs for each observation in the input data. 
-        If not specified, IDs will be automatically generated from 0 to the number of rows flowing the order of the input data.
-        If you don't know how to select the unique ID column, it's better to leave it blank and the node will automatically generate the unique ID column. 
-        If you leave it blank, please also keep the ID setting in the following ESDA or spatial modeling nodes empty too.
-        If you select the ID column, please make sure that the ID column is unique. 
-        Also please make sure that also select the same ID column in the following ESDA or spatial modeling nodes.
-    
+        "ID column",
+        """Select the column which contains for each observation in the input data a unique ID.
+        If 'none' is selected, the IDs will be automatically generated from 0 to the number of rows flowing 
+        the order of the input data.
+        The IDs of this column must match with values of the ID column in subsequent ESDA or spatial modeling nodes.
         """,
         include_none_column=True,
+        since_version="1.1.0",
     )
 
     category = knext.StringParameter(
