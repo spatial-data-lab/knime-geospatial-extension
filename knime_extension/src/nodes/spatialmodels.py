@@ -16,19 +16,25 @@ __category = knext.category(
 __NODE_ICON_PATH = "icons/icon/SpatialModel/"
 
 
-@knext.parameter_group(label="ID Setting")
-class IDSetting:
+def get_id_col_parameter(
+    label: str = "ID column",
+    description: str = """Select the column which contains for each observation in the input data a unique ID.
+    The IDs must match with the values of the 
+    [Spatial Weights node](https://hub.knime.com/center%20for%20geographic%20analysis%20at%20harvard%20university/extensions/sdl.harvard.features.geospatial/latest/org.knime.python3.nodes.extension.ExtensionNodeSetFactory$DynamicExtensionNodeFactory:4d710eae/)
+    ID column.
+    If 'none' is selected, the IDs will be automatically generated from 0 to the number of rows flowing the order of 
+    the first input table.
+    """,
+):
     """
-    The unique ID column. It should always keep the same as the ID column in the spatial weights matrix node.
+    Returns the unique ID column. It should always keep the same as the ID column in the spatial weights matrix node.
     The selected column should contain unique IDs for each observation in the input data.
-
     """
-
-    Field_col = knext.ColumnParameter(
-        "ID column",
-        "The selected column should contain unique IDs for each observation in the input data. It should always keep the same as the ID column in the spatial weights matrix node.",
-        # column_filter=knut.is_numeric,
+    return knext.ColumnParameter(
+        label=label,
+        description=description,
         include_none_column=True,
+        since_version="1.1.0",
     )
 
 
@@ -71,7 +77,7 @@ class Spatial2SLSModel:
     # input parameters
     geo_col = knut.geo_col_parameter()
 
-    id_col_setting = IDSetting()
+    id_col = get_id_col_parameter()
 
     dependent_variable = knext.ColumnParameter(
         "Dependent variable",
@@ -117,9 +123,9 @@ class Spatial2SLSModel:
         gdf = gp.GeoDataFrame(input_1.to_pandas(), geometry=self.geo_col)
         adjust_list = input_2.to_pandas()
 
-        if "none" not in str(self.id_col_setting.Field_col).lower():
+        if "none" not in str(self.id_col).lower():
             adjust_list = knut.re_order_weight_rows(
-                gdf=gdf, adjust_list=adjust_list, id_col=self.id_col_setting.Field_col
+                gdf=gdf, adjust_list=adjust_list, id_col=self.id_col
             )
 
         from libpysal.weights import W
@@ -239,7 +245,7 @@ class SpatialLagPanelModelwithFixedEffects:
 
     geo_col = knut.geo_col_parameter()
 
-    id_col_setting = IDSetting()
+    id_col = get_id_col_parameter()
 
     dependent_variable = knext.MultiColumnParameter(
         "Dependent variables",
@@ -263,9 +269,9 @@ class SpatialLagPanelModelwithFixedEffects:
         gdf = gp.GeoDataFrame(input_1.to_pandas(), geometry=self.geo_col)
         adjust_list = input_2.to_pandas()
 
-        if "none" not in str(self.id_col_setting.Field_col).lower():
+        if "none" not in str(self.id_col).lower():
             adjust_list = knut.re_order_weight_rows(
-                gdf=gdf, adjust_list=adjust_list, id_col=self.id_col_setting.Field_col
+                gdf=gdf, adjust_list=adjust_list, id_col=self.id_col
             )
 
         from libpysal.weights import W
@@ -378,7 +384,7 @@ class SpatialErrorPanelModelwithFixedEffects:
 
     geo_col = knut.geo_col_parameter()
 
-    id_col_setting = IDSetting()
+    id_col = get_id_col_parameter()
 
     dependent_variable = knext.MultiColumnParameter(
         "Dependent variables",
@@ -402,9 +408,9 @@ class SpatialErrorPanelModelwithFixedEffects:
         gdf = gp.GeoDataFrame(input_1.to_pandas(), geometry=self.geo_col)
         adjust_list = input_2.to_pandas()
 
-        if "none" not in str(self.id_col_setting.Field_col).lower():
+        if "none" not in str(self.id_col).lower():
             adjust_list = knut.re_order_weight_rows(
-                gdf=gdf, adjust_list=adjust_list, id_col=self.id_col_setting.Field_col
+                gdf=gdf, adjust_list=adjust_list, id_col=self.id_col
             )
 
         from libpysal.weights import W
@@ -951,7 +957,7 @@ class SpatialOLS:
 
     geo_col = knut.geo_col_parameter()
 
-    id_col_setting = IDSetting()
+    id_col = get_id_col_parameter()
 
     dependent_variable = knext.ColumnParameter(
         "Dependent variable",
@@ -977,9 +983,9 @@ class SpatialOLS:
         gdf = gp.GeoDataFrame(input_1.to_pandas(), geometry=self.geo_col)
         adjust_list = input_2.to_pandas()
 
-        if "none" not in str(self.id_col_setting.Field_col).lower():
+        if "none" not in str(self.id_col).lower():
             adjust_list = knut.re_order_weight_rows(
-                gdf=gdf, adjust_list=adjust_list, id_col=self.id_col_setting.Field_col
+                gdf=gdf, adjust_list=adjust_list, id_col=self.id_col
             )
 
         from libpysal.weights import W
@@ -1090,7 +1096,7 @@ class SpatialML_Lag:
 
     geo_col = knut.geo_col_parameter()
 
-    id_col_setting = IDSetting()
+    id_col = get_id_col_parameter()
 
     dependent_variable = knext.ColumnParameter(
         "Dependent variable",
@@ -1116,9 +1122,9 @@ class SpatialML_Lag:
         gdf = gp.GeoDataFrame(input_1.to_pandas(), geometry=self.geo_col)
         adjust_list = input_2.to_pandas()
 
-        if "none" not in str(self.id_col_setting.Field_col).lower():
+        if "none" not in str(self.id_col).lower():
             adjust_list = knut.re_order_weight_rows(
-                gdf=gdf, adjust_list=adjust_list, id_col=self.id_col_setting.Field_col
+                gdf=gdf, adjust_list=adjust_list, id_col=self.id_col
             )
 
         from libpysal.weights import W
@@ -1228,7 +1234,7 @@ class SpatialML_Error:
 
     geo_col = knut.geo_col_parameter()
 
-    id_col_setting = IDSetting()
+    id_col = get_id_col_parameter()
 
     dependent_variable = knext.ColumnParameter(
         "Dependent variable",
@@ -1254,9 +1260,9 @@ class SpatialML_Error:
         gdf = gp.GeoDataFrame(input_1.to_pandas(), geometry=self.geo_col)
         adjust_list = input_2.to_pandas()
 
-        if "none" not in str(self.id_col_setting.Field_col).lower():
+        if "none" not in str(self.id_col).lower():
             adjust_list = knut.re_order_weight_rows(
-                gdf=gdf, adjust_list=adjust_list, id_col=self.id_col_setting.Field_col
+                gdf=gdf, adjust_list=adjust_list, id_col=self.id_col
             )
 
         from libpysal.weights import W
