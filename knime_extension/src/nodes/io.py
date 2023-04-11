@@ -205,12 +205,12 @@ class GeoPackageReaderNode:
         layerlist = fiona.listlayers(self.data_url)
         pnumber = pd.Series(range(0, 100)).astype(str).to_list()
         if self.data_layer in layerlist:
-            gdf = gp.read_file(self.data_url, layer=self.data_layer)
+            gdf = gp.GeoDataFrame.from_features(fiona.open(self.data_url, layer=self.data_layer))
         elif self.data_layer in pnumber:
             nlayer = int(self.data_layer)
-            gdf = gp.read_file(self.data_url, layer=nlayer)
+            gdf = gp.GeoDataFrame.from_features(fiona.open(self.data_url, layer=nlayer))
         else:
-            gdf = gp.read_file(self.data_url, layer=0)
+            gdf = gp.GeoDataFrame.from_features(fiona.open(self.data_url, layer=0))
         gdf = gdf.reset_index(drop=True)
         listtable = pd.DataFrame({"layerlist": layerlist})
         try:
