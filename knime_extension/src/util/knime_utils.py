@@ -295,7 +295,7 @@ def census_node_description(short_description: str, description: str, references
         # s += "___\n\n"  # separator line between description and general part
         s += "The node is based on the data from [US Census](https://www.census.gov/) and "
         s += "[FIPS code](https://www.census.gov/library/reference/code-lists/ansi.html) "
-        s += "and uses the following related information and functions:"
+        s += "and uses the following related information and function"
         if references is not None:
             if len(references) > 1:
                 s += "s"
@@ -322,7 +322,7 @@ def osm_node_description(short_description: str, description: str, references: d
         s += f"{description}\n\n"
         # s += "___\n\n"  # separator line between description and general part
         s += "The node is based on the [OpenStreetMap project](https://www.openstreetmap.org/about) "
-        s += "and uses the following related information and functions:"
+        s += "and uses the following related information and function"
         if references is not None:
             if len(references) > 1:
                 s += "s"
