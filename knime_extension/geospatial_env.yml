@@ -11,6 +11,7 @@ dependencies:
   - geopandas=0.12.2
   - geopy=2.3.0
   - ipykernel=6.22.0 #required by kepler but not included in its dependencies it seems
+  - jmespath=1.0.1
   - keplergl=0.3.2
   - knime-extension
   - knime-python-base
