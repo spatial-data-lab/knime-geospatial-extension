@@ -6,6 +6,7 @@ dependencies:
   - packaging
   - python=3.9
   - curl=7.88.1 #required by libgdal which includes an older version with vulnerabilities
+  - esda=2.4.3
   - fiona=1.9.1
   - folium=0.14.0
   - geopandas=0.12.2
