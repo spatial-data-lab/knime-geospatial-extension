@@ -16,8 +16,10 @@ __category = knext.category(
 __NODE_ICON_PATH = "icons/icon/Spatialnetwork/"
 
 # Common used column names
-_COL_DURATION = "duration"
-_COL_DISTANCE = "distance"
+_COL_O_ID = "Origin ID"
+_COL_D_ID = "Destination ID"
+_COL_DURATION = "Duration"
+_COL_DISTANCE = "Distance"
 
 # short functions from momepy
 class SimpleMomepy:
@@ -195,8 +197,8 @@ class GoogleDistanceMatrix:
     This node uses the
     [Google Distance Matrix API](https://developers.google.com/maps/documentation/distance-matrix/overview)
     to create a distance matrix for the provided origins and destinations. The matrix is created by pairing each
-    input origin with each input destination and will contain the travel distance and time for each pair.
-    The distance unit is meter and the estimated travel time is returned in minutes.
+    input origin with each input destination and will contain the travel distance and duration for each pair.
+    The distance unit is meter and the duration is returned in minutes.
 
     If the input geometry is not a point geometry, the centroids will be automatically computed and used.
     """
@@ -239,11 +241,12 @@ class GoogleDistanceMatrix:
         include_none_column=False,
     )
     api_key = knext.StringParameter(
-        "Google API key",
-        """Click [here](https://developers.google.com/maps/documentation/distance-matrix/get-api-key) for details on
+        label="Google API key",
+        description="""Click [here](https://developers.google.com/maps/documentation/distance-matrix/get-api-key) for details on
         how to obtain and use a Google API key for the Distance Matrix API.""",
-        "",
+        default_value="",
     )
+
     travel_mode = knext.EnumParameter(
         "Travel mode",
         """The following 
@@ -270,7 +273,7 @@ class GoogleDistanceMatrix:
 
         return knext.Schema(
             [o_id_type, d_id_type, knext.double(), knext.int64()],
-            [self.o_id_col, self.d_id_col, _COL_DURATION, _COL_DISTANCE],
+            [_COL_O_ID, _COL_D_ID, _COL_DURATION, _COL_DISTANCE],
         )
 
     def execute(self, exec_context: knext.ExecutionContext, left_input, right_input):
@@ -302,8 +305,6 @@ class GoogleDistanceMatrix:
 
         o_gdf = knut.load_geo_data_frame(left_input, self.o_geo_col, exec_context)
         d_gdf = knut.load_geo_data_frame(right_input, self.d_geo_col, exec_context)
-        o_gdf = knut.valid_id_column(o_gdf, self.o_id_col)
-        d_gdf = knut.valid_id_column(d_gdf, self.d_id_col)
 
         # Set a lat\Lon CRS before renaming the geometry column
         o_gdf = o_gdf.to_crs(4326)
@@ -311,10 +312,10 @@ class GoogleDistanceMatrix:
 
         # Filter all columns except the needed once and rename the geometry column to have a consistent result in merge
         o_gdf = o_gdf.filter(items=[self.o_geo_col, self.o_id_col]).rename(
-            columns={self.o_geo_col: "geometry"}
+            columns={self.o_geo_col: "geometry", self.o_id_col: _COL_O_ID}
         )
         d_gdf = d_gdf.filter(items=[self.d_geo_col, self.d_id_col]).rename(
-            columns={self.d_geo_col: "geometry"}
+            columns={self.d_geo_col: "geometry", self.d_id_col: _COL_D_ID}
         )
 
         # Generate origin destination matrix via cross join
@@ -323,7 +324,7 @@ class GoogleDistanceMatrix:
         merge_df_y = gp.GeoDataFrame(geometry=merge_df["geometry_y"])
 
         # create the result matrix with the two id columns...
-        distance_matrix = merge_df[[self.o_id_col, self.d_id_col]]
+        distance_matrix = merge_df[[_COL_O_ID, _COL_D_ID]]
         # ... and default value 0 for the duration and distance column
         distance_matrix[_COL_DURATION] = 0
         distance_matrix[_COL_DISTANCE] = 0
@@ -474,7 +475,7 @@ class OSRMDistanceMatrix:
     )
 
     # Constant for distance matrix
-    _COL_GEOMETRY = "route"
+    _COL_GEOMETRY = "Route"
 
     # For details see: http://project-osrm.org/docs/v5.5.1/api/#route-service
     _BASE_URL = "https://router.project-osrm.org"
@@ -507,7 +508,7 @@ class OSRMDistanceMatrix:
         model = _OSRMResultModel[self.result_model]
 
         result_types = [o_id_type, d_id_type]
-        result_names = [self.o_id_col, self.d_id_col]
+        result_names = [_COL_O_ID, _COL_D_ID]
         if model.append_distance():
             result_types += [knext.double(), knext.double()]
             result_names += [_COL_DURATION, _COL_DISTANCE]
@@ -628,8 +629,6 @@ class OSRMDistanceMatrix:
         # Cross join Data
         o_gdf = knut.load_geo_data_frame(left_input, self.o_geo_col, exec_context)
         d_gdf = knut.load_geo_data_frame(right_input, self.d_geo_col, exec_context)
-        o_gdf = knut.valid_id_column(o_gdf, self.o_id_col)
-        d_gdf = knut.valid_id_column(d_gdf, self.d_id_col)
 
         # Set a lat\Lon CRS before renaming the geometry column
         o_gdf = o_gdf.to_crs(4326)
@@ -637,17 +636,17 @@ class OSRMDistanceMatrix:
 
         # Filter all columns except the needed once and rename the geometry column to have a consistent result in merge
         o_gdf = o_gdf.filter(items=[self.o_geo_col, self.o_id_col]).rename(
-            columns={self.o_geo_col: "geometry"}
+            columns={self.o_geo_col: "geometry", self.o_id_col: _COL_O_ID}
         )
         d_gdf = d_gdf.filter(items=[self.d_geo_col, self.d_id_col]).rename(
-            columns={self.d_geo_col: "geometry"}
+            columns={self.d_geo_col: "geometry", self.d_id_col: _COL_D_ID}
         )
 
         # Generate origin destination matrix via cross join
         merge_df = o_gdf.merge(d_gdf, how="cross")
-        merge_df_x = gp.GeoDataFrame(geometry=merge_df["geometry_x"])
-        merge_df_y = gp.GeoDataFrame(geometry=merge_df["geometry_y"])
-        df = merge_df[[self.o_id_col, self.d_id_col]]
+        merge_df_x = gp.GeoDataFrame(geometry=merge_df["geometry_x"], crs=4326)
+        merge_df_y = gp.GeoDataFrame(geometry=merge_df["geometry_y"], crs=4326)
+        df = merge_df[[_COL_O_ID, _COL_D_ID]]
         df["StartX"] = merge_df_x.centroid.x
         df["StartY"] = merge_df_x.centroid.y
         df["EndX"] = merge_df_y.centroid.x
@@ -724,37 +723,41 @@ class OSRMDistanceMatrix:
 )
 class RoadNetworkDistanceMatrix:
     """
-    This node uses the [NetworkX](https://networkx.org/) to create a distance matrix for the provided origins and
-    destinations using the given road network. Prior computing the shortest path, origins and destinations
-    are snapped to the closest point of the given road work. The matrix is then created by computing the
+    This node creates a distance matrix for the provided origins and destinations using the given road network.
+
+    This node uses the [NetworkX library](https://networkx.org/) to create a distance matrix for the provided origins
+    and destinations using the given road network. Prior computing the shortest path, origins and destinations
+    are snapped to the closest point of the given road network. The matrix is then created by computing the
     [shortest path](https://networkx.org/documentation/networkx-1.10/reference/generated/networkx.algorithms.shortest_paths.weighted.single_source_dijkstra_path_length.html)
     between each snapped origin and all other reachable snapped destinations.
-    The distance and travel time depends on the unit of the selected speed column.
-    In addition to the travel distance and time, the output table contains the distance between each origin and
-    destination and its snap point along the road network, which can be incorporated into a total travel time and
-    distance.
 
-    The calculation depends on a projected coordinates system of road network datasets. If the input projection is
-    not in a projected CRS, the node will project the origins and destinations to [epsg:3857.](https://epsg.io/3857)
+    The returned distance is in meters and the duration in hours. In addition to the travel distance and duration,
+    the output table contains the distance in meters between each origin and destination and its corresponding snap
+    point along the road network, which can be incorporated into a total travel time and duration.
 
-    If the input geometry is not a point geometry, the centroids will be automatically computed and used.
+    The node projects the input coordinates to [EPSG:3857](https://epsg.io/3857) prior computing the length of each
+    road and the snap distances of the origin and destinations.
+
+    If the origin and destination geometries are not a point geometry, the centroids will be automatically computed
+    and used.
     """
+
     class UnitModes(knext.EnumParameterOptions):
         METER_SECOND = (
-            "Meter/second(m/s)",
-            "Meters per second.",
+            "Meters per second (m/s)",
+            "The unit of the speed column is meters per second.",
         )
         MILE_HOUR = (
-            "Miles/hour(mph)",
-            "Miles per hour.",
+            "Miles per hour (mph)",
+            "The unit of the speed column is miles per hour.",
         )
         KM_HOUR = (
-            "kilometers/hour(km/h)",
-            "Kilometers per hour.",
+            "Kilometers per hour (km/h)",
+            "The unit of the speed column is kilometers per hour.",
         )
         DEFAULT_UNIT = (
             "Default unit",
-            "Default unit of selected speed column.",
+            "If selected the speed column is used as is and assumed to be meters per minute.",
         )
 
         @classmethod
@@ -814,16 +817,16 @@ class RoadNetworkDistanceMatrix:
     )
 
     r_speed_col = knext.ColumnParameter(
-        "Speed column from road network",
+        "Road network speed column",
         "Select the column which contains the speed for the road network.",
         port_index=2,
         column_filter=knut.is_numeric,
         include_row_key=False,
         include_none_column=False,
     )
-    speedunit = knext.EnumParameter(
+    speed_unit = knext.EnumParameter(
         label="Speed unit",
-        description="The unit for speed column",
+        description="The unit of the selected speed column.",
         default_value=UnitModes.get_default().name,
         enum=UnitModes,
     )
@@ -943,12 +946,13 @@ class RoadNetworkDistanceMatrix:
             axis=1,
         )
         return gdf
-    
+
     # check isolated node
-    def connectgraph(self, G, threshold=1):
+    def connect_graph(self, G, threshold=1):
         import math
         import networkx as nx
-        from shapely.geometry import  LineString
+        from shapely.geometry import LineString
+
         def distance(node1, node2):
             x1, y1 = node1
             x2, y2 = node2
@@ -988,7 +992,7 @@ class RoadNetworkDistanceMatrix:
             else:
                 print("The graph is still not connected.")
         return G
-    
+
     def configure(
         self,
         configure_context,
@@ -1022,8 +1026,8 @@ class RoadNetworkDistanceMatrix:
                 knext.double(),
             ],
             [
-                self.o_id_col,
-                self.d_id_col,
+                _COL_O_ID,
+                _COL_D_ID,
                 _COL_DURATION,
                 _COL_DISTANCE,
                 self._COL_O_SNAP,
@@ -1044,8 +1048,6 @@ class RoadNetworkDistanceMatrix:
         o_gdf = knut.load_geo_data_frame(input1, self.o_geo_col, exec_context)
         d_gdf = knut.load_geo_data_frame(input2, self.d_geo_col, exec_context)
         r_gdf = knut.load_geo_data_frame(input3, self.r_geo_col, exec_context)
-        o_gdf = knut.valid_id_column(o_gdf, self.o_id_col)
-        d_gdf = knut.valid_id_column(d_gdf, self.d_id_col)
 
         r_gdf = r_gdf.to_crs(3857)
         o_gdf = o_gdf.to_crs(r_gdf.crs)
@@ -1053,11 +1055,11 @@ class RoadNetworkDistanceMatrix:
 
         # Filter all columns except the needed once and rename geometry column since some methods expect it
         o_gdf = o_gdf.filter(items=[self.o_geo_col, self.o_id_col]).rename(
-            columns={self.o_geo_col: "geometry"}
+            columns={self.o_geo_col: "geometry", self.o_id_col: _COL_O_ID}
         )
         o_gdf.set_geometry("geometry", inplace=True)
         d_gdf = d_gdf.filter(items=[self.d_geo_col, self.d_id_col]).rename(
-            columns={self.d_geo_col: "geometry"}
+            columns={self.d_geo_col: "geometry", self.d_id_col: _COL_D_ID}
         )
         d_gdf.set_geometry("geometry", inplace=True)
         r_gdf = r_gdf.filter(items=[self.r_geo_col, self.r_speed_col]).rename(
@@ -1067,15 +1069,16 @@ class RoadNetworkDistanceMatrix:
 
         r_gdf = r_gdf.dropna(subset=["geometry"], how="any")
 
-        if self.speedunit == self.UnitModes.METER_SECOND.name:
+        # convert to meters per minute
+        if self.speed_unit == self.UnitModes.METER_SECOND.name:
             r_gdf["speed"] = r_gdf.speed * 60
-        elif self.speedunit == self.UnitModes.MILE_HOUR.name:
+        elif self.speed_unit == self.UnitModes.MILE_HOUR.name:
             r_gdf["speed"] = r_gdf.speed * 26.8224
-        elif self.speedunit == self.UnitModes.KM_HOUR.name:
+        elif self.speed_unit == self.UnitModes.KM_HOUR.name:
             r_gdf["speed"] = r_gdf.speed * 16.6667
         else:
             r_gdf["speed"] = r_gdf.speed * 1
-            
+
         # ensure that origin and destination are points
         o_gdf["geometry"] = o_gdf.geometry.centroid
         d_gdf["geometry"] = d_gdf.geometry.centroid
@@ -1136,7 +1139,7 @@ class RoadNetworkDistanceMatrix:
 
         # Convert geoDataFrame to Graph with MomePy
         graph = SimpleMomepy.gdf_to_nx(edges)
-        graph = self.connectgraph(graph)
+        graph = self.connect_graph(graph)
         # Save geoDataFrame back to Points and Edges
         nodes1, edges1 = SimpleMomepy.nx_to_gdf(
             graph, points=True, lines=True, spatial_weights=False
@@ -1183,8 +1186,8 @@ class RoadNetworkDistanceMatrix:
             df = pd.DataFrame(data)
             dff = pd.concat([df, dff], ignore_index=True)
 
-        o_gdf2 = o_gdf[["key", self.o_id_col]]
-        d_gdf2 = d_gdf[["key", self.d_id_col]]
+        o_gdf2 = o_gdf[["key", _COL_O_ID]]
+        d_gdf2 = d_gdf[["key", _COL_D_ID]]
         # # join the tables on the 'key' column
         result = pd.merge(dff, o_gdf2, left_on="originkey", right_on="key").drop(
             "key", axis=1
@@ -1194,15 +1197,15 @@ class RoadNetworkDistanceMatrix:
         ).drop("key", axis=1)
         result = result.copy()[
             [
-                self.o_id_col,
-                self.d_id_col,
+                _COL_O_ID,
+                _COL_D_ID,
                 _COL_DURATION,
                 _COL_DISTANCE,
                 self._COL_O_SNAP,
                 self._COL_D_SNAP,
             ]
         ]
-        result.sort_values(by=[self.o_id_col, self.d_id_col], inplace=True)
+        result.sort_values(by=[_COL_O_ID, _COL_D_ID], inplace=True)
         result.reset_index(drop=True, inplace=True)
         return knut.to_table(result)
 
