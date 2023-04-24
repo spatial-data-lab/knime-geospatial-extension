@@ -220,10 +220,8 @@ class US2020TIGERNode:
                 self.geofile = "prisecroads"
             data_url = f"{base_url}{Statepath}/{County5Fips}/tl_2020_{County5Fips}_{self.geofile}.zip"
         gdf = gp.read_file(data_url)
-        gdf1 = gdf.reset_index(drop=True)
-        # Transform the NA columns to string
-        gdf1 = knut.Turn_all_NA_column_as_str(gdf1)
-        return knext.Table.from_pandas(gdf1)
+        gdf.reset_index(drop=True, inplace=True)
+        return knext.Table.from_pandas(gdf)
 
 
 ############################################
@@ -292,6 +290,18 @@ class USCensus2020Node:
         default_value="block group",
         enum=["block group", "block", "tract", "county"],
     )
+    compatibleid = knext.BoolParameter(
+        label="Make Census GEOIDs compatible to Tiger/Line GEOIDs",
+        description="""If enabled, the first nine characters of the Census GEOID column are removed to be compatible 
+with the GEOID of the Tiger/Line Shapefiles. This is useful if you want to join the result of this node with the 
+result of the
+[US2020 TIGER Map node.](https://hub.knime.com/spatialdatalab/extensions/sdl.harvard.features.geospatial/latest/org.knime.python3.nodes.extension.ExtensionNodeSetFactory$DynamicExtensionNodeFactory:6009c0c2/) 
+
+For more details about the format and the conversion see 
+[Understanding Geographic Identifiers.](https://www.census.gov/programs-surveys/geography/guidance/geo-identifiers.html)""",
+        default_value=lambda v: False if v < knext.Version(1, 1, 0) else True,
+        since_version="1.1.0",
+    )
 
     def configure(self, configure_context):
         # TODO Create combined schema
@@ -316,8 +326,8 @@ class USCensus2020Node:
         import pandas as pd
 
         gdf = pd.DataFrame(data[1:], columns=data[0])
-        if "GEO_ID" in gdf.columns:
-            gdf["GEO_ID"] = gdf["GEO_ID"].str.replace(r".*US", "", regex=True)
+        if "GEO_ID" in gdf.columns and self.compatibleid == True:
+            gdf["GEO_ID"] = gdf["GEO_ID"].str.slice(start=9)
         return knext.Table.from_pandas(gdf)
 
 
@@ -392,6 +402,12 @@ class UScensusACSNode:
     year = knext.StringParameter(
         "US Census ACS5 Year Label", "The Year label of dataset", "2020"
     )
+    compatibleid = knext.BoolParameter(
+        label="Make GEO_ID compatible to Tiger/Line GEOID ",
+        description=" FIPS-based GEOID for  Block, Block group, Tract and County",
+        default_value=lambda v: False if v <= knext.Version(1, 0, 0) else True,
+        since_version="1.1.0",
+    )
 
     def configure(self, configure_context):
         # TODO Create combined schema
@@ -419,8 +435,8 @@ class UScensusACSNode:
         import pandas as pd
 
         gdf = pd.DataFrame(data[1:], columns=data[0])
-        if "GEO_ID" in gdf.columns:
-            gdf["GEO_ID"] = gdf["GEO_ID"].str.replace(r".*US", "", regex=True)
+        if "GEO_ID" in gdf.columns and self.compatibleid == True:
+            gdf["GEO_ID"] = gdf["GEO_ID"].str.slice(start=9)
         return knext.Table.from_pandas(gdf)
 
 
@@ -505,6 +521,9 @@ class OSMdataNode:
     )
 
     def configure(self, configure_context, input_schema_1):
+        self.geo_col = knut.column_exists_or_preset(
+            configure_context, self.geo_col, input_schema_1, knut.is_geo
+        )
         # TODO Create combined schema
         return None
 
@@ -570,6 +589,9 @@ class OSMnetworkNode:
     )
 
     def configure(self, configure_context, input_schema_1):
+        self.geo_col = knut.column_exists_or_preset(
+            configure_context, self.geo_col, input_schema_1, knut.is_geo
+        )
         # TODO Create combined schema
         return None
 
