@@ -355,9 +355,10 @@ class GlobalMoransI:
         adjust_list = input_2.to_pandas()
 
         if "none" not in str(self.id_col_setting.Field_col).lower():
-            adjust_list = knut.re_order_weight_rows(
-                gdf=gdf, adjust_list=adjust_list, id_col=self.id_col_setting.Field_col
-            )
+            gdf.index = range(len(gdf))
+            id_map = dict(zip(gdf[self.id_col], gdf.index))
+            adjust_list["focal"] = adjust_list["focal"].map(id_map)
+            adjust_list["neighbor"] = adjust_list["neighbor"].map(id_map)
 
         from libpysal.weights import W
 
@@ -447,9 +448,10 @@ class LocalMoransI:
         adjust_list = input_2.to_pandas()
 
         if "none" not in str(self.id_col_setting.Field_col).lower():
-            adjust_list = knut.re_order_weight_rows(
-                gdf=gdf, adjust_list=adjust_list, id_col=self.id_col_setting.Field_col
-            )
+            gdf.index = range(len(gdf))
+            id_map = dict(zip(gdf[self.id_col], gdf.index))
+            adjust_list["focal"] = adjust_list["focal"].map(id_map)
+            adjust_list["neighbor"] = adjust_list["neighbor"].map(id_map)
 
         from libpysal.weights import W
 
@@ -570,9 +572,10 @@ class GlobalGearysC:
         adjust_list = input_2.to_pandas()
 
         if "none" not in str(self.id_col_setting.Field_col).lower():
-            adjust_list = knut.re_order_weight_rows(
-                gdf=gdf, adjust_list=adjust_list, id_col=self.id_col_setting.Field_col
-            )
+            gdf.index = range(len(gdf))
+            id_map = dict(zip(gdf[self.id_col], gdf.index))
+            adjust_list["focal"] = adjust_list["focal"].map(id_map)
+            adjust_list["neighbor"] = adjust_list["neighbor"].map(id_map)
 
         from libpysal.weights import W
 
@@ -667,9 +670,10 @@ class GlobalGetisOrd:
         adjust_list = input_2.to_pandas()
 
         if "none" not in str(self.id_col_setting.Field_col).lower():
-            adjust_list = knut.re_order_weight_rows(
-                gdf=gdf, adjust_list=adjust_list, id_col=self.id_col_setting.Field_col
-            )
+            gdf.index = range(len(gdf))
+            id_map = dict(zip(gdf[self.id_col], gdf.index))
+            adjust_list["focal"] = adjust_list["focal"].map(id_map)
+            adjust_list["neighbor"] = adjust_list["neighbor"].map(id_map)
 
         from libpysal.weights import W
 
@@ -764,9 +768,10 @@ class LocalGetisOrd:
         adjust_list = input_2.to_pandas()
 
         if "none" not in str(self.id_col_setting.Field_col).lower():
-            adjust_list = knut.re_order_weight_rows(
-                gdf=gdf, adjust_list=adjust_list, id_col=self.id_col_setting.Field_col
-            )
+            gdf.index = range(len(gdf))
+            id_map = dict(zip(gdf[self.id_col], gdf.index))
+            adjust_list["focal"] = adjust_list["focal"].map(id_map)
+            adjust_list["neighbor"] = adjust_list["neighbor"].map(id_map)
 
         from libpysal.weights import W
 

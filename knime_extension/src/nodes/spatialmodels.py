@@ -3,6 +3,7 @@ import knime_extension as knext
 import util.knime_utils as knut
 import util.modeling_utils as mut
 
+
 __category = knext.category(
     path="/community/geo",
     level_id="spatialmodels",
@@ -125,14 +126,14 @@ class Spatial2SLSModel:
         adjust_list = input_2.to_pandas()
 
         if "none" not in str(self.id_col).lower():
-            adjust_list = knut.re_order_weight_rows(
-                gdf=gdf, adjust_list=adjust_list, id_col=self.id_col
-            )
+            gdf.index = range(len(gdf))
+            id_map = dict(zip(gdf[self.id_col], gdf.index))
+            adjust_list["focal"] = adjust_list["focal"].map(id_map)
+            adjust_list["neighbor"] = adjust_list["neighbor"].map(id_map)
 
         from libpysal.weights import W
 
         w = W.from_adjlist(adjust_list)
-
         y = gdf[self.dependent_variable].values
         x = gdf[self.independent_variables].values
 
@@ -271,9 +272,10 @@ class SpatialLagPanelModelwithFixedEffects:
         adjust_list = input_2.to_pandas()
 
         if "none" not in str(self.id_col).lower():
-            adjust_list = knut.re_order_weight_rows(
-                gdf=gdf, adjust_list=adjust_list, id_col=self.id_col
-            )
+            gdf.index = range(len(gdf))
+            id_map = dict(zip(gdf[self.id_col], gdf.index))
+            adjust_list["focal"] = adjust_list["focal"].map(id_map)
+            adjust_list["neighbor"] = adjust_list["neighbor"].map(id_map)
 
         from libpysal.weights import W
 
@@ -410,9 +412,10 @@ class SpatialErrorPanelModelwithFixedEffects:
         adjust_list = input_2.to_pandas()
 
         if "none" not in str(self.id_col).lower():
-            adjust_list = knut.re_order_weight_rows(
-                gdf=gdf, adjust_list=adjust_list, id_col=self.id_col
-            )
+            gdf.index = range(len(gdf))
+            id_map = dict(zip(gdf[self.id_col], gdf.index))
+            adjust_list["focal"] = adjust_list["focal"].map(id_map)
+            adjust_list["neighbor"] = adjust_list["neighbor"].map(id_map)
 
         from libpysal.weights import W
 
@@ -985,9 +988,10 @@ class SpatialOLS:
         adjust_list = input_2.to_pandas()
 
         if "none" not in str(self.id_col).lower():
-            adjust_list = knut.re_order_weight_rows(
-                gdf=gdf, adjust_list=adjust_list, id_col=self.id_col
-            )
+            gdf.index = range(len(gdf))
+            id_map = dict(zip(gdf[self.id_col], gdf.index))
+            adjust_list["focal"] = adjust_list["focal"].map(id_map)
+            adjust_list["neighbor"] = adjust_list["neighbor"].map(id_map)
 
         from libpysal.weights import W
 
@@ -1124,9 +1128,10 @@ class SpatialML_Lag:
         adjust_list = input_2.to_pandas()
 
         if "none" not in str(self.id_col).lower():
-            adjust_list = knut.re_order_weight_rows(
-                gdf=gdf, adjust_list=adjust_list, id_col=self.id_col
-            )
+            gdf.index = range(len(gdf))
+            id_map = dict(zip(gdf[self.id_col], gdf.index))
+            adjust_list["focal"] = adjust_list["focal"].map(id_map)
+            adjust_list["neighbor"] = adjust_list["neighbor"].map(id_map)
 
         from libpysal.weights import W
 
@@ -1262,9 +1267,10 @@ class SpatialML_Error:
         adjust_list = input_2.to_pandas()
 
         if "none" not in str(self.id_col).lower():
-            adjust_list = knut.re_order_weight_rows(
-                gdf=gdf, adjust_list=adjust_list, id_col=self.id_col
-            )
+            gdf.index = range(len(gdf))
+            id_map = dict(zip(gdf[self.id_col], gdf.index))
+            adjust_list["focal"] = adjust_list["focal"].map(id_map)
+            adjust_list["neighbor"] = adjust_list["neighbor"].map(id_map)
 
         from libpysal.weights import W
 
