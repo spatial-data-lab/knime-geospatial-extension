@@ -194,6 +194,8 @@ class _GoogleTravelMode(knext.EnumParameterOptions):
 )
 class GoogleDistanceMatrix:
     """
+    This node uses the Google Distance Matrix API to create a distance matrix for the provided origins and destinations.
+
     This node uses the
     [Google Distance Matrix API](https://developers.google.com/maps/documentation/distance-matrix/overview)
     to create a distance matrix for the provided origins and destinations. The matrix is created by pairing each
@@ -401,6 +403,8 @@ class _OSRMResultModel(knext.EnumParameterOptions):
 )
 class OSRMDistanceMatrix:
     """
+    This node uses the Open Source Routing Machine (OSRM) to create a distance matrix for the provided origins and destinations.
+
     This node uses the [Open Source Routing Machine (OSRM)](https://project-osrm.org/) to create a distance matrix
     for the provided origins and destinations. The matrix is created by pairing each input origin with each input
     destination and will contain the driving travel distance and time as well as the
@@ -1229,6 +1233,8 @@ class RoadNetworkDistanceMatrix:
 )
 class RoadNetworkIsochroneMap:
     """
+    This node calculates the isochrone map for the input point based on the input road network and its travel cost column.
+
     This node calculates the [isochrone map](https://en.wikipedia.org/wiki/Isochrone_map) for the input point based on
     the input road network and its travel cost column.
     It first snaps the input points to the road network, and then uses the function
