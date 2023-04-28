@@ -76,13 +76,13 @@ class spatialWeights:
         """,
         "Queen",
         enum=[
+            "Binary Distance Band",
+            "Inverse Distance",
+            "K nearest",
+            "Kernel",
+            "Lattice",
             "Queen",
             "Rook",
-            "Inverse Distance",
-            "Binary Distance Band",
-            "K nearest",
-            "Lattice",
-            "Kernel",
             "Your own",
         ],
     )
@@ -129,7 +129,13 @@ class spatialWeights:
         "Kernel type",
         " ",
         "triangular",
-        enum=["triangular", "uniform", "quadratic", "quartic", "gaussian"],
+        enum=[
+            "gaussian",
+            "quadratic",
+            "quartic",
+            "triangular",
+            "uniform",
+        ],
     )
     Kernel_K = knext.IntParameter(
         "Kernel K",
@@ -140,7 +146,10 @@ class spatialWeights:
         "Kernel bandwidth",
         "The bandwidth of the kernel. The default is fixed. If adaptive then bandwidth is adaptive across observations.",
         "Fixed",
-        enum=["Fixed", "Adaptive"],
+        enum=[
+            "Adaptive",
+            "Fixed",
+        ],
     )
 
     def configure(self, configure_context, input_schema_1):

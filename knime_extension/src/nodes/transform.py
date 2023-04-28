@@ -272,7 +272,7 @@ class PolygonToLineNode:
         "Geometry column",
         "Select the geometry column to transform.",
         # Allow only GeoValue compatible columns
-        column_filter=knut.is_geo_polygon_or_multi_polygon,
+        column_filter=knut.boolean_or(knut.is_geo_polygon, knut.is_geo_multi_polygon),
         include_row_key=False,
         include_none_column=False,
     )
@@ -292,7 +292,7 @@ class PolygonToLineNode:
             configure_context,
             self.geo_col,
             input_schema_1,
-            knut.is_geo_polygon_or_multi_polygon,
+            knut.boolean_or(knut.is_geo_polygon, knut.is_geo_multi_polygon),
         )
         return self.result_settings.get_result_schema(
             configure_context,
