@@ -21,6 +21,7 @@ _COL_D_ID = "Destination ID"
 _COL_DURATION = "Duration"
 _COL_DISTANCE = "Distance"
 
+
 # short functions from momepy
 class SimpleMomepy:
     # Use momepy function: generate_primal,gdf_to_nx,primal_to_gdf,nx_to_gdf
@@ -28,7 +29,6 @@ class SimpleMomepy:
         G.graph["approach"] = "primal"
         key = 0
         for row in gdf_network.itertuples():
-
             first = row.geometry.coords[0]
             last = row.geometry.coords[-1]
 
@@ -529,7 +529,6 @@ class OSRMDistanceMatrix:
 
     # extract route geometry
     def extract_route(self, data):
-
         import polyline
         from shapely.geometry import LineString
 
@@ -623,7 +622,6 @@ class OSRMDistanceMatrix:
             knut.LOGGER.warning(f"Error finding route from:{ns} to :{ne}. Error: {err}")
 
     def execute(self, exec_context: knext.ExecutionContext, left_input, right_input):
-
         from shapely.geometry import LineString
 
         # Cross join Data
@@ -731,7 +729,7 @@ class RoadNetworkDistanceMatrix:
     [shortest path](https://networkx.org/documentation/networkx-1.10/reference/generated/networkx.algorithms.shortest_paths.weighted.single_source_dijkstra_path_length.html)
     between each snapped origin and all other reachable snapped destinations.
 
-    The returned distance is in meters and the duration in hours. In addition to the travel distance and duration,
+    The returned distance is in meters and the duration in minutes. In addition to the travel distance and duration,
     the output table contains the distance in meters between each origin and destination and its corresponding snap
     point along the road network, which can be incorporated into a total travel time and duration.
 
@@ -927,7 +925,6 @@ class RoadNetworkDistanceMatrix:
 
     # Define function of nearest points
     def ckd_nearest(self, gdA, gdB):
-
         import numpy as np
         import pandas as pd
         from scipy.spatial import cKDTree
@@ -1036,7 +1033,6 @@ class RoadNetworkDistanceMatrix:
         )
 
     def execute(self, exec_context: knext.ExecutionContext, input1, input2, input3):
-
         import networkx as nx
         from shapely.geometry import MultiPoint, LineString, Point
         import rtree
@@ -1325,7 +1321,6 @@ class RoadNetworkIsochroneMap:
         )
 
     def execute(self, exec_context: knext.ExecutionContext, input1, input2):
-
         import pandas as pd
         import networkx as nx
         from shapely.geometry import MultiPoint, LineString, Point, Polygon
