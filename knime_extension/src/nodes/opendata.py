@@ -46,7 +46,6 @@ __NODE_ICON_PATH = "icons/icon/OpenDataset/"
     },
 )
 class US2020TIGERNode:
-
     StateFips = knext.StringParameter(
         label="State FIPS (2-digits)",
         description="The State to use [FIPS.](https://transition.fcc.gov/oet/info/maps/census/fips/fips.txt)",
@@ -264,7 +263,6 @@ Before using the node, user need to sign up and get a Census API key first by cl
     },
 )
 class USCensus2020Node:
-
     StateFips = knext.StringParameter(
         "State FIPS (2-digits)",
         "The State [FIPS](https://transition.fcc.gov/oet/info/maps/census/fips/fips.txt) to investigate, input * for all states (while choose county for geography).",
@@ -317,7 +315,6 @@ For more details about the format and the conversion see
         return None
 
     def execute(self, exec_context: knext.ExecutionContext):
-
         base_url = "https://api.census.gov/data/2020/dec/pl?get="
 
         if self.geofile == "county":
@@ -374,7 +371,6 @@ For more details about the format and the conversion see
     },
 )
 class UScensusACSNode:
-
     StateFips = knext.StringParameter(
         "State FIPS (2-digits)",
         "The State [FIPS](https://transition.fcc.gov/oet/info/maps/census/fips/fips.txt) to investigate, input * for all states (while choose county for geography).",
@@ -432,7 +428,6 @@ class UScensusACSNode:
         return None
 
     def execute(self, exec_context: knext.ExecutionContext):
-
         base_url = "https://api.census.gov/data/"
         Dataset = "acs/acs5"
 
@@ -519,7 +514,6 @@ Place tag=landuse, tag value=retail, commercial would return all retail and comm
     },
 )
 class OSMdataNode:
-
     geo_col = knext.ColumnParameter(
         "Geometry column",
         "Select the geometry column as boundary to get POIs.",
@@ -595,7 +589,6 @@ class OSMdataNode:
     },
 )
 class OSMnetworkNode:
-
     geo_col = knext.ColumnParameter(
         "Geometry column",
         "Select the geometry column as boundary to get POIs.",
@@ -641,6 +634,7 @@ class OSMnetworkNode:
             G = ox.add_edge_travel_times(G)
         edges = ox.utils_graph.graph_to_gdfs(G, nodes=False)
         objcolumn = edges.select_dtypes(include=["object"]).columns.tolist()
+
         # Convert each element of the dataframe to a string but sort lists before doing so
         def convert_to_string(v):
             if type(v) == list:
@@ -679,10 +673,9 @@ class OSMnetworkNode:
     },
 )
 class OSMGeoBoundaryNode:
-
     placename = knext.StringParameter(
         label="Input place names",
-        description="Hierarchical place names delimitated with commas, such as Cambridge, MA, USA ",
+        description="Hierarchical place names delimited with commas, such as Cambridge, MA, USA ",
         default_value="Cambridge, MA, USA",
     )
 
@@ -691,7 +684,6 @@ class OSMGeoBoundaryNode:
         return None
 
     def execute(self, exec_context: knext.ExecutionContext):
-
         gdf = get_osmnx().geocode_to_gdf(self.placename)
         gdf = gdf.reset_index(drop=True)
         return knext.Table.from_pandas(gdf)
