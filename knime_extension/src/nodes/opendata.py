@@ -675,7 +675,8 @@ class OSMnetworkNode:
 class OSMGeoBoundaryNode:
     placename = knext.StringParameter(
         label="Input place names",
-        description="Hierarchical place names delimited with commas, such as Cambridge, MA, USA ",
+        description="""Hierarchical place names from specific to more general delimited with commas, such as 
+        Cambridge, MA, USA.  """,
         default_value="Cambridge, MA, USA",
     )
 
