@@ -170,7 +170,6 @@ class GeometryToPointNode:
         )
 
     def execute(self, exec_context: knext.ExecutionContext, input_1):
-
         if self.pointtype == "centroid":
             func = lambda l: l.centroid
         else:
@@ -330,13 +329,14 @@ class PolygonToLineNode:
 )
 @knut.geo_node_description(
     short_description="This node generate lines from points according to group id and serial label.",
-    description="""This node generate lines from points according to group id and serial label by Shapely.LineString().
-    The constructed LineString object represents one or more connected linear splines between the points. 
+    description="""This node generate lines from points according to group id and serial label. The result
+    table contains one LineString object per group value. Each constructed LineString object represents one or 
+    more connected linear splines between the given points of a group ordered by the serial column. 
     Repeated points in the ordered sequence are allowed, but may incur performance penalties and should be avoided. 
-    A LineString may cross itself.A LineString has zero area and non-zero length.
+    A LineString may cross itself. A LineString has zero area and non-zero length.
     """,
     references={
-        "Shapely.LineStrings": "https://shapely.readthedocs.io/en/stable/manual.html",
+        "Shapely.LineStrings": "https://shapely.readthedocs.io/en/stable/manual.html#linestrings",
     },
 )
 class PointsToLineNode:
@@ -378,7 +378,7 @@ class PointsToLineNode:
 
     def execute(self, exec_context: knext.ExecutionContext, input):
         gdf = gp.GeoDataFrame(input.to_pandas(), geometry=self.geo_col)
-        gdf = gdf.rename(columns={self.geo_col: "geometry"})
+        gdf = gdf.rename_geometry("geometry")
         exec_context.set_progress(0.3, "Geo data frame loaded. Starting grouping...")
         from shapely.geometry import MultiPoint, LineString
 
@@ -388,15 +388,7 @@ class PointsToLineNode:
             .apply(lambda x: LineString(x.tolist()))
         )
         line_gdf = gp.GeoDataFrame(line_gdf, geometry="geometry", crs=gdf.crs)
-        exec_context.set_progress(0.1, "PolygonToLine done")
-        LOGGER.debug(
-            "Point feature "
-            + self.geo_col
-            + "transformed to line by group column"
-            + self.group_col
-            + "according to the order of"
-            + self.seiral_col
-        )
+        exec_context.set_progress(0.1, "PointsToLine done")
         return knext.Table.from_pandas(line_gdf)
 
 
