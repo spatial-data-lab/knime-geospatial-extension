@@ -160,14 +160,23 @@ class spatialWeights:
         "Kernel type",
         "The type of kernel to use in constructing kernel weights. Defaults to 'triangular' ",
         "triangular",
-        enum=["triangular", "uniform", "quadratic", "quartic", "gaussian"],
+        enum=[
+            "gaussian",
+            "quadratic",
+            "quartic",
+            "triangular",
+            "uniform",
+        ],
     )
 
     Kernel_bandwidth = knext.StringParameter(
         "Kernel bandwidth",
         "The type of kernel bandwidth to use in constructing kernel weights. The bandwidth of the kernel. The default is fixed. If adaptive then bandwidth is adaptive across observations.",
         "Fixed",
-        enum=["Fixed", "Adaptive"],
+        enum=[
+            "Adaptive",
+            "Fixed",
+        ],
     )
 
     Your_own_matrix_local_path = knext.StringParameter(

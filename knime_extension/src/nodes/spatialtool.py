@@ -390,7 +390,6 @@ class SpatialJoinNode:
     },
 )
 class NearestJoinNode2:
-
     left_geo_column = knext.ColumnParameter(
         "Left geometry column",
         "Select the geometry column from the left (top) input table to join on.",
@@ -862,9 +861,11 @@ class EuclideanDistanceNode2:
             d_input.to_pandas()[[self.d_geo_col, self.d_id_col]],
             geometry=self.d_geo_col,
         )
-        # rename the id columns to origin and destination
+        # rename the id columns to origin and destination and the geometry to geometry
         o_gdf.rename(columns={self.o_id_col: self.__COL_ORIGIN}, inplace=True)
+        o_gdf.rename_geometry("geometry", inplace=True)
         d_gdf.rename(columns={self.d_id_col: self.__COL_DESTINATION}, inplace=True)
+        d_gdf.rename_geometry("geometry", inplace=True)
 
         helper = kproj.Distance(self.unit, True)
         helper.pre_processing(exec_context, o_gdf, True)
@@ -943,7 +944,6 @@ class EuclideanDistanceNode2:
     },
 )
 class MultipleRingBufferNode:
-
     geo_col = knut.geo_col_parameter()
 
     distance = knext.StringParameter(
@@ -1141,7 +1141,7 @@ class CreateGrid:
         default_value=100,
     )
 
-    _COL_ID = "gridID"
+    _COL_ID = "Grid ID"
     _COL_GEOMETRY = "geometry"
 
     def configure(self, configure_context, input_schema):
@@ -1153,7 +1153,6 @@ class CreateGrid:
         )
 
     def execute(self, exec_context: knext.ExecutionContext, input_table):
-
         gdf = knut.load_geo_data_frame(input_table, self.geo_col, exec_context)
 
         xmin, ymin, xmax, ymax = gdf.total_bounds
@@ -1374,7 +1373,6 @@ class CreateVoronoi:
         )
 
     def execute(self, exec_context: knext.ExecutionContext, input_table1, input_table2):
-
         import pandas as pd
         from shapely.geometry import Point, Polygon
         import numpy as np

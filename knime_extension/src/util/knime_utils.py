@@ -106,6 +106,30 @@ def negate(function):
     return new_function
 
 
+def boolean_or(*functions):
+    """
+    Return True if any of the given functions returns True
+    @return: True if any of the functions returns True
+    """
+
+    def new_function(*args, **kwargs):
+        return any(f(*args, **kwargs) for f in functions)
+
+    return new_function
+
+
+def boolean_and(*functions):
+    """
+    Return True if all of the given functions return True
+    @return: True if all of the functions return True
+    """
+
+    def new_function(*args, **kwargs):
+        return all(f(*args, **kwargs) for f in functions)
+
+    return new_function
+
+
 def is_numeric(column: knext.Column) -> bool:
     """
     Checks if column is numeric e.g. int, long or double.
@@ -139,12 +163,7 @@ def is_numeric_or_string(column: knext.Column) -> bool:
     Checks if column is numeric or string
     @return: True if Column is numeric or string
     """
-    return column.ktype in [
-        knext.double(),
-        knext.int32(),
-        knext.int64(),
-        knext.string(),
-    ]
+    return boolean_or(is_numeric, is_string)(column)
 
 
 def is_binary(column: knext.Column) -> bool:
@@ -241,16 +260,6 @@ def __is_type_x(column: knext.Column, type: str) -> bool:
     )
 
 
-def is_geo_polygon_or_multi_polygon(column: knext.Column) -> bool:
-    """
-    Checks if column is polygon or multipolygon
-    @return: True if Column is polygon or multipolygon
-    """
-    return __is_type_x(column, __CELL_TYPE_POLYGON) or __is_type_x(
-        column, __CELL_TYPE_MULTI_POLYGON
-    )
-
-
 ############################################
 # GeoPandas node class decorator
 ############################################
@@ -278,13 +287,15 @@ def geo_node_description(short_description: str, description: str, references: d
 
 def census_node_description(short_description: str, description: str, references: dict):
     """This decorator takes the provided information and generates a standardized node description
-    for nodes that are based on GeoPandas functionality."""
+    for nodes that are based on US Census data."""
 
     def set_description(node_factory):
         s = f"{short_description}\n"
         s += f"{description}\n\n"
         # s += "___\n\n"  # separator line between description and general part
-        s += "The node is based on the data from [US Census](https://www.census.gov/) and [FIPS code](https://www.census.gov/library/reference/code-lists/ansi.html) and here are related data sources and references"
+        s += "The node is based on the data from [US Census](https://www.census.gov/) and "
+        s += "[FIPS code](https://www.census.gov/library/reference/code-lists/ansi.html) "
+        s += "and uses the following related information and function"
         if references is not None:
             if len(references) > 1:
                 s += "s"
@@ -292,6 +303,9 @@ def census_node_description(short_description: str, description: str, references
             s += "\n\n"
             for key in references:
                 s += f"- [{key}]({references[key]})\n"
+        s += "\n\n##Note\n"
+        s += "This node uses the Census Bureau Data API but is not endorsed or certified by the Census Bureau. "
+        s += "For the terms of service click [here.](https://www.census.gov/data/developers/about/terms-of-service.html)"
         node_factory.__doc__ = s
         return node_factory
 
@@ -300,13 +314,15 @@ def census_node_description(short_description: str, description: str, references
 
 def osm_node_description(short_description: str, description: str, references: dict):
     """This decorator takes the provided information and generates a standardized node description
-    for nodes that are based on GeoPandas functionality."""
+    for nodes that are based on OpenStreetMap data. It also places the proper copyright notice which
+    is necessary."""
 
     def set_description(node_factory):
         s = f"{short_description}\n"
         s += f"{description}\n\n"
         # s += "___\n\n"  # separator line between description and general part
-        s += "The node is based on the project [OSMnx](https://github.com/gboeing/osmnx)  and here are related tools and references"
+        s += "The node is based on the [OpenStreetMap project](https://www.openstreetmap.org/about) "
+        s += "and uses the following related information and function"
         if references is not None:
             if len(references) > 1:
                 s += "s"
@@ -314,6 +330,15 @@ def osm_node_description(short_description: str, description: str, references: d
             s += "\n\n"
             for key in references:
                 s += f"- [{key}]({references[key]})\n"
+        s += "\n\n##Note\n"
+        s += (
+            "Data copyright by [OpenStreetMap](https://www.openstreetmap.org/copyright)"
+        )
+        s += "[(ODbl)](https://opendatacommons.org/licenses/odbl/index.html) and provided under "
+        s += "[CC-BY-SA.](https://creativecommons.org/licenses/by-sa/2.0/)"
+        s += "To report a problem and contribute to OpenStreetMap click [here.](https://www.openstreetmap.org/fixthemap)"
+        s += "Please note the OpenStreetMap licence and attribution guidelines as described "
+        s += "[here.](https://wiki.osmfoundation.org/wiki/Licence/Attribution_Guidelines)"
         node_factory.__doc__ = s
         return node_factory
 
@@ -379,7 +404,7 @@ def load_geo_data_frame(
         exec_context.set_progress(0.0, load_msg)
     gdf = gp.GeoDataFrame(input_table.to_pandas(), geometry=column)
     if exec_context:
-        exec_context.set_progress(0.2, done_msg)
+        exec_context.set_progress(0.1, done_msg)
     return gdf
 
 
