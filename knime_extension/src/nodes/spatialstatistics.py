@@ -808,6 +808,12 @@ class LocalGetisOrd:
         gdf.loc[:, "Local Getis-Ord G"] = lo.Gs
         gdf.loc[:, "p-value"] = lo.p_sim
         gdf.loc[:, "z-score"] = lo.z_sim
+        gdf.loc[:, "standardized Zs"] = lo.z_sim
+        
+        gdf.loc[gdf["standardized Zs"] > 0, "cluster category"] = "HH"
+        gdf.loc[gdf["standardized Zs"] < 0, "cluster category"] = "LL "
+        gdf.loc[gdf["p-value"] > 0.05, "cluster category"] = "Not Significant"
+
 
         import pysal.lib as lps
 
