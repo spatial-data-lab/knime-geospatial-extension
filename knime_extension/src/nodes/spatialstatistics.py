@@ -493,9 +493,9 @@ class LocalMoransI:
         gdf.loc[:, "spots"] = li.q
 
         gdf.loc[:, "spots_type"] = gdf["spots"].replace(
-            {1: "HH", 2: "LL", 3: "LH", 4: "HL"}
+            {1: "HH", 2: "LH", 3: "LL", 4: "HL"}
         )
-        gdf.loc[gdf["p-value"] < 0.05, "spots_type"] = "Not Significant"
+        gdf.loc[gdf["p-value"] > 0.05, "spots_type"] = "Not Significant"
         # out = pd.merge(gdf, out, left_index=True, right_index=True)
 
         import pysal.lib as lps
