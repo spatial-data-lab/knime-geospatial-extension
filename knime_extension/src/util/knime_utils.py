@@ -144,8 +144,8 @@ def is_numeric(column: knext.Column) -> bool:
 
 def is_int(column: knext.Column) -> bool:
     """
-    Checks if column is int.
-    @return: True if Column is int
+    Checks if column is integer.
+    @return: True if Column is integer
     """
     return (
         column.ktype == knext.int32()
