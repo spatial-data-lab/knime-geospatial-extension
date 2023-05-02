@@ -271,6 +271,10 @@ class spatialWeights:
         exec_context.set_progress(
             0.1, "Constructs a contiguity spatial weights matrix done"
         )
+        
+        # focal and neighbor should always be int 
+        out["focal"] = out["focal"].astype(int)
+        out["neighbor"] = out["neighbor"].astype(int)
 
         return knext.Table.from_pandas(out)
 
