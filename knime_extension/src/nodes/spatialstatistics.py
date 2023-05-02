@@ -823,13 +823,16 @@ class LocalGetisOrd:
         gdf.loc[gdf["p-value"] > 0.05, "spots_type"] = "Not Significant"
 =======
         gdf.loc[:, "standardized Zs"] = lo.z_sim
-        
+
         gdf.loc[gdf["standardized Zs"] > 0, "cluster category"] = "HH"
         gdf.loc[gdf["standardized Zs"] < 0, "cluster category"] = "LL "
         gdf.loc[gdf["p-value"] > 0.05, "cluster category"] = "Not Significant"
 
+<<<<<<< Upstream, based on origin/main
 >>>>>>> f982e4e fixed #205 about the Local G model
 
+=======
+>>>>>>> f0145b1 format the code
         import pysal.lib as lps
 
         lag_index = lps.weights.lag_spatial(w, gdf[self.variable_setting.Field_col])
