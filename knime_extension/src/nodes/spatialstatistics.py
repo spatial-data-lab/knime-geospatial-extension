@@ -813,6 +813,7 @@ class LocalGetisOrd:
         gdf.loc[:, "Local Getis-Ord G"] = lo.Gs
         gdf.loc[:, "p-value"] = lo.p_sim
         gdf.loc[:, "z-score"] = lo.z_sim
+<<<<<<< Upstream, based on origin/main
         gdf.loc[:, "standardized Gs"] = lo.Zs
 
         gdf.loc[gdf["standardized Gs"] > 0, "spots_type"] = "HH"
@@ -820,6 +821,14 @@ class LocalGetisOrd:
         gdf.loc[gdf["standardized Gs"] > 0, "spots"] = 1
         gdf.loc[gdf["standardized Gs"] < 0, "spots"] = 3
         gdf.loc[gdf["p-value"] > 0.05, "spots_type"] = "Not Significant"
+=======
+        gdf.loc[:, "standardized Zs"] = lo.z_sim
+        
+        gdf.loc[gdf["standardized Zs"] > 0, "cluster category"] = "HH"
+        gdf.loc[gdf["standardized Zs"] < 0, "cluster category"] = "LL "
+        gdf.loc[gdf["p-value"] > 0.05, "cluster category"] = "Not Significant"
+
+>>>>>>> f982e4e fixed #205 about the Local G model
 
         import pysal.lib as lps
 
