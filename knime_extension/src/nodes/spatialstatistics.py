@@ -66,13 +66,14 @@ class spatialWeights:
 
     id_col = knext.ColumnParameter(
         "ID column",
-        """Select the column which contains for each observation in the input data a unique ID.
+        """Select the column which contains for each observation in the input data a unique ID, it should be an integer column.
         If 'none' is selected, the IDs will be automatically generated from 0 to the number of rows flowing 
         the order of the input data.
         The IDs of this column must match with the values of the ID column selected in subsequent ESDA or spatial 
         modeling nodes.
         """,
         include_none_column=True,
+        column_filter=knut.is_int,
         since_version="1.1.0",
     )
 
@@ -271,8 +272,8 @@ class spatialWeights:
         exec_context.set_progress(
             0.1, "Constructs a contiguity spatial weights matrix done"
         )
-        
-        # focal and neighbor should always be int 
+
+        # focal and neighbor should always be int
         out["focal"] = out["focal"].astype(int)
         out["neighbor"] = out["neighbor"].astype(int)
 
@@ -307,6 +308,7 @@ class IDSetting:
         The values need to match the values from the ID column selected in the
         [Spatial Weights](https://hub.knime.com/center%20for%20geographic%20analysis%20at%20harvard%20university/extensions/sdl.harvard.features.geospatial/latest/org.knime.python3.nodes.extension.ExtensionNodeSetFactory$DynamicExtensionNodeFactory:4d710eae/) node.
         If you selected 'none' in the Spatial Weights node select it here as well.""",
+        column_filter=knut.is_int,
         include_none_column=True,
     )
 
