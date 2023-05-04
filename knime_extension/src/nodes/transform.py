@@ -68,13 +68,13 @@ class CrsTransformerNode:
     )
 
     result_settings = knut.ResultSettings(
-        mode=knut.ResultSettingsMode.APPEND.name,
+        mode=knut.ResultSettingsMode.REPLACE.name,
         new_name="Projected",
     )
 
     def __init__(self):
         # set twice as workaround until fixed in KNIME framework
-        self.result_settings.mode = knut.ResultSettingsMode.APPEND.name
+        self.result_settings.mode = knut.ResultSettingsMode.REPLACE.name
         self.result_settings.new_column_name = "Projected"
 
     def configure(self, configure_context, input_schema):
@@ -148,13 +148,13 @@ class GeometryToPointNode:
     )
 
     result_settings = knut.ResultSettings(
-        mode=knut.ResultSettingsMode.APPEND.name,
+        mode=knut.ResultSettingsMode.REPLACE.name,
         new_name="Point",
     )
 
     def __init__(self):
         # set twice as workaround until fixed in KNIME framework
-        self.result_settings.mode = knut.ResultSettingsMode.APPEND.name
+        self.result_settings.mode = knut.ResultSettingsMode.REPLACE.name
         self.result_settings.new_column_name = "Point"
 
     def configure(self, configure_context, input_schema):
@@ -277,13 +277,13 @@ class PolygonToLineNode:
     )
 
     result_settings = knut.ResultSettings(
-        mode=knut.ResultSettingsMode.APPEND.name,
+        mode=knut.ResultSettingsMode.REPLACE.name,
         new_name="Line",
     )
 
     def __init__(self):
         # set twice as workaround until fixed in KNIME framework
-        self.result_settings.mode = knut.ResultSettingsMode.APPEND.name
+        self.result_settings.mode = knut.ResultSettingsMode.REPLACE.name
         self.result_settings.new_column_name = "Line"
 
     def configure(self, configure_context, input_schema_1):
@@ -378,7 +378,8 @@ class PointsToLineNode:
 
     def execute(self, exec_context: knext.ExecutionContext, input):
         gdf = gp.GeoDataFrame(input.to_pandas(), geometry=self.geo_col)
-        gdf = gdf.rename_geometry("geometry")
+        if self.geo_col != "geometry":
+            gdf = gdf.rename_geometry("geometry", inplace=True)
         exec_context.set_progress(0.3, "Geo data frame loaded. Starting grouping...")
         from shapely.geometry import MultiPoint, LineString
 
@@ -437,13 +438,13 @@ class GeometryToMultiPointNode:
     )
 
     result_settings = knut.ResultSettings(
-        mode=knut.ResultSettingsMode.APPEND.name,
+        mode=knut.ResultSettingsMode.REPLACE.name,
         new_name="Multipoint",
     )
 
     def __init__(self):
         # set twice as workaround until fixed in KNIME framework
-        self.result_settings.mode = knut.ResultSettingsMode.APPEND.name
+        self.result_settings.mode = knut.ResultSettingsMode.REPLACE.name
         self.result_settings.new_column_name = "Multipoint"
 
     def configure(self, configure_context, input_schema):

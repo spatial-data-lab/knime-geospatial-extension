@@ -587,13 +587,13 @@ class ClipNode:
     )
 
     result_settings = knut.ResultSettings(
-        mode=knut.ResultSettingsMode.APPEND.name,
+        mode=knut.ResultSettingsMode.REPLACE.name,
         new_name="Clipped",
     )
 
     def __init__(self):
         # set twice as workaround until fixed in KNIME framework
-        self.result_settings.mode = knut.ResultSettingsMode.APPEND.name
+        self.result_settings.mode = knut.ResultSettingsMode.REPLACE.name
         self.result_settings.new_column_name = "Clipped"
 
     def configure(self, configure_context, left_input_schema, right_input_schema):
