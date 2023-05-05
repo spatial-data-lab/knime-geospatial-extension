@@ -69,7 +69,8 @@ class spatialWeights:
         """Select the column which contains for each observation in the input data a unique ID.
         If 'none' is selected, the IDs will be automatically generated from 0 to the number of rows flowing 
         the order of the input data.
-        The IDs of this column must match with values of the ID column in subsequent ESDA or spatial modeling nodes.
+        The IDs of this column must match with the values of the ID column selected in subsequent ESDA or spatial 
+        modeling nodes.
         """,
         include_none_column=True,
         since_version="1.1.0",
@@ -288,18 +289,20 @@ class VariableSetting:
     )
 
 
-@knext.parameter_group(label="ID Setting")
+@knext.parameter_group(label="ID Setting", since_version="1.1.0")
 class IDSetting:
     """
-    The unique ID column. It should always keep the same as the ID column in the spatial weights matrix node.
-    The selected column should contain unique IDs for each observation in the input data.
-
+    The unique ID column. The values need to match the values from the ID column selected in the
+    [Spatial Weights](https://hub.knime.com/center%20for%20geographic%20analysis%20at%20harvard%20university/extensions/sdl.harvard.features.geospatial/latest/org.knime.python3.nodes.extension.ExtensionNodeSetFactory$DynamicExtensionNodeFactory:4d710eae/) node.
+    The selected column must contain unique IDs for each observation in the input data.
     """
 
     Field_col = knext.ColumnParameter(
         "ID column",
-        "The selected column should contain unique IDs for each observation in the input data. It should always keep the same as the ID column in the spatial weights matrix node.",
-        # column_filter=knut.is_numeric,
+        """The selected column should contain unique IDs for each observation in the input data. 
+        The values need to match the values from the ID column selected in the
+        [Spatial Weights](https://hub.knime.com/center%20for%20geographic%20analysis%20at%20harvard%20university/extensions/sdl.harvard.features.geospatial/latest/org.knime.python3.nodes.extension.ExtensionNodeSetFactory$DynamicExtensionNodeFactory:4d710eae/) node.
+        If you selected 'none' in the Spatial Weights node select it here as well.""",
         include_none_column=True,
     )
 
