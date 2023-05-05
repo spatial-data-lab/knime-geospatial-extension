@@ -365,7 +365,7 @@ class GlobalMoransI:
 
         if "none" not in str(self.id_col_setting.Field_col).lower():
             gdf.index = range(len(gdf))
-            id_map = dict(zip(gdf[self.id_col], gdf.index))
+            id_map = dict(zip(gdf[self.id_col_setting.Field_col], gdf.index))
             adjust_list["focal"] = adjust_list["focal"].map(id_map)
             adjust_list["neighbor"] = adjust_list["neighbor"].map(id_map)
 
@@ -458,7 +458,7 @@ class LocalMoransI:
 
         if "none" not in str(self.id_col_setting.Field_col).lower():
             gdf.index = range(len(gdf))
-            id_map = dict(zip(gdf[self.id_col], gdf.index))
+            id_map = dict(zip(gdf[self.id_col_setting.Field_col], gdf.index))
             adjust_list["focal"] = adjust_list["focal"].map(id_map)
             adjust_list["neighbor"] = adjust_list["neighbor"].map(id_map)
 
@@ -582,7 +582,7 @@ class GlobalGearysC:
 
         if "none" not in str(self.id_col_setting.Field_col).lower():
             gdf.index = range(len(gdf))
-            id_map = dict(zip(gdf[self.id_col], gdf.index))
+            id_map = dict(zip(gdf[self.id_col_setting.Field_col], gdf.index))
             adjust_list["focal"] = adjust_list["focal"].map(id_map)
             adjust_list["neighbor"] = adjust_list["neighbor"].map(id_map)
 
@@ -680,7 +680,7 @@ class GlobalGetisOrd:
 
         if "none" not in str(self.id_col_setting.Field_col).lower():
             gdf.index = range(len(gdf))
-            id_map = dict(zip(gdf[self.id_col], gdf.index))
+            id_map = dict(zip(gdf[self.id_col_setting.Field_col], gdf.index))
             adjust_list["focal"] = adjust_list["focal"].map(id_map)
             adjust_list["neighbor"] = adjust_list["neighbor"].map(id_map)
 
@@ -778,7 +778,7 @@ class LocalGetisOrd:
 
         if "none" not in str(self.id_col_setting.Field_col).lower():
             gdf.index = range(len(gdf))
-            id_map = dict(zip(gdf[self.id_col], gdf.index))
+            id_map = dict(zip(gdf[self.id_col_setting.Field_col], gdf.index))
             adjust_list["focal"] = adjust_list["focal"].map(id_map)
             adjust_list["neighbor"] = adjust_list["neighbor"].map(id_map)
 
