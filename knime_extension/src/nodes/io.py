@@ -65,6 +65,8 @@ class GeoFileReaderNode:
         gdf = gp.read_file(self.data_url)
         if "<Row Key>" in gdf.columns:
             gdf = gdf.drop(columns="<Row Key>")
+        if "<RowID>" in gdf.columns:
+            gdf = gdf.drop(columns="<RowID>")
         return knext.Table.from_pandas(gdf)
 
 
@@ -133,6 +135,10 @@ depending on the selected file format if not specified.""",
             0.4, "Writing file (This might take a while without progress changes)"
         )
         gdf = gp.GeoDataFrame(input_1.to_pandas(), geometry=self.geo_col)
+        if "<Row Key>" in gdf.columns:
+            gdf = gdf.drop(columns="<Row Key>")
+        if "<RowID>" in gdf.columns:
+            gdf = gdf.drop(columns="<RowID>")
         if self.dataformat == "Shapefile":
             fileurl = knut.ensure_file_extension(self.data_url, ".shp")
             gdf.to_file(fileurl)
@@ -284,5 +290,12 @@ class GeoPackageWriterNode:
         gdf = gp.GeoDataFrame(input_1.to_pandas(), geometry=self.geo_col)
         gdf = gdf.reset_index(drop=True)
         file_name = knut.ensure_file_extension(self.data_url, ".gpkg")
+        time_columns = gdf.select_dtypes(
+            include=[
+                'knime.pandas_type<struct<0:int64,1:int64>, {"value_factory_class":"org.knime.core.data.v2.time.LocalDateTimeValueFactory"}>'
+            ]
+        ).columns
+        if len(time_columns) > 0:
+            gdf[time_columns] = gdf[time_columns].astype(str)
         gdf.to_file(file_name, layer=self.data_layer, driver="GPKG")
         return None
