@@ -302,13 +302,13 @@ class IDSetting:
     """
     The unique ID column. The values need to match the values from the ID column selected in the
     [Spatial Weights](https://hub.knime.com/center%20for%20geographic%20analysis%20at%20harvard%20university/extensions/sdl.harvard.features.geospatial/latest/org.knime.python3.nodes.extension.ExtensionNodeSetFactory$DynamicExtensionNodeFactory:4d710eae/) node.
-    The selected column must contain unique IDs for each observation in the input data.
+    The selected column must contain unique IDs for each observation in the input data of type integer.
     """
 
     Field_col = knext.ColumnParameter(
         "ID column",
-        """The selected column should contain unique IDs for each observation in the input data. 
-        The values need to match the values from the ID column selected in the
+        """The selected column should contain unique IDs for each observation in the input data and should be of 
+        type integer. The values need to match the values from the ID column selected in the
         [Spatial Weights](https://hub.knime.com/center%20for%20geographic%20analysis%20at%20harvard%20university/extensions/sdl.harvard.features.geospatial/latest/org.knime.python3.nodes.extension.ExtensionNodeSetFactory$DynamicExtensionNodeFactory:4d710eae/) node.
         If you selected 'none' in the Spatial Weights node select it here as well.""",
         column_filter=knut.is_int,
