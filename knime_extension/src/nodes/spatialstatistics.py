@@ -33,7 +33,6 @@ The output table contains the original input table with the following additional
 the local statistic value,
 `p-value` is the p-value for the local statistic value,
 `z-score` is the z-score for the local statistic value.
-
 """
 
 __spots = """
@@ -749,7 +748,9 @@ class GlobalGetisOrd:
 @knext.output_table(
     name="Output Table",
     description="Output table results of Local Getis-Ord. "
-    + __local_statistics_output_table_description,
+    + __local_statistics_output_table_description 
+    + "`standardized Gs` is the standardization of Gs."
+    + __spots
 )
 # @knext.output_binary(
 #     name="output model",
@@ -808,11 +809,13 @@ class LocalGetisOrd:
         gdf.loc[:, "Local Getis-Ord G"] = lo.Gs
         gdf.loc[:, "p-value"] = lo.p_sim
         gdf.loc[:, "z-score"] = lo.z_sim
-        gdf.loc[:, "standardized Zs"] = lo.z_sim
+        gdf.loc[:, "standardized Gs"] = lo.Zs
 
-        gdf.loc[gdf["standardized Zs"] > 0, "cluster category"] = "HH"
-        gdf.loc[gdf["standardized Zs"] < 0, "cluster category"] = "LL "
-        gdf.loc[gdf["p-value"] > 0.05, "cluster category"] = "Not Significant"
+        gdf.loc[gdf["standardized Gs"] > 0, "spots_type"] = "HH"
+        gdf.loc[gdf["standardized Gs"] < 0, "spots_type"] = "LL "
+        gdf.loc[gdf["standardized Gs"] > 0, "spots"] = 1
+        gdf.loc[gdf["standardized Gs"] < 0, "spots"] = 3
+        gdf.loc[gdf["p-value"] > 0.05, "spots_type"] = "Not Significant"
 
         import pysal.lib as lps
 
