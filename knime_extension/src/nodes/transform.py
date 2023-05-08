@@ -379,7 +379,7 @@ class PointsToLineNode:
     def execute(self, exec_context: knext.ExecutionContext, input):
         gdf = gp.GeoDataFrame(input.to_pandas(), geometry=self.geo_col)
         if self.geo_col != "geometry":
-            gdf = gdf.rename_geometry("geometry", inplace=True)
+            gdf.rename_geometry("geometry", inplace=True)
         exec_context.set_progress(0.3, "Geo data frame loaded. Starting grouping...")
         from shapely.geometry import MultiPoint, LineString
 
