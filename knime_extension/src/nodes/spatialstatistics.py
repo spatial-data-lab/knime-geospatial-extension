@@ -752,9 +752,9 @@ class GlobalGetisOrd:
 @knext.output_table(
     name="Output Table",
     description="Output table results of Local Getis-Ord. "
-    + __local_statistics_output_table_description 
+    + __local_statistics_output_table_description
     + "`standardized Gs` is the standardization of Gs."
-    + __spots
+    + __spots,
 )
 # @knext.output_binary(
 #     name="output model",
