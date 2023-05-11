@@ -33,7 +33,6 @@ The output table contains the original input table with the following additional
 the local statistic value,
 `p-value` is the p-value for the local statistic value,
 `z-score` is the z-score for the local statistic value.
-
 """
 
 __spots = """
@@ -66,13 +65,14 @@ class spatialWeights:
 
     id_col = knext.ColumnParameter(
         "ID column",
-        """Select the column which contains for each observation in the input data a unique ID.
+        """Select the column which contains for each observation in the input data a unique ID, it should be an integer column.
         If 'none' is selected, the IDs will be automatically generated from 0 to the number of rows flowing 
         the order of the input data.
         The IDs of this column must match with the values of the ID column selected in subsequent ESDA or spatial 
         modeling nodes.
         """,
         include_none_column=True,
+        column_filter=knut.is_int,
         since_version="1.1.0",
     )
 
@@ -235,6 +235,8 @@ class spatialWeights:
             w = libpysal.weights.higher_order(w, self.order - 1)
             w.transform = "r"
 
+        import numpy as np
+
         if self.category == "Get spatial weights matrix from file":
             import pandas as pd
 
@@ -272,6 +274,14 @@ class spatialWeights:
             0.1, "Constructs a contiguity spatial weights matrix done"
         )
 
+        # focal and neighbor should always be int
+        out["focal"] = out["focal"].astype(int)
+        out["neighbor"] = out["neighbor"].astype(int)
+
+        # focal and neighbor should always be int
+        out["focal"] = out["focal"].astype(int)
+        out["neighbor"] = out["neighbor"].astype(int)
+
         return knext.Table.from_pandas(out)
 
 
@@ -294,15 +304,16 @@ class IDSetting:
     """
     The unique ID column. The values need to match the values from the ID column selected in the
     [Spatial Weights](https://hub.knime.com/center%20for%20geographic%20analysis%20at%20harvard%20university/extensions/sdl.harvard.features.geospatial/latest/org.knime.python3.nodes.extension.ExtensionNodeSetFactory$DynamicExtensionNodeFactory:4d710eae/) node.
-    The selected column must contain unique IDs for each observation in the input data.
+    The selected column must contain unique IDs for each observation in the input data of type integer.
     """
 
     Field_col = knext.ColumnParameter(
         "ID column",
-        """The selected column should contain unique IDs for each observation in the input data. 
-        The values need to match the values from the ID column selected in the
+        """The selected column should contain unique IDs for each observation in the input data and should be of 
+        type integer. The values need to match the values from the ID column selected in the
         [Spatial Weights](https://hub.knime.com/center%20for%20geographic%20analysis%20at%20harvard%20university/extensions/sdl.harvard.features.geospatial/latest/org.knime.python3.nodes.extension.ExtensionNodeSetFactory$DynamicExtensionNodeFactory:4d710eae/) node.
         If you selected 'none' in the Spatial Weights node select it here as well.""",
+        column_filter=knut.is_int,
         include_none_column=True,
     )
 
@@ -487,9 +498,9 @@ class LocalMoransI:
         gdf.loc[:, "spots"] = li.q
 
         gdf.loc[:, "spots_type"] = gdf["spots"].replace(
-            {1: "HH", 2: "LL", 3: "LH", 4: "HL"}
+            {1: "HH", 2: "LH", 3: "LL", 4: "HL"}
         )
-        gdf.loc[gdf["p-value"] < 0.05, "spots_type"] = "Not Significant"
+        gdf.loc[gdf["p-value"] > 0.05, "spots_type"] = "Not Significant"
         # out = pd.merge(gdf, out, left_index=True, right_index=True)
 
         import pysal.lib as lps
@@ -743,7 +754,9 @@ class GlobalGetisOrd:
 @knext.output_table(
     name="Output Table",
     description="Output table results of Local Getis-Ord. "
-    + __local_statistics_output_table_description,
+    + __local_statistics_output_table_description
+    + "`Standardized Gs` is the standardization of Gs."
+    + __spots,
 )
 # @knext.output_binary(
 #     name="output model",
@@ -802,6 +815,14 @@ class LocalGetisOrd:
         gdf.loc[:, "Local Getis-Ord G"] = lo.Gs
         gdf.loc[:, "p-value"] = lo.p_sim
         gdf.loc[:, "z-score"] = lo.z_sim
+
+        gdf.loc[:, "Standardized Gs"] = lo.Zs
+
+        gdf.loc[gdf["Standardized Gs"] > 0, "spots_type"] = "HH"
+        gdf.loc[gdf["Standardized Gs"] < 0, "spots_type"] = "LL "
+        gdf.loc[gdf["Standardized Gs"] > 0, "spots"] = 1
+        gdf.loc[gdf["Standardized Gs"] < 0, "spots"] = 3
+        gdf.loc[gdf["p-value"] > 0.05, "spots_type"] = "Not Significant"
 
         import pysal.lib as lps
 

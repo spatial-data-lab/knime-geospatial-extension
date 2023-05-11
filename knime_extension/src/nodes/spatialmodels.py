@@ -20,7 +20,7 @@ __NODE_ICON_PATH = "icons/icon/SpatialModel/"
 
 def get_id_col_parameter(
     label: str = "ID column",
-    description: str = """Select the column which contains for each observation in the input data a unique ID.
+    description: str = """Select the column which contains for each observation in the input data a unique ID, it should be an integer column.
     The IDs must match with the values of the 
     [Spatial Weights node](https://hub.knime.com/center%20for%20geographic%20analysis%20at%20harvard%20university/extensions/sdl.harvard.features.geospatial/latest/org.knime.python3.nodes.extension.ExtensionNodeSetFactory$DynamicExtensionNodeFactory:4d710eae/)
     ID column.
@@ -36,6 +36,7 @@ def get_id_col_parameter(
         label=label,
         description=description,
         include_none_column=True,
+        column_filter=knut.is_int,
         since_version="1.1.0",
     )
 

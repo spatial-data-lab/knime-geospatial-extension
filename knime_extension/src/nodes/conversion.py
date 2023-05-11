@@ -143,7 +143,6 @@ class _ToGeoConverter:
     },
 )
 class WKTtoGeoNode(_ToGeoConverter):
-
     input_column = knext.ColumnParameter(
         label="WKT column",
         description="[Well-known-text (WKT)](https://en.wikipedia.org/wiki/Well-known_text_representation_of_geometry) column to convert",
@@ -219,7 +218,6 @@ class WKTtoGeoNode(_ToGeoConverter):
     },
 )
 class GeoJSONtoGeoNode(_ToGeoConverter):
-
     input_column = knext.ColumnParameter(
         label="GeoJSON formatted string column",
         description="String column with a [GeoJSON](https://en.wikipedia.org/wiki/GeoJSON) string to convert",
@@ -284,7 +282,6 @@ class GeoJSONtoGeoNode(_ToGeoConverter):
     },
 )
 class LatLongToGeoNode:
-
     lat_col = knext.ColumnParameter(
         label="Latitude column",
         description="Please select the latitude column",
@@ -425,7 +422,6 @@ class _FromGeoConverter:
     },
 )
 class GeoToWKTNode(_FromGeoConverter):
-
     geo_column = knut.geo_col_parameter(
         description="Geometry column to convert to [Well-known-text (WKT)](https://en.wikipedia.org/wiki/Well-known_text_representation_of_geometry)"
     )
@@ -492,7 +488,6 @@ class GeoToWKTNode(_FromGeoConverter):
     },
 )
 class GeoToGeoJSONNode(_FromGeoConverter):
-
     geo_column = knut.geo_col_parameter(
         description="Geometry column to convert to [GeoJSON](https://en.wikipedia.org/wiki/GeoJSON)"
     )
@@ -551,7 +546,6 @@ class GeoToGeoJSONNode(_FromGeoConverter):
     },
 )
 class GeoToLatLongNode:
-
     geo_col = knut.geo_point_col_parameter(
         description="Select the point geometry column to extract the latitude and longitude from."
     )
@@ -589,7 +583,6 @@ class GeoToLatLongNode:
 
 
 class _ServiceProvider(knext.EnumParameterOptions):
-
     arcgis = (
         "arcgis",
         "Using [ArcGIS online service](https://developers.arcgis.com/rest/geocode/api-reference/overview-world-geocoding-service.htm) to do geocoding or reverse geocoding.",
@@ -711,7 +704,6 @@ class GeocodingServiceSettings:
     },
 )
 class GeoGeocodingNode:
-
     address_col = knext.ColumnParameter(
         "Address column",
         "Select the address column to geocode."
@@ -778,7 +770,7 @@ class GeoGeocodingNode:
 
         df[result_col_name] = gp.points_from_xy(df[tmp_long], df[tmp_lat])
 
-        gdf = gp.GeoDataFrame(df, geometry=result_col_name, crs=knut.DEFAULT_CRS)
+        gdf = gp.GeoDataFrame(df, geometry=result_col_name, crs=kproj.DEFAULT_CRS)
 
         gdf.drop(columns=[tmp_col, tmp_lat, tmp_long], inplace=True)
 
@@ -822,7 +814,6 @@ class GeoGeocodingNode:
     },
 )
 class GeoReverseGeocodingNode:
-
     geo_col = knext.ColumnParameter(
         "Geometry column",
         "Select the geometry column to reverse geocode."
@@ -1000,7 +991,6 @@ class MetadataNode:
         return output_schema
 
     def execute(self, exec_context: knext.ExecutionContext, input):
-
         t = input.to_pyarrow()
         t_dict = t.to_pydict()
 
