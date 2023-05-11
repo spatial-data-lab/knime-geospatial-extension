@@ -144,23 +144,11 @@ def is_numeric(column: knext.Column) -> bool:
 
 def is_int(column: knext.Column) -> bool:
     """
-<<<<<<< Upstream, based on origin/main
-<<<<<<< Upstream, based on origin/main
     Checks if column is integer.
     @return: True if Column is integer
-=======
-    Checks if column is int.
-    @return: True if Column is int
->>>>>>> 7520bf3 add Int filter for spatial weights id column
-=======
-    Checks if column is integer.
-    @return: True if Column is integer
->>>>>>> 12879df #203 add description for the utl function
     """
-    return (
-        column.ktype == knext.int32()
-        or column.ktype == knext.int64()
-    )
+    return column.ktype == knext.int32()
+
 
 def is_string(column: knext.Column) -> bool:
     """
