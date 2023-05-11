@@ -235,6 +235,8 @@ class spatialWeights:
             w = libpysal.weights.higher_order(w, self.order - 1)
             w.transform = "r"
 
+        import numpy as np
+
         if self.category == "Get spatial weights matrix from file":
             import pandas as pd
 
@@ -753,7 +755,7 @@ class GlobalGetisOrd:
     name="Output Table",
     description="Output table results of Local Getis-Ord. "
     + __local_statistics_output_table_description
-    + "`standardized Gs` is the standardization of Gs."
+    + "`Standardized Gs` is the standardization of Gs."
     + __spots,
 )
 # @knext.output_binary(
@@ -813,26 +815,15 @@ class LocalGetisOrd:
         gdf.loc[:, "Local Getis-Ord G"] = lo.Gs
         gdf.loc[:, "p-value"] = lo.p_sim
         gdf.loc[:, "z-score"] = lo.z_sim
-<<<<<<< Upstream, based on origin/main
-        gdf.loc[:, "standardized Gs"] = lo.Zs
 
-        gdf.loc[gdf["standardized Gs"] > 0, "spots_type"] = "HH"
-        gdf.loc[gdf["standardized Gs"] < 0, "spots_type"] = "LL "
-        gdf.loc[gdf["standardized Gs"] > 0, "spots"] = 1
-        gdf.loc[gdf["standardized Gs"] < 0, "spots"] = 3
+        gdf.loc[:, "Standardized Gs"] = lo.Zs
+
+        gdf.loc[gdf["Standardized Gs"] > 0, "spots_type"] = "HH"
+        gdf.loc[gdf["Standardized Gs"] < 0, "spots_type"] = "LL "
+        gdf.loc[gdf["Standardized Gs"] > 0, "spots"] = 1
+        gdf.loc[gdf["Standardized Gs"] < 0, "spots"] = 3
         gdf.loc[gdf["p-value"] > 0.05, "spots_type"] = "Not Significant"
-=======
-        gdf.loc[:, "standardized Zs"] = lo.z_sim
 
-        gdf.loc[gdf["standardized Zs"] > 0, "cluster category"] = "HH"
-        gdf.loc[gdf["standardized Zs"] < 0, "cluster category"] = "LL "
-        gdf.loc[gdf["p-value"] > 0.05, "cluster category"] = "Not Significant"
-
-<<<<<<< Upstream, based on origin/main
->>>>>>> f982e4e fixed #205 about the Local G model
-
-=======
->>>>>>> f0145b1 format the code
         import pysal.lib as lps
 
         lag_index = lps.weights.lag_spatial(w, gdf[self.variable_setting.Field_col])
