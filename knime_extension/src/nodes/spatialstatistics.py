@@ -42,7 +42,6 @@ HL (High-Low), Not Significant (the p-value is greater than the significance lev
 """
 
 
-
 def _var_col_exists_or_preset(
     context: knext.ConfigurationContext,
     field,
