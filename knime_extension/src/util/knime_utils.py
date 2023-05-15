@@ -17,35 +17,6 @@ from shapely.geometry import GeometryCollection
 
 LOGGER = logging.getLogger(__name__)
 
-DEFAULT_CRS = "epsg:4326"
-"""Default coordinate reference system."""
-
-DEF_CRS_DESCRIPTION = """Enter the 
-        [Coordinate reference system (CRS)](https://en.wikipedia.org/wiki/Spatial_reference_system) to use.
-
-        Common [EPSG codes](https://en.wikipedia.org/wiki/EPSG_Geodetic_Parameter_Dataset) that can be universally 
-        used for mapping coordinates everywhere in the world are 
-        [epsg:4326 (WGS 84, Unit: degree)](https://epsg.io/4326) (Latitude/longitude coordinate system based 
-        on the Earth's center of mass;  Used by the Global Positioning System among others) and 
-        [epsg:3857 (Unit: meter)](https://epsg.io/3857) (Web Mercator projection used by many web-based mapping tools,
-        including Google Maps and OpenStreetMap.). 
-        
-        There are EPSG codes for specific regions that provide a higher accuracy in these regions, such as 
-        [epsg:4269 (NAD83, Unit: degree)](https://epsg.io/4269) 
-        and [epsg:26918 (NAD83 18N, Unit: meter)](https://epsg.io/26918) for North America, 
-        and [epsg:4490 (CGCS2000, Unit: degree)](https://epsg.io/4490) 
-        and [epsg:4479 (CGCS2000, Unit: meter)](https://epsg.io/4479) for China.
-        
-        The input field supports the following input types:
-        
-        - An authority string [i.e. 'epsg:4326']
-        - An EPSG integer code [i.e. 4326]
-        - A tuple of ('auth_name': 'auth_code') [i.e ('epsg', '4326')]
-        - [CRS WKT string](https://www.ogc.org/standards/wkt-crs)
-        - [PROJ string](https://proj.org/usage/quickstart.html)
-        - JSON string with [PROJ parameters](https://proj.org/specifications/projjson.html)
-        """
-
 
 ############################################
 # Geometry value types
@@ -69,7 +40,7 @@ TYPE_GEO_COLLECTION = knext.logical(GeometryCollection)
 ############################################
 
 __DEF_GEO_COL_LABEL = "Geometry column"
-__DEF_GEO_COL_DESC = "Select the geometry column to use"
+__DEF_GEO_COL_DESC = "Select the geometry column to use."
 
 __CELL_TYPE_GEO = "org.knime.geospatial.core.data.cell.Geo"
 __CELL_TYPE_POINT = "GeoPointCell"
@@ -122,6 +93,43 @@ def typed_geo_col_parameter(
     )
 
 
+def negate(function):
+    """
+    Negates the incoming function e.g. negate(is_numeric) can be used in a column parameter to allow the user
+    to select from all none numeric columns.
+    @return: the negated input function e.g. if the input function returns true this function returns false
+    """
+
+    def new_function(*args, **kwargs):
+        return not function(*args, **kwargs)
+
+    return new_function
+
+
+def boolean_or(*functions):
+    """
+    Return True if any of the given functions returns True
+    @return: True if any of the functions returns True
+    """
+
+    def new_function(*args, **kwargs):
+        return any(f(*args, **kwargs) for f in functions)
+
+    return new_function
+
+
+def boolean_and(*functions):
+    """
+    Return True if all of the given functions return True
+    @return: True if all of the functions return True
+    """
+
+    def new_function(*args, **kwargs):
+        return all(f(*args, **kwargs) for f in functions)
+
+    return new_function
+
+
 def is_numeric(column: knext.Column) -> bool:
     """
     Checks if column is numeric e.g. int, long or double.
@@ -132,6 +140,14 @@ def is_numeric(column: knext.Column) -> bool:
         or column.ktype == knext.int32()
         or column.ktype == knext.int64()
     )
+
+
+def is_int(column: knext.Column) -> bool:
+    """
+    Checks if column is integer.
+    @return: True if Column is integer
+    """
+    return column.ktype == knext.int32()
 
 
 def is_string(column: knext.Column) -> bool:
@@ -155,12 +171,7 @@ def is_numeric_or_string(column: knext.Column) -> bool:
     Checks if column is numeric or string
     @return: True if Column is numeric or string
     """
-    return (
-        column.ktype == knext.double()
-        or column.ktype == knext.int32()
-        or column.ktype == knext.int64()
-        or column.ktype == knext.string()
-    )
+    return boolean_or(is_numeric, is_string)(column)
 
 
 def is_binary(column: knext.Column) -> bool:
@@ -169,6 +180,15 @@ def is_binary(column: knext.Column) -> bool:
     @return: True if Column is binary
     """
     return column.ktype == knext.blob
+
+
+def is_date(column: knext.Column) -> bool:
+    """
+    Checks if column is compatible to the GeoValue interface and thus returns true for all geospatial types such as:
+    GeoPointCell, GeoLineCell, GeoPolygonCell, GeoMultiPointCell, GeoMultiLineCell, GeoMultiPolygonCell, ...
+    @return: True if Column Type is GeoValue compatible
+    """
+    return __is_type_x(column, "org.knime.core.data.v2.time.LocalDateValueFactory")
 
 
 def is_geo(column: knext.Column) -> bool:
@@ -275,13 +295,15 @@ def geo_node_description(short_description: str, description: str, references: d
 
 def census_node_description(short_description: str, description: str, references: dict):
     """This decorator takes the provided information and generates a standardized node description
-    for nodes that are based on GeoPandas functionality."""
+    for nodes that are based on US Census data."""
 
     def set_description(node_factory):
         s = f"{short_description}\n"
         s += f"{description}\n\n"
         # s += "___\n\n"  # separator line between description and general part
-        s += "The node is based on the data from [US Census](https://www.census.gov/) and [FIPS code](https://www.census.gov/library/reference/code-lists/ansi.html) and here are related data sources and references"
+        s += "The node is based on the data from [US Census](https://www.census.gov/) and "
+        s += "[FIPS code](https://www.census.gov/library/reference/code-lists/ansi.html) "
+        s += "and uses the following related information and function"
         if references is not None:
             if len(references) > 1:
                 s += "s"
@@ -289,6 +311,9 @@ def census_node_description(short_description: str, description: str, references
             s += "\n\n"
             for key in references:
                 s += f"- [{key}]({references[key]})\n"
+        s += "\n\n##Note\n"
+        s += "This node uses the Census Bureau Data API but is not endorsed or certified by the Census Bureau. "
+        s += "For the terms of service click [here.](https://www.census.gov/data/developers/about/terms-of-service.html)"
         node_factory.__doc__ = s
         return node_factory
 
@@ -297,13 +322,15 @@ def census_node_description(short_description: str, description: str, references
 
 def osm_node_description(short_description: str, description: str, references: dict):
     """This decorator takes the provided information and generates a standardized node description
-    for nodes that are based on GeoPandas functionality."""
+    for nodes that are based on OpenStreetMap data. It also places the proper copyright notice which
+    is necessary."""
 
     def set_description(node_factory):
         s = f"{short_description}\n"
         s += f"{description}\n\n"
         # s += "___\n\n"  # separator line between description and general part
-        s += "The node is based on the project [OSMnx](https://github.com/gboeing/osmnx)  and here are related tools and references"
+        s += "The node is based on the [OpenStreetMap project](https://www.openstreetmap.org/about) "
+        s += "and uses the following related information and function"
         if references is not None:
             if len(references) > 1:
                 s += "s"
@@ -311,6 +338,15 @@ def osm_node_description(short_description: str, description: str, references: d
             s += "\n\n"
             for key in references:
                 s += f"- [{key}]({references[key]})\n"
+        s += "\n\n##Note\n"
+        s += (
+            "Data copyright by [OpenStreetMap](https://www.openstreetmap.org/copyright)"
+        )
+        s += "[(ODbl)](https://opendatacommons.org/licenses/odbl/index.html) and provided under "
+        s += "[CC-BY-SA.](https://creativecommons.org/licenses/by-sa/2.0/)"
+        s += "To report a problem and contribute to OpenStreetMap click [here.](https://www.openstreetmap.org/fixthemap)"
+        s += "Please note the OpenStreetMap licence and attribution guidelines as described "
+        s += "[here.](https://wiki.osmfoundation.org/wiki/Licence/Attribution_Guidelines)"
         node_factory.__doc__ = s
         return node_factory
 
@@ -376,7 +412,7 @@ def load_geo_data_frame(
         exec_context.set_progress(0.0, load_msg)
     gdf = gp.GeoDataFrame(input_table.to_pandas(), geometry=column)
     if exec_context:
-        exec_context.set_progress(0.3, done_msg)
+        exec_context.set_progress(0.1, done_msg)
     return gdf
 
 
@@ -492,11 +528,25 @@ def fail_if_column_exists(
 def get_unique_column_name(column_name: str, input_schema: knext.Schema) -> str:
     """Checks if the column name exists in the given schema and if so appends a number to it to make it unique.
     The unique name if returned or the original if it was already unique."""
+    return get_unique_name(column_name, input_schema.column_names)
+    # if column_name is None:
+    #     raise knext.InvalidParametersError("Column name must not be None")
+    # uniquifier = 1
+    # result = column_name
+    # while result in input_schema.column_names:
+    #     result = column_name + f"(#{uniquifier})"
+    #     uniquifier += 1
+    # return result
+
+
+def get_unique_name(column_name: str, existing_col_names) -> str:
+    """Checks if the column name exists in the given schema and if so appends a number to it to make it unique.
+    The unique name if returned or the original if it was already unique."""
     if column_name is None:
         raise knext.InvalidParametersError("Column name must not be None")
     uniquifier = 1
     result = column_name
-    while result in input_schema.column_names:
+    while result in existing_col_names:
         result = column_name + f"(#{uniquifier})"
         uniquifier += 1
     return result
@@ -521,14 +571,158 @@ def ensure_file_extension(file_name: str, file_extension: str) -> str:
     return file_name + file_extension
 
 
-def Turn_all_NA_column_as_str(gdf) -> None:
+class ResultSettingsMode(knext.EnumParameterOptions):
+    REPLACE = (
+        "Replace",
+        "Replace the selected input column with the result.",
+    )
+    APPEND = (
+        "Append",
+        "Append a new column with the name provided below.",
+    )
+
+    @classmethod
+    def get_default(cls):
+        return cls.REPLACE
+
+
+@knext.parameter_group(label="Output", since_version="1.1.0")
+class ResultSettings:
     """
-     Checks if the GeoDataFrame has columns of all NAs, otherwise it cannot be write out and makes the node crush.
+    Group of settings that define the format of the result table.
     """
-    # Transform the NA columns to string
-    NotNacol = list(gdf.dropna(axis=1, how="all").columns)
-    Nacol = gdf.loc[:, ~gdf.columns.isin(NotNacol)].columns.tolist()
-    if len(Nacol)>0:
-        gdf[Nacol] = gdf[Nacol].astype(str)
-    gdf= gdf.reset_index(drop=True)
-    return gdf
+
+    mode = knext.EnumParameter(
+        label="Output column",
+        description="Choose where to place the result column:",
+        default_value=ResultSettingsMode.get_default().name,
+        enum=ResultSettingsMode,
+    )
+
+    new_column_name = knext.StringParameter(
+        "New column name",
+        "The name of the new column that is appended if 'Append' is selected.",
+        default_value="geometry",
+    )
+
+    def __init__(self, mode=ResultSettingsMode.get_default().name, new_name="geometry"):
+        self.mode = mode
+        self.new_column_name = new_name
+
+    def get_result_schema(
+        self,
+        configure_context: knext.ConfigurationContext,
+        schema: knext.Schema,
+        selected_col: knext.Column,
+        result_type,
+    ) -> knext.Schema:
+        """
+        Either replaces the selected column or appends a new column to the end.
+        """
+        if self.mode == ResultSettingsMode.REPLACE.name:
+            col_names = schema.column_names
+            i = 0
+            while i < len(col_names):
+                if col_names[i] == selected_col:
+                    result_schema = schema.remove(i)
+                    return result_schema.insert(
+                        knext.Column(result_type, selected_col), i
+                    )
+                i += 1
+            raise knext.InvalidParametersError(
+                f"Selected column '{selected_col}' not found"
+            )
+        # make sure the appended column is unique
+        result_col = get_unique_column_name(self.new_column_name, schema)
+        return schema.append(knext.Column(result_type, result_col))
+
+    def get_result_table(
+        self,
+        exec_context: knext.ExecutionContext,
+        gdf: gp.GeoDataFrame,
+        selected_col: knext.Column,
+        result_col: str,
+    ) -> gp.GeoDataFrame:
+        """
+        Assumes that the result_col and the select_col are part of the input data frame.
+        The (altered) input data frame is returned.
+        """
+        if self.mode == ResultSettingsMode.REPLACE.name:
+            check_canceled(exec_context)
+            exec_context.set_progress(0.9, "Replace input column with result column")
+            gdf[selected_col] = gdf[result_col]
+            gdf.drop(result_col, axis=1, inplace=True)
+            gdf.rename(columns={self.new_column_name: selected_col}, inplace=True)
+            return gdf
+        return gdf
+
+    def get_computed_result_table(
+        self,
+        exec_context: knext.ExecutionContext,
+        input_table: knext.Table,
+        selected_col: knext.Column,
+        func: Callable,
+    ) -> knext.Table:
+        """
+        Uses the given function to either append a new column or replace the existing column to the given input table and
+        returns the result as a table depending on the user chosen settings.
+        """
+        gdf = load_geo_data_frame(input_table, selected_col, exec_context)
+        gdf = self.get_computed_result_frame(
+            exec_context, input_table.schema, gdf, selected_col, func
+        )
+        return to_table(gdf, exec_context)
+
+    def get_computed_result_frame(
+        self,
+        exec_context: knext.ExecutionContext,
+        schema: knext.Schema,
+        gdf: gp.GeoDataFrame,
+        selected_col: knext.Column,
+        func: Callable,
+    ) -> knext.Table:
+        """
+        Uses the given function to either append a new column or replace the existing column to the given input
+        GeoDataFrame and returns the result as a table depending on the user chosen settings.
+        """
+        result_col = selected_col
+        if self.mode == ResultSettingsMode.APPEND.name:
+            result_col = get_unique_column_name(self.new_column_name, schema)
+        gdf[result_col] = gdf.apply(lambda l: func(l[selected_col]), axis=1)
+        return gdf
+
+
+def get_env_path():
+    """
+    Returns the path to the used Python environment e.g. the Python packages of this environment can be found in
+    <RETURNED_VAL>\Lib\site-packages.
+    """
+    import sys
+    import os.path as os
+
+    # path to the Python executable in the used Python environment
+    exec_path = sys.executable
+    env_path = os.dirname(exec_path)
+    return env_path
+
+
+# def re_order_weight_rows(gdf, adjust_list, id_col):
+#     """
+#     Reorder the spatial weight according to the id_col.
+#     """
+#     # Reorder the rows based on the weight column
+#     import libpysal
+
+#     gdf.index = range(len(gdf))
+#     w_ref = libpysal.weights.Rook.from_dataframe(gdf)
+#     id_map = gdf[id_col].to_dict()
+#     w_ref.transform = "r"
+#     adjust_list_ref = w_ref.to_adjlist()
+#     for k, row in adjust_list_ref.iterrows():
+#         focal = id_map[row["focal"]]
+#         neighbor = id_map[row["neighbor"]]
+#         row["weight"] = adjust_list[
+#             (adjust_list["focal"] == focal) & (adjust_list["neighbor"] == neighbor)
+#         ]["weight"]
+
+#     return adjust_list_ref

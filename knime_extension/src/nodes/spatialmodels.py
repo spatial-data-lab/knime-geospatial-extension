@@ -1,24 +1,8 @@
+import geopandas as gp
 import knime_extension as knext
 import util.knime_utils as knut
-import pandas as pd
-import geopandas as gp
-from mgwr.gwr import GWR, MGWR
-from mgwr.sel_bw import Sel_BW
-import numpy as np
-import libpysal
-import scipy.sparse
-from libpysal.weights import WSP
-import esda
-import pysal.lib as lps
-import pickle
-import seaborn as sbn
-import matplotlib.pyplot as plt
-from libpysal.weights import W
-import spreg
-from io import StringIO
-import sys
-import pulp
-from shapely.geometry import LineString
+import util.modeling_utils as mut
+
 
 __category = knext.category(
     path="/community/geo",
@@ -32,6 +16,29 @@ __category = knext.category(
 
 # Root path for all node icons in this file
 __NODE_ICON_PATH = "icons/icon/SpatialModel/"
+
+
+def get_id_col_parameter(
+    label: str = "ID column",
+    description: str = """Select the column which contains for each observation in the input data a unique ID, it should be an integer column.
+    The IDs must match with the values of the 
+    [Spatial Weights node](https://hub.knime.com/center%20for%20geographic%20analysis%20at%20harvard%20university/extensions/sdl.harvard.features.geospatial/latest/org.knime.python3.nodes.extension.ExtensionNodeSetFactory$DynamicExtensionNodeFactory:4d710eae/)
+    ID column.
+    If 'none' is selected, the IDs will be automatically generated from 0 to the number of rows flowing the order of 
+    the first input table.
+    """,
+):
+    """
+    Returns the unique ID column. It should always keep the same as the ID column in the spatial weights matrix node.
+    The selected column should contain unique IDs for each observation in the input data.
+    """
+    return knext.ColumnParameter(
+        label=label,
+        description=description,
+        include_none_column=True,
+        column_filter=knut.is_int,
+        since_version="1.1.0",
+    )
 
 
 ############################################
@@ -72,6 +79,8 @@ class Spatial2SLSModel:
 
     # input parameters
     geo_col = knut.geo_col_parameter()
+
+    id_col = get_id_col_parameter()
 
     dependent_variable = knext.ColumnParameter(
         "Dependent variable",
@@ -114,11 +123,18 @@ class Spatial2SLSModel:
         return None
 
     def execute(self, exec_context: knext.ExecutionContext, input_1, input_2):
-
         gdf = gp.GeoDataFrame(input_1.to_pandas(), geometry=self.geo_col)
         adjust_list = input_2.to_pandas()
-        w = W.from_adjlist(adjust_list)
 
+        if "none" not in str(self.id_col).lower():
+            gdf.index = range(len(gdf))
+            id_map = dict(zip(gdf[self.id_col], gdf.index))
+            adjust_list["focal"] = adjust_list["focal"].map(id_map)
+            adjust_list["neighbor"] = adjust_list["neighbor"].map(id_map)
+
+        from libpysal.weights import W
+
+        w = W.from_adjlist(adjust_list)
         y = gdf[self.dependent_variable].values
         x = gdf[self.independent_variables].values
 
@@ -136,10 +152,14 @@ class Spatial2SLSModel:
         if "none" not in str(self.robust).lower():
             kws["robust"] = self.robust
 
+        import spreg
+
         model = spreg.GM_Lag(**kws)
 
         # model = spreg.GM_Lag(y, x, w=w,w_lags=self.Orders_of_W, robust= self.robust,
         # name_y=self.dependent_variable, name_x=self.independent_variables, name_w="Spatial Weights", name_ds="Input Table")
+
+        import pandas as pd
 
         results = pd.DataFrame(
             [model.name_x, model.betas, model.std_err, model.z_stat]
@@ -228,6 +248,8 @@ class SpatialLagPanelModelwithFixedEffects:
 
     geo_col = knut.geo_col_parameter()
 
+    id_col = get_id_col_parameter()
+
     dependent_variable = knext.MultiColumnParameter(
         "Dependent variables",
         "The column containing the dependent variables to use for the calculation of Spatial Lag Panel Model with Fixed Effects.",
@@ -247,9 +269,17 @@ class SpatialLagPanelModelwithFixedEffects:
         return None
 
     def execute(self, exec_context: knext.ExecutionContext, input_1, input_2):
-
         gdf = gp.GeoDataFrame(input_1.to_pandas(), geometry=self.geo_col)
         adjust_list = input_2.to_pandas()
+
+        if "none" not in str(self.id_col).lower():
+            gdf.index = range(len(gdf))
+            id_map = dict(zip(gdf[self.id_col], gdf.index))
+            adjust_list["focal"] = adjust_list["focal"].map(id_map)
+            adjust_list["neighbor"] = adjust_list["neighbor"].map(id_map)
+
+        from libpysal.weights import W
+
         w = W.from_adjlist(adjust_list)
 
         x = gdf[self.independent_variables].values
@@ -264,7 +294,12 @@ class SpatialLagPanelModelwithFixedEffects:
             "name_w": "Spatial Weights",
             "name_ds": "Input Table",
         }
+
+        import spreg
+
         model = spreg.Panel_FE_Lag(**kws)
+
+        import pandas as pd
 
         results = pd.DataFrame(
             [model.name_x, model.betas, model.std_err, model.z_stat]
@@ -353,6 +388,8 @@ class SpatialErrorPanelModelwithFixedEffects:
 
     geo_col = knut.geo_col_parameter()
 
+    id_col = get_id_col_parameter()
+
     dependent_variable = knext.MultiColumnParameter(
         "Dependent variables",
         "The column containing the dependent variables to use for the calculation of Spatial Error Panel Model with Fixed Effects.",
@@ -372,9 +409,17 @@ class SpatialErrorPanelModelwithFixedEffects:
         return None
 
     def execute(self, exec_context: knext.ExecutionContext, input_1, input_2):
-
         gdf = gp.GeoDataFrame(input_1.to_pandas(), geometry=self.geo_col)
         adjust_list = input_2.to_pandas()
+
+        if "none" not in str(self.id_col).lower():
+            gdf.index = range(len(gdf))
+            id_map = dict(zip(gdf[self.id_col], gdf.index))
+            adjust_list["focal"] = adjust_list["focal"].map(id_map)
+            adjust_list["neighbor"] = adjust_list["neighbor"].map(id_map)
+
+        from libpysal.weights import W
+
         w = W.from_adjlist(adjust_list)
 
         x = gdf[self.independent_variables].values
@@ -389,7 +434,12 @@ class SpatialErrorPanelModelwithFixedEffects:
             "name_w": "Spatial Weights",
             "name_ds": "Input Table",
         }
+
+        import spreg
+
         model = spreg.Panel_FE_Error(**kws)
+
+        import pandas as pd
 
         results = pd.DataFrame(
             [model.name_x, model.betas, model.std_err, model.z_stat]
@@ -524,24 +574,26 @@ class GeographicallyWeightedRegression:
         return None
 
     def execute(self, exec_context: knext.ExecutionContext, input_1):
-
         gdf = gp.GeoDataFrame(input_1.to_pandas(), geometry=self.geo_col)
         # Prepare Georgia dataset inputs
         g_y = gdf[self.dependent_variable].values.reshape((-1, 1))
         g_X = gdf[self.independent_variables].values
-        u = gdf["geometry"].x
-        v = gdf["geometry"].y
+        u = gdf.centroid.x
+        v = gdf.centroid.y
         g_coords = list(zip(u, v))
         # g_X = (g_X - g_X.mean(axis=0)) / g_X.std(axis=0)
         g_y = g_y.reshape((-1, 1))
         # g_y = (g_y - g_y.mean(axis=0)) / g_y.std(axis=0)
 
         # Calibrate GWR model
+        from mgwr.sel_bw import Sel_BW
 
         gwr_selector = Sel_BW(g_coords, g_y, g_X)
         gwr_bw = gwr_selector.search(bw_min=self.bandwith_min)
         # gwr_bw = gwr_selector.search(bw_min=self.bandwith_min,search_method=self.search_method)
         # print(gwr_bw)
+        from mgwr.gwr import GWR
+
         gwr_model = GWR(g_coords, g_y, g_X, gwr_bw, fixed=False).fit()
 
         gdf.loc[:, "predy"] = gwr_model.predy
@@ -555,6 +607,9 @@ class GeographicallyWeightedRegression:
             :, ["Intercept_t"] + ["%s_t" % item for item in self.independent_variables]
         ] = gwr_model.filter_tvals()
         intervals = gwr_model.get_bws_intervals(gwr_selector)
+
+        import numpy as np
+
         intervals = np.asarray(intervals)
         if gwr_bw.shape == ():
             gdf.loc[:1, "bw"] = gwr_bw
@@ -566,6 +621,9 @@ class GeographicallyWeightedRegression:
         # gdf.drop(columns=["<Row Key>"], inplace=True, axis=1)
         gdf.reset_index(drop=True, inplace=True)
 
+        from io import StringIO
+        import sys
+
         buffer = StringIO()
         sys.stdout = buffer
         gwr_model.summary()
@@ -573,6 +631,8 @@ class GeographicallyWeightedRegression:
         sys.stdout = sys.__stdout__
 
         html = """<p><pre>%s</pre>""" % summary.replace("\n", "<br/>")
+
+        import pickle
 
         model_string = pickle.dumps(gwr_model)
 
@@ -622,14 +682,19 @@ class GeographicallyWeightedRegressionPredictor:
         return None
 
     def execute(self, exec_context: knext.ExecutionContext, input_1, model):
-
         gdf = gp.GeoDataFrame(input_1.to_pandas(), geometry=self.geo_col)
         # Prepare Georgia dataset inputs
         g_X = gdf[self.independent_variables].values
         u = gdf["geometry"].x
         v = gdf["geometry"].y
+
+        import numpy as np
+
         g_coords = np.array(list(zip(u, v)))
         # g_X = (g_X - g_X.mean(axis=0)) / g_X.std(axis=0)
+
+        import pickle
+
         gwr_model = pickle.loads(model)
 
         gdf.loc[:, "predy"] = gwr_model.model.predict(g_coords, g_X).predictions
@@ -718,7 +783,6 @@ class MultiscaleGeographicallyWeightedRegression:
         return None
 
     def execute(self, exec_context: knext.ExecutionContext, input_1):
-
         gdf = gp.GeoDataFrame(input_1.to_pandas(), geometry=self.geo_col)
         # Prepare Georgia dataset inputs
         g_y = gdf[self.dependent_variable].values.reshape((-1, 1))
@@ -731,8 +795,12 @@ class MultiscaleGeographicallyWeightedRegression:
         # g_y = (g_y - g_y.mean(axis=0)) / g_y.std(axis=0)
 
         # Calibrate MGWR model
+        from mgwr.sel_bw import Sel_BW
+
         mgwr_selector = Sel_BW(g_coords, g_y, g_X, multi=True)
         mgwr_bw = mgwr_selector.search(multi_bw_min=[self.bandwith_min])
+        from mgwr.gwr import MGWR
+
         mgwr_model = MGWR(
             g_coords,
             g_y,
@@ -754,6 +822,9 @@ class MultiscaleGeographicallyWeightedRegression:
             :, ["Intercept_t"] + ["%s_t" % item for item in self.independent_variables]
         ] = mgwr_model.filter_tvals()
         intervals = mgwr_model.get_bws_intervals(mgwr_selector)
+
+        import numpy as np
+
         intervals = np.asarray(intervals)
         if mgwr_bw.shape == ():
             gdf.loc[:1, "bw"] = mgwr_bw
@@ -765,6 +836,9 @@ class MultiscaleGeographicallyWeightedRegression:
         # gdf.drop(columns=["<Row Key>"], inplace=True, axis=1)
         gdf.reset_index(drop=True, inplace=True)
 
+        from io import StringIO
+        import sys
+
         buffer = StringIO()
         sys.stdout = buffer
         mgwr_model.summary()
@@ -772,6 +846,8 @@ class MultiscaleGeographicallyWeightedRegression:
         sys.stdout = sys.__stdout__
 
         html = """<p><pre>%s</pre>""" % summary.replace("\n", "<br/>")
+
+        import pickle
 
         model_string = pickle.dumps(mgwr_model)
 
@@ -886,6 +962,8 @@ class SpatialOLS:
 
     geo_col = knut.geo_col_parameter()
 
+    id_col = get_id_col_parameter()
+
     dependent_variable = knext.ColumnParameter(
         "Dependent variable",
         "The column containing the dependent variable to use for the calculation of the spatial OLS model.",
@@ -909,10 +987,21 @@ class SpatialOLS:
     def execute(self, exec_context: knext.ExecutionContext, input_1, input_2):
         gdf = gp.GeoDataFrame(input_1.to_pandas(), geometry=self.geo_col)
         adjust_list = input_2.to_pandas()
+
+        if "none" not in str(self.id_col).lower():
+            gdf.index = range(len(gdf))
+            id_map = dict(zip(gdf[self.id_col], gdf.index))
+            adjust_list["focal"] = adjust_list["focal"].map(id_map)
+            adjust_list["neighbor"] = adjust_list["neighbor"].map(id_map)
+
+        from libpysal.weights import W
+
         w = W.from_adjlist(adjust_list)
         # Prepare Georgia dataset inputs
         X = gdf[self.independent_variables].values
         y = gdf[self.dependent_variable].values
+
+        import spreg
 
         model = spreg.OLS(
             y,
@@ -924,6 +1013,8 @@ class SpatialOLS:
             name_y=self.dependent_variable,
             name_x=self.independent_variables,
         )
+
+        import pandas as pd
 
         results = pd.DataFrame(
             [model.name_x, model.betas, model.std_err, model.t_stat]
@@ -1011,6 +1102,8 @@ class SpatialML_Lag:
 
     geo_col = knut.geo_col_parameter()
 
+    id_col = get_id_col_parameter()
+
     dependent_variable = knext.ColumnParameter(
         "Dependent variable",
         "The column containing the dependent variable to use for the calculation of the spatial ML_Lag model.",
@@ -1034,10 +1127,21 @@ class SpatialML_Lag:
     def execute(self, exec_context: knext.ExecutionContext, input_1, input_2):
         gdf = gp.GeoDataFrame(input_1.to_pandas(), geometry=self.geo_col)
         adjust_list = input_2.to_pandas()
+
+        if "none" not in str(self.id_col).lower():
+            gdf.index = range(len(gdf))
+            id_map = dict(zip(gdf[self.id_col], gdf.index))
+            adjust_list["focal"] = adjust_list["focal"].map(id_map)
+            adjust_list["neighbor"] = adjust_list["neighbor"].map(id_map)
+
+        from libpysal.weights import W
+
         w = W.from_adjlist(adjust_list)
         # Prepare Georgia dataset inputs
         X = gdf[self.independent_variables].values
         y = gdf[self.dependent_variable].values
+
+        import spreg
 
         model = spreg.ML_Lag(
             y,
@@ -1047,6 +1151,8 @@ class SpatialML_Lag:
             name_x=self.independent_variables,
             name_y=self.dependent_variable,
         )
+
+        import pandas as pd
 
         results = pd.DataFrame(
             [model.name_x, model.betas, model.std_err, model.z_stat]
@@ -1135,6 +1241,8 @@ class SpatialML_Error:
 
     geo_col = knut.geo_col_parameter()
 
+    id_col = get_id_col_parameter()
+
     dependent_variable = knext.ColumnParameter(
         "Dependent variable",
         "The column containing the dependent variable to use for the calculation of the spatial ML_Error model.",
@@ -1158,10 +1266,21 @@ class SpatialML_Error:
     def execute(self, exec_context: knext.ExecutionContext, input_1, input_2):
         gdf = gp.GeoDataFrame(input_1.to_pandas(), geometry=self.geo_col)
         adjust_list = input_2.to_pandas()
+
+        if "none" not in str(self.id_col).lower():
+            gdf.index = range(len(gdf))
+            id_map = dict(zip(gdf[self.id_col], gdf.index))
+            adjust_list["focal"] = adjust_list["focal"].map(id_map)
+            adjust_list["neighbor"] = adjust_list["neighbor"].map(id_map)
+
+        from libpysal.weights import W
+
         w = W.from_adjlist(adjust_list)
         # Prepare Georgia dataset inputs
         X = gdf[self.independent_variables].values
         y = gdf[self.dependent_variable].values
+
+        import spreg
 
         model = spreg.ML_Error(
             y,
@@ -1171,6 +1290,8 @@ class SpatialML_Error:
             name_x=self.independent_variables,
             name_y=self.dependent_variable,
         )
+
+        import pandas as pd
 
         results = pd.DataFrame(
             [model.name_x, model.betas, model.std_err, model.z_stat]

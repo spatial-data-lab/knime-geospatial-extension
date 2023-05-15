@@ -1,6 +1,6 @@
 # How to contribute
 Thanks a lot for taking the time to read this little guide and contributing to this project
-Everybody is welcome to contribute to this Geospatial extension. The repository contains a Python based KNIME extension for geospatial analysis. To get started make yourself familiar with the general information on how to implement a Python based node extension for KNIME Analytics Platform that is available [here](https://docs.knime.com/latest/pure_python_node_extensions_guide/index.html#introduction).
+Everybody is welcome to contribute to this Geospatial extension. The repository contains a Python based KNIME extension for geospatial analysis. To get started make yourself familiar with the general information on how to implement a Python based node extension for KNIME Analytics Platform that is available [here](https://docs.knime.com/latest/pure_python_node_extensions_guide/index.html#introduction). We also suggest you to have a look at this [blog post](https://www.knime.com/blog/4-steps-for-your-python-team-to-develop-knime-nodes) which provides a step by step guide on how to implement a Python node.
 
 ## Submitting changes
 

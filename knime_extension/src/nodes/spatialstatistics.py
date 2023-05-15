@@ -1,22 +1,6 @@
+import geopandas as gp
 import knime_extension as knext
 import util.knime_utils as knut
-import pandas as pd
-import geopandas as gp
-from mgwr.gwr import GWR, MGWR
-from mgwr.sel_bw import Sel_BW
-import numpy as np
-import libpysal
-import scipy.sparse
-from libpysal.weights import WSP
-import esda
-import pysal.lib as lps
-import pickle
-import seaborn as sbn
-import matplotlib.pyplot as plt
-from libpysal.weights import W
-import spreg
-from io import StringIO
-import sys
 
 
 __category = knext.category(
@@ -49,7 +33,6 @@ The output table contains the original input table with the following additional
 the local statistic value,
 `p-value` is the p-value for the local statistic value,
 `z-score` is the z-score for the local statistic value.
-
 """
 
 __spots = """
@@ -57,6 +40,21 @@ __spots = """
 `spots_type` has the values of HH (High-High), LH (Low-High), LL (Low-Low),
 HL (High-Low), Not Significant (the p-value is greater than the significance level).
 """
+
+
+def _var_col_exists_or_preset(
+    context: knext.ConfigurationContext,
+    field,
+    schema: knext.Schema,
+) -> str:
+    return knut.column_exists_or_preset(
+        context,
+        field,
+        schema,
+        knut.is_numeric,
+        "No compatible variable column found in input table",
+    )
+
 
 ############################################
 # Spatial Weights
@@ -75,88 +73,133 @@ class spatialWeights:
     This node constructs a contiguity spatial weights matrix from the input data.
     """
 
-    geo_col = knut.geo_col_parameter(description="Geometry column.")
+    geo_col = knut.geo_col_parameter(
+        description="The name of the geometry column in the input data."
+    )
+
+    id_col = knext.ColumnParameter(
+        "ID column",
+        """Select the column which contains for each observation in the input data a unique ID, it should be an integer column.
+        If 'none' is selected, the IDs will be automatically generated from 0 to the number of rows flowing 
+        the order of the input data.
+        The IDs of this column must match with the values of the ID column selected in subsequent ESDA or spatial 
+        modeling nodes.
+        """,
+        include_none_column=True,
+        column_filter=knut.is_int,
+        since_version="1.1.0",
+    )
 
     category = knext.StringParameter(
         "Weights category",
-        """The default value is ‘Queen’ which will construct a queen contiguity weights matrix. Queen weights is more 
-        robust and more suitable for areal unit data. The queen criterion is somewhat more encompassing and defines 
-        neighbors as spatial units sharing a common edge or a common vertex. The rook criterion defines neighbors by 
-        the existence of a common edge between two spatial units. Therefore, the number of neighbors according to the 
-        queen criterion will always be at least as large as for the rook criterion. When choosing k-nearest, select 
-        the nearest number 'Nearest k' in the following options. When selecting Binary Distance Band, please select 
-        the distance threshold 'Threshold' in the following options. When selecting Inverse Distance, please select 
+        """ The type of spatial weights to construct. Defaults to 'Queen'. Other options are 'Rook', 
+        'Binary Distance Band', 'Inverse Distance', 'Lattice', 'K nearest', 'Kernel', and 
+        'Get spatial weights matrix from file'.
+
+        - `Queen` which will construct a queen contiguity weights matrix, is more robust and more suitable for areal unit data. The queen criterion is somewhat more encompassing and defines 
+        neighbors as spatial units sharing a common edge or a common vertex. 
+        - The `Rook` criterion defines neighbors by the existence of a common edge between two spatial units. Therefore, the number of neighbors according to the 
+        queen criterion will always be at least as large as for the rook criterion. 
+        - When choosing `K nearest`, select the nearest number 'Nearest k' in the following options. K-nearest are often used for point data. 
+        - When selecting `Binary Distance Band`, please select 
+        the distance threshold 'Threshold' in the following options. 
+        - When selecting `Inverse Distance`, please select 
         the distance threshold 'Threshold' and the corresponding power 'Power' in the following options. 
-        When 'Your own' is selected, please enter the path of the spatial weights matrix in CSV format in the 
-        following options. More details about spatial weights, please see the [GeoDa center website](https://geodacenter.github.io/documentation.html).
+        - When 'Your own' is selected, please enter the path of the spatial weights matrix in CSV format in the 
+        following options. 
+        - More details about spatial weights, please see the [GeoDa center website](https://geodacenter.github.io/documentation.html).
         """,
         "Queen",
         enum=[
             "Queen",
             "Rook",
-            "Inverse Distance",
             "Binary Distance Band",
+            "Inverse Distance",
+            "Lattice",
             "K nearest",
             "Lattice",
+            "K nearest",
             "Kernel",
-            "Your own",
+            "Get spatial weights matrix from file",
         ],
     )
     order = knext.IntParameter(
-        "Order",
+        "Order for Queen or Rook",
         """The order of the weight matrix is 1 by default. Users can change the order of the weights, higher order 
         weights will treat further units as neighbors.""",
         1,
     )
 
+    Threshold = knext.IntParameter(
+        "Threshold for Inverse Distance or Binary Distance Band",
+        """The distance threshold for constructing binary distance band and inverse distance weights. Defaults to 1""",
+        1,
+    )
+
+    Power = knext.IntParameter(
+        "Power for Inverse Distance",
+        """The power for constructing inverse distance weights. Defaults to 1.""",
+        1,
+    )
+
+    Rows = knext.IntParameter(
+        "Rows for Lattice",
+        "The number of rows for constructing a lattice spatial weights matrix. Defaults to 5.",
+        5,
+    )
+    Columns = knext.IntParameter(
+        "Columns for Lattice",
+        "The number of columns for constructing a lattice spatial weights matrix. Defaults to 5.",
+        5,
+    )
+
+    # k = knext.IntParameter(
+    #     "K for K nearest or Kernel",
+    #     "k is the number of the nearest neighbor.",
+    #     4,
+    # )
+
     Nearest_k = knext.IntParameter(
         "Nearest k",
-        "K-nearest are often used for point data. k is the number of the nearest neighbor.",
+        "The number of nearest neighbors to use for constructing k-nearest neighbors weights. Defaults to 4.",
         4,
     )
 
-    Threshold = knext.IntParameter(
-        "Threshold",
-        """Distance band weights are often used for point data. The weights within the threshold are 1 and otherwise 0. 
-        Inverse distance weights are often used for point data. The weights within the threshold are distance^-power, 
-        and otherwise 0. The distance is Euclidean distance.""",
-        1,
-    )
-    Power = knext.IntParameter(
-        "Power",
-        """Distance band weights are often used for point data. The weights within the threshold are 1 and otherwise 0. 
-        Inverse distance weights are often used for point data. The weights within the threshold are distance^-power, 
-        and otherwise 0. The distance is Euclidean distance.""",
-        1,
-    )
-    Rows = knext.IntParameter(
-        "Rows", "Please choose your rows and colunns of your lattice.", 5
-    )
-    Columns = knext.IntParameter(
-        "Columns", "Please choose your rows and columns of your lattice.", 5
-    )
-    Your_own_matrix_local_path = knext.StringParameter(
-        "Your own matrix local path",
-        """Please enter the path of the spatial weights matrix in CSV format in the following options. 
-        The weights matrix must be in matrix format and in the order of the samples.""",
-        "",
-    )
-    Kernel_type = knext.StringParameter(
-        "Kernel type",
-        " ",
-        "triangular",
-        enum=["triangular", "uniform", "quadratic", "quartic", "gaussian"],
-    )
     Kernel_K = knext.IntParameter(
         "Kernel K",
-        "The number of nearest neighbors to use for determining bandwidth.",
+        "The number of nearest neighbors to use for determining the bandwidth in kernel weights. Defaults to 12.",
         12,
     )
+
+    Kernel_type = knext.StringParameter(
+        "Kernel type",
+        "The type of kernel to use in constructing kernel weights. Defaults to 'triangular' ",
+        "triangular",
+        enum=[
+            "gaussian",
+            "quadratic",
+            "quartic",
+            "triangular",
+            "uniform",
+        ],
+    )
+
     Kernel_bandwidth = knext.StringParameter(
         "Kernel bandwidth",
-        "The bandwidth of the kernel. The default is fixed. If adaptive then bandwidth is adaptive across observations.",
+        "The type of kernel bandwidth to use in constructing kernel weights. The bandwidth of the kernel. The default is fixed. If adaptive then bandwidth is adaptive across observations.",
         "Fixed",
-        enum=["Fixed", "Adaptive"],
+        enum=[
+            "Adaptive",
+            "Fixed",
+        ],
+    )
+
+    Your_own_matrix_local_path = knext.StringParameter(
+        "Get spatial weights matrix from file",
+        """The file path of a user-defined spatial weights matrix in CSV format. Defaults to ''.
+        Please enter the path of the spatial weights matrix in CSV format in the following options. 
+        The weights matrix must be in matrix format and in the order of the samples. """,
+        "",
     )
 
     def configure(self, configure_context, input_schema_1):
@@ -167,7 +210,11 @@ class spatialWeights:
 
     def execute(self, exec_context: knext.ExecutionContext, input_1):
         gdf = gp.GeoDataFrame(input_1.to_pandas(), geometry=self.geo_col)
+
+        gdf.index = range(len(gdf))
         exec_context.set_progress(0.3, "Geo data frame loaded. Starting projection...")
+
+        import libpysal
 
         if self.category == "Rook":
             w = libpysal.weights.Rook.from_dataframe(gdf)
@@ -202,12 +249,22 @@ class spatialWeights:
             w = libpysal.weights.higher_order(w, self.order - 1)
             w.transform = "r"
 
-        if self.category == "Your own":
+        import numpy as np
+
+        if self.category == "Get spatial weights matrix from file":
+            import pandas as pd
+
             z = pd.read_csv(self.Your_own_matrix_local_path, header=None)
             zz = np.array(z)
+
+            import scipy.sparse
+
             sparse = scipy.sparse.csr_matrix(zz)
+
+            from libpysal.weights import WSP
+
             w = WSP(sparse)
-            wname = "Your own"
+            wname = "Get spatial weights matrix from file"
 
         if self.category == "Kernel":
             bd = False
@@ -221,10 +278,23 @@ class spatialWeights:
         # flow_variables["weights"] =path
         out = w.to_adjlist()
 
+        if "none" not in str(self.id_col).lower():
+            # get index id map
+            id_map = gdf[self.id_col].to_dict()
+            out["focal"] = out["focal"].map(id_map)
+            out["neighbor"] = out["neighbor"].map(id_map)
         # gdf.to_crs(self.new_crs, inplace=True)
         exec_context.set_progress(
             0.1, "Constructs a contiguity spatial weights matrix done"
         )
+
+        # focal and neighbor should always be int
+        out["focal"] = out["focal"].astype(int)
+        out["neighbor"] = out["neighbor"].astype(int)
+
+        # focal and neighbor should always be int
+        out["focal"] = out["focal"].astype(int)
+        out["neighbor"] = out["neighbor"].astype(int)
 
         return knext.Table.from_pandas(out)
 
@@ -240,6 +310,25 @@ class VariableSetting:
         "The variable column you want to use for the analysis",
         column_filter=knut.is_numeric,
         include_none_column=False,
+    )
+
+
+@knext.parameter_group(label="ID Setting", since_version="1.1.0")
+class IDSetting:
+    """
+    The unique ID column. The values need to match the values from the ID column selected in the
+    [Spatial Weights](https://hub.knime.com/center%20for%20geographic%20analysis%20at%20harvard%20university/extensions/sdl.harvard.features.geospatial/latest/org.knime.python3.nodes.extension.ExtensionNodeSetFactory$DynamicExtensionNodeFactory:4d710eae/) node.
+    The selected column must contain unique IDs for each observation in the input data of type integer.
+    """
+
+    Field_col = knext.ColumnParameter(
+        "ID column",
+        """The selected column should contain unique IDs for each observation in the input data and should be of 
+        type integer. The values need to match the values from the ID column selected in the
+        [Spatial Weights](https://hub.knime.com/center%20for%20geographic%20analysis%20at%20harvard%20university/extensions/sdl.harvard.features.geospatial/latest/org.knime.python3.nodes.extension.ExtensionNodeSetFactory$DynamicExtensionNodeFactory:4d710eae/) node.
+        If you selected 'none' in the Spatial Weights node select it here as well.""",
+        column_filter=knut.is_int,
+        include_none_column=True,
     )
 
 
@@ -288,27 +377,54 @@ class GlobalMoransI:
         description="The column containing the geometry to use for the spatial weights matrix."
     )
 
+    id_col_setting = IDSetting()
+
     variable_setting = VariableSetting()
 
     def configure(self, configure_context, input_schema_1, input_schema_2):
         self.geo_col = knut.column_exists_or_preset(
             configure_context, self.geo_col, input_schema_1, knut.is_geo
         )
+        self.variable_setting.Field_col = _var_col_exists_or_preset(
+            configure_context, self.variable_setting.Field_col, input_schema_1
+        )
         return None
 
     def execute(self, exec_context: knext.ExecutionContext, input_1, input_2):
-
         gdf = gp.GeoDataFrame(input_1.to_pandas(), geometry=self.geo_col)
         adjust_list = input_2.to_pandas()
+
+        if "none" not in str(self.id_col_setting.Field_col).lower():
+            gdf.index = range(len(gdf))
+            id_map = dict(zip(gdf[self.id_col_setting.Field_col], gdf.index))
+            adjust_list["focal"] = adjust_list["focal"].map(id_map)
+            adjust_list["neighbor"] = adjust_list["neighbor"].map(id_map)
+
+        from libpysal.weights import W
+
         w = W.from_adjlist(adjust_list)
 
         y = gdf[self.variable_setting.Field_col]
+
+        import numpy as np
+
         np.random.seed(12345)
+
+        import esda
+
         mi = esda.moran.Moran(y, w)
         result = {"Moran's I": mi.I, "p-value": mi.p_norm, "z-score": mi.z_norm}
+
+        import pandas as pd
+
         out = pd.DataFrame(result, index=[0])
 
+        import seaborn as sbn
+
         ax = sbn.kdeplot(mi.sim, shade=True)
+
+        import matplotlib.pyplot as plt
+
         plt.vlines(mi.I, 0, 1, color="r")
         plt.vlines(mi.EI, 0, 1)
         plt.xlabel("Moran's I")
@@ -357,22 +473,41 @@ class LocalMoransI:
         description="The column containing the geometry to use for local Moran's I.",
     )
 
+    id_col_setting = IDSetting()
+
     variable_setting = VariableSetting()
 
     def configure(self, configure_context, input_schema_1, input_schema_2):
         self.geo_col = knut.column_exists_or_preset(
             configure_context, self.geo_col, input_schema_1, knut.is_geo
         )
+        self.variable_setting.Field_col = _var_col_exists_or_preset(
+            configure_context, self.variable_setting.Field_col, input_schema_1
+        )
         return None
 
     def execute(self, exec_context: knext.ExecutionContext, input_1, input_2):
-
         gdf = gp.GeoDataFrame(input_1.to_pandas(), geometry=self.geo_col)
         adjust_list = input_2.to_pandas()
+
+        if "none" not in str(self.id_col_setting.Field_col).lower():
+            gdf.index = range(len(gdf))
+            id_map = dict(zip(gdf[self.id_col_setting.Field_col], gdf.index))
+            adjust_list["focal"] = adjust_list["focal"].map(id_map)
+            adjust_list["neighbor"] = adjust_list["neighbor"].map(id_map)
+
+        from libpysal.weights import W
+
         w = W.from_adjlist(adjust_list)
 
         y = gdf[self.variable_setting.Field_col]
+
+        import numpy as np
+
         np.random.seed(12345)
+
+        import esda
+
         li = esda.moran.Moran_Local(y, w)
 
         # gdf.loc[:,"spots_type"] = gdf["spots_type"].fillna("Not Significant")
@@ -383,13 +518,19 @@ class LocalMoransI:
         gdf.loc[:, "spots"] = li.q
 
         gdf.loc[:, "spots_type"] = gdf["spots"].replace(
-            {1: "HH", 2: "LL", 3: "LH", 4: "HL"}
+            {1: "HH", 2: "LH", 3: "LL", 4: "HL"}
         )
-        gdf.loc[gdf["p-value"] < 0.05, "spots_type"] = "Not Significant"
+        gdf.loc[gdf["p-value"] > 0.05, "spots_type"] = "Not Significant"
         # out = pd.merge(gdf, out, left_index=True, right_index=True)
+
+        import pysal.lib as lps
 
         lag_index = lps.weights.lag_spatial(w, gdf[self.variable_setting.Field_col])
         index_v = gdf[self.variable_setting.Field_col]
+
+        import numpy as np
+        import matplotlib.pyplot as plt
+
         b, a = np.polyfit(index_v, lag_index, 1)
         f, ax = plt.subplots(1, figsize=(9, 9))
 
@@ -459,28 +600,52 @@ class GlobalGearysC:
         description="The column containing the geometry to use for global Geary’s C.",
     )
 
+    id_col_setting = IDSetting()
+
     variable_setting = VariableSetting()
 
     def configure(self, configure_context, input_schema_1, input_schema_2):
         self.geo_col = knut.column_exists_or_preset(
             configure_context, self.geo_col, input_schema_1, knut.is_geo
         )
+        self.variable_setting.Field_col = _var_col_exists_or_preset(
+            configure_context, self.variable_setting.Field_col, input_schema_1
+        )
         return None
 
     def execute(self, exec_context: knext.ExecutionContext, input_1, input_2):
-
         gdf = gp.GeoDataFrame(input_1.to_pandas(), geometry=self.geo_col)
         adjust_list = input_2.to_pandas()
+
+        if "none" not in str(self.id_col_setting.Field_col).lower():
+            gdf.index = range(len(gdf))
+            id_map = dict(zip(gdf[self.id_col_setting.Field_col], gdf.index))
+            adjust_list["focal"] = adjust_list["focal"].map(id_map)
+            adjust_list["neighbor"] = adjust_list["neighbor"].map(id_map)
+
+        from libpysal.weights import W
+
         w = W.from_adjlist(adjust_list)
 
         y = gdf[self.variable_setting.Field_col]
+
+        import numpy as np
+
         np.random.seed(12345)
+
+        import esda
+
         gc = esda.geary.Geary(y, w)
+
+        import pandas as pd
 
         out = pd.DataFrame(
             {"Geary's C": [gc.C], "p-value": [gc.p_sim], "z-score": [gc.z_sim]}
         )
         out.reset_index(inplace=True)
+
+        import seaborn as sbn
+        import matplotlib.pyplot as plt
 
         ax = sbn.kdeplot(gc.sim, shade=True)
         plt.vlines(gc.C, 0, 1, color="r")
@@ -536,28 +701,52 @@ class GlobalGetisOrd:
         description="The column containing the geometry to use for global Getis-Ord.",
     )
 
+    id_col_setting = IDSetting()
+
     variable_setting = VariableSetting()
 
     def configure(self, configure_context, input_schema_1, input_schema_2):
         self.geo_col = knut.column_exists_or_preset(
             configure_context, self.geo_col, input_schema_1, knut.is_geo
         )
+        self.variable_setting.Field_col = _var_col_exists_or_preset(
+            configure_context, self.variable_setting.Field_col, input_schema_1
+        )
         return None
 
     def execute(self, exec_context: knext.ExecutionContext, input_1, input_2):
-
         gdf = gp.GeoDataFrame(input_1.to_pandas(), geometry=self.geo_col)
         adjust_list = input_2.to_pandas()
+
+        if "none" not in str(self.id_col_setting.Field_col).lower():
+            gdf.index = range(len(gdf))
+            id_map = dict(zip(gdf[self.id_col_setting.Field_col], gdf.index))
+            adjust_list["focal"] = adjust_list["focal"].map(id_map)
+            adjust_list["neighbor"] = adjust_list["neighbor"].map(id_map)
+
+        from libpysal.weights import W
+
         w = W.from_adjlist(adjust_list)
 
         y = gdf[self.variable_setting.Field_col]
+
+        import numpy as np
+
         np.random.seed(12345)
+
+        import esda
+
         go = esda.getisord.G(y, w)
+
+        import pandas as pd
 
         out = pd.DataFrame(
             {"Getis-Ord G": [go.G], "p-value": [go.p_sim], "z-score": [go.z_sim]}
         )
         out.reset_index(inplace=True)
+
+        import seaborn as sbn
+        import matplotlib.pyplot as plt
 
         ax = sbn.kdeplot(go.sim, shade=True)
         plt.vlines(go.G, 0, 1, color="r")
@@ -591,7 +780,9 @@ class GlobalGetisOrd:
 @knext.output_table(
     name="Output Table",
     description="Output table results of Local Getis-Ord. "
-    + __local_statistics_output_table_description,
+    + __local_statistics_output_table_description
+    + "`Standardized Gs` is the standardization of Gs."
+    + __spots,
 )
 # @knext.output_binary(
 #     name="output model",
@@ -613,31 +804,63 @@ class LocalGetisOrd:
         description="The column containing the geometry to use for local Getis-Ord.",
     )
 
+    id_col_setting = IDSetting()
+
     variable_setting = VariableSetting()
 
     def configure(self, configure_context, input_schema_1, input_schema_2):
         self.geo_col = knut.column_exists_or_preset(
             configure_context, self.geo_col, input_schema_1, knut.is_geo
         )
+        self.variable_setting.Field_col = _var_col_exists_or_preset(
+            configure_context, self.variable_setting.Field_col, input_schema_1
+        )
         return None
 
     def execute(self, exec_context: knext.ExecutionContext, input_1, input_2):
-
         gdf = gp.GeoDataFrame(input_1.to_pandas(), geometry=self.geo_col)
         adjust_list = input_2.to_pandas()
+
+        if "none" not in str(self.id_col_setting.Field_col).lower():
+            gdf.index = range(len(gdf))
+            id_map = dict(zip(gdf[self.id_col_setting.Field_col], gdf.index))
+            adjust_list["focal"] = adjust_list["focal"].map(id_map)
+            adjust_list["neighbor"] = adjust_list["neighbor"].map(id_map)
+
+        from libpysal.weights import W
+
         w = W.from_adjlist(adjust_list)
 
         y = gdf[self.variable_setting.Field_col]
+
+        import numpy as np
+
         np.random.seed(12345)
+
+        import esda
+
         lo = esda.getisord.G_Local(y, w)
 
         gdf.loc[:, "Local Getis-Ord G"] = lo.Gs
         gdf.loc[:, "p-value"] = lo.p_sim
         gdf.loc[:, "z-score"] = lo.z_sim
 
+        gdf.loc[:, "Standardized Gs"] = lo.Zs
+
+        gdf.loc[gdf["Standardized Gs"] > 0, "spots_type"] = "HH"
+        gdf.loc[gdf["Standardized Gs"] < 0, "spots_type"] = "LL "
+        gdf.loc[gdf["Standardized Gs"] > 0, "spots"] = 1
+        gdf.loc[gdf["Standardized Gs"] < 0, "spots"] = 3
+        gdf.loc[gdf["p-value"] > 0.05, "spots_type"] = "Not Significant"
+
+        import pysal.lib as lps
+
         lag_index = lps.weights.lag_spatial(w, gdf[self.variable_setting.Field_col])
         index_v = gdf[self.variable_setting.Field_col]
         b, a = np.polyfit(index_v, lag_index, 1)
+
+        import matplotlib.pyplot as plt
+
         f, ax = plt.subplots(1, figsize=(9, 9))
 
         plt.plot(index_v, lag_index, ".", color="firebrick")
