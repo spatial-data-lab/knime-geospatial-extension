@@ -187,7 +187,6 @@ class US2020TIGERNode:
                     "OKLAHOMA",
                     "OREGON",
                     "PENNSYLVANIA",
-                    "PUERTO_RICO",
                     "RHODE_ISLAND",
                     "SOUTH_CAROLINA",
                     "SOUTH_DAKOTA",
@@ -200,6 +199,7 @@ class US2020TIGERNode:
                     "WEST_VIRGINIA",
                     "WISCONSIN",
                     "WYOMING",
+                    "PUERTO_RICO",
                 ],
             }
         )
