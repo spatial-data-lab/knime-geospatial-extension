@@ -51,6 +51,9 @@ __CELL_TYPE_MULTI_POINT = "GeoMultiPointCell"
 __CELL_TYPE_MULTI_LINE = "GeoMultiLineCell"
 __CELL_TYPE_MULTI_POLYGON = "GeoMultiPolygonCell"
 
+# The default request header to use in all nodes that perform a web request
+WEB_REQUEST_HEADER = {"User-Agent": "KNIME-Geospatial/1.1"}
+
 
 def geo_point_col_parameter(
     label: str = __DEF_GEO_COL_LABEL,
