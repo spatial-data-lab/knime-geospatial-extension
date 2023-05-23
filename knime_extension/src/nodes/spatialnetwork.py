@@ -606,7 +606,7 @@ class OSRMDistanceMatrix:
             if data["code"] == "Ok":
                 if model.append_distance():
                     dfr = pd.DataFrame(data["routes"][0]["legs"])[
-                        [_COL_DURATION, _COL_DISTANCE]
+                        ["duration", "distance"]
                     ].iloc[::2]
                     # convert seconds to minutes
                     dfr.duration /= 60
