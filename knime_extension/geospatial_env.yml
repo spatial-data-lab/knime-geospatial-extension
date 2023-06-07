@@ -9,7 +9,7 @@ dependencies:
   - esda=2.4.3
   - fiona=1.9.3
   - folium=0.14.0
-  - geopandas=0.13.0
+  - geopandas=0.13.2
   - geopy=2.3.0
   - ipykernel=6.22.0 #required by kepler but not included in its dependencies it seems
   - jmespath=1.0.1
