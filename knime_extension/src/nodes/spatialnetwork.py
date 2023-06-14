@@ -1048,8 +1048,9 @@ class RoadNetworkDistanceMatrix:
         o_gdf = knut.load_geo_data_frame(input1, self.o_geo_col, exec_context)
         d_gdf = knut.load_geo_data_frame(input2, self.d_geo_col, exec_context)
         r_gdf = knut.load_geo_data_frame(input3, self.r_geo_col, exec_context)
-
-        r_gdf = r_gdf.to_crs(3857)
+        if not r_gdf.crs.is_projected:
+            r_gdf = r_gdf.to_crs(3857)
+            knut.LOGGER.warning("Road not projected. Using EPSG 3857 as default.")
         o_gdf = o_gdf.to_crs(r_gdf.crs)
         d_gdf = d_gdf.to_crs(r_gdf.crs)
 
