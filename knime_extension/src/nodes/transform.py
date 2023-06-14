@@ -350,7 +350,7 @@ class PointsToLineNode:
         "Group column",
         "Select the group column (string) as group id for points.",
         # Allow only string columns
-        column_filter=knut.is_string,
+        column_filter=knut.is_int_or_string,
         include_row_key=False,
         include_none_column=False,
     )
@@ -369,7 +369,7 @@ class PointsToLineNode:
             configure_context, self.geo_col, input_schema, knut.is_geo_point
         )
         self.group_col = knut.column_exists_or_preset(
-            configure_context, self.group_col, input_schema, knut.is_string
+            configure_context, self.group_col, input_schema, knut.is_int_or_string
         )
         self.seiral_col = knut.column_exists_or_preset(
             configure_context, self.seiral_col, input_schema, knut.is_numeric
