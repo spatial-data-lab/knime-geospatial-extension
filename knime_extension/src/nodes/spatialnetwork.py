@@ -859,7 +859,7 @@ class RoadNetworkDistanceMatrix:
 
         line = snap(line, pps, 1e-8)  # slow?
         try:
-            new_lines = list(split(line, pps))  # split into segments
+            new_lines = list(split(line, pps).geoms)  # split into segments
             return new_lines
         except TypeError as e:
             print("Error when splitting line: {}\n{}\n{}\n".format(e, line, pps))
@@ -949,7 +949,7 @@ class RoadNetworkDistanceMatrix:
         return gdf
 
     # check isolated node
-    def connect_graph(self, G, threshold=1):
+    def connect_graph(self, G, threshold=0.1):
         import math
         import networkx as nx
         from shapely.geometry import LineString

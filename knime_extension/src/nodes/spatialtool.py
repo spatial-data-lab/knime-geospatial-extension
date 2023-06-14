@@ -843,7 +843,7 @@ class EuclideanDistanceNode2:
         knut.column_exists(self.o_id_col, o_schema)
         o_id_type = o_schema[self.o_id_col].ktype
         knut.column_exists(self.d_id_col, d_schema)
-        d_id_type = o_schema[self.d_id_col].ktype
+        d_id_type = d_schema[self.d_id_col].ktype
         return knext.Schema.from_columns(
             [
                 knext.Column(o_id_type, self.__COL_ORIGIN),
@@ -863,9 +863,11 @@ class EuclideanDistanceNode2:
         )
         # rename the id columns to origin and destination and the geometry to geometry
         o_gdf.rename(columns={self.o_id_col: self.__COL_ORIGIN}, inplace=True)
-        o_gdf.rename_geometry("geometry", inplace=True)
+        if o_gdf.geometry.name != "geometry":
+            o_gdf = o_gdf.rename_geometry("geometry", inplace=True)
         d_gdf.rename(columns={self.d_id_col: self.__COL_DESTINATION}, inplace=True)
-        d_gdf.rename_geometry("geometry", inplace=True)
+        if d_gdf.geometry.name != "geometry":
+            d_gdf.rename_geometry("geometry", inplace=True)
 
         helper = kproj.Distance(self.unit, True)
         helper.pre_processing(exec_context, o_gdf, True)
