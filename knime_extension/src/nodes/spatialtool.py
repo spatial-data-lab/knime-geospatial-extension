@@ -864,7 +864,7 @@ class EuclideanDistanceNode2:
         # rename the id columns to origin and destination and the geometry to geometry
         o_gdf.rename(columns={self.o_id_col: self.__COL_ORIGIN}, inplace=True)
         if o_gdf.geometry.name != "geometry":
-            o_gdf = o_gdf.rename_geometry("geometry", inplace=True)
+            o_gdf.rename_geometry("geometry", inplace=True)
         d_gdf.rename(columns={self.d_id_col: self.__COL_DESTINATION}, inplace=True)
         if d_gdf.geometry.name != "geometry":
             d_gdf.rename_geometry("geometry", inplace=True)
