@@ -118,7 +118,6 @@ class spatialWeights:
             "Lattice",
             "K nearest",
             "Lattice",
-            "K nearest",
             "Kernel",
             "Get spatial weights matrix from file",
         ],
