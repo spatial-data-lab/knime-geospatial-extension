@@ -787,8 +787,8 @@ class MultiscaleGeographicallyWeightedRegression:
         # Prepare Georgia dataset inputs
         g_y = gdf[self.dependent_variable].values.reshape((-1, 1))
         g_X = gdf[self.independent_variables].values
-        u = gdf["geometry"].x
-        v = gdf["geometry"].y
+        u = gdf["geometry"].centroid.x
+        v = gdf["geometry"].centroid.y
         g_coords = list(zip(u, v))
         # g_X = (g_X - g_X.mean(axis=0)) / g_X.std(axis=0)
         g_y = g_y.reshape((-1, 1))
