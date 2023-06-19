@@ -733,7 +733,10 @@ class GeographicallyWeightedRegressionPredictor:
 )
 class MultiscaleGeographicallyWeightedRegression:
     """Multiscale Geographically Weighted Regression node.
-    Multiscale Geographically Weighted Regression estimation. More details can be found at A. Stewart Fotheringham, Wenbai Yang, and Wei Kang. Multiscale geographically weighted regression (mgwr). Annals of the American Association of Geographers, 107(6):1247–1265, 2017. URL: http://dx.doi.org/10.1080/24694452.2017.1352480, arXiv:http://dx.doi.org/10.1080/24694452.2017.1352480, doi:10.1080/24694452.2017.1352480. and Hanchen Yu, Alexander Stewart Fotheringham, Ziqi Li, Taylor Oshan, Wei Kang, and Levi John Wolf. Inference in multiscale geographically weighted regression. Geographical Analysis, 2019. URL: https://onlinelibrary.wiley.com/doi/abs/10.1111/gean.12189, arXiv:https://onlinelibrary.wiley.com/doi/pdf/10.1111/gean.12189, doi:10.1111/gean.12189.
+    Multiscale Geographically Weighted Regression estimation. 
+    More details can be found at 
+    1. A. Stewart Fotheringham, Wenbai Yang, and Wei Kang. Multiscale geographically weighted regression (mgwr). Annals of the American Association of Geographers, 107(6):1247–1265, 2017. URL: http://dx.doi.org/10.1080/24694452.2017.1352480, arXiv:http://dx.doi.org/10.1080/24694452.2017.1352480, doi:10.1080/24694452.2017.1352480. and Hanchen Yu, Alexander Stewart Fotheringham, Ziqi Li, Taylor Oshan, Wei Kang, and Levi John Wolf. Inference in multiscale geographically weighted regression. Geographical Analysis, 2019. URL: https://onlinelibrary.wiley.com/doi/abs/10.1111/gean.12189, arXiv:https://onlinelibrary.wiley.com/doi/pdf/10.1111/gean.12189, doi:10.1111/gean.12189.
+    2. https://pro.arcgis.com/en/pro-app/latest/tool-reference/spatial-statistics/how-multiscale-geographically-weighted-regression-mgwr-works.htm
     """
 
     geo_col = knut.geo_col_parameter()
@@ -752,7 +755,10 @@ class MultiscaleGeographicallyWeightedRegression:
 
     search_method = knext.StringParameter(
         "Search method",
-        "Bw search method: ‘golden’, ‘interval’",
+        """Bw search method: ‘golden’, ‘interval’. Golden Search— Determines either the number of neighbors or distance band for each 
+        explanatory variable using the Golden Search algorithm. This method searches multiple combinations 
+        of values for each explanatory variable between a specified minimum and maximum value. Intervals— Determines the number of neighbors or distance band for each 
+        explanatory variable by incrementing the number of neighbors or distance band from a minimum value.""",
         default_value="golden",
         enum=["golden", "interval"],
     )
