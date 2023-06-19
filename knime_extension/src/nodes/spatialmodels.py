@@ -84,14 +84,14 @@ class Spatial2SLSModel:
 
     dependent_variable = knext.ColumnParameter(
         "Dependent variable",
-        "The column containing the dependent variable to use for the calculation of Spatial 2SlS.",
+        "The column containing the dependent variable to use for the calculation of Spatial 2SlS. Warning: the dependent variable should not contain missing values.",
         column_filter=knut.is_numeric,
         include_none_column=False,
     )
 
     independent_variables = knext.MultiColumnParameter(
         "Independent variables",
-        "The columns containing the independent variables to use for the calculation of Spatial 2SlS.",
+        "The columns containing the independent variables to use for the calculation of Spatial 2SlS. Warning: the independent variables should not contain missing values.",
         column_filter=knut.is_numeric,
     )
 
@@ -252,13 +252,13 @@ class SpatialLagPanelModelwithFixedEffects:
 
     dependent_variable = knext.MultiColumnParameter(
         "Dependent variables",
-        "The column containing the dependent variables to use for the calculation of Spatial Lag Panel Model with Fixed Effects.",
+        "The column containing the dependent variables to use for the calculation of Spatial Lag Panel Model with Fixed Effects. Warning: the column cannot contain any null values.",
         column_filter=knut.is_numeric,
     )
 
     independent_variables = knext.MultiColumnParameter(
         "Independent variables",
-        "The columns containing the independent variables to use for the calculation of Spatial Lag Panel Model with Fixed Effects.",
+        "The columns containing the independent variables to use for the calculation of Spatial Lag Panel Model with Fixed Effects. Warning: the columns cannot contain any null values.",
         column_filter=knut.is_numeric,
     )
 
@@ -392,13 +392,13 @@ class SpatialErrorPanelModelwithFixedEffects:
 
     dependent_variable = knext.MultiColumnParameter(
         "Dependent variables",
-        "The column containing the dependent variables to use for the calculation of Spatial Error Panel Model with Fixed Effects.",
+        "The column containing the dependent variables to use for the calculation of Spatial Error Panel Model with Fixed Effects. Warning: the column cannot contain any null values.",
         column_filter=knut.is_numeric,
     )
 
     independent_variables = knext.MultiColumnParameter(
         "Independent variables",
-        "The columns containing the independent variables to use for the calculation of Spatial Error Panel Model with Fixed Effects.",
+        "The columns containing the independent variables to use for the calculation of Spatial Error Panel Model with Fixed Effects. Warning: the column cannot contain any null values.",
         column_filter=knut.is_numeric,
     )
 
@@ -531,13 +531,13 @@ class GeographicallyWeightedRegression:
 
     dependent_variable = knext.ColumnParameter(
         "Dependent variable",
-        "The column containing the dependent variable to use for the calculation of Geographically Weighted Regression.",
+        "The column containing the dependent variable to use for the calculation of Geographically Weighted Regression. Warning: the column must not contain any null values.",
         column_filter=knut.is_numeric,
     )
 
     independent_variables = knext.MultiColumnParameter(
         "Independent variables",
-        "The columns containing the independent variables to use for the calculation of Geographically Weighted Regression.",
+        "The columns containing the independent variables to use for the calculation of Geographically Weighted Regression. Warning: the columns must not contain any null values.",
         column_filter=knut.is_numeric,
     )
 
@@ -671,7 +671,7 @@ class GeographicallyWeightedRegressionPredictor:
 
     independent_variables = knext.MultiColumnParameter(
         "Independent variables",
-        "The columns containing the independent variables to use for the calculation of Geographically Weighted Regression.",
+        "The columns containing the independent variables to use for the calculation of Geographically Weighted Regression. Warning: the column cannot contain any null values.",
         column_filter=knut.is_numeric,
     )
 
@@ -743,13 +743,13 @@ class MultiscaleGeographicallyWeightedRegression:
 
     dependent_variable = knext.ColumnParameter(
         "Dependent variable",
-        "The column containing the dependent variable to use for the calculation of Multiscale Geographically Weighted Regression.",
+        "The column containing the dependent variable to use for the calculation of Multiscale Geographically Weighted Regression. Warning: the column cannot contain any null values.",
         column_filter=knut.is_numeric,
     )
 
     independent_variables = knext.MultiColumnParameter(
         "Independent variables",
-        "The columns containing the independent variables to use for the calculation of Multiscale Geographically Weighted Regression.",
+        "The columns containing the independent variables to use for the calculation of Multiscale Geographically Weighted Regression. Warning: the column cannot contain any null values.",
         column_filter=knut.is_numeric,
     )
 
@@ -972,14 +972,14 @@ class SpatialOLS:
 
     dependent_variable = knext.ColumnParameter(
         "Dependent variable",
-        "The column containing the dependent variable to use for the calculation of the spatial OLS model.",
+        "The column containing the dependent variable to use for the calculation of the spatial OLS model. Warning: the column cannot contain any null values.",
         column_filter=knut.is_numeric,
         include_none_column=False,
     )
 
     independent_variables = knext.MultiColumnParameter(
         "Independent variables",
-        "The columns containing the independent variables to use for the calculation of the spatial OLS model.",
+        "The columns containing the independent variables to use for the calculation of the spatial OLS model. Warning: the column cannot contain any null values.",
         column_filter=knut.is_numeric,
     )
 
@@ -1112,14 +1112,14 @@ class SpatialML_Lag:
 
     dependent_variable = knext.ColumnParameter(
         "Dependent variable",
-        "The column containing the dependent variable to use for the calculation of the spatial ML_Lag model.",
+        "The column containing the dependent variable to use for the calculation of the spatial ML_Lag model. Warning: the column cannot contain any null values.",
         column_filter=knut.is_numeric,
         include_none_column=False,
     )
 
     independent_variables = knext.MultiColumnParameter(
         "Independent variables",
-        "The columns containing the independent variables to use for the calculation of the spatial ML_Lag model.",
+        "The columns containing the independent variables to use for the calculation of the spatial ML_Lag model. Warning: the column cannot contain any null values.",
         column_filter=knut.is_numeric,
     )
 
@@ -1251,14 +1251,14 @@ class SpatialML_Error:
 
     dependent_variable = knext.ColumnParameter(
         "Dependent variable",
-        "The column containing the dependent variable to use for the calculation of the spatial ML_Error model.",
+        "The column containing the dependent variable to use for the calculation of the spatial ML_Error model. Warning: the column cannot contain any null values.",
         column_filter=knut.is_numeric,
         include_none_column=False,
     )
 
     independent_variables = knext.MultiColumnParameter(
         "Independent variables",
-        "The columns containing the independent variables to use for the calculation of the spatial ML_Error model.",
+        "The columns containing the independent variables to use for the calculation of the spatial ML_Error model. Warning: the column cannot contain any null values.",
         column_filter=knut.is_numeric,
     )
 
