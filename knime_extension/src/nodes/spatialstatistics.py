@@ -281,7 +281,7 @@ class spatialWeights:
         # path = flow_variables["knime.workspace"] + os.sep +"spatialweights.gal"
         # w.to_file(path)
         # flow_variables["weights"] =path
-        out = w.to_adjlist()
+        out = w.to_adjlist(drop_islands=False)
 
         if "none" not in str(self.id_col).lower():
             # get index id map
