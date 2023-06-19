@@ -230,6 +230,11 @@ class spatialWeights:
             wname = "Inverse Distance"
             w.transform = "r"
         if self.category == "Binary Distance Band":
+            import util.projection as kproj 
+            crs = gdf.crs
+            if (crs is not None) and (kproj.is_geographic(crs)):
+                gdf = gdf.to_crs("EPSG:3857")
+
             w = libpysal.weights.DistanceBand.from_dataframe(
                 gdf, self.Threshold, binary=True
             )
