@@ -118,7 +118,6 @@ class spatialWeights:
             "Lattice",
             "K nearest",
             "Lattice",
-            "K nearest",
             "Kernel",
             "Get spatial weights matrix from file",
         ],
@@ -231,6 +230,12 @@ class spatialWeights:
             wname = "Inverse Distance"
             w.transform = "r"
         if self.category == "Binary Distance Band":
+
+            import util.projection as kproj 
+
+            crs = gdf.crs
+            if (crs is not None) and (kproj.is_geographic(crs)):
+                gdf = gdf.to_crs("EPSG:3857")
             w = libpysal.weights.DistanceBand.from_dataframe(
                 gdf, self.Threshold, binary=True
             )
@@ -276,7 +281,7 @@ class spatialWeights:
         # path = flow_variables["knime.workspace"] + os.sep +"spatialweights.gal"
         # w.to_file(path)
         # flow_variables["weights"] =path
-        out = w.to_adjlist()
+        out = w.to_adjlist(drop_islands=False)
 
         if "none" not in str(self.id_col).lower():
             # get index id map

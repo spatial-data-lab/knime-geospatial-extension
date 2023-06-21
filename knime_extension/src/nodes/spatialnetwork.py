@@ -859,7 +859,7 @@ class RoadNetworkDistanceMatrix:
 
         line = snap(line, pps, 1e-8)  # slow?
         try:
-            new_lines = list(split(line, pps))  # split into segments
+            new_lines = list(split(line, pps).geoms)  # split into segments
             return new_lines
         except TypeError as e:
             print("Error when splitting line: {}\n{}\n{}\n".format(e, line, pps))
@@ -949,7 +949,7 @@ class RoadNetworkDistanceMatrix:
         return gdf
 
     # check isolated node
-    def connect_graph(self, G, threshold=1):
+    def connect_graph(self, G, threshold=0.1):
         import math
         import networkx as nx
         from shapely.geometry import LineString
@@ -1048,8 +1048,9 @@ class RoadNetworkDistanceMatrix:
         o_gdf = knut.load_geo_data_frame(input1, self.o_geo_col, exec_context)
         d_gdf = knut.load_geo_data_frame(input2, self.d_geo_col, exec_context)
         r_gdf = knut.load_geo_data_frame(input3, self.r_geo_col, exec_context)
-
-        r_gdf = r_gdf.to_crs(3857)
+        if not r_gdf.crs.is_projected:
+            r_gdf = r_gdf.to_crs(3857)
+            knut.LOGGER.warning("Road not projected. Using EPSG 3857 as default.")
         o_gdf = o_gdf.to_crs(r_gdf.crs)
         d_gdf = d_gdf.to_crs(r_gdf.crs)
 
