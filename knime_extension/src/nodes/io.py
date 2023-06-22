@@ -337,5 +337,5 @@ class GeoPackageWriterNode:
         if "<RowID>" in gdf.columns:
             gdf = gdf.drop(columns="<RowID>")
         gdf.crs = gdf.crs.to_epsg()
-        gdf.to_file(file_name, layer=self.data_layer, driver="GPKG", overwrite=True)
+        gdf.to_file(file_name, layer=self.data_layer, driver="GPKG")
         return None
