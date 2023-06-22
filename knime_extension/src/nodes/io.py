@@ -253,6 +253,10 @@ class GeoPackageReaderNode:
         except:
             print("Invilid CRS")
         gdf = gdf.reset_index(drop=True)
+        if "<Row Key>" in gdf.columns:
+            gdf = gdf.drop(columns="<Row Key>")
+        if "<RowID>" in gdf.columns:
+            gdf = gdf.drop(columns="<RowID>")
         listtable = pd.DataFrame({"layerlist": layerlist})
         return knext.Table.from_pandas(gdf), knext.Table.from_pandas(listtable)
 
@@ -327,5 +331,9 @@ class GeoPackageWriterNode:
         ).columns
         if len(time_columns) > 0:
             gdf[time_columns] = gdf[time_columns].astype(str)
+        if "<Row Key>" in gdf.columns:
+            gdf = gdf.drop(columns="<Row Key>")
+        if "<RowID>" in gdf.columns:
+            gdf = gdf.drop(columns="<RowID>")
         gdf.to_file(file_name, layer=self.data_layer, driver="GPKG")
         return None
