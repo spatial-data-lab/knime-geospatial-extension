@@ -250,7 +250,6 @@ class GeoPackageReaderNode:
         gdf = gp.GeoDataFrame.from_features(src)
         try:
             gdf.crs = src.crs
-            gdf.crs = gdf.crs.to_epsg()
         except:
             print("Invilid CRS")
         gdf = gdf.reset_index(drop=True)
@@ -336,6 +335,5 @@ class GeoPackageWriterNode:
             gdf = gdf.drop(columns="<Row Key>")
         if "<RowID>" in gdf.columns:
             gdf = gdf.drop(columns="<RowID>")
-        gdf.crs = gdf.crs.to_epsg()
         gdf.to_file(file_name, layer=self.data_layer, driver="GPKG")
         return None
