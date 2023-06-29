@@ -524,7 +524,6 @@ class NearestJoinNode2:
         )
 
         distance_helper.post_processing(exec_context, gdf, True)
-        gdf.crs = gdf.crs.to_epsg()
         return knut.to_table(gdf, exec_context)
 
 
