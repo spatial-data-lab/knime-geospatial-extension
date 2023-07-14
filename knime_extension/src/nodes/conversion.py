@@ -911,6 +911,121 @@ class GeoReverseGeocodingNode:
 
 
 ############################################
+# ip to geometry
+############################################
+@knext.node(
+    name="IP to Geometry",
+    node_type=knext.NodeType.MANIPULATOR,
+    icon_path=__NODE_ICON_PATH + "IPToGeo.png",
+    category=__category,
+    after="",
+)
+@knext.input_table(
+    name="Input table",
+    description="Table with an IP address column to geocode.",
+)
+@knext.output_table(
+    name="Table with geometry",
+    description="Table with the geometry for all given IP addresses.",
+)
+class IPToGeometryNode:
+    """Geocodes the given IP addresses.
+    The `geometry` column contains the point geometry for the given IP address.
+    You can change the service provider and API key in the node settings.
+    Notice that the service provider and API key are only required for some service providers.
+    - `ipinfo`: [ipinfo.io](https://ipinfo.io/)
+    """
+
+    ip_col = knext.ColumnParameter(
+        "IP address column",
+        "Select the IP address column to geocode. It should contain a string with the IP address to geocode. such as `8.8.8.8`."
+        + "The column must contain a string with the IP address to geocode.",
+        column_filter=knut.is_string,
+        include_row_key=False,
+        include_none_column=False,
+    )
+
+    service_provider = knext.StringParameter(
+        "Service provider",
+        "Select the service provider to use for IP to geometry conversion.",
+        default_value="ipinfo",
+        enum=["ipinfo", "free"],
+    )
+
+    access_token = knext.StringParameter(
+        "Access token",
+        """Enter the access token for the service provider.
+        You can leave this field empty if the service provider doesn't require an access token.""",
+        default_value="",
+    )
+
+    min_delay_seconds = knext.IntParameter(
+        "Minimum delay (seconds)",
+        "Enter the minimum delay in seconds between two IP to geometry conversion requests.",
+        default_value=1,
+    )
+
+    default_timeout = knext.IntParameter(
+        "Default timeout (seconds)",
+        "Enter the default timeout in seconds for IP to geometry conversion requests.",
+        default_value=10,
+    )
+
+    name = "geometry"
+
+    def configure(self, configure_context, input_schema):
+        self.ip_col = knut.column_exists_or_preset(
+            configure_context, self.ip_col, input_schema, knut.is_string
+        )
+
+        # FIXME: need add more columns for the input schema
+        return input_schema.append(
+            knext.Column(
+                ktype=knut.TYPE_POINT,
+                name=knut.get_unique_column_name(self.name, input_schema),
+            )
+        )
+
+    def execute(self, exec_context: knext.ExecutionContext, input_table):
+        df = input_table.to_pandas()
+
+        import ipinfo
+        import time
+
+        access_token = self.access_token
+        handler = ipinfo.getHandler(access_token)
+
+        process_counter = 1
+        n_loop = len(df)
+
+        for index, row in df.iterrows():
+            ip = row[self.ip_col]
+            details = handler.getDetails(ip, timeout=self.default_timeout)
+            # FIXME: rename the column name if it already exists
+            # city_col = knut.get_unique_column_name("city", input_table.schema)
+            df.at[index, "city"] = details.city
+            df.at[index, "region"] = details.region
+            df.at[index, "country"] = details.country_name
+            df.at[index, "latitude"] = details.latitude
+            df.at[index, "longitude"] = details.longitude
+
+            exec_context.set_progress(
+                0.9 * process_counter / n_loop,
+                "Batch %d of %d processed" % (process_counter, n_loop),
+            )
+            process_counter += 1
+
+            time.sleep(self.min_delay_seconds)
+        # convert to GeoDataFrame
+        gdf = gp.GeoDataFrame(
+            df,
+            geometry=gp.points_from_xy(df.longitude, df.latitude),
+            crs=kproj.DEFAULT_CRS,
+        )
+        return knut.to_table(gdf)
+
+
+############################################
 # Geometry to Metadata
 ############################################
 @knext.node(
