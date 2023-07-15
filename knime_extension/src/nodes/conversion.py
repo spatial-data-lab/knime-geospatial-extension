@@ -933,6 +933,7 @@ class IPToGeometryNode:
     The `geometry` column contains the point geometry for the given IP address.
     You can change the service provider and API key in the node settings. If you use ipapi, you don't need an API key for the free plan.
     Notice that the service provider and API key are only required for some service providers.
+    Please register for an API key for the service provider you want to use:
 
     - `ipinfo.io`: [ipinfo.io](https://ipinfo.io/)
     - `ipapi.co`: [ipapi.co](https://ipapi.co/)
