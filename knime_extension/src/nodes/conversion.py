@@ -948,8 +948,8 @@ class IPToGeometryNode:
     service_provider = knext.StringParameter(
         "Service provider",
         "Select the service provider to use for IP to geometry conversion.",
-        default_value="ipinfo",
-        enum=["ipinfo", "free"],
+        default_value="ipinfo.io",
+        enum=["ipinfo.io", "ipapi.co","abstractapi.com"],
     )
 
     access_token = knext.StringParameter(
@@ -1031,26 +1031,51 @@ class IPToGeometryNode:
         import time
 
         access_token = self.access_token
-        handler = ipinfo.getHandler(access_token)
-
+        if self.service_provider == "ipinfo.io":
+            handler = ipinfo.getHandler(access_token)
         process_counter = 1
         n_loop = len(df)
 
+        city_col = knut.get_unique_column_name("city", input_table.schema)
+        region_col = knut.get_unique_column_name("region", input_table.schema)
+        country_col = knut.get_unique_column_name("country", input_table.schema)
+        latitude_col = knut.get_unique_column_name("latitude", input_table.schema)
+        longitude_col = knut.get_unique_column_name("longitude", input_table.schema)
+        
         for index, row in df.iterrows():
             ip = row[self.ip_col]
-            details = handler.getDetails(ip, timeout=self.default_timeout)
-            # FIXME: rename the column name if it already exists
-            city_col = knut.get_unique_column_name("city", input_table.schema)
-            region_col = knut.get_unique_column_name("region", input_table.schema)
-            country_col = knut.get_unique_column_name("country", input_table.schema)
-            latitude_col = knut.get_unique_column_name("latitude", input_table.schema)
-            longitude_col = knut.get_unique_column_name("longitude", input_table.schema)
+            if self.service_provider == "ipinfo.io":
+                details = handler.getDetails(ip, timeout=self.default_timeout)
+                df.at[index, city_col] = details.city
+                df.at[index, region_col] = details.region
+                df.at[index, country_col] = details.country_name
+                df.at[index, latitude_col] = float(details.latitude)
+                df.at[index, longitude_col] = float(details.longitude)
+            elif self.service_provider == "ipapi.co":
+                import requests
+                url = "https://ipapi.co/%s/json/"%(ip)
+                r = requests.get(url, timeout=self.default_timeout)
+                res_json = r.json()
+            
+                df.at[index, city_col] = res_json["city"]
+                df.at[index, region_col] = res_json["region"]
+                df.at[index, country_col] = res_json["country_name"]
+                df.at[index, latitude_col] = res_json["latitude"]
+                df.at[index, longitude_col] = res_json["longitude"]
 
-            df.at[index, city_col] = details.city
-            df.at[index, region_col] = details.region
-            df.at[index, country_col] = details.country_name
-            df.at[index, latitude_col] = details.latitude
-            df.at[index, longitude_col] = details.longitude
+            elif self.service_provider == "abstractapi.com":
+                import requests
+                url = "https://ipgeolocation.abstractapi.com/v1/?api_key=%s&ip_address=%s"%(access_token, ip)
+                r = requests.get(url, timeout=self.default_timeout)
+                res_json = r.json()
+
+                df.at[index, city_col] = res_json["city"]
+                df.at[index, region_col] = res_json["region"]
+                df.at[index, country_col] = res_json["country"]
+                df.at[index, latitude_col] = res_json["latitude"]
+                df.at[index, longitude_col] = res_json["longitude"]
+            else:
+                pass
 
             exec_context.set_progress(
                 0.9 * process_counter / n_loop,
@@ -1059,6 +1084,9 @@ class IPToGeometryNode:
             process_counter += 1
 
             time.sleep(self.min_delay_seconds)
+       
+
+            
         # convert to GeoDataFrame
         geo_col_name = knut.get_unique_column_name("geometry", input_table.schema)
         df[geo_col_name] = gp.points_from_xy(df[longitude_col], df[latitude_col])
