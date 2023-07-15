@@ -974,17 +974,55 @@ class IPToGeometryNode:
     name = "geometry"
 
     def configure(self, configure_context, input_schema):
+
         self.ip_col = knut.column_exists_or_preset(
             configure_context, self.ip_col, input_schema, knut.is_string
         )
+# FIXME: add the columns to the output schema
 
-        # FIXME: need add more columns for the input schema
-        return input_schema.append(
+        output_schema = input_schema.append(
+            knext.Column(
+                ktype=knext.string(),
+                name=knut.get_unique_column_name("city", input_schema),
+            )
+        )
+
+        output_schema.append(
+            knext.Column(
+                ktype=knext.string(),
+                name=knut.get_unique_column_name("region", input_schema),
+            )
+        )
+
+        output_schema.append(
+            knext.Column(
+                ktype=knext.string(),
+                name=knut.get_unique_column_name("country", input_schema),
+            )
+        )
+
+        output_schema.append(
+            knext.Column(
+                ktype=knext.double(),
+                name=knut.get_unique_column_name("latitude", input_schema),
+            )
+        )
+
+        output_schema.append(
+            knext.Column(
+                ktype=knext.double(),
+                name=knut.get_unique_column_name("longitude", input_schema),
+            )
+        )
+
+        output_schema.append(
             knext.Column(
                 ktype=knut.TYPE_POINT,
                 name=knut.get_unique_column_name(self.name, input_schema),
             )
         )
+
+        return None
 
     def execute(self, exec_context: knext.ExecutionContext, input_table):
         df = input_table.to_pandas()
@@ -1002,12 +1040,17 @@ class IPToGeometryNode:
             ip = row[self.ip_col]
             details = handler.getDetails(ip, timeout=self.default_timeout)
             # FIXME: rename the column name if it already exists
-            # city_col = knut.get_unique_column_name("city", input_table.schema)
-            df.at[index, "city"] = details.city
-            df.at[index, "region"] = details.region
-            df.at[index, "country"] = details.country_name
-            df.at[index, "latitude"] = details.latitude
-            df.at[index, "longitude"] = details.longitude
+            city_col = knut.get_unique_column_name("city", input_table.schema)
+            region_col = knut.get_unique_column_name("region", input_table.schema)
+            country_col = knut.get_unique_column_name("country", input_table.schema)
+            latitude_col = knut.get_unique_column_name("latitude", input_table.schema)
+            longitude_col = knut.get_unique_column_name("longitude", input_table.schema)
+
+            df.at[index, city_col] = details.city
+            df.at[index, region_col] = details.region
+            df.at[index, country_col] = details.country_name
+            df.at[index, latitude_col] = details.latitude
+            df.at[index, longitude_col] = details.longitude
 
             exec_context.set_progress(
                 0.9 * process_counter / n_loop,
@@ -1017,11 +1060,10 @@ class IPToGeometryNode:
 
             time.sleep(self.min_delay_seconds)
         # convert to GeoDataFrame
-        gdf = gp.GeoDataFrame(
-            df,
-            geometry=gp.points_from_xy(df.longitude, df.latitude),
-            crs=kproj.DEFAULT_CRS,
-        )
+        geo_col_name = knut.get_unique_column_name("geometry", input_table.schema)
+        df[geo_col_name] = gp.points_from_xy(df[longitude_col], df[latitude_col])
+        gdf = gp.GeoDataFrame(df, geometry=geo_col_name, crs=kproj.DEFAULT_CRS)
+
         return knut.to_table(gdf)
 
 
