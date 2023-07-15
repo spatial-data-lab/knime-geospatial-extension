@@ -931,9 +931,12 @@ class GeoReverseGeocodingNode:
 class IPToGeometryNode:
     """Geocodes the given IP addresses.
     The `geometry` column contains the point geometry for the given IP address.
-    You can change the service provider and API key in the node settings.
+    You can change the service provider and API key in the node settings. If you use ipapi, you don't need an API key for the free plan.
     Notice that the service provider and API key are only required for some service providers.
-    - `ipinfo`: [ipinfo.io](https://ipinfo.io/)
+
+    - `ipinfo.io`: [ipinfo.io](https://ipinfo.io/)
+    - `ipapi.co`: [ipapi.co](https://ipapi.co/)
+    - `abstractapi.com`: [abstractapi.com](https://www.abstractapi.com/ip-geolocation-api)
     """
 
     ip_col = knext.ColumnParameter(
