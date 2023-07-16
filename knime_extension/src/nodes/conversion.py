@@ -1049,7 +1049,15 @@ class IPToGeometryNode:
         for index, row in df.iterrows():
             ip = row[self.ip_col]
             if self.service_provider == "ipinfo.io":
-                details = handler.getDetails(ip, timeout=self.default_timeout)
+                for i in range(3):
+                    try:
+                        details = handler.getDetails(ip, timeout=self.default_timeout)
+                        break
+                    except Exception as e:
+                        print(e)
+                        time.sleep(1)
+                        continue
+                # details = handler.getDetails(ip, timeout=self.default_timeout)
                 df.at[index, city_col] = details.city
                 df.at[index, region_col] = details.region
                 df.at[index, country_col] = details.country_name
@@ -1057,8 +1065,20 @@ class IPToGeometryNode:
                 df.at[index, longitude_col] = float(details.longitude)
             elif self.service_provider == "ipapi.co":
                 import requests
-                url = "https://ipapi.co/%s/json/"%(ip)
-                r = requests.get(url, timeout=self.default_timeout)
+                url = "https://ipapi.co/%s/json"%(ip)
+                if access_token != "":
+                    url += "?key=%s"%(access_token)
+
+                for i in range(3):
+                    try:
+                        r = requests.get(url, timeout=self.default_timeout)
+                        res_json = r.json()
+                        break
+                    except Exception as e:
+                        print(e)
+                        time.sleep(1)
+                        continue
+                # r = requests.get(url, timeout=self.default_timeout)
                 res_json = r.json()
             
                 df.at[index, city_col] = res_json["city"]
@@ -1070,7 +1090,17 @@ class IPToGeometryNode:
             elif self.service_provider == "abstractapi.com":
                 import requests
                 url = "https://ipgeolocation.abstractapi.com/v1/?api_key=%s&ip_address=%s"%(access_token, ip)
-                r = requests.get(url, timeout=self.default_timeout)
+
+                for i in range(3):
+                    try:
+                        r = requests.get(url, timeout=self.default_timeout)
+                        res_json = r.json()
+                        break
+                    except Exception as e:
+                        print(e)
+                        time.sleep(1)
+                        continue
+                # r = requests.get(url, timeout=self.default_timeout)
                 res_json = r.json()
 
                 df.at[index, city_col] = res_json["city"]
