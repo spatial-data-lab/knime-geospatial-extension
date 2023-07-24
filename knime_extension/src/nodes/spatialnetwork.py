@@ -472,8 +472,8 @@ class OSRMDistanceMatrix:
         include_none_column=False,
     )
     result_model = knext.EnumParameter(
-        label="Result model",
-        description="Supports the following result models:",
+        label="Result mode",
+        description="Supports the following result modes:",
         default_value=_OSRMResultModel.get_default().name,
         enum=_OSRMResultModel,
     )
