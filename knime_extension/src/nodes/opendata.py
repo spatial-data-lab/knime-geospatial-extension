@@ -7,7 +7,7 @@ __category = knext.category(
     path="/community/geo",
     level_id="opendataset",
     name="Open Datasets",
-    description="Nodes for providing open geospatial datasets.",
+    description="Nodes that provide access to various public datasets, such as OpenStreetMap and US census data.",
     # starting at the root folder of the extension_module parameter in the knime.yml file
     icon="icons/icon/OpendatasetCategory.png",
     after="LocationAnalysis",

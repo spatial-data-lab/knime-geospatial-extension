@@ -11,7 +11,7 @@ __category = knext.category(
     path="/community/geo",
     level_id="LocationAnalysis",
     name="Location Analysis",
-    description="Location Analysis",
+    description="Nodes that solve various location optimization problems.",
     # starting at the root folder of the extension_module parameter in the knime.yml file
     icon="icons/icon/LocationAnalysisCategory.png",
     after="spatialmodels",
@@ -19,6 +19,7 @@ __category = knext.category(
 
 # Root path for all node icons in this file
 __NODE_ICON_PATH = "icons/icon/LocationAnalysis/"
+
 
 ############################################
 # Location-allocation Pmedian
@@ -48,7 +49,6 @@ __NODE_ICON_PATH = "icons/icon/LocationAnalysis/"
     },
 )
 class PmedianNode:
-
     DemandID = knext.ColumnParameter(
         "Serial id column for demand",
         "Integer id number starting with 0",
@@ -255,7 +255,6 @@ class PmedianNode:
     },
 )
 class LSCPNode:
-
     DemandID = knext.ColumnParameter(
         "Serial id column for demand",
         "Integer id number starting with 0",
@@ -452,7 +451,6 @@ class LSCPNode:
     },
 )
 class MCLPNode:
-
     DemandID = knext.ColumnParameter(
         "Serial id column for demand",
         "Integer id number starting with 0",

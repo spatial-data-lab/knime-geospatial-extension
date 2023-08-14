@@ -8,7 +8,7 @@ __category = knext.category(
     path="/community/geo",
     level_id="conversion",
     name="Spatial Conversion",
-    description="Nodes that perform conversions from/to geometric objects.",
+    description="Nodes that convert between various geometric and textual representations, or apply geocoding operations, and extract metadata from geometries.",
     # starting at the root folder of the extension_module parameter in the knime.yml file
     icon="icons/icon/ConversionCategory.png",
     after="transform",

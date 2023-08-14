@@ -6,7 +6,7 @@ __category = knext.category(
     path="/community/geo",
     level_id="spatialnetwork",
     name="Spatial Network",
-    description="Spatial network analysis.",
+    description="Nodes that create distance matrices and isochrone maps using various routing engines.",
     # starting at the root folder of the extension_module parameter in the knime.yml file
     icon="icons/icon/SpatialnetworkCategroy.png",
     after="opendataset",

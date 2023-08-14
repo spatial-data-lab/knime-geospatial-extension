@@ -7,7 +7,7 @@ __category = knext.category(
     path="/community/geo",
     level_id="calculation",
     name="Spatial Calculation",
-    description="Nodes that calculate properties for given geometric objects.",
+    description="Nodes that facilitate the calculation and representation of spatial properties, enveloping geometries, and complex geometric unions.",
     # starting at the root folder of the extension_module parameter in the knime.yml file
     icon="icons/icon/CalculationCategory.png",
     after="io",
@@ -15,6 +15,7 @@ __category = knext.category(
 
 # Root path for all node icons in this file
 __NODE_ICON_PATH = "icons/icon/GeometryCalculation/"
+
 
 ############################################
 # Simple transformation helper class
@@ -106,7 +107,6 @@ class _SingleCalculator:
     },
 )
 class AreaNode(_SingleCalculator):
-
     geo_col = knut.geo_col_parameter(
         description="Select the geometry column to compute the area."
     )
@@ -138,7 +138,6 @@ class AreaNode(_SingleCalculator):
     },
 )
 class LengthNode(_SingleCalculator):
-
     geo_col = knut.geo_col_parameter(
         description="Select the geometry column to compute the length."
     )
@@ -175,7 +174,6 @@ class LengthNode(_SingleCalculator):
     },
 )
 class BoundingBoxNode(_SingleCalculator):
-
     geo_col = knut.geo_col_parameter(
         description="Select the geometry column to compute the bounding box."
     )
@@ -213,7 +211,6 @@ class BoundingBoxNode(_SingleCalculator):
     },
 )
 class ConvexHullNode(_SingleCalculator):
-
     geo_col = knut.geo_col_parameter(
         description="Select the geometry column to compute the convex hull."
     )
@@ -251,7 +248,6 @@ class ConvexHullNode(_SingleCalculator):
     },
 )
 class CoordinatesNode:
-
     geo_col = knut.geo_point_col_parameter(
         description="Select the point geometry column to extract the coordinates from."
     )
@@ -414,7 +410,6 @@ class BoundsNode:
     },
 )
 class TotalBoundsNode:
-
     geo_col = knut.geo_col_parameter(
         description="Select the geometry column to compute the total bounds for."
     )
@@ -483,7 +478,6 @@ class TotalBoundsNode:
     },
 )
 class UnaryUnionNode:
-
     geo_col = knut.geo_col_parameter(
         description="Select the geometry column to compute the unary union."
     )
@@ -537,7 +531,6 @@ class UnaryUnionNode:
     },
 )
 class BoundCircleNode:
-
     geo_col = knut.geo_col_parameter(
         description="Select the geometry column to compute the minimum bounding circle."
     )

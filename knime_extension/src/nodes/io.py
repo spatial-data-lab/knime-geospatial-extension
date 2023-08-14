@@ -6,7 +6,7 @@ __category = knext.category(
     path="/community/geo",
     level_id="io",
     name="Spatial IO",
-    description="Nodes that for reading and writing Geodata.",
+    description="Nodes that read and write spatial data in various formats.",
     # starting at the root folder of the extension_module parameter in the knime.yml file
     icon="icons/icon/IOCategory.png",
 )

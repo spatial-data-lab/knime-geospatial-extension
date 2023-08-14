@@ -12,7 +12,7 @@ category = knext.category(
     path="/community/geo",
     level_id="transform",
     name="Spatial Transformation",
-    description="Geospatial transformation nodes",
+    description="Nodes that transform, decompose, and generate new geometric entities from single geometric objects.",
     # starting at the root folder of the extension_module parameter in the knime.yml file
     icon="icons/icon/TransformationCategory.png",
     after="spatialtool",

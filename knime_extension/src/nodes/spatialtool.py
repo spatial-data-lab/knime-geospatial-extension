@@ -14,7 +14,7 @@ __category = knext.category(
     path="/community/geo",
     level_id="spatialtool",
     name="Spatial Manipulation",
-    description="Geospatial manipulation nodes",
+    description="Nodes that merge, alter, and generate new spatial entities based on spatial relationships, distances, and geometric properties.",
     # starting at the root folder of the extension_module parameter in the knime.yml file
     icon="icons/icon/SpatialToolCategory.png",
     after="calculation",
