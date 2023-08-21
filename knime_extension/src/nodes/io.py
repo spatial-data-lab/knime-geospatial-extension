@@ -6,13 +6,14 @@ __category = knext.category(
     path="/community/geo",
     level_id="io",
     name="Spatial IO",
-    description="Nodes that for reading and writing Geodata.",
+    description="Nodes that read and write spatial data in various formats.",
     # starting at the root folder of the extension_module parameter in the knime.yml file
     icon="icons/icon/IOCategory.png",
 )
 
 # Root path for all node icons in this file
 __NODE_ICON_PATH = "icons/icon/IO/"
+
 
 ############################################
 # GeoFile Reader
@@ -30,10 +31,14 @@ __NODE_ICON_PATH = "icons/icon/IO/"
 )
 @knut.geo_node_description(
     short_description="Read single layer GeoFile.",
-    description="""This node reads a single geospatial file from the path to the file or URL.The supported file 
-formats are the popular data types such as [Shapefile (.shp),](https://en.wikipedia.org/wiki/Shapefile)
+    description="""This node reads a single geospatial file from the provided local file path or URL. 
+    The supported file formats are the popular data types such as [Shapefile (.shp),](https://en.wikipedia.org/wiki/Shapefile)
 zipped Shapefiles(.zip) with a single Shapefile, single-layer [Geopackage (.gpkg),](https://www.geopackage.org/) 
-or [GeoJSON (.geojson)](https://geojson.org/) files.
+or [GeoJSON (.geojson)](https://geojson.org/) files. In addition the node partially supports 
+[Keyhole Markup Language (.kml)](https://en.wikipedia.org/wiki/Keyhole_Markup_Language) files or single
+entry zipped [.kmz](https://developers.google.com/kml/documentation/kmzarchives) files. 
+For more details on the limitations when reading these files see 
+[here.](https://gdal.org/drivers/vector/kml.html#kml-reading)
 
 Examples of standard local file paths are *C:\\KNIMEworkspace\\test.geojson* for Windows and
 */KNIMEworkspace/test.shp* for Linux. The node can also load resources directly from a web URL, for example to 
@@ -62,9 +67,36 @@ class GeoFileReaderNode:
         exec_context.set_progress(
             0.4, "Reading file (This might take a while without progress changes)"
         )
-        gdf = gp.read_file(self.data_url)
+
+        if self.data_url.lower().endswith(".kml"):
+            import fiona
+
+            fiona.drvsupport.supported_drivers["KML"] = "r"
+            gdf = gp.read_file(self.data_url, driver="KML")
+        elif self.data_url.lower().endswith(".kmz"):
+            import zipfile
+            import fiona
+
+            zf = zipfile.ZipFile(self.data_url)
+            names = zf.namelist()
+            name = None
+            for i in range(len(names)):
+                if names[i].lower().endswith(".kml"):
+                    if name is None:
+                        name = names[i]
+                    else:
+                        raise knext.InvalidParametersError(
+                            "Node supports only kmz files with a single kml file"
+                        )
+            fiona.drvsupport.supported_drivers["KML"] = "r"
+            gdf = gp.read_file("/vsizip/" + self.data_url + "/" + name, driver="KML")
+        else:
+            gdf = gp.read_file(self.data_url)
+
         if "<Row Key>" in gdf.columns:
             gdf = gdf.drop(columns="<Row Key>")
+        if "<RowID>" in gdf.columns:
+            gdf = gdf.drop(columns="<RowID>")
         return knext.Table.from_pandas(gdf)
 
 
@@ -133,6 +165,10 @@ depending on the selected file format if not specified.""",
             0.4, "Writing file (This might take a while without progress changes)"
         )
         gdf = gp.GeoDataFrame(input_1.to_pandas(), geometry=self.geo_col)
+        if "<Row Key>" in gdf.columns:
+            gdf = gdf.drop(columns="<Row Key>")
+        if "<RowID>" in gdf.columns:
+            gdf = gdf.drop(columns="<RowID>")
         if self.dataformat == "Shapefile":
             fileurl = knut.ensure_file_extension(self.data_url, ".shp")
             gdf.to_file(fileurl)
@@ -205,18 +241,23 @@ class GeoPackageReaderNode:
         layerlist = fiona.listlayers(self.data_url)
         pnumber = pd.Series(range(0, 100)).astype(str).to_list()
         if self.data_layer in layerlist:
-            gdf = gp.read_file(self.data_url, layer=self.data_layer)
+            src = fiona.open(self.data_url, layer=self.data_layer)
         elif self.data_layer in pnumber:
             nlayer = int(self.data_layer)
-            gdf = gp.read_file(self.data_url, layer=nlayer)
+            src = fiona.open(self.data_url, layer=nlayer)
         else:
-            gdf = gp.read_file(self.data_url, layer=0)
-        gdf = gdf.reset_index(drop=True)
-        listtable = pd.DataFrame({"layerlist": layerlist})
+            src = fiona.open(self.data_url, layer=0)
+        gdf = gp.GeoDataFrame.from_features(src)
         try:
-            test = knext.Table.from_pandas(gdf)
+            gdf.crs = src.crs
         except:
-            gdf = pd.DataFrame(gdf.drop(columns="geometry"))
+            print("Invilid CRS")
+        gdf = gdf.reset_index(drop=True)
+        if "<Row Key>" in gdf.columns:
+            gdf = gdf.drop(columns="<Row Key>")
+        if "<RowID>" in gdf.columns:
+            gdf = gdf.drop(columns="<RowID>")
+        listtable = pd.DataFrame({"layerlist": layerlist})
         return knext.Table.from_pandas(gdf), knext.Table.from_pandas(listtable)
 
 
@@ -283,5 +324,16 @@ class GeoPackageWriterNode:
         gdf = gp.GeoDataFrame(input_1.to_pandas(), geometry=self.geo_col)
         gdf = gdf.reset_index(drop=True)
         file_name = knut.ensure_file_extension(self.data_url, ".gpkg")
+        time_columns = gdf.select_dtypes(
+            include=[
+                'knime.pandas_type<struct<0:int64,1:int64>, {"value_factory_class":"org.knime.core.data.v2.time.LocalDateTimeValueFactory"}>'
+            ]
+        ).columns
+        if len(time_columns) > 0:
+            gdf[time_columns] = gdf[time_columns].astype(str)
+        if "<Row Key>" in gdf.columns:
+            gdf = gdf.drop(columns="<Row Key>")
+        if "<RowID>" in gdf.columns:
+            gdf = gdf.drop(columns="<RowID>")
         gdf.to_file(file_name, layer=self.data_layer, driver="GPKG")
         return None

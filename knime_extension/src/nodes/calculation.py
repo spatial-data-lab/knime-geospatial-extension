@@ -7,7 +7,7 @@ __category = knext.category(
     path="/community/geo",
     level_id="calculation",
     name="Spatial Calculation",
-    description="Nodes that calculate properties for given geometric objects.",
+    description="Nodes that facilitate the calculation and representation of spatial properties, enveloping geometries, and complex geometric unions.",
     # starting at the root folder of the extension_module parameter in the knime.yml file
     icon="icons/icon/CalculationCategory.png",
     after="io",
@@ -15,6 +15,7 @@ __category = knext.category(
 
 # Root path for all node icons in this file
 __NODE_ICON_PATH = "icons/icon/GeometryCalculation/"
+
 
 ############################################
 # Simple transformation helper class
@@ -106,7 +107,6 @@ class _SingleCalculator:
     },
 )
 class AreaNode(_SingleCalculator):
-
     geo_col = knut.geo_col_parameter(
         description="Select the geometry column to compute the area."
     )
@@ -138,7 +138,6 @@ class AreaNode(_SingleCalculator):
     },
 )
 class LengthNode(_SingleCalculator):
-
     geo_col = knut.geo_col_parameter(
         description="Select the geometry column to compute the length."
     )
@@ -175,7 +174,6 @@ class LengthNode(_SingleCalculator):
     },
 )
 class BoundingBoxNode(_SingleCalculator):
-
     geo_col = knut.geo_col_parameter(
         description="Select the geometry column to compute the bounding box."
     )
@@ -213,7 +211,6 @@ class BoundingBoxNode(_SingleCalculator):
     },
 )
 class ConvexHullNode(_SingleCalculator):
-
     geo_col = knut.geo_col_parameter(
         description="Select the geometry column to compute the convex hull."
     )
@@ -251,7 +248,6 @@ class ConvexHullNode(_SingleCalculator):
     },
 )
 class CoordinatesNode:
-
     geo_col = knut.geo_point_col_parameter(
         description="Select the point geometry column to extract the coordinates from."
     )
@@ -414,7 +410,6 @@ class BoundsNode:
     },
 )
 class TotalBoundsNode:
-
     geo_col = knut.geo_col_parameter(
         description="Select the geometry column to compute the total bounds for."
     )
@@ -483,7 +478,6 @@ class TotalBoundsNode:
     },
 )
 class UnaryUnionNode:
-
     geo_col = knut.geo_col_parameter(
         description="Select the geometry column to compute the unary union."
     )
@@ -537,26 +531,25 @@ class UnaryUnionNode:
     },
 )
 class BoundCircleNode:
-
     geo_col = knut.geo_col_parameter(
         description="Select the geometry column to compute the minimum bounding circle."
     )
 
     result_settings = knut.ResultSettings(
-        "Result", "1.1.0", None, knut.ResultSettings.Mode.APPEND.name, "circle"
+        mode=knut.ResultSettingsMode.APPEND.name,
+        new_name="Circle",
     )
 
     def __init__(self):
         # set twice as workaround until fixed in KNIME framework
-        self.result_settings.mode = knut.ResultSettings.Mode.APPEND.name
-        self.result_settings.new_column_name = "circle"
+        self.result_settings.mode = knut.ResultSettingsMode.APPEND.name
+        self.result_settings.new_column_name = "Circle"
 
     def configure(self, configure_context, input_schema):
         self.geo_col = knut.column_exists_or_preset(
             configure_context, self.geo_col, input_schema, knut.is_geo
         )
-        return knut.get_result_schema(
-            self.result_settings,
+        return self.result_settings.get_result_schema(
             configure_context,
             input_schema,
             self.geo_col,
@@ -594,8 +587,8 @@ class BoundCircleNode:
             center, radius = minimum_bounding_circle(points)
             return center.buffer(radius)
 
-        return knut.get_computed_result_table(
-            self.result_settings, exec_context, input, self.geo_col, compute_circle
+        return self.result_settings.get_computed_result_table(
+            exec_context, input, self.geo_col, compute_circle
         )
 
 

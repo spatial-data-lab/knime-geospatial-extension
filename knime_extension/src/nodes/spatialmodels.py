@@ -1,12 +1,14 @@
 import geopandas as gp
 import knime_extension as knext
 import util.knime_utils as knut
+import util.modeling_utils as mut
+
 
 __category = knext.category(
     path="/community/geo",
     level_id="spatialmodels",
     name="Spatial Modelling",
-    description="Spatial Models Nodes",
+    description="Nodes that conduct spatial regression, panel modelling, and geographically weighted regression analyses.",
     # starting at the root folder of the extension_module parameter in the knime.yml file
     icon="icons/icon/SpatialModelCategory.png",
     after="spatialstatistic",
@@ -14,6 +16,29 @@ __category = knext.category(
 
 # Root path for all node icons in this file
 __NODE_ICON_PATH = "icons/icon/SpatialModel/"
+
+
+def get_id_col_parameter(
+    label: str = "ID column",
+    description: str = """Select the column which contains for each observation in the input data a unique ID, it should be an integer column.
+    The IDs must match with the values of the 
+    [Spatial Weights node](https://hub.knime.com/center%20for%20geographic%20analysis%20at%20harvard%20university/extensions/sdl.harvard.features.geospatial/latest/org.knime.python3.nodes.extension.ExtensionNodeSetFactory$DynamicExtensionNodeFactory:4d710eae/)
+    ID column.
+    If 'none' is selected, the IDs will be automatically generated from 0 to the number of rows flowing the order of 
+    the first input table.
+    """,
+):
+    """
+    Returns the unique ID column. It should always keep the same as the ID column in the spatial weights matrix node.
+    The selected column should contain unique IDs for each observation in the input data.
+    """
+    return knext.ColumnParameter(
+        label=label,
+        description=description,
+        include_none_column=True,
+        column_filter=knut.is_int,
+        since_version="1.1.0",
+    )
 
 
 ############################################
@@ -49,11 +74,17 @@ __NODE_ICON_PATH = "icons/icon/SpatialModel/"
 )
 class Spatial2SLSModel:
     """Spatial two stage least squares (S2SLS) with results and diagnostics.
-    Spatial two stage least squares (S2SLS) with results and diagnostics. More details can be found in the following reference, Luc Anselin. Spatial Econometrics: Methods and Models. Kluwer. Dordrecht, 1988.
+    Spatial two stage least squares (S2SLS) with results and diagnostics. More details can be found in the following reference, Luc Anselin.
+    Spatial Econometrics: Methods and Models. Kluwer. Dordrecht, 1988.
+
+    **Note:** The input table should not contain missing values. You can use the
+    [Missing Value](https://hub.knime.com/knime/extensions/org.knime.features.base/latest/org.knime.base.node.preproc.pmml.missingval.compute.MissingValueHandlerNodeFactory/) node to replace them.
     """
 
     # input parameters
     geo_col = knut.geo_col_parameter()
+
+    id_col = get_id_col_parameter()
 
     dependent_variable = knext.ColumnParameter(
         "Dependent variable",
@@ -96,14 +127,18 @@ class Spatial2SLSModel:
         return None
 
     def execute(self, exec_context: knext.ExecutionContext, input_1, input_2):
-
         gdf = gp.GeoDataFrame(input_1.to_pandas(), geometry=self.geo_col)
         adjust_list = input_2.to_pandas()
+
+        if "none" not in str(self.id_col).lower():
+            gdf.index = range(len(gdf))
+            id_map = dict(zip(gdf[self.id_col], gdf.index))
+            adjust_list["focal"] = adjust_list["focal"].map(id_map)
+            adjust_list["neighbor"] = adjust_list["neighbor"].map(id_map)
 
         from libpysal.weights import W
 
         w = W.from_adjlist(adjust_list)
-
         y = gdf[self.dependent_variable].values
         x = gdf[self.independent_variables].values
 
@@ -212,10 +247,16 @@ class Spatial2SLSModel:
 )
 class SpatialLagPanelModelwithFixedEffects:
     """Spatial Lag Panel Model with Fixed Effects.
-    Spatial Lag Panel Model with Fixed Effects. ML estimation of the fixed effects spatial lag model with all results and diagnostics. More details can be found at J. Paul Elhorst. Specification and estimation of spatial panel data models. International Regional Science Review, 26(3):244–268, 2003. doi:10.1177/0160017603253791.
+    Spatial Lag Panel Model with Fixed Effects. ML estimation of the fixed effects spatial lag model with all results and diagnostics. More details can be found at J. Paul Elhorst.
+    Specification and estimation of spatial panel data models. International Regional Science Review, 26(3):244–268, 2003. doi:10.1177/0160017603253791.
+
+    **Note:** The input table should not contain missing values. You can use the
+    [Missing Value](https://hub.knime.com/knime/extensions/org.knime.features.base/latest/org.knime.base.node.preproc.pmml.missingval.compute.MissingValueHandlerNodeFactory/) node to replace them.
     """
 
     geo_col = knut.geo_col_parameter()
+
+    id_col = get_id_col_parameter()
 
     dependent_variable = knext.MultiColumnParameter(
         "Dependent variables",
@@ -236,9 +277,14 @@ class SpatialLagPanelModelwithFixedEffects:
         return None
 
     def execute(self, exec_context: knext.ExecutionContext, input_1, input_2):
-
         gdf = gp.GeoDataFrame(input_1.to_pandas(), geometry=self.geo_col)
         adjust_list = input_2.to_pandas()
+
+        if "none" not in str(self.id_col).lower():
+            gdf.index = range(len(gdf))
+            id_map = dict(zip(gdf[self.id_col], gdf.index))
+            adjust_list["focal"] = adjust_list["focal"].map(id_map)
+            adjust_list["neighbor"] = adjust_list["neighbor"].map(id_map)
 
         from libpysal.weights import W
 
@@ -345,10 +391,16 @@ class SpatialLagPanelModelwithFixedEffects:
 )
 class SpatialErrorPanelModelwithFixedEffects:
     """Spatial Error Panel Model with Fixed Effects node.
-    Spatial Error Panel Model with Fixed Effects node. ML estimation of the fixed effects spatial error model with all results and diagnostics. More details can be found at J. Paul Elhorst. Specification and estimation of spatial panel data models. International Regional Science Review, 26(3):244–268, 2003. doi:10.1177/0160017603253791.
+    Spatial Error Panel Model with Fixed Effects node. ML estimation of the fixed effects spatial error model with all results and diagnostics.
+    More details can be found at J. Paul Elhorst. Specification and estimation of spatial panel data models. International Regional Science Review, 26(3):244–268, 2003. doi:10.1177/0160017603253791.
+
+    **Note:** The input table should not contain missing values. You can use the
+    [Missing Value](https://hub.knime.com/knime/extensions/org.knime.features.base/latest/org.knime.base.node.preproc.pmml.missingval.compute.MissingValueHandlerNodeFactory/) node to replace them.
     """
 
     geo_col = knut.geo_col_parameter()
+
+    id_col = get_id_col_parameter()
 
     dependent_variable = knext.MultiColumnParameter(
         "Dependent variables",
@@ -369,9 +421,14 @@ class SpatialErrorPanelModelwithFixedEffects:
         return None
 
     def execute(self, exec_context: knext.ExecutionContext, input_1, input_2):
-
         gdf = gp.GeoDataFrame(input_1.to_pandas(), geometry=self.geo_col)
         adjust_list = input_2.to_pandas()
+
+        if "none" not in str(self.id_col).lower():
+            gdf.index = range(len(gdf))
+            id_map = dict(zip(gdf[self.id_col], gdf.index))
+            adjust_list["focal"] = adjust_list["focal"].map(id_map)
+            adjust_list["neighbor"] = adjust_list["neighbor"].map(id_map)
 
         from libpysal.weights import W
 
@@ -480,6 +537,9 @@ class GeographicallyWeightedRegression:
     """Geographically Weighted Regression node.
     Performs Geographically Weighted Regression (GWR), a local form of linear regression used to model spatially varying relationships. Can currently estimate Gaussian, Poisson, and logistic models(built on a GLM framework).
     More details can be found at [here](https://desktop.arcgis.com/en/arcmap/10.3/tools/spatial-statistics-toolbox/geographically-weighted-regression.htm).
+
+    **Note:** The input table should not contain missing values. You can use the
+    [Missing Value](https://hub.knime.com/knime/extensions/org.knime.features.base/latest/org.knime.base.node.preproc.pmml.missingval.compute.MissingValueHandlerNodeFactory/) node to replace them.
     """
 
     geo_col = knut.geo_col_parameter()
@@ -529,7 +589,6 @@ class GeographicallyWeightedRegression:
         return None
 
     def execute(self, exec_context: knext.ExecutionContext, input_1):
-
         gdf = gp.GeoDataFrame(input_1.to_pandas(), geometry=self.geo_col)
         # Prepare Georgia dataset inputs
         g_y = gdf[self.dependent_variable].values.reshape((-1, 1))
@@ -621,6 +680,9 @@ class GeographicallyWeightedRegression:
 class GeographicallyWeightedRegressionPredictor:
     """Geographically Weighted Regression Predictor node.
     Geographically Weighted Regression Predictor. It will predict the dependent variable using the model and the input table.
+
+    **Note:** The input table should not contain missing values. You can use the
+    [Missing Value](https://hub.knime.com/knime/extensions/org.knime.features.base/latest/org.knime.base.node.preproc.pmml.missingval.compute.MissingValueHandlerNodeFactory/) node to replace them.
     """
 
     geo_col = knut.geo_col_parameter()
@@ -638,7 +700,6 @@ class GeographicallyWeightedRegressionPredictor:
         return None
 
     def execute(self, exec_context: knext.ExecutionContext, input_1, model):
-
         gdf = gp.GeoDataFrame(input_1.to_pandas(), geometry=self.geo_col)
         # Prepare Georgia dataset inputs
         g_X = gdf[self.independent_variables].values
@@ -690,7 +751,13 @@ class GeographicallyWeightedRegressionPredictor:
 )
 class MultiscaleGeographicallyWeightedRegression:
     """Multiscale Geographically Weighted Regression node.
-    Multiscale Geographically Weighted Regression estimation. More details can be found at A. Stewart Fotheringham, Wenbai Yang, and Wei Kang. Multiscale geographically weighted regression (mgwr). Annals of the American Association of Geographers, 107(6):1247–1265, 2017. URL: http://dx.doi.org/10.1080/24694452.2017.1352480, arXiv:http://dx.doi.org/10.1080/24694452.2017.1352480, doi:10.1080/24694452.2017.1352480. and Hanchen Yu, Alexander Stewart Fotheringham, Ziqi Li, Taylor Oshan, Wei Kang, and Levi John Wolf. Inference in multiscale geographically weighted regression. Geographical Analysis, 2019. URL: https://onlinelibrary.wiley.com/doi/abs/10.1111/gean.12189, arXiv:https://onlinelibrary.wiley.com/doi/pdf/10.1111/gean.12189, doi:10.1111/gean.12189.
+    Multiscale Geographically Weighted Regression estimation.
+    More details can be found at
+    1. A. Stewart Fotheringham, Wenbai Yang, and Wei Kang. Multiscale geographically weighted regression (mgwr). Annals of the American Association of Geographers, 107(6):1247–1265, 2017. URL: http://dx.doi.org/10.1080/24694452.2017.1352480, arXiv:http://dx.doi.org/10.1080/24694452.2017.1352480, doi:10.1080/24694452.2017.1352480. and Hanchen Yu, Alexander Stewart Fotheringham, Ziqi Li, Taylor Oshan, Wei Kang, and Levi John Wolf. Inference in multiscale geographically weighted regression. Geographical Analysis, 2019. URL: https://onlinelibrary.wiley.com/doi/abs/10.1111/gean.12189, arXiv:https://onlinelibrary.wiley.com/doi/pdf/10.1111/gean.12189, doi:10.1111/gean.12189.
+    2. https://pro.arcgis.com/en/pro-app/latest/tool-reference/spatial-statistics/how-multiscale-geographically-weighted-regression-mgwr-works.htm
+
+    **Note:** The input table should not contain missing values. You can use the
+    [Missing Value](https://hub.knime.com/knime/extensions/org.knime.features.base/latest/org.knime.base.node.preproc.pmml.missingval.compute.MissingValueHandlerNodeFactory/) node to replace them.
     """
 
     geo_col = knut.geo_col_parameter()
@@ -709,7 +776,10 @@ class MultiscaleGeographicallyWeightedRegression:
 
     search_method = knext.StringParameter(
         "Search method",
-        "Bw search method: ‘golden’, ‘interval’",
+        """Bw search method: ‘golden’, ‘interval’. Golden Search— Determines either the number of neighbors or distance band for each 
+        explanatory variable using the Golden Search algorithm. This method searches multiple combinations 
+        of values for each explanatory variable between a specified minimum and maximum value. Intervals— Determines the number of neighbors or distance band for each 
+        explanatory variable by incrementing the number of neighbors or distance band from a minimum value.""",
         default_value="golden",
         enum=["golden", "interval"],
     )
@@ -740,13 +810,12 @@ class MultiscaleGeographicallyWeightedRegression:
         return None
 
     def execute(self, exec_context: knext.ExecutionContext, input_1):
-
         gdf = gp.GeoDataFrame(input_1.to_pandas(), geometry=self.geo_col)
         # Prepare Georgia dataset inputs
         g_y = gdf[self.dependent_variable].values.reshape((-1, 1))
         g_X = gdf[self.independent_variables].values
-        u = gdf["geometry"].x
-        v = gdf["geometry"].y
+        u = gdf["geometry"].centroid.x
+        v = gdf["geometry"].centroid.y
         g_coords = list(zip(u, v))
         # g_X = (g_X - g_X.mean(axis=0)) / g_X.std(axis=0)
         g_y = g_y.reshape((-1, 1))
@@ -916,9 +985,14 @@ class SpatialOLS:
     """Spatial OLS node.
     Ordinary least squares with results and diagnostics. More information can be found at
     [here](https://spreg.readthedocs.io/en/latest/generated/spreg.OLS.html)
+
+    **Note:** The input table should not contain missing values. You can use the
+    [Missing Value](https://hub.knime.com/knime/extensions/org.knime.features.base/latest/org.knime.base.node.preproc.pmml.missingval.compute.MissingValueHandlerNodeFactory/) node to replace them.
     """
 
     geo_col = knut.geo_col_parameter()
+
+    id_col = get_id_col_parameter()
 
     dependent_variable = knext.ColumnParameter(
         "Dependent variable",
@@ -943,6 +1017,12 @@ class SpatialOLS:
     def execute(self, exec_context: knext.ExecutionContext, input_1, input_2):
         gdf = gp.GeoDataFrame(input_1.to_pandas(), geometry=self.geo_col)
         adjust_list = input_2.to_pandas()
+
+        if "none" not in str(self.id_col).lower():
+            gdf.index = range(len(gdf))
+            id_map = dict(zip(gdf[self.id_col], gdf.index))
+            adjust_list["focal"] = adjust_list["focal"].map(id_map)
+            adjust_list["neighbor"] = adjust_list["neighbor"].map(id_map)
 
         from libpysal.weights import W
 
@@ -1048,9 +1128,14 @@ class SpatialOLS:
 class SpatialML_Lag:
     """Spatial ML_Lag.
     ML estimation of the spatial lag model with all results and diagnostics. More details can be found at Luc Anselin. Spatial Econometrics: Methods and Models. Kluwer, Dordrecht, 1988.
+
+    **Note:** The input table should not contain missing values. You can use the
+    [Missing Value](https://hub.knime.com/knime/extensions/org.knime.features.base/latest/org.knime.base.node.preproc.pmml.missingval.compute.MissingValueHandlerNodeFactory/) node to replace them.
     """
 
     geo_col = knut.geo_col_parameter()
+
+    id_col = get_id_col_parameter()
 
     dependent_variable = knext.ColumnParameter(
         "Dependent variable",
@@ -1075,6 +1160,12 @@ class SpatialML_Lag:
     def execute(self, exec_context: knext.ExecutionContext, input_1, input_2):
         gdf = gp.GeoDataFrame(input_1.to_pandas(), geometry=self.geo_col)
         adjust_list = input_2.to_pandas()
+
+        if "none" not in str(self.id_col).lower():
+            gdf.index = range(len(gdf))
+            id_map = dict(zip(gdf[self.id_col], gdf.index))
+            adjust_list["focal"] = adjust_list["focal"].map(id_map)
+            adjust_list["neighbor"] = adjust_list["neighbor"].map(id_map)
 
         from libpysal.weights import W
 
@@ -1179,9 +1270,14 @@ class SpatialML_Lag:
 class SpatialML_Error:
     """Spatial ML_Error.
     ML estimation of the spatial error model with all results and diagnostics. More details can be found at Luc Anselin. Spatial Econometrics: Methods and Models. Kluwer, Dordrecht, 1988.
+
+    **Note:** The input table should not contain missing values. You can use the
+    [Missing Value](https://hub.knime.com/knime/extensions/org.knime.features.base/latest/org.knime.base.node.preproc.pmml.missingval.compute.MissingValueHandlerNodeFactory/) node to replace them.
     """
 
     geo_col = knut.geo_col_parameter()
+
+    id_col = get_id_col_parameter()
 
     dependent_variable = knext.ColumnParameter(
         "Dependent variable",
@@ -1206,6 +1302,12 @@ class SpatialML_Error:
     def execute(self, exec_context: knext.ExecutionContext, input_1, input_2):
         gdf = gp.GeoDataFrame(input_1.to_pandas(), geometry=self.geo_col)
         adjust_list = input_2.to_pandas()
+
+        if "none" not in str(self.id_col).lower():
+            gdf.index = range(len(gdf))
+            id_map = dict(zip(gdf[self.id_col], gdf.index))
+            adjust_list["focal"] = adjust_list["focal"].map(id_map)
+            adjust_list["neighbor"] = adjust_list["neighbor"].map(id_map)
 
         from libpysal.weights import W
 

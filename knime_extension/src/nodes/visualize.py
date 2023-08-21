@@ -7,13 +7,13 @@ category = knext.category(
     path="/community/geo",
     level_id="viz",
     name="Spatial Visualization",  # Spatial Visualization
-    description="Spatial view nodes",
+    description="Nodes that facilitate the visualization and exploration of geospatial data.",
     # starting at the root folder of the extension_module parameter in the knime.yml file
-    icon="icons/icon/VisulizationCategory.png",
+    icon="icons/icon/VisualizationCategory.png",
     after="conversion",
 )
 # Root path for all node icons in this file
-__NODE_ICON_PATH = "icons/icon/Visulization/"
+__NODE_ICON_PATH = "icons/icon/Visualization/"
 
 
 def replace_external_js_css_paths(
@@ -27,9 +27,9 @@ def replace_external_js_css_paths(
     URL. The second matching group is the file name.
     The method will also add the closing ".
 
-    For example if the HTML code is <script src="https://cdn.jsdelivr.net/npm/leaflet@1.6.0/dist/leaflet.js">
+    For example if the HTML code is <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.3/dist/leaflet.js">
     the first group is <script src=" and the second group is leaflet.js so using the following replacement
-    r'\1./libs/leaflet/1.6.0/\3"\4' will lead to this URL: <script src="./libs/leaflet/1.6.0/leaflet.js">.
+    r'\1./libs/leaflet/1.9.3/\3"\4' will lead to this URL: <script src="./libs/leaflet/1.9.3/leaflet.js">.
     """
     import re
 
@@ -229,21 +229,23 @@ class ColorSettings:
     )
 
 
-@knext.parameter_group(label="Legend Settings")
+@knext.parameter_group(label="Color Legend Settings")
 class LegendSettings:
     """
-    Group of settings that define if a legend is shown on the map and if so how it should be formatted.
+    Group of settings that define if a color legend is shown on the map and if so how it should be formatted.
+    The color legend is only shown if you have selected a color column.
     """
 
     plot = knext.BoolParameter(
-        "Show legend",
-        "If checked, a legend will be shown in the plot.",
+        "Show color legend",
+        "If checked, the color legend will be shown in the plot.",
         default_value=False,
     )
 
     caption = knext.StringParameter(
         "Legend caption",
-        "Set the caption for the legend. By default, the caption is the name of the selected color column or empty for heat map.",
+        "Set the caption for the color legend. By default, the caption is the name of the selected color column or "
+        + "empty for heat map.",
         default_value="",
     )
 
@@ -340,7 +342,6 @@ class BaseMapSettings:
             "Stamen TopOSMFeatures",
             "Stamen TopOSMRelief",
             "Stamen Watercolor",
-            "Stamen Watercolor",
             "Strava All",
             "Strava Ride",
             "Strava Run",
@@ -365,7 +366,7 @@ class BaseMapSettings:
 @knext.output_view(
     name="Geospatial View",
     description="Showing an interactive map with the geospatial data",
-    static_resources="libs/leaflet/1.6.0",
+    static_resources="libs/leaflet/1.9.3",
 )
 class ViewNode:
     """Creates an interactive map view based on the selected geometric elements of the input table.
@@ -540,7 +541,7 @@ class ViewNode:
         # replace css and JavaScript paths
         html = map.get_root().render()
         html = replace_external_js_css_paths(
-            r'\1./libs/leaflet/1.6.0/\3"\4',
+            r'\1./libs/leaflet/1.9.3/\3"\4',
             html,
         )
 
@@ -607,6 +608,54 @@ class StaticColorSettings:
         See [Colormaps in Matplotlib](https://matplotlib.org/stable/tutorials/colors/colormaps.html).""",
         default_value="viridis",
         enum=[
+            "afmhot",
+            "autumn",
+            "binary",
+            "Blues",
+            "bone",
+            "BrBG",
+            "BuGn",
+            "BuPu",
+            "bwr",
+            "cool",
+            "coolwarm",
+            "copper",
+            "gist_gray",
+            "gist_heat",
+            "gist_yarg",
+            "GnBu",
+            "gray",
+            "Greens",
+            "Greys",
+            "hot",
+            "hsv" "Oranges",
+            "OrRd",
+            "pink",
+            "PiYG",
+            "PRGn",
+            "PuBu",
+            "PuBuGn",
+            "PuOr",
+            "PuRd",
+            "Purples",
+            "RdBu",
+            "RdGy",
+            "RdPu",
+            "RdYlBu",
+            "RdYlGn",
+            "Reds",
+            "seismic",
+            "Spectral",
+            "spring",
+            "summer",
+            "twilight_shifted",
+            "twilight",
+            "winter",
+            "Wistia",
+            "YlGn",
+            "YlGnBu",
+            "YlOrBr",
+            "YlOrRd",
             "cividis",
             "inferno",
             "magma",
@@ -682,29 +731,32 @@ class StaticColorSettings:
     )
 
 
-@knext.parameter_group(label="Legend Settings")
+@knext.parameter_group(label="Color Legend Settings")
 class StaticLegendSettings:
     """
-    Group of settings that define if a legend is shown on the map and if so how it should be formatted.
+    Group of settings that define if a color legend is shown on the map and if so how it should be formatted.
+    The color legend is only shown if you have selected a color column.
+
     More details about the legend settings can be found [matplotlib.pyplot.legend](https://matplotlib.org/stable/api/_as_gen/matplotlib.pyplot.legend.html#matplotlib.pyplot.legend)
     and [matplotlib.pyplot.colorbar](https://matplotlib.org/stable/api/_as_gen/matplotlib.pyplot.colorbar.html#matplotlib.pyplot.colorbar).
     """
 
     plot = knext.BoolParameter(
-        "Show legend",
-        "If checked, a legend will be shown in the plot.",
+        "Show color legend",
+        "If checked, the color legend will be shown in the plot.",
         default_value=True,
     )
 
     caption = knext.StringParameter(
         "Legend caption",
-        "Set the caption for the legend. By default, the caption is the name of the selected color column or empty for heat map.",
+        "Set the caption for the legend. By default, the caption is the name of the selected color column or "
+        + "empty for heat map.",
         default_value="",
         # default_value=color_col,
     )
 
     caption_fontsize = knext.IntParameter(
-        "Legend caption font size",
+        "Caption font size",
         "Set the font size for the legend caption.",
         default_value=10,
         min_value=1,
@@ -800,16 +852,16 @@ class StaticLegendSettings:
     )
 
     colorbar_shrink = knext.DoubleParameter(
-        "Colorbar legend shrink",
-        "Select the shrinking value for the colorbar legend. Only work for colorbar.",
+        "Color bar legend shrink",
+        "Select the shrinking value for the color bar legend. Only works for color bar.",
         default_value=1.0,
         min_value=0.0,
         max_value=1.0,
     )
 
     colorbar_pad = knext.DoubleParameter(
-        "Colorbar legend pad",
-        "Select the pad value for the colorbar legend. Only work for colorbar",
+        "Color bar legend pad",
+        "Select the pad value for the color bar legend. Only works for color bar",
         default_value=0.1,
         min_value=0.0,
         max_value=0.99,
@@ -1168,7 +1220,7 @@ class ViewNodeKepler:
 @knext.output_view(
     name="Heatmap View",
     description="Showing a heatmap with the data",
-    static_resources="libs/leaflet/1.6.0",
+    static_resources="libs/leaflet/1.9.3",
 )
 class ViewNodeHeatmap:
     """This node will visualize the given data on a heatmap.
@@ -1568,7 +1620,7 @@ class ViewNodeHeatmap:
         # replace css and JavaScript paths
         html = map.get_root().render()
         html = replace_external_js_css_paths(
-            r'\1./libs/leaflet/1.6.0/\3"\4',
+            r'\1./libs/leaflet/1.9.3/\3"\4',
             html,
         )
 

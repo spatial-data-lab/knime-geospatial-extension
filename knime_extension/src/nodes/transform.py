@@ -3,6 +3,7 @@ import geopandas as gp
 import logging
 import knime_extension as knext
 import util.knime_utils as knut
+import util.projection as kproj
 
 LOGGER = logging.getLogger(__name__)
 
@@ -11,7 +12,7 @@ category = knext.category(
     path="/community/geo",
     level_id="transform",
     name="Spatial Transformation",
-    description="Geospatial transformation nodes",
+    description="Nodes that transform, decompose, and generate new geometric entities from single geometric objects.",
     # starting at the root folder of the extension_module parameter in the knime.yml file
     icon="icons/icon/TransformationCategory.png",
     after="spatialtool",
@@ -39,15 +40,20 @@ category = knext.category(
 )
 @knut.geo_node_description(
     short_description="Projection Transformation",
-    description="""This node transforms the Coordinate Reference System (CRS) of the geometry column  with the input 
-    parameter by geopandas.to_crs(). This method will transform all points in all objects. 
-    It has no notion or projecting entire geometries. 
-    All segments joining points are assumed to be lines in the current projection, not geodesics. 
-    Objects crossing the dateline (or other projection boundary) will have undesirable behavior.
+    description="""This node transforms the 
+    [Coordinate reference system (CRS)](https://en.wikipedia.org/wiki/Spatial_reference_system) of the selected 
+    geometry column to the entered new coordinate reference system. The node will transform the points in all 
+    objects individually. It has no notion of projecting entire geometries. All segments joining points are assumed 
+    to be lines in the current projection, not geodesics. Objects crossing the dateline (or other projection boundary) 
+    will have undesirable behavior.
     """,
     references={
-        "geopandas.GeoSeries.to_crs()": "https://geopandas.org/en/stable/docs/reference/api/geopandas.GeoSeries.to_crs.html",
+        "Map projection (Wikipedia)": "https://en.wikipedia.org/wiki/Map_projection",
+        "Comparison of map projection": "https://map-projections.net/index.php",
+        "Collection of common map projections and their properties": "https://www.icsm.gov.au/sites/default/files/projections.pdf",
+        "Projection wizard that helps to find a good projection": "https://projectionwizard.org/",
         "Coordinate Reference System (CRS) EPSG:4326": "https://epsg.io/4326",
+        "geopandas.GeoSeries.to_crs()": "https://geopandas.org/en/stable/docs/reference/api/geopandas.GeoSeries.to_crs.html",
     },
 )
 class CrsTransformerNode:
@@ -58,17 +64,18 @@ class CrsTransformerNode:
     geo_col = knut.geo_col_parameter()
 
     new_crs = knext.StringParameter(
-        "New CRS", knut.DEF_CRS_DESCRIPTION, knut.DEFAULT_CRS
+        "New CRS", kproj.DEF_CRS_DESCRIPTION, kproj.DEFAULT_CRS
     )
 
     result_settings = knut.ResultSettings(
-        "Result", "1.1.0", None, knut.ResultSettings.Mode.REPLACE.name, "projected"
+        mode=knut.ResultSettingsMode.REPLACE.name,
+        new_name="Projected",
     )
 
     def __init__(self):
         # set twice as workaround until fixed in KNIME framework
-        self.result_settings.mode = knut.ResultSettings.Mode.REPLACE.name
-        self.result_settings.new_column_name = "projected"
+        self.result_settings.mode = knut.ResultSettingsMode.REPLACE.name
+        self.result_settings.new_column_name = "Projected"
 
     def configure(self, configure_context, input_schema):
         self.geo_col = knut.column_exists_or_preset(
@@ -76,8 +83,7 @@ class CrsTransformerNode:
         )
         # use the data type of the selected column as result type
         result_type = input_schema[self.geo_col].ktype
-        return knut.get_result_schema(
-            self.result_settings,
+        return self.result_settings.get_result_schema(
             configure_context,
             input_schema,
             self.geo_col,
@@ -86,7 +92,7 @@ class CrsTransformerNode:
 
     def execute(self, exec_context: knext.ExecutionContext, input_table):
         gdf = knut.load_geo_data_frame(input_table, self.geo_col, exec_context)
-        if self.result_settings.mode == knut.ResultSettings.Mode.APPEND.name:
+        if self.result_settings.mode == knut.ResultSettingsMode.APPEND.name:
             result_col = knut.get_unique_column_name(
                 self.result_settings.new_column_name, input_table.schema
             )
@@ -142,21 +148,21 @@ class GeometryToPointNode:
     )
 
     result_settings = knut.ResultSettings(
-        "Result", "1.1.0", None, knut.ResultSettings.Mode.REPLACE.name, "point"
+        mode=knut.ResultSettingsMode.REPLACE.name,
+        new_name="Point",
     )
 
     def __init__(self):
         # set twice as workaround until fixed in KNIME framework
-        self.result_settings.mode = knut.ResultSettings.Mode.REPLACE.name
-        self.result_settings.new_column_name = "point"
+        self.result_settings.mode = knut.ResultSettingsMode.REPLACE.name
+        self.result_settings.new_column_name = "Point"
 
     def configure(self, configure_context, input_schema):
         self.geo_col = knut.column_exists_or_preset(
             configure_context, self.geo_col, input_schema, knut.is_geo
         )
 
-        return knut.get_result_schema(
-            self.result_settings,
+        return self.result_settings.get_result_schema(
             configure_context,
             input_schema,
             self.geo_col,
@@ -164,14 +170,13 @@ class GeometryToPointNode:
         )
 
     def execute(self, exec_context: knext.ExecutionContext, input_1):
-
         if self.pointtype == "centroid":
             func = lambda l: l.centroid
         else:
             func = lambda l: l.representative_point()
 
-        return knut.get_computed_result_table(
-            self.result_settings, exec_context, input_1, self.geo_col, func
+        return self.result_settings.get_computed_result_table(
+            exec_context, input_1, self.geo_col, func
         )
 
 
@@ -266,29 +271,29 @@ class PolygonToLineNode:
         "Geometry column",
         "Select the geometry column to transform.",
         # Allow only GeoValue compatible columns
-        column_filter=knut.is_geo_polygon_or_multi_polygon,
+        column_filter=knut.boolean_or(knut.is_geo_polygon, knut.is_geo_multi_polygon),
         include_row_key=False,
         include_none_column=False,
     )
 
     result_settings = knut.ResultSettings(
-        "Result", "1.1.0", None, knut.ResultSettings.Mode.REPLACE.name, "line"
+        mode=knut.ResultSettingsMode.REPLACE.name,
+        new_name="Line",
     )
 
     def __init__(self):
         # set twice as workaround until fixed in KNIME framework
-        self.result_settings.mode = knut.ResultSettings.Mode.REPLACE.name
-        self.result_settings.new_column_name = "line"
+        self.result_settings.mode = knut.ResultSettingsMode.REPLACE.name
+        self.result_settings.new_column_name = "Line"
 
     def configure(self, configure_context, input_schema_1):
         self.geo_col = knut.column_exists_or_preset(
             configure_context,
             self.geo_col,
             input_schema_1,
-            knut.is_geo_polygon_or_multi_polygon,
+            knut.boolean_or(knut.is_geo_polygon, knut.is_geo_multi_polygon),
         )
-        return knut.get_result_schema(
-            self.result_settings,
+        return self.result_settings.get_result_schema(
             configure_context,
             input_schema_1,
             self.geo_col,
@@ -297,12 +302,8 @@ class PolygonToLineNode:
 
     def execute(self, exec_context: knext.ExecutionContext, input_table):
         # extract the boundary for each geometry
-        return knut.get_computed_result_table(
-            self.result_settings,
-            exec_context,
-            input_table,
-            self.geo_col,
-            lambda l: l.boundary,
+        return self.result_settings.get_computed_result_table(
+            exec_context, input_table, self.geo_col, lambda l: l.boundary
         )
 
 
@@ -328,13 +329,14 @@ class PolygonToLineNode:
 )
 @knut.geo_node_description(
     short_description="This node generate lines from points according to group id and serial label.",
-    description="""This node generate lines from points according to group id and serial label by Shapely.LineString().
-    The constructed LineString object represents one or more connected linear splines between the points. 
+    description="""This node generate lines from points according to group id and serial label. The result
+    table contains one LineString object per group value. Each constructed LineString object represents one or 
+    more connected linear splines between the given points of a group ordered by the serial column. 
     Repeated points in the ordered sequence are allowed, but may incur performance penalties and should be avoided. 
-    A LineString may cross itself.A LineString has zero area and non-zero length.
+    A LineString may cross itself. A LineString has zero area and non-zero length.
     """,
     references={
-        "Shapely.LineStrings": "https://shapely.readthedocs.io/en/stable/manual.html",
+        "Shapely.LineStrings": "https://shapely.readthedocs.io/en/stable/manual.html#linestrings",
     },
 )
 class PointsToLineNode:
@@ -348,7 +350,7 @@ class PointsToLineNode:
         "Group column",
         "Select the group column (string) as group id for points.",
         # Allow only string columns
-        column_filter=knut.is_string,
+        column_filter=knut.is_int_or_string,
         include_row_key=False,
         include_none_column=False,
     )
@@ -367,7 +369,7 @@ class PointsToLineNode:
             configure_context, self.geo_col, input_schema, knut.is_geo_point
         )
         self.group_col = knut.column_exists_or_preset(
-            configure_context, self.group_col, input_schema, knut.is_string
+            configure_context, self.group_col, input_schema, knut.is_int_or_string
         )
         self.seiral_col = knut.column_exists_or_preset(
             configure_context, self.seiral_col, input_schema, knut.is_numeric
@@ -376,7 +378,8 @@ class PointsToLineNode:
 
     def execute(self, exec_context: knext.ExecutionContext, input):
         gdf = gp.GeoDataFrame(input.to_pandas(), geometry=self.geo_col)
-        gdf = gdf.rename(columns={self.geo_col: "geometry"})
+        if self.geo_col != "geometry":
+            gdf.rename_geometry("geometry", inplace=True)
         exec_context.set_progress(0.3, "Geo data frame loaded. Starting grouping...")
         from shapely.geometry import MultiPoint, LineString
 
@@ -386,15 +389,7 @@ class PointsToLineNode:
             .apply(lambda x: LineString(x.tolist()))
         )
         line_gdf = gp.GeoDataFrame(line_gdf, geometry="geometry", crs=gdf.crs)
-        exec_context.set_progress(0.1, "PolygonToLine done")
-        LOGGER.debug(
-            "Point feature "
-            + self.geo_col
-            + "transformed to line by group column"
-            + self.group_col
-            + "according to the order of"
-            + self.seiral_col
-        )
+        exec_context.set_progress(0.1, "PointsToLine done")
         return knext.Table.from_pandas(line_gdf)
 
 
@@ -443,20 +438,20 @@ class GeometryToMultiPointNode:
     )
 
     result_settings = knut.ResultSettings(
-        "Result", "1.1.0", None, knut.ResultSettings.Mode.APPEND.name, "multipoint"
+        mode=knut.ResultSettingsMode.REPLACE.name,
+        new_name="Multipoint",
     )
 
     def __init__(self):
         # set twice as workaround until fixed in KNIME framework
-        self.result_settings.mode = knut.ResultSettings.Mode.APPEND.name
-        self.result_settings.new_column_name = "multipoint"
+        self.result_settings.mode = knut.ResultSettingsMode.REPLACE.name
+        self.result_settings.new_column_name = "Multipoint"
 
     def configure(self, configure_context, input_schema):
         self.geo_col = knut.column_exists_or_preset(
             configure_context, self.geo_col, input_schema, knut.is_geo_line
         )
-        return knut.get_result_schema(
-            self.result_settings,
+        return self.result_settings.get_result_schema(
             configure_context,
             input_schema,
             self.geo_col,
@@ -467,10 +462,6 @@ class GeometryToMultiPointNode:
         # extract coordinates of each geometry into a new MultiPoint geometry
         from shapely.geometry import MultiPoint
 
-        return knut.get_computed_result_table(
-            self.result_settings,
-            exec_context,
-            input_table,
-            self.geo_col,
-            lambda l: MultiPoint(l.coords),
+        return self.result_settings.get_computed_result_table(
+            exec_context, input_table, self.geo_col, lambda l: MultiPoint(l.coords)
         )
