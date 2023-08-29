@@ -13,7 +13,8 @@ __category = knext.category(
 )
 
 # Root path for all node icons in this file
-__NODE_ICON_PATH = "icons/icon/Spatialclustering/"
+__NODE_ICON_PATH = "icons/icon/SpatialClustering/"
+
 
 # def  geodataframe to PPP
 def gdf2ppp(gdf):
@@ -38,33 +39,28 @@ def gdf2ppp(gdf):
 )
 @knext.input_table(
     name="Geodata table",
-    description="Geodata from the input file path.",
+    description="Table with geometry column for center computation.",
 )
 @knext.output_table(
     name="Output Table",
-    description="Output table with Mean center and standard distance .",
+    description="Output table with mean center and standard distance.",
 )
 class MeanCenterNode:
     """
     Mean center and standard distance.
 
-    This node use the Pysal package [pointpats](https://pointpats.readthedocs.io/en/master/api.html)
+    This node use the Pysal package [pointpats](http://pysal.org/pointpats/)
     to  measure the compactness of a spatial distribution of features around its mean center.
     Standard distance (or standard distance deviation) is usually represented as a circle where the radius of the circle is the standard distance.
     """
 
-    geo_col = knext.ColumnParameter(
-        "Geometry column",
-        "Select the geometry column for Geodata.",
-        # Allow only GeoValue compatible columns
-        column_filter=knut.is_geo_point,
-        include_row_key=False,
-        include_none_column=False,
+    geo_col = knut.geo_col_parameter(
+        description="Select the geometry column to compute mean center and standard distance."
     )
 
     weight_col = knext.ColumnParameter(
         "Weight column",
-        "Select the weighting column for calculatethe meann center.",
+        "Select the weighting column for calculate the mean center (Optional).",
         column_filter=knut.is_numeric,
         include_row_key=False,
         include_none_column=True,
@@ -79,7 +75,7 @@ class MeanCenterNode:
     def execute(self, exec_context: knext.ExecutionContext, input_1):
         import pointpats
 
-        gdf = gp.GeoDataFrame(input_1.to_pandas(), geometry=self.geo_col)
+        gdf = knut.load_geo_data_frame(input_1, self.geo_col, exec_context)
         pp = gdf2ppp(gdf)
         if (
             (self.weight_col is None)
@@ -91,13 +87,13 @@ class MeanCenterNode:
             weights = gdf[self.weight_col]
             mc = pointpats.weighted_mean_center(pp.points, weights)
         mcgdf = gp.GeoDataFrame(
-            {"x": [mc[0]], "y": [mc[1]]},
+            {"X": [mc[0]], "Y": [mc[1]]},
             geometry=gp.GeoSeries.from_xy(x=[mc[0]], y=[mc[1]], crs=gdf.crs),
         )
         # Standard distance
-        mcgdf["std_distance"] = pointpats.std_distance(pp.points)
+        mcgdf["Distance"] = pointpats.std_distance(pp.points)
         mcgdf.reset_index(drop=True, inplace=True)
-        return knext.Table.from_pandas(mcgdf)
+        return knut.to_table(mcgdf, exec_context)
 
 
 ############################################
@@ -112,34 +108,31 @@ class MeanCenterNode:
 )
 @knext.input_table(
     name="Geodata table",
-    description="Geodata from the input file path.",
+    description="Table with geometry column for computing standard deviational ellipse.",
 )
 @knext.output_table(
     name="Output Table",
-    description="Output table with Standard deviational ellips.",
+    description="Output table with Standard deviational ellipse.",
 )
 class StandardEllipseNode:
     """
     Standard deviational ellipse.
 
-    This node use the Pysal package [pointpats](https://pointpats.readthedocs.io/en/master/api.html)
+    This node use the Pysal package [pointpats](http://pysal.org/pointpats/)
     to  calculate parameters of standard deviational ellipse for a point pattern, which is a common way of measuring
     the trend for a set of points or areas. These measures define the axes of an ellipse (or ellipsoid) encompassing the distribution of features.
     """
 
-    geo_col = knext.ColumnParameter(
-        "Geometry column",
-        "Select the geometry column for Geodata.",
-        column_filter=knut.is_geo_point,
-        include_row_key=False,
-        include_none_column=False,
+    geo_col = knut.geo_col_parameter(
+        description="Select the geometry column to compute standard deviational ellipse."
     )
+    _COL_GEOMETRY = "geometry"
 
     def configure(self, configure_context, input_schema):
         self.geo_col = knut.column_exists_or_preset(
             configure_context, self.geo_col, input_schema, knut.is_geo
         )
-        return None
+        return knext.Schema(knut.TYPE_POLYGON, self._COL_GEOMETRY)
 
     def execute(self, exec_context: knext.ExecutionContext, input_1):
         import pointpats
@@ -147,7 +140,7 @@ class StandardEllipseNode:
         from matplotlib.patches import Ellipse
         from shapely.geometry import Polygon
 
-        gdf = gp.GeoDataFrame(input_1.to_pandas(), geometry=self.geo_col)
+        gdf = knut.load_geo_data_frame(input_1, self.geo_col, exec_context)
         pp = gdf2ppp(gdf)
         sx, sy, theta = pointpats.ellipse(pp.points)
         theta_degree = np.degrees(theta)
@@ -163,7 +156,7 @@ class StandardEllipseNode:
         ellipse = Polygon(vertices)
         gdf = gp.GeoDataFrame(geometry=gp.GeoSeries(ellipse), crs=gdf.crs)
         gdf.reset_index(drop=True, inplace=True)
-        return knext.Table.from_pandas(gdf)
+        return knut.to_table(gdf, exec_context)
 
 
 ############################################
@@ -178,7 +171,7 @@ class StandardEllipseNode:
 )
 @knext.input_table(
     name="Geodata table",
-    description="Geodata from the input file path.",
+    description="Geodata for spatial clustering implementation.",
 )
 @knext.output_table(
     name="Output Table",
@@ -187,22 +180,16 @@ class StandardEllipseNode:
 class SKATERNode:
     """
     The Spatial C(K)luster Analysis by Tree Edge Removal(SKATER).
-
-    This node use the Pysal package [pointpats](https://pointpats.readthedocs.io/en/master/api.html)
-    to  calculate parameters of standard deviational ellipse for a point pattern, which is a common way of measuring
+    This node use the Pysal package [pygeoda](https://geodacenter.github.io/pygeoda/generated/pygeoda.clustering.skater.html).
     The Spatial C(K)luster Analysis by Tree Edge Removal(SKATER) algorithm introduced by Assuncao et al. (2006)
     is based on the optimal pruning of a minimum spanning tree that reflects the contiguity structure among the observations.
     It provides an optimized algorithm to prune to tree into several clusters that their values of selected variables are as similar as possible.
     """
 
-    geo_col = knext.ColumnParameter(
-        "Geometry column",
-        "Select the geometry column for Geodata.",
-        port_index=0,
-        column_filter=knut.is_geo,
-        include_row_key=False,
-        include_none_column=False,
+    geo_col = knut.geo_col_parameter(
+        description="Select the geometry column to implement spatial clustering."
     )
+
     bound_col = knext.ColumnParameter(
         "Bound column for minibound",
         "Select the bound column for clusters with minibound.",
@@ -212,13 +199,13 @@ class SKATERNode:
         include_none_column=False,
     )
     attribute_list = knext.StringParameter(
-        "Attribute columns for Clustering",
+        "Attribute columns for clustering",
         "Input the column names with Semicolon.",
         "",
     )
     cluster_k = knext.IntParameter(
         "Number of clusters",
-        "The Number of user-defined clusters.",
+        "The number of user-defined clusters.",
         default_value=4,
     )
     minibound = knext.DoubleParameter(
@@ -226,7 +213,7 @@ class SKATERNode:
         "A minimum value that the sum value of bounding variable in each cluster should be greater than.",
     )
     weight_mode = knext.StringParameter(
-        "Spatial Weight model",
+        "Spatial weight model",
         "Input spatial weight mode.",
         "Queen",
         enum=["Queen", "Rook"],
@@ -239,14 +226,13 @@ class SKATERNode:
         return None
 
     def execute(self, exec_context: knext.ExecutionContext, input_1):
-
         import pygeoda
 
-        k = self.cluster_k
+        k = abs(self.cluster_k)
         controlVar = self.bound_col
         m_bound = self.minibound
         attributelist = self.bound_col.split(";")
-        gdf = gp.GeoDataFrame(input_1.to_pandas(), geometry=self.geo_col)
+        gdf = knut.load_geo_data_frame(input_1, self.geo_col, exec_context)
         geodadf = pygeoda.open(gdf)
         data = geodadf[attributelist]
         b_vals = geodadf.GetRealCol(controlVar)
@@ -264,7 +250,7 @@ class SKATERNode:
         )
         gdf["clusterid"] = skatercluster["Clusters"]
         gdf.reset_index(drop=True, inplace=True)
-        return knext.Table.from_pandas(gdf)
+        return knut.to_table(gdf, exec_context)
 
 
 ############################################
@@ -302,14 +288,10 @@ class REDCAPNode:
      - Full-order and Wards-linkage
     """
 
-    geo_col = knext.ColumnParameter(
-        "Geometry column",
-        "Select the geometry column for Geodata.",
-        port_index=0,
-        column_filter=knut.is_geo,
-        include_row_key=False,
-        include_none_column=False,
+    geo_col = knut.geo_col_parameter(
+        description="Select the geometry column to implement spatial clustering."
     )
+
     bound_col = knext.ColumnParameter(
         "Bound column for minibound",
         "Select the bound column for clusters with minibound.",
@@ -358,7 +340,6 @@ class REDCAPNode:
         return None
 
     def execute(self, exec_context: knext.ExecutionContext, input_1):
-
         import pygeoda
 
         k = self.cluster_k
@@ -422,14 +403,10 @@ class SCHCNode:
      - ward
     """
 
-    geo_col = knext.ColumnParameter(
-        "Geometry column",
-        "Select the geometry column for Geodata.",
-        port_index=0,
-        column_filter=knut.is_geo,
-        include_row_key=False,
-        include_none_column=False,
+    geo_col = knut.geo_col_parameter(
+        description="Select the geometry column to implement spatial clustering."
     )
+
     bound_col = knext.ColumnParameter(
         "Bound column for minibound",
         "Select the bound column for clusters with minibound.",
@@ -477,10 +454,9 @@ class SCHCNode:
         return None
 
     def execute(self, exec_context: knext.ExecutionContext, input_1):
-
         import pygeoda
 
-        k = self.cluster_k
+        k = abs(self.cluster_k)
         controlVar = self.bound_col
         m_bound = self.minibound
         attributelist = self.bound_col.split(";")
@@ -538,14 +514,10 @@ class MaxPgreedyNode:
 
     """
 
-    geo_col = knext.ColumnParameter(
-        "Geometry column",
-        "Select the geometry column for Geodata.",
-        port_index=0,
-        column_filter=knut.is_geo,
-        include_row_key=False,
-        include_none_column=False,
+    geo_col = knut.geo_col_parameter(
+        description="Select the geometry column to implement spatial clustering."
     )
+
     bound_col = knext.ColumnParameter(
         "Bound column for minibound",
         "Select the bound column for clusters with minibound.",
@@ -577,7 +549,6 @@ class MaxPgreedyNode:
         return None
 
     def execute(self, exec_context: knext.ExecutionContext, input_1):
-
         import pygeoda
 
         controlVar = self.bound_col
@@ -635,14 +606,10 @@ class AZPgreedyNode:
 
     """
 
-    geo_col = knext.ColumnParameter(
-        "Geometry column",
-        "Select the geometry column for Geodata.",
-        port_index=0,
-        column_filter=knut.is_geo,
-        include_row_key=False,
-        include_none_column=False,
+    geo_col = knut.geo_col_parameter(
+        description="Select the geometry column to implement spatial clustering."
     )
+
     bound_col = knext.ColumnParameter(
         "Bound column for minibound",
         "Select the bound column for clusters with minibound.",
@@ -679,11 +646,10 @@ class AZPgreedyNode:
         return None
 
     def execute(self, exec_context: knext.ExecutionContext, input_1):
-
         import pygeoda
         import numpy as np
 
-        k = self.cluster_k
+        k = abs(self.cluster_k)
         controlVar = self.bound_col
         m_bound = self.minibound
         attributelist = self.bound_col.split(";")
@@ -745,13 +711,10 @@ class PeanoCurveNode:
 
     """
 
-    geo_col = knext.ColumnParameter(
-        "Geometry column",
-        "Select the geometry column for Geodata.",
-        column_filter=knut.is_geo,
-        include_row_key=False,
-        include_none_column=False,
+    geo_col = knut.geo_col_parameter(
+        description="Select the geometry column to calculate spatial order."
     )
+
     grid_k = knext.IntParameter(
         "Binary-digit scale",
         "Grid scale defined for spatial filling.",
@@ -859,14 +822,10 @@ class MSSCNode:
 
     """
 
-    geo_col = knext.ColumnParameter(
-        "Geometry column",
-        "Select the column containing the geometry data for spatial clustering.",
-        port_index=0,
-        column_filter=knut.is_geo,
-        include_row_key=False,
-        include_none_column=False,
+    geo_col = knut.geo_col_parameter(
+        description="Select the geometry column to implement spatial clustering."
     )
+
     order_col = knext.ColumnParameter(
         "Weighted order column",
         "Select the order column for MSSC clustering.",
