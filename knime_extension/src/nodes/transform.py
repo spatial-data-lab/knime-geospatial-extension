@@ -374,7 +374,7 @@ class PointsToLineNode:
         self.seiral_col = knut.column_exists_or_preset(
             configure_context, self.seiral_col, input_schema, knut.is_numeric
         )
-        return gNone
+        return None
 
     def execute(self, exec_context: knext.ExecutionContext, input):
         gdf = gp.GeoDataFrame(input.to_pandas(), geometry=self.geo_col)
@@ -488,27 +488,28 @@ class GeometryToMultiPointNode:
     description="Table with transformed geometry column.",
 )
 @knut.geo_node_description(
-    short_description="This node generate random points in polygons.",
-    description="""This node generate random points in polygons.
-    The Create Random Points node enables you to generate random points inside polygons based on a numerical value column and an ID column.
-    The numerical value column is used to determine the number of points to be generated inside each polygon.
-    Additionally, you will need to provide an ID column that will be used to identify each polygon.
-    The node will create a new MultiPoint geometry that includes a random set of points for each polygon,which can be exploded into Points by the node Multipart To Singlepart.
+    short_description="This node generates random points in polygons.",
+    description="""This node generates random points from a uniform distribution within (or along) each input geometry.
+For polygons, the points will be sampled within the area of the polygon. For lines, they will be sampled along
+the length of the LineString. For multi-part geometries, the weights of each part are selected according to their
+relevant attribute (area for Polygons, length for LineStrings), and then points are sampled from each part.
+Any other geometry type (e.g., Point, MultiPoint, GeometryCollection) is ignored, and an empty MultiPoint geometry
+is returned.
+    
+The numerical value column is used to determine the number of points to be generated 
+for the geometry of the same row. Additionally, you need to provide an ID column that will be used to 
+identify the original input row.
+    
+The node will create a new MultiPoint geometry that includes the random set of points for each input geometry, 
+which can be exploded into individual points using the 
+[Multipart To Singlepart node.](https://hub.knime.com/center%20for%20geographic%20analysis%20at%20harvard%20university/extensions/sdl.harvard.features.geospatial/latest/org.knime.python3.nodes.extension.ExtensionNodeSetFactory$DynamicExtensionNodeFactory:55ec235c/)
     """,
     references={
-        "Spatial Relationships": "https://shapely.readthedocs.io/en/stable/manual.html",
+        "Sampling points user guide": "https://geopandas.org/en/stable/docs/user_guide/sampling.html",
+        "sample_points method": "https://geopandas.org/en/stable/docs/reference/api/geopandas.GeoSeries.sample_points.html",
     },
 )
 class RandomPointNode:
-    """
-    This node generate random points from a uniform distribution within (or along) each input geometry.
-    For polygons, the points will be sampled within the area of the polygon. For lines, they will be sampled along
-    the length of the linestring. For multi-part geometries, the weights of each part are selected according to their
-    relevant attribute (area for Polygons, length for LineStrings), and then points are sampled from each part.
-
-    Any other geometry type (e.g. Point, GeometryCollection) is ignored, and an empty MultiPoint geometry is returned.
-    """
-
     geo_col = knext.ColumnParameter(
         "Geometry column",
         "Select the geometry column to transform.",
@@ -525,43 +526,51 @@ class RandomPointNode:
         include_none_column=False,
     )
     num_col = knext.ColumnParameter(
-        "Number column",
-        "Select the integer column for the number of points.",
+        "Number of points column",
+        "Select the column for the number of points to draw.",
         column_filter=knut.is_int,
         include_row_key=False,
         include_none_column=False,
     )
-
+    use_seed = knext.BoolParameter(
+        "Use random seed",
+        "I selected you may enter a fixed seed here to get reproducible results upon re-execution. "
+        + "If you do not specify a seed, a new random seed is taken for each execution.",
+        False,
+    )
     seed = knext.IntParameter(
         "Seed",
-        "A seed to initialize the random number generator. "
-        + "Leave empty to use a fresh unpredictable entropy with each node execution.",
-        None,
-    )
+        "A seed to initialize the random number generator.",
+        1234,
+    ).rule(knext.OneOf(use_seed, [True]), knext.Effect.SHOW)
 
     def configure(self, configure_context, input_schema_1):
         self.geo_col = knut.column_exists_or_preset(
             configure_context, self.geo_col, input_schema_1, knut.is_geo
         )
-        self.id_col = knut.column_exists_or_preset(
-            configure_context, self.id_col, input_schema_1, knut.is_numeric_or_string
-        )
-        self.num_col = knut.column_exists_or_preset(
-            configure_context, self.id_col, input_schema_1, knut.is_int
-        )
+
+        knut.column_exists(self.id_col, input_schema_1, knut.is_numeric_or_string)
+        id_type = input_schema_1[self.id_col].ktype
+
+        knut.column_exists(self.num_col, input_schema_1, knut.is_int)
+        num_type = input_schema_1[self.num_col].ktype
+
         return knext.Schema.from_columns(
             [
-                self.id_col,
-                self.num_col,
-                knext.Column(knut.TYPE_POINT, "Geometry"),
+                knext.Column(id_type, self.id_col),
+                knext.Column(num_type, self.num_col),
+                knext.Column(knut.TYPE_MULTI_POINT, "Geometry"),
             ]
         )
 
     def execute(self, exec_context: knext.ExecutionContext, input_1):
         gdf = knut.load_geo_data_frame(input_1, self.geo_col, exec_context)
-        gdf = gdf[(gdf[self.num_col] >= 1) & (gdf.area > 0)].reset_index(drop=True)
         gdf2 = gdf[[self.id_col, self.num_col]]
+        if self.use_seed:
+            seed = self.seed
+        else:
+            seed = None
         gdf2["Geometry"] = gdf[self.geo_col].sample_points(
-            size=gdf[self.num_col], method="uniform", seed=self.seed
+            size=gdf[self.num_col], method="uniform", seed=seed
         )
-        return knut.to_table(knext.Table.from_pandas(gdf2), exec_context)
+        return knut.to_table(gdf2, exec_context)
