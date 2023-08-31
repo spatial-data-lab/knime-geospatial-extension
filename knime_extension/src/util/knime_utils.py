@@ -629,7 +629,7 @@ class ResultSettings:
         "New column name",
         "The name of the new column that is appended if 'Append' is selected.",
         default_value="geometry",
-    )
+    ).rule(knext.OneOf(mode, [ResultSettingsMode.APPEND.name]), knext.Effect.SHOW)
 
     def __init__(self, mode=ResultSettingsMode.get_default().name, new_name="geometry"):
         self.mode = mode
