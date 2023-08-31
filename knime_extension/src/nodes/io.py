@@ -251,7 +251,7 @@ class GeoPackageReaderNode:
         try:
             gdf.crs = src.crs
         except:
-            print("Invilid CRS")
+            print("Invalid CRS")
         gdf = gdf.reset_index(drop=True)
         if "<Row Key>" in gdf.columns:
             gdf = gdf.drop(columns="<Row Key>")
