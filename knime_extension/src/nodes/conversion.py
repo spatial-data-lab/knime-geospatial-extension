@@ -930,30 +930,43 @@ class GeoReverseGeocodingNode:
 )
 class IPToGeometryNode:
     """Geocodes the given IP addresses.
-    The `geometry` column contains the point geometry for the given IP address.
-    You can change the service provider and API key in the node settings. If you use ipapi, you don't need an API key for the free plan.
-    Notice that the service provider and API key are only required for some service providers.
-    Please register for an API key for the service provider you want to use:
+    Gets the geo location of the provided IP addresses by using one of the supported services.
+    Please choose the desired service provider and enter your personal API key in the node settings (optional).
 
-    - `ipinfo.io`: [ipinfo.io](https://ipinfo.io/)
-    - `ipapi.co`: [ipapi.co](https://ipapi.co/)
-    - `abstractapi.com`: [abstractapi.com](https://www.abstractapi.com/ip-geolocation-api)
+    To register for an API key please visit the homepage of the service provider of your choice at:
+
+    - [ipinfo](https://ipinfo.io/)
+    - [ipapi](https://ipapi.co/)
+    - [abstract IP Geolocation API](https://www.abstractapi.com/ip-geolocation-api)
     """
+
+    class _ProviderOptions(knext.EnumParameterOptions):
+        IPINFO = (
+            "ipinfo.io",
+            "Pricing and limits can be found [here.](https://ipinfo.io/pricing)",
+        )
+        IPAPI = (
+            "ipapi",
+            "Pricing and limits can be found [here.](https://ipapi.co/#pricing)",
+        )
+        ABSTRACT = (
+            "abstract IP Geolocation API",
+            "Pricing and limits can be found [here.](https://www.abstractapi.com/api/ip-geolocation-api#pricing)",
+        )
 
     ip_col = knext.ColumnParameter(
         "IP address column",
-        "Select the IP address column to geocode. It should contain a string with the IP address to geocode. such as `8.8.8.8`."
-        + "The column must contain a string with the IP address to geocode.",
+        "Select the IP address column to geocode. It should contain a string with the IP address to geocode. such as `8.8.8.8`.",
         column_filter=knut.is_string,
         include_row_key=False,
         include_none_column=False,
     )
 
-    service_provider = knext.StringParameter(
+    service_provider = knext.EnumParameter(
         "Service provider",
         "Select the service provider to use for IP to geometry conversion.",
-        default_value="ipinfo.io",
-        enum=["ipinfo.io", "ipapi.co","abstractapi.com"],
+        default_value=_ProviderOptions.IPINFO.name,
+        enum=_ProviderOptions,
     )
 
     access_token = knext.StringParameter(
@@ -965,168 +978,234 @@ class IPToGeometryNode:
 
     min_delay_seconds = knext.IntParameter(
         "Minimum delay (seconds)",
-        "Enter the minimum delay in seconds between two IP to geometry conversion requests.",
+        "Enter the minimum delay in seconds between two requests.",
         default_value=1,
+        is_advanced=True,
     )
 
     default_timeout = knext.IntParameter(
         "Default timeout (seconds)",
-        "Enter the default timeout in seconds for IP to geometry conversion requests.",
+        "Enter the default timeout in seconds for each request.",
         default_value=10,
+        is_advanced=True,
     )
 
-    name = "geometry"
+    max_retry = knext.IntParameter(
+        "Maximum retries on error",
+        "Number of retries to perform for each IP address.",
+        1,
+        is_advanced=True,
+    )
+
+    fail_on_error = knext.BoolParameter(
+        "Fail on error",
+        "If there are errors the execution will stop, and all results are discarded. "
+        + "Otherwise, missing values are returned for each failing request. "
+        + "In this case you can inspect the KNIME log file for any error messages.",
+        True,
+        is_advanced=True,
+    )
+
+    name = "Geometry"
 
     def configure(self, configure_context, input_schema):
-
         self.ip_col = knut.column_exists_or_preset(
             configure_context, self.ip_col, input_schema, knut.is_string
         )
-# FIXME: add the columns to the output schema
 
         output_schema = input_schema.append(
             knext.Column(
                 ktype=knext.string(),
-                name=knut.get_unique_column_name("city", input_schema),
+                name=knut.get_unique_column_name("City", input_schema),
             )
         )
 
-        output_schema.append(
+        output_schema = output_schema.append(
             knext.Column(
                 ktype=knext.string(),
-                name=knut.get_unique_column_name("region", input_schema),
+                name=knut.get_unique_column_name("Region", input_schema),
             )
         )
 
-        output_schema.append(
+        output_schema = output_schema.append(
             knext.Column(
                 ktype=knext.string(),
-                name=knut.get_unique_column_name("country", input_schema),
+                name=knut.get_unique_column_name("Country", input_schema),
             )
         )
 
-        output_schema.append(
+        output_schema = output_schema.append(
             knext.Column(
                 ktype=knext.double(),
-                name=knut.get_unique_column_name("latitude", input_schema),
+                name=knut.get_unique_column_name("Latitude", input_schema),
             )
         )
 
-        output_schema.append(
+        output_schema = output_schema.append(
             knext.Column(
                 ktype=knext.double(),
-                name=knut.get_unique_column_name("longitude", input_schema),
+                name=knut.get_unique_column_name("Longitude", input_schema),
             )
         )
 
-        output_schema.append(
+        output_schema = output_schema.append(
             knext.Column(
                 ktype=knut.TYPE_POINT,
                 name=knut.get_unique_column_name(self.name, input_schema),
             )
         )
 
-        return None
+        return output_schema
 
     def execute(self, exec_context: knext.ExecutionContext, input_table):
         df = input_table.to_pandas()
-
-        import ipinfo
         import time
 
         access_token = self.access_token
-        if self.service_provider == "ipinfo.io":
+        if self.service_provider == self._ProviderOptions.IPINFO.name:
+            import ipinfo
+
             handler = ipinfo.getHandler(access_token)
         process_counter = 1
         n_loop = len(df)
 
-        city_col = knut.get_unique_column_name("city", input_table.schema)
-        region_col = knut.get_unique_column_name("region", input_table.schema)
-        country_col = knut.get_unique_column_name("country", input_table.schema)
-        latitude_col = knut.get_unique_column_name("latitude", input_table.schema)
-        longitude_col = knut.get_unique_column_name("longitude", input_table.schema)
-        
+        city_col = knut.get_unique_column_name("City", input_table.schema)
+        region_col = knut.get_unique_column_name("Region", input_table.schema)
+        country_col = knut.get_unique_column_name("Country", input_table.schema)
+        latitude_col = knut.get_unique_column_name("Latitude", input_table.schema)
+        longitude_col = knut.get_unique_column_name("Longitude", input_table.schema)
+
         for index, row in df.iterrows():
             ip = row[self.ip_col]
-            if self.service_provider == "ipinfo.io":
-                for i in range(3):
-                    try:
-                        details = handler.getDetails(ip, timeout=self.default_timeout)
-                        break
-                    except Exception as e:
-                        print(e)
-                        time.sleep(1)
-                        continue
-                # details = handler.getDetails(ip, timeout=self.default_timeout)
-                df.at[index, city_col] = details.city
-                df.at[index, region_col] = details.region
-                df.at[index, country_col] = details.country_name
-                df.at[index, latitude_col] = float(details.latitude)
-                df.at[index, longitude_col] = float(details.longitude)
-            elif self.service_provider == "ipapi.co":
-                import requests
-                url = "https://ipapi.co/%s/json"%(ip)
-                if access_token != "":
-                    url += "?key=%s"%(access_token)
+            try:
+                if self.service_provider == self._ProviderOptions.IPINFO.name:
+                    result = self._call_ipinfo(handler, ip)
+                elif self.service_provider == self._ProviderOptions.IPAPI.name:
+                    result = self._call_ipapi(ip)
+                elif self.service_provider == self._ProviderOptions.ABSTRACT.name:
+                    result = self._call_abstract(ip)
+                else:
+                    raise RuntimeError(
+                        f"Unknown service provider: {self.service_provider}"
+                    )
+            except Exception as e:
+                if self.fail_on_error:
+                    raise e
+                else:
+                    result = dict(
+                        city=None,
+                        region=None,
+                        country=None,
+                        latitude=None,
+                        longitude=None,
+                    )
 
-                for i in range(3):
-                    try:
-                        r = requests.get(url, timeout=self.default_timeout)
-                        res_json = r.json()
-                        break
-                    except Exception as e:
-                        print(e)
-                        time.sleep(1)
-                        continue
-                # r = requests.get(url, timeout=self.default_timeout)
-                res_json = r.json()
-            
-                df.at[index, city_col] = res_json["city"]
-                df.at[index, region_col] = res_json["region"]
-                df.at[index, country_col] = res_json["country_name"]
-                df.at[index, latitude_col] = res_json["latitude"]
-                df.at[index, longitude_col] = res_json["longitude"]
-
-            elif self.service_provider == "abstractapi.com":
-                import requests
-                url = "https://ipgeolocation.abstractapi.com/v1/?api_key=%s&ip_address=%s"%(access_token, ip)
-
-                for i in range(3):
-                    try:
-                        r = requests.get(url, timeout=self.default_timeout)
-                        res_json = r.json()
-                        break
-                    except Exception as e:
-                        print(e)
-                        time.sleep(1)
-                        continue
-                # r = requests.get(url, timeout=self.default_timeout)
-                res_json = r.json()
-
-                df.at[index, city_col] = res_json["city"]
-                df.at[index, region_col] = res_json["region"]
-                df.at[index, country_col] = res_json["country"]
-                df.at[index, latitude_col] = res_json["latitude"]
-                df.at[index, longitude_col] = res_json["longitude"]
-            else:
-                pass
-
+            df.at[index, city_col] = result["city"]
+            df.at[index, region_col] = result["region"]
+            df.at[index, country_col] = result["country"]
+            df.at[index, latitude_col] = result["latitude"]
+            df.at[index, longitude_col] = result["longitude"]
             exec_context.set_progress(
                 0.9 * process_counter / n_loop,
                 "Batch %d of %d processed" % (process_counter, n_loop),
             )
+            knut.check_canceled(exec_context)
             process_counter += 1
 
             time.sleep(self.min_delay_seconds)
-       
 
-            
         # convert to GeoDataFrame
-        geo_col_name = knut.get_unique_column_name("geometry", input_table.schema)
+        geo_col_name = knut.get_unique_column_name("Geometry", input_table.schema)
+        # will return POINT(NaN NaN) for None values https://github.com/geopandas/geopandas/issues/1805
         df[geo_col_name] = gp.points_from_xy(df[longitude_col], df[latitude_col])
         gdf = gp.GeoDataFrame(df, geometry=geo_col_name, crs=kproj.DEFAULT_CRS)
 
         return knut.to_table(gdf)
+
+    def _call_abstract(self, ip):
+        if self.access_token is None or self.access_token == "":
+            raise RuntimeError("Access token required for abstractapi.com")
+        url = "https://ipgeolocation.abstractapi.com/v1/?api_key=%s&ip_address=%s" % (
+            self.access_token,
+            ip,
+        )
+        return self._do_request(
+            url,
+            dict(
+                city="city",
+                region="region",
+                country="country",
+                latitude="latitude",
+                longitude="longitude",
+            ),
+        )
+
+    def _call_ipapi(self, ip):
+        url = "https://ipapi.co/%s/json" % (ip)
+        if self.access_token != "":
+            url += "?key=%s" % (self.access_token)
+        return self._do_request(
+            url,
+            dict(
+                city="city",
+                region="region",
+                country="country_name",
+                latitude="latitude",
+                longitude="longitude",
+            ),
+        )
+
+    def _call_ipinfo(self, handler, ip):
+        for i in range(self.max_retry):
+            try:
+                details = handler.getDetails(ip, timeout=self.default_timeout)
+                break
+            except Exception as e:
+                import time
+
+                knut.LOGGER.warning(f"Exception while calling ipinfo.io API: {e}")
+                time.sleep(1)
+                continue
+        if "bogon" in details.all:
+            raise RuntimeError(f"Invalid IP: {ip}")
+        return dict(
+            city=details.city,
+            region=details.region,
+            country=details.country_name,
+            latitude=float(details.latitude),
+            longitude=float(details.longitude),
+        )
+
+    def _do_request(self, url, col_map):
+        import time
+        import requests
+
+        last_error = None
+        for i in range(self.max_retry):
+            try:
+                r = requests.get(url, timeout=self.default_timeout)
+                if r:
+                    res_json = r.json()
+                    last_error = None
+                    break
+                else:
+                    last_error = r.text
+                    raise Exception("Request did fail: " + last_error)
+            except Exception as e:
+                knut.LOGGER.warning(f"Exception while calling API: {e}")
+                time.sleep(1)
+                continue
+        if last_error:
+            raise Exception(
+                f"Request did fail: {last_error}. For more details see the KNIME log file"
+            )
+        return dict(
+            city=res_json[col_map["city"]],
+            region=res_json[col_map["region"]],
+            country=res_json[col_map["country"]],
+            latitude=res_json[col_map["latitude"]],
+            longitude=res_json[col_map["longitude"]],
+        )
 
 
 ############################################
