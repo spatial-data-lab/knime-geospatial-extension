@@ -223,7 +223,7 @@ class ColorSettings:
             "Percentiles",
             "StdMean",
         ],
-    )
+    ).rule(knext.OneOf(use_classify, [True]), knext.Effect.SHOW)
 
     classification_bins = knext.IntParameter(
         "Number of classes",
@@ -231,7 +231,7 @@ class ColorSettings:
         default_value=5,
         min_value=1,
         max_value=50,
-    )
+    ).rule(knext.OneOf(use_classify, [True]), knext.Effect.SHOW)
 
 
 @knext.parameter_group(label="Color Legend Settings")
@@ -697,7 +697,7 @@ class StaticColorSettings:
             "Percentiles",
             "StdMean",
         ],
-    )
+    ).rule(knext.OneOf(use_classify, [True]), knext.Effect.SHOW)
 
     classification_bins = knext.IntParameter(
         "Number of classes",
@@ -705,7 +705,7 @@ class StaticColorSettings:
         default_value=5,
         min_value=1,
         max_value=50,
-    )
+    ).rule(knext.OneOf(use_classify, [True]), knext.Effect.SHOW)
 
     edge_color = knext.StringParameter(
         "Edge color",
@@ -1568,6 +1568,7 @@ class ViewNodeHeatmap:
         "Select the color map to use for the heatmap. See [branca](https://python-visualization.github.io/branca/colormap.html) for more information.",
         default_value="YlOrRd_09",
         enum=list(_color_bars.keys()),
+        is_advanced=True,
     )
 
     weight_col = knext.ColumnParameter(
@@ -1582,6 +1583,7 @@ class ViewNodeHeatmap:
         "Minimum opacity",
         "The minimum opacity the lowest value in the heatmap will have.",
         default_value=0.5,
+        is_advanced=True,
     )
 
     max_zoom = knext.IntParameter(
@@ -1589,12 +1591,14 @@ class ViewNodeHeatmap:
         """Zoom level where the points reach maximum intensity (as intensity scales with zoom), 
         equals maxZoom of the map by default.""",
         default_value=18,
+        is_advanced=True,
     )
 
     radius = knext.IntParameter(
         "Radius",
         "Radius of each datapoint of the heatmap.",
         default_value=25,
+        is_advanced=True,
     )
 
     blur = knext.IntParameter(
@@ -1602,6 +1606,7 @@ class ViewNodeHeatmap:
         """The blur factor that will be applied to all data points. 
         The higher the blur factor is, the smoother the gradients will be.""",
         default_value=15,
+        is_advanced=True,
     )
 
     basemap_settings = BaseMapSettings()
