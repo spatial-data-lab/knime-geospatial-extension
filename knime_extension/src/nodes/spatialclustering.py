@@ -209,8 +209,8 @@ class SKATERNode:
         default_value=4,
     )
     minibound = knext.DoubleParameter(
-        "Minimum sum value for bound variable in output clusters",
-        "A minimum value that the sum value of bounding variable in each cluster should be greater than.",
+        "Minimum total value for the bounding variable in each output cluster",
+        "The sum of the bounding variable in each cluster must be greater than this minimum value.",
     )
     weight_mode = knext.StringParameter(
         "Spatial weight model",
@@ -275,18 +275,53 @@ class REDCAPNode:
     """
     REDCAP (Regionalization with dynamically constrained agglomerative clustering and partitioning).
 
-    It is developed by D. Guo (2008). Like SKATER, REDCAP starts from building a spanning tree with
+    It is developed by [D. Guo (2008)](https://doi.org/10.1080/13658810701674970). Like SKATER, REDCAP starts from building a spanning tree with
     4 different ways (single-linkage, average-linkage, complete-linkage and wards-linkage).
     Then,REDCAP provides 2 different ways (first‐order and full-order constraining) to prune
     the tree to find clusters. The first-order approach with a minimum spanning tree is exactly
     the same with SKATER. In GeoDa and pygeoda, the following methods are provided:
 
-     - First-order and Single-linkage
-     - Full-order and Complete-linkage
-     - Full-order and Average-linkage
-     - Full-order and Single-linkage
-     - Full-order and Wards-linkage
+     - First-order and Single-linkage:in this local approach, clusters are formed by considering only immediate neighbors, 
+            and their distance is measured by the shortest distance between any pair of points from each cluster.
+     - Full-order and Complete-linkage:This method also considers all points in the dataset for clustering and calculates 
+            the distance between clusters as the average distance between all pairs of points, one from each cluster.
+     - Full-order and Average-linkage:This method also considers all points in the dataset for clustering and calculates 
+            the distance between clusters as the average distance between all pairs of points, one from each cluster.
+     - Full-order and Single-linkage:Using a global context, this approach considers all points in the dataset for clustering 
+            and measures the distance between clusters as the shortest distance between any pair of points from each cluster.
+     - Full-order and Wards-linkage:All points in the dataset are considered for clustering, and the distance 
+            between clusters is calculated in a way that minimizes the internal variance within each cluster.
     """
+    class LinkageModes(knext.EnumParameterOptions):
+        FIRST_SINGLE = (
+            "firsorder-singlelinkage",
+            """First-order and Single-linkage. In this local approach, clusters are formed by considering only immediate neighbors, 
+            and their distance is measured by the shortest distance between any pair of points from each cluster.""",
+        )
+        FULL_SINGLE = (
+            "fullorder-singlelinkage",
+            """Full-order and Single-linkage. Using a global context, this approach considers all points in the dataset for clustering 
+            and measures the distance between clusters as the shortest distance between any pair of points from each cluster.""",
+        )
+        FULL_COMPLETE = (
+            "fullorder-completelinkage",
+            """Full-order and Average-linkage. This method also considers all points in the dataset for clustering and calculates 
+            the distance between clusters as the average distance between all pairs of points, one from each cluster.""",
+        )
+        FULL_AVERAGE = (
+            "fullorder-averagelinkage",
+            """Full-order and Average-linkage. This method also considers all points in the dataset for clustering and calculates 
+            the distance between clusters as the average distance between all pairs of points, one from each cluster.""",
+        )
+        FULL_WARD = (
+            "fullorder-wardlinkage",
+            """Full-order and Wards-linkage.  All points in the dataset are considered for clustering, and the distance 
+            between clusters is calculated in a way that minimizes the internal variance within each cluster.""",
+        )  
+
+        @classmethod
+        def get_default(cls):
+            return cls.FULL_COMPLETE
 
     geo_col = knut.geo_col_parameter(
         description="Select the geometry column to implement spatial clustering."
@@ -301,8 +336,8 @@ class REDCAPNode:
         include_none_column=False,
     )
     attribute_list = knext.StringParameter(
-        "Attribute columns for Clustering",
-        "Input the column names with Semicolon.",
+        "Attribute columns for clustering",
+        "Input the column names with semicolon.",
         "",
     )
     cluster_k = knext.IntParameter(
@@ -311,26 +346,21 @@ class REDCAPNode:
         default_value=4,
     )
     minibound = knext.DoubleParameter(
-        "Minimum sum value for bound variable in output clusters",
-        "A minimum value that the sum value of bounding variable in each cluster should be greater than.",
+        "Minimum total value for the bounding variable in each output cluster",
+        "The sum of the bounding variable in each cluster must be greater than this minimum value.",
     )
     weight_mode = knext.StringParameter(
-        "Spatial Weight model",
+        "Spatial weight model",
         "Input spatial weight mode.",
         "Queen",
         enum=["Queen", "Rook"],
     )
-    link_mode = knext.StringParameter(
-        "Linkage model",
-        "Input linkage mode.",
-        "fullorder-completelinkage",
-        enum=[
-            "firsorder-singlelinkage",
-            "fullorder-singlelinkage",
-            "fullorder-completelinkage",
-            "fullorder-averagelinkage",
-            "fullorder-wardlinkage",
-        ],
+
+    link_mode  = knext.EnumParameter(
+        label="Linkage model",
+        description="Input linkage mode.",
+        default_value=LinkageModes.get_default().name,
+        enum=LinkageModes,
     )
 
     def configure(self, configure_context, input_schema):
