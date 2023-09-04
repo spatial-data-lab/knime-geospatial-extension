@@ -14,7 +14,7 @@ __category = knext.category(
 
 # Root path for all node icons in this file
 __NODE_ICON_PATH = "icons/icon/SpatialClustering/"
-
+_CLUSTER_ID = "Cluster ID"
 
 # def  geodataframe to PPP
 def gdf2ppp(gdf):
@@ -198,7 +198,7 @@ class SKATERNode:
         include_row_key=False,
         include_none_column=False,
     )
-    attribute_list = knext.StringParameter(
+    attribute_list = knext.MultiColumnParameter(
         "Attribute columns for clustering",
         "Input the column names with Semicolon.",
         "",
@@ -223,7 +223,7 @@ class SKATERNode:
         self.geo_col = knut.column_exists_or_preset(
             configure_context, self.geo_col, input_schema, knut.is_geo
         )
-        return None
+        return input_schema.append(knext.Column( knext.int64(), name=_CLUSTER_ID))
 
     def execute(self, exec_context: knext.ExecutionContext, input_1):
         import pygeoda
@@ -248,7 +248,7 @@ class SKATERNode:
             bound_variable=b_vals,
             min_bound=m_bound,
         )
-        gdf["clusterid"] = skatercluster["Clusters"]
+        gdf[_CLUSTER_ID] = skatercluster["Clusters"]
         gdf.reset_index(drop=True, inplace=True)
         return knut.to_table(gdf, exec_context)
 
@@ -265,7 +265,7 @@ class SKATERNode:
 )
 @knext.input_table(
     name="Geodata table",
-    description="Geodata from the input file path.",
+    description="Geodata for spatial clustering implementation.",
 )
 @knext.output_table(
     name="Output Table",
@@ -367,7 +367,7 @@ class REDCAPNode:
         self.geo_col = knut.column_exists_or_preset(
             configure_context, self.geo_col, input_schema, knut.is_geo
         )
-        return None
+        return input_schema.append(knext.Column( knext.int64(), name=_CLUSTER_ID))
 
     def execute(self, exec_context: knext.ExecutionContext, input_1):
         import pygeoda
@@ -377,7 +377,7 @@ class REDCAPNode:
         m_bound = self.minibound
         attributelist = self.bound_col.split(";")
         linkage = self.link_mode
-        gdf = gp.GeoDataFrame(input_1.to_pandas(), geometry=self.geo_col)
+        gdf = knut.load_geo_data_frame(input_1, self.geo_col, exec_context)
         geodadf = pygeoda.open(gdf)
         data = geodadf[attributelist]
         b_vals = geodadf.GetRealCol(controlVar)
@@ -394,9 +394,9 @@ class REDCAPNode:
             bound_variable=b_vals,
             min_bound=m_bound,
         )
-        gdf["clusterid"] = final_cluster["Clusters"]
+        gdf[_CLUSTER_ID] = final_cluster["Clusters"]
         gdf.reset_index(drop=True, inplace=True)
-        return knext.Table.from_pandas(gdf)
+        return knut.to_table(gdf, exec_context)
 
 
 ############################################
@@ -411,7 +411,7 @@ class REDCAPNode:
 )
 @knext.input_table(
     name="Geodata table",
-    description="Geodata from the input file path.",
+    description="Geodata for spatial clustering implementation.",
 )
 @knext.output_table(
     name="Output Table",
@@ -446,7 +446,7 @@ class SCHCNode:
         include_none_column=False,
     )
     attribute_list = knext.StringParameter(
-        "Attribute columns for Clustering",
+        "Attribute columns for clustering",
         "Input the column names with Semicolon.",
         "",
     )
@@ -456,8 +456,8 @@ class SCHCNode:
         default_value=4,
     )
     minibound = knext.DoubleParameter(
-        "Minimum sum value for bound variable in output clusters",
-        "A minimum value that the sum value of bounding variable in each cluster should be greater than.",
+        "Minimum total value for the bounding variable in each output cluster",
+        "The sum of the bounding variable in each cluster must be greater than this minimum value.",
     )
     weight_mode = knext.StringParameter(
         "Spatial Weight model",
@@ -481,7 +481,7 @@ class SCHCNode:
         self.geo_col = knut.column_exists_or_preset(
             configure_context, self.geo_col, input_schema, knut.is_geo
         )
-        return None
+        return input_schema.append(knext.Column( knext.int64(), name=_CLUSTER_ID))
 
     def execute(self, exec_context: knext.ExecutionContext, input_1):
         import pygeoda
@@ -491,7 +491,7 @@ class SCHCNode:
         m_bound = self.minibound
         attributelist = self.bound_col.split(";")
         linkage = self.link_mode
-        gdf = gp.GeoDataFrame(input_1.to_pandas(), geometry=self.geo_col)
+        gdf = knut.load_geo_data_frame(input_1, self.geo_col, exec_context)
         geodadf = pygeoda.open(gdf)
         data = geodadf[attributelist]
         b_vals = geodadf.GetRealCol(controlVar)
@@ -508,9 +508,9 @@ class SCHCNode:
             bound_variable=b_vals,
             min_bound=m_bound,
         )
-        gdf["clusterid"] = final_cluster["Clusters"]
+        gdf[_CLUSTER_ID] = final_cluster["Clusters"]
         gdf.reset_index(drop=True, inplace=True)
-        return knext.Table.from_pandas(gdf)
+        return knut.to_table(gdf, exec_context)
 
 
 ############################################
@@ -525,7 +525,7 @@ class SCHCNode:
 )
 @knext.input_table(
     name="Geodata table",
-    description="Geodata from the input file path.",
+    description="Geodata for spatial clustering implementation.",
 )
 @knext.output_table(
     name="Output Table",
@@ -557,13 +557,13 @@ class MaxPgreedyNode:
         include_none_column=False,
     )
     attribute_list = knext.StringParameter(
-        "Attribute columns for Clustering",
+        "Attribute columns for clustering",
         "Input the column names with Semicolon.",
         "",
     )
     minibound = knext.DoubleParameter(
-        "Minimum sum value for bound variable in output clusters",
-        "A minimum value that the sum value of bounding variable in each cluster should be greater than.",
+        "Minimum total value for the bounding variable in each output cluster",
+        "The sum of the bounding variable in each cluster must be greater than this minimum value.",
     )
     weight_mode = knext.StringParameter(
         "Spatial Weight model",
@@ -576,7 +576,7 @@ class MaxPgreedyNode:
         self.geo_col = knut.column_exists_or_preset(
             configure_context, self.geo_col, input_schema, knut.is_geo
         )
-        return None
+        return input_schema.append(knext.Column( knext.int64(), name=_CLUSTER_ID))
 
     def execute(self, exec_context: knext.ExecutionContext, input_1):
         import pygeoda
@@ -585,7 +585,7 @@ class MaxPgreedyNode:
         m_bound = self.minibound
         attributelist = self.bound_col.split(";")
 
-        gdf = gp.GeoDataFrame(input_1.to_pandas(), geometry=self.geo_col)
+        gdf = knut.load_geo_data_frame(input_1, self.geo_col, exec_context)
         geodadf = pygeoda.open(gdf)
         data = geodadf[attributelist]
         b_vals = geodadf.GetRealCol(controlVar)
@@ -600,9 +600,9 @@ class MaxPgreedyNode:
             bound_variable=b_vals,
             min_bound=m_bound,
         )
-        gdf["clusterid"] = final_cluster["Clusters"]
+        gdf[_CLUSTER_ID] = final_cluster["Clusters"]
         gdf.reset_index(drop=True, inplace=True)
-        return knext.Table.from_pandas(gdf)
+        return knut.to_table(gdf, exec_context)
 
 
 ############################################
@@ -617,7 +617,7 @@ class MaxPgreedyNode:
 )
 @knext.input_table(
     name="Geodata table",
-    description="Geodata from the input file path.",
+    description="Geodata for spatial clustering implementation.",
 )
 @knext.output_table(
     name="Output Table",
@@ -649,7 +649,7 @@ class AZPgreedyNode:
         include_none_column=False,
     )
     attribute_list = knext.StringParameter(
-        "Attribute columns for Clustering",
+        "Attribute columns for clustering",
         "Input the column names with Semicolon.",
         "",
     )
@@ -659,8 +659,8 @@ class AZPgreedyNode:
         default_value=4,
     )
     minibound = knext.DoubleParameter(
-        "Minimum sum value for bound variable in output clusters",
-        "A minimum value that the sum value of bounding variable in each cluster should be greater than.",
+        "Minimum total value for the bounding variable in each output cluster",
+        "The sum of the bounding variable in each cluster must be greater than this minimum value.",
     )
     weight_mode = knext.StringParameter(
         "Spatial Weight model",
@@ -673,7 +673,7 @@ class AZPgreedyNode:
         self.geo_col = knut.column_exists_or_preset(
             configure_context, self.geo_col, input_schema, knut.is_geo
         )
-        return None
+        return input_schema.append(knext.Column( knext.int64(), name=_CLUSTER_ID))
 
     def execute(self, exec_context: knext.ExecutionContext, input_1):
         import pygeoda
@@ -684,7 +684,7 @@ class AZPgreedyNode:
         m_bound = self.minibound
         attributelist = self.bound_col.split(";")
 
-        gdf = gp.GeoDataFrame(input_1.to_pandas(), geometry=self.geo_col)
+        gdf = knut.load_geo_data_frame(input_1, self.geo_col, exec_context)
         geodadf = pygeoda.open(gdf)
         data = geodadf[attributelist]
         b_vals = np.array(geodadf.GetRealCol(controlVar))
@@ -700,9 +700,9 @@ class AZPgreedyNode:
             bound_variable=b_vals,
             min_bound=m_bound,
         )
-        gdf["clusterid"] = final_cluster["Clusters"]
+        gdf[_CLUSTER_ID] = final_cluster["Clusters"]
         gdf.reset_index(drop=True, inplace=True)
-        return knext.Table.from_pandas(gdf)
+        return knut.to_table(gdf, exec_context)
 
 
 ############################################
@@ -717,7 +717,7 @@ class AZPgreedyNode:
 )
 @knext.input_table(
     name="Geodata table",
-    description="Geodata from the input file path.",
+    description="Geodata for calculating peano curve spatal order.",
 )
 @knext.output_table(
     name="Output Table",
@@ -751,11 +751,14 @@ class PeanoCurveNode:
         default_value=32,
     )
 
+    _PEANO_CURVE_ORDER = "PeanoOrder"
+
     def configure(self, configure_context, input_schema):
         self.geo_col = knut.column_exists_or_preset(
             configure_context, self.geo_col, input_schema, knut.is_geo
         )
-        return None
+        return input_schema.append(knext.Column( knext.double(), name=_CLUSTER_ID))
+
 
     def execute(self, exec_context: knext.ExecutionContext, input_1):
         # Copy input to output
@@ -763,7 +766,7 @@ class PeanoCurveNode:
         import pandas as pd
         import numpy as np
 
-        gdf0 = gp.GeoDataFrame(input_1.to_pandas(), geometry=self.geo_col)
+        gdf0 = knut.load_geo_data_frame(input_1, self.geo_col, exec_context)
         gdf = gp.GeoDataFrame(geometry=gdf0.geometry, crs=gdf0.crs)
         # Scale Coordinates
         gdf["ctrX"] = gdf.centroid.x
@@ -813,9 +816,9 @@ class PeanoCurveNode:
             x = gdf.loc[(gdf.theid == i), "unitx"].item()
             y = gdf.loc[(gdf.theid == i), "unity"].item()
             gdf.loc[(gdf.theid == i), "peanoorder"] = Peano(x, y, self.grid_k)
-        gdf0["peanoorder"] = gdf.peanoorder
+        gdf0[self._PEANO_CURVE_ORDER] = gdf.peanoorder
         gdf0.reset_index(drop=True, inplace=True)
-        return knext.Table.from_pandas(gdf0)
+        return knut.to_table(gdf0, exec_context)
 
 
 ############################################
@@ -830,7 +833,7 @@ class PeanoCurveNode:
 )
 @knext.input_table(
     name="Geodata table",
-    description="Geodata from the input file path.",
+    description="Geodata for implementating modified scale-space clustering.",
 )
 @knext.output_table(
     name="Output Table",
@@ -874,7 +877,6 @@ class MSSCNode:
         "Input the capacity list with Semicolon.",
         "",
     )
-    _clusterid = "clusterid"
     _isolated = "isolate"
 
     def configure(self, configure_context, input_schema):
@@ -889,7 +891,7 @@ class MSSCNode:
                 ),
                 knext.Column(
                     knext.int64(),
-                    knut.get_unique_column_name(self._clusterid, input_schema),
+                    knut.get_unique_column_name(_CLUSTER_ID, input_schema),
                 ),
             ]
         )
@@ -907,7 +909,7 @@ class MSSCNode:
 
         newlist = ConstraintList + [self.order_col] + [self.geo_col]
 
-        gdf = gp.GeoDataFrame(input_1.to_pandas(), geometry=self.geo_col)
+        gdf = knut.load_geo_data_frame(input_1, self.geo_col, exec_context)
 
         df = gdf[newlist].copy()
         df["OriginalID"] = list(range(df.shape[0]))
@@ -1013,9 +1015,9 @@ class MSSCNode:
         df = df.set_index("OriginalID", drop=False).sort_index()
 
         gdf[self._isolated] = df.isolate.tolist()
-        gdf[self._clusterid] = df.SubClusID.tolist()
+        gdf[_CLUSTER_ID] = df.SubClusID.tolist()
         gdf.reset_index(drop=True, inplace=True)
-        return knext.Table.from_pandas(gdf)
+        return knut.to_table(gdf, exec_context)
 
 
 ############################################
@@ -1063,7 +1065,7 @@ class MSSCmodifierNode:
         include_none_column=False,
     )
     isolate_col = knext.ColumnParameter(
-        "isolate column from MSSC",
+        "Isolate column from MSSC",
         "Select the column 'isoloate'generated by MSSC clustering.",
         port_index=0,
         column_filter=knut.is_numeric,
@@ -1100,7 +1102,7 @@ class MSSCmodifierNode:
         TheID = "TheID"
         isolateid = self.isolate_col
         keycolum = ConstraintList + [SubClusID] + [isolateid] + [self.geo_col]
-        gdf = gp.GeoDataFrame(input_1.to_pandas(), geometry=self.geo_col)
+        gdf = knut.load_geo_data_frame(input_1, self.geo_col, exec_context)
         df = gdf[keycolum].copy()
 
         df = df.rename(columns={isolateid: "isolate", SubClusID: "SubClusID"})
@@ -1219,7 +1221,7 @@ class MSSCmodifierNode:
         gdf[isolateid] = df.isolate.tolist()
 
         # gdf.reset_index(drop=True, inplace=True)
-        return knext.Table.from_pandas(gdf)
+        return knut.to_table(gdf, exec_context)
 
 
 ############################################
@@ -1234,7 +1236,7 @@ class MSSCmodifierNode:
 )
 @knext.input_table(
     name="Geodata table",
-    description="Geodata from the clustering.",
+    description="Geodata with tags of cluster and isoloate status .",
 )
 @knext.output_table(
     name="Output Table",
@@ -1301,7 +1303,7 @@ class MSSCisolationNode:
         SubClusID = self.clusterid_col
         isolateid = self.isolate_col
         keycolum = ConstraintList + [SubClusID] + [isolateid] + [self.geo_col]
-        gdf0 = gp.GeoDataFrame(input_1.to_pandas(), geometry=self.geo_col)
+        gdf0 = knut.load_geo_data_frame(input_1, self.geo_col, exec_context)
         gdf = gdf0[keycolum].copy()
 
         gdf = gdf.rename(
@@ -1394,4 +1396,4 @@ class MSSCisolationNode:
         gdf0[isolateid] = gdf.isolate.tolist()
 
         gdf0.reset_index(drop=True, inplace=True)
-        return knext.Table.from_pandas(gdf0)
+        return knut.to_table(gdf0, exec_context)
