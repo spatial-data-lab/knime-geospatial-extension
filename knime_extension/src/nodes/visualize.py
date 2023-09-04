@@ -16,6 +16,11 @@ category = knext.category(
 __NODE_ICON_PATH = "icons/icon/Visualization/"
 
 
+class ImageTypeOption(knext.EnumParameterOptions):
+    SVG = ("SVG", "Scalable support vector graphic (SVG) best suited for PDF reports.")
+    PNG = ("PNG", "PNG image best suited for presentations.")
+
+
 def replace_external_js_css_paths(
     replacement: str,
     html: str,
@@ -752,7 +757,6 @@ class StaticLegendSettings:
         "Set the caption for the legend. By default, the caption is the name of the selected color column or "
         + "empty for heat map.",
         default_value="",
-        # default_value=color_col,
     )
 
     caption_fontsize = knext.IntParameter(
@@ -879,6 +883,9 @@ class StaticLegendSettings:
     name="Geospatial Table to Visualize",
     description="Table with geospatial data to visualize",
 )
+@knext.output_image(
+    name="Geospatial View Image", description="Image of a map with the geospatial data"
+)
 @knext.output_view(
     name="Geospatial View", description="Showing a map with the geospatial data"
 )
@@ -940,13 +947,28 @@ class ViewNodeStatic:
 
     legend_settings = StaticLegendSettings()
 
+    image_type = knext.EnumParameter(
+        label="Image output type",
+        description="Select the type of output image.",
+        default_value=ImageTypeOption.SVG.name,
+        enum=ImageTypeOption,
+        since_version="1.2.0",
+        is_advanced=True,
+    )
+
     def configure(self, configure_context, input_schema):
         self.geo_col = knut.column_exists_or_preset(
             configure_context, self.geo_col, input_schema, knut.is_geo
         )
         # if self.name_cols is None:
         #     self.name_cols = [c.name for c in input_schema if knut.is_string(c)]
-        return None
+
+        if self.image_type is ImageTypeOption.SVG.name:
+            output_image_type = knext.ImageFormat.SVG
+        else:
+            output_image_type = knext.ImageFormat.PNG
+
+        return knext.ImagePortObjectSpec(output_image_type)
 
     def execute(self, exec_context: knext.ExecutionContext, input_table):
         gdf = gp.GeoDataFrame(input_table.to_pandas(), geometry=self.geo_col)
@@ -1066,7 +1088,14 @@ class ViewNodeStatic:
         # knut.check_canceled(exec_context)
         # cx.add_basemap(map, crs=gdf.crs.to_string(), source=cx.providers.flatten()[self.base_map])
 
-        return knext.view_matplotlib(map.get_figure())
+        # create the output image
+        import io
+
+        fig = map.get_figure()
+        out_image_buffer = io.BytesIO()
+        fig.savefig(out_image_buffer, format=self.image_type.lower())
+
+        return (out_image_buffer.getvalue(), knext.view_matplotlib(fig))
 
 
 ############################################
