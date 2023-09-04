@@ -252,6 +252,7 @@ class LegendSettings:
         "Set the caption for the color legend. By default, the caption is the name of the selected color column or "
         + "empty for heat map.",
         default_value="",
+        is_advanced=True,
     )
 
 
@@ -757,6 +758,7 @@ class StaticLegendSettings:
         "Set the caption for the legend. By default, the caption is the name of the selected color column or "
         + "empty for heat map.",
         default_value="",
+        is_advanced=True,
     )
 
     caption_fontsize = knext.IntParameter(
@@ -765,12 +767,14 @@ class StaticLegendSettings:
         default_value=10,
         min_value=1,
         max_value=100,
+        is_advanced=True,
     )
 
     expand = knext.BoolParameter(
         "Expand legend",
         "If checked, the legend will be horizontally expanded to fill the axes area.",
         default_value=False,
+        is_advanced=True,
     )
 
     location = knext.StringParameter(
@@ -792,6 +796,7 @@ class StaticLegendSettings:
             "upper left",
             "upper right",
         ],
+        is_advanced=True,
     )
 
     columns = knext.IntParameter(
@@ -800,6 +805,7 @@ class StaticLegendSettings:
         default_value=1,
         min_value=1,
         max_value=30,
+        is_advanced=True,
     )
 
     size = knext.IntParameter(
@@ -808,6 +814,7 @@ class StaticLegendSettings:
         default_value=8,
         min_value=1,
         max_value=30,
+        is_advanced=True,
     )
 
     fontsize = knext.IntParameter(
@@ -816,6 +823,7 @@ class StaticLegendSettings:
         default_value=10,
         min_value=1,
         max_value=30,
+        is_advanced=True,
     )
 
     labelcolor = knext.StringParameter(
@@ -823,12 +831,14 @@ class StaticLegendSettings:
         "Select the label color for the legend.",
         default_value="black",
         enum=["black", "blue", "green", "orange", "purple", "red", "white", "yellow"],
+        is_advanced=True,
     )
 
     frame = knext.BoolParameter(
         "Show legend frame",
         "If checked, a frame will be shown in the legend.",
         default_value=True,
+        is_advanced=True,
     )
 
     framealpha = knext.DoubleParameter(
@@ -837,6 +847,7 @@ class StaticLegendSettings:
         default_value=1.0,
         min_value=0.0,
         max_value=1.0,
+        is_advanced=True,
     )
 
     borderpad = knext.DoubleParameter(
@@ -845,6 +856,7 @@ class StaticLegendSettings:
         default_value=0.5,
         min_value=0.0,
         max_value=3.0,
+        is_advanced=True,
     )
 
     labelspacing = knext.DoubleParameter(
@@ -853,6 +865,7 @@ class StaticLegendSettings:
         default_value=0.5,
         min_value=0.0,
         max_value=1.0,
+        is_advanced=True,
     )
 
     colorbar_shrink = knext.DoubleParameter(
@@ -861,6 +874,7 @@ class StaticLegendSettings:
         default_value=1.0,
         min_value=0.0,
         max_value=1.0,
+        is_advanced=True,
     )
 
     colorbar_pad = knext.DoubleParameter(
@@ -869,6 +883,7 @@ class StaticLegendSettings:
         default_value=0.1,
         min_value=0.0,
         max_value=0.99,
+        is_advanced=True,
     )
 
 
@@ -933,12 +948,14 @@ class ViewNodeStatic:
         default_value=10,
         min_value=1,
         max_value=100,
+        is_advanced=True,
     )
 
     set_axis_off = knext.BoolParameter(
         "Set axis off",
         "If checked, the axis will be set off.",
         default_value=False,
+        is_advanced=True,
     )
 
     size_settings = SizeSettings()
