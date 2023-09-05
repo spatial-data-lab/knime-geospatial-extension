@@ -133,6 +133,14 @@ def boolean_and(*functions):
     return new_function
 
 
+def is_int(column: knext.Column) -> bool:
+    """
+    Checks if column is int.
+    @return: True if Column is int
+    """
+    return column.ktype == knext.int32()
+
+
 def is_numeric(column: knext.Column) -> bool:
     """
     Checks if column is numeric e.g. int, long or double.
@@ -621,7 +629,7 @@ class ResultSettings:
         "New column name",
         "The name of the new column that is appended if 'Append' is selected.",
         default_value="geometry",
-    )
+    ).rule(knext.OneOf(mode, [ResultSettingsMode.APPEND.name]), knext.Effect.SHOW)
 
     def __init__(self, mode=ResultSettingsMode.get_default().name, new_name="geometry"):
         self.mode = mode
