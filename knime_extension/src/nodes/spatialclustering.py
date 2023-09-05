@@ -200,9 +200,11 @@ class SKATERNode:
     )
     attribute_list = knext.MultiColumnParameter(
         "Attribute columns for clustering",
-        "Input the column names with Semicolon.",
-        "",
+        "Select columns for calculating attribute distance.",
+        port_index=0,
+        column_filter=knut.is_numeric,
     )
+ 
     cluster_k = knext.IntParameter(
         "Number of clusters",
         "The number of user-defined clusters.",
@@ -227,7 +229,6 @@ class SKATERNode:
 
     def execute(self, exec_context: knext.ExecutionContext, input_1):
         import pygeoda
-
         k = abs(self.cluster_k)
         controlVar = self.bound_col
         m_bound = self.minibound
@@ -271,16 +272,14 @@ class SKATERNode:
     name="Output Table",
     description="Output table with cluster tag.",
 )
-class REDCAPNode:
-    """
-    REDCAP (Regionalization with dynamically constrained agglomerative clustering and partitioning).
-
-    It is developed by [D. Guo (2008)](https://doi.org/10.1080/13658810701674970). Like SKATER, REDCAP starts from building a spanning tree with
+@knut.geoda_node_description(
+    short_description="REDCAP (Regionalization with dynamically constrained agglomerative clustering and partitioning).",
+    description="""It is developed by [D. Guo (2008)](https://doi.org/10.1080/13658810701674970). Like SKATER, REDCAP starts from building a spanning tree with
     4 different ways (single-linkage, average-linkage, complete-linkage and wards-linkage).
     Then,REDCAP provides 2 different ways (first‐order and full-order constraining) to prune
     the tree to find clusters. The first-order approach with a minimum spanning tree is exactly
     the same with SKATER. In GeoDa and pygeoda, the following methods are provided:
-
+    
      - First-order and Single-linkage:in this local approach, clusters are formed by considering only immediate neighbors, 
             and their distance is measured by the shortest distance between any pair of points from each cluster.
      - Full-order and Complete-linkage:This method also considers all points in the dataset for clustering and calculates 
@@ -291,37 +290,44 @@ class REDCAPNode:
             and measures the distance between clusters as the shortest distance between any pair of points from each cluster.
      - Full-order and Wards-linkage:All points in the dataset are considered for clustering, and the distance 
             between clusters is calculated in a way that minimizes the internal variance within each cluster.
-    """
+
+    """,
+    references={
+        "Spatial Clustering": "https://geodacenter.github.io/pygeoda/spatial_clustering.html",
+        "REDCAP": "https://geodacenter.github.io/workbook/9c_spatial3/lab9c.html#redcap",
+    },
+)
+class REDCAPNode:
     class LinkageModes(knext.EnumParameterOptions):
-        FIRST_SINGLE = (
-            "firsorder-singlelinkage",
-            """First-order and Single-linkage. In this local approach, clusters are formed by considering only immediate neighbors, 
+        FIRSTORDER_SINGLELINKAGE = (
+            "First-order and Single-linkage",
+            """In this local approach, clusters are formed by considering only immediate neighbors, 
             and their distance is measured by the shortest distance between any pair of points from each cluster.""",
         )
-        FULL_SINGLE = (
-            "fullorder-singlelinkage",
-            """Full-order and Single-linkage. Using a global context, this approach considers all points in the dataset for clustering 
+        FULLORDER_SINGLELINKAGE = (
+            "Full-order and Single-linkage",
+            """Using a global context, this approach considers all points in the dataset for clustering 
             and measures the distance between clusters as the shortest distance between any pair of points from each cluster.""",
         )
-        FULL_COMPLETE = (
-            "fullorder-completelinkage",
-            """Full-order and Average-linkage. This method also considers all points in the dataset for clustering and calculates 
+        FULLORDER_COMPLETELINKAGE = (
+            "Full-order and Average-linkage",
+            """This method also considers all points in the dataset for clustering and calculates 
             the distance between clusters as the average distance between all pairs of points, one from each cluster.""",
         )
-        FULL_AVERAGE = (
-            "fullorder-averagelinkage",
-            """Full-order and Average-linkage. This method also considers all points in the dataset for clustering and calculates 
+        FULLORDER_AVERAGELINKAGE = (
+            "Full-order and Average-linkage",
+            """This method also considers all points in the dataset for clustering and calculates 
             the distance between clusters as the average distance between all pairs of points, one from each cluster.""",
         )
-        FULL_WARD = (
-            "fullorder-wardlinkage",
-            """Full-order and Wards-linkage.  All points in the dataset are considered for clustering, and the distance 
+        FULLORDER_WARDLINKAGE = (
+            "Full-order and Wards-linkage",
+            """All points in the dataset are considered for clustering, and the distance 
             between clusters is calculated in a way that minimizes the internal variance within each cluster.""",
         )  
 
         @classmethod
         def get_default(cls):
-            return cls.FULL_COMPLETE
+            return cls.FULLORDER_COMPLETELINKAGE
 
     geo_col = knut.geo_col_parameter(
         description="Select the geometry column to implement spatial clustering."
@@ -335,10 +341,12 @@ class REDCAPNode:
         include_row_key=False,
         include_none_column=False,
     )
-    attribute_list = knext.StringParameter(
+
+    attribute_list = knext.MultiColumnParameter(
         "Attribute columns for clustering",
-        "Input the column names with semicolon.",
-        "",
+        "Select columns for calculating attribute distance.",
+        port_index=0,
+        column_filter=knut.is_numeric,
     )
     cluster_k = knext.IntParameter(
         "Number of clusters",
@@ -357,7 +365,7 @@ class REDCAPNode:
     )
 
     link_mode  = knext.EnumParameter(
-        label="Linkage model",
+        label="Linkage mode",
         description="Input linkage mode.",
         default_value=LinkageModes.get_default().name,
         enum=LinkageModes,
@@ -376,7 +384,7 @@ class REDCAPNode:
         controlVar = self.bound_col
         m_bound = self.minibound
         attributelist = self.bound_col.split(";")
-        linkage = self.link_mode
+        linkage = self.link_mode.lower().replace("_", "-")
         gdf = knut.load_geo_data_frame(input_1, self.geo_col, exec_context)
         geodadf = pygeoda.open(gdf)
         data = geodadf[attributelist]
@@ -396,7 +404,7 @@ class REDCAPNode:
         )
         gdf[_CLUSTER_ID] = final_cluster["Clusters"]
         gdf.reset_index(drop=True, inplace=True)
-        return knut.to_table(gdf, exec_context)
+        return knut.to_table(gdf , exec_context)
 
 
 ############################################
@@ -427,12 +435,34 @@ class SCHCNode:
      Meanwhile, it also maintains the spatial contiguity when merging two clusters. The method builds up the
      clusters using agglomerative hierarchical clustering methods:
 
-     - single
-     - complete
-     - average
-     - ward
+     - Single
+     - Complete
+     - Average
+     - Ward
     """
-
+    class LinkageModes(knext.EnumParameterOptions):
+        SINGLE= (
+            "Single linkage",
+            """Forms clusters by linking geographical units based on the shortest distance between them, while maintaining spatial contiguity.""",
+        )
+        COMPLETE = (
+            "Complete linkage",
+            """Clusters geographical units based on the farthest distance within pairs, ensuring that each resulting cluster shares common borders.""",
+        )
+        AVERAGE = (
+            "Average linkage",
+            """Groups units into clusters by calculating the average distance among all possible pairs, while also preserving spatial contiguity.""",
+        )
+        WARD= (
+            "Ward linkage",
+            """Minimizes within-cluster variance by clustering units that have similar centroids, 
+            all while maintaining common borders between units in each cluster.""",
+        )
+   
+        @classmethod
+        def get_default(cls):
+            return cls.COMPLETE
+        
     geo_col = knut.geo_col_parameter(
         description="Select the geometry column to implement spatial clustering."
     )
@@ -445,10 +475,11 @@ class SCHCNode:
         include_row_key=False,
         include_none_column=False,
     )
-    attribute_list = knext.StringParameter(
+    attribute_list = knext.MultiColumnParameter(
         "Attribute columns for clustering",
-        "Input the column names with Semicolon.",
-        "",
+        "Select columns for calculating attribute distance.",
+        port_index=0,
+        column_filter=knut.is_numeric,
     )
     cluster_k = knext.IntParameter(
         "Number of clusters",
@@ -460,23 +491,18 @@ class SCHCNode:
         "The sum of the bounding variable in each cluster must be greater than this minimum value.",
     )
     weight_mode = knext.StringParameter(
-        "Spatial Weight model",
+        "Spatial weight model",
         "Input spatial weight mode.",
         "Queen",
         enum=["Queen", "Rook"],
     )
-    link_mode = knext.StringParameter(
-        "Linkage model",
-        "Input linkage mode.",
-        "ward",
-        enum=[
-            "single",
-            "complete",
-            "average",
-            "ward",
-        ],
-    )
 
+    link_mode  = knext.EnumParameter(
+        label="Linkage mode",
+        description="Input linkage mode.",
+        default_value=LinkageModes.get_default().name,
+        enum=LinkageModes,
+    )
     def configure(self, configure_context, input_schema):
         self.geo_col = knut.column_exists_or_preset(
             configure_context, self.geo_col, input_schema, knut.is_geo
@@ -490,7 +516,7 @@ class SCHCNode:
         controlVar = self.bound_col
         m_bound = self.minibound
         attributelist = self.bound_col.split(";")
-        linkage = self.link_mode
+        linkage = self.link_mode.lower()
         gdf = knut.load_geo_data_frame(input_1, self.geo_col, exec_context)
         geodadf = pygeoda.open(gdf)
         data = geodadf[attributelist]
@@ -535,7 +561,7 @@ class MaxPgreedyNode:
     """
     A greedy algorithm to solve the max-p-region problem.
 
-    The so-called max-p regions model (outlined in Duque, Anselin, and Rey 2012)
+    The so-called max-p regions model (outlined in [Duque, Anselin, and Rey 2012](https://doi.org/10.1111/j.1467-9787.2011.00743.x))
     uses a different approach and considers the regionalization problem as an application of
     integer programming. In addition, the number of regions is determined endogenously.
 
@@ -556,17 +582,18 @@ class MaxPgreedyNode:
         include_row_key=False,
         include_none_column=False,
     )
-    attribute_list = knext.StringParameter(
+    attribute_list = knext.MultiColumnParameter(
         "Attribute columns for clustering",
-        "Input the column names with Semicolon.",
-        "",
+        "Select columns for calculating attribute distance.",
+        port_index=0,
+        column_filter=knut.is_numeric,
     )
     minibound = knext.DoubleParameter(
         "Minimum total value for the bounding variable in each output cluster",
         "The sum of the bounding variable in each cluster must be greater than this minimum value.",
     )
     weight_mode = knext.StringParameter(
-        "Spatial Weight model",
+        "Spatial weight model",
         "Input spatial weight mode.",
         "Queen",
         enum=["Queen", "Rook"],
@@ -648,10 +675,11 @@ class AZPgreedyNode:
         include_row_key=False,
         include_none_column=False,
     )
-    attribute_list = knext.StringParameter(
+    attribute_list = knext.MultiColumnParameter(
         "Attribute columns for clustering",
-        "Input the column names with Semicolon.",
-        "",
+        "Select columns for calculating attribute distance.",
+        port_index=0,
+        column_filter=knut.is_numeric,
     )
     cluster_k = knext.IntParameter(
         "Number of clusters",
@@ -663,7 +691,7 @@ class AZPgreedyNode:
         "The sum of the bounding variable in each cluster must be greater than this minimum value.",
     )
     weight_mode = knext.StringParameter(
-        "Spatial Weight model",
+        "Spatial weight model",
         "Input spatial weight mode.",
         "Queen",
         enum=["Queen", "Rook"],
@@ -717,11 +745,11 @@ class AZPgreedyNode:
 )
 @knext.input_table(
     name="Geodata table",
-    description="Geodata for calculating peano curve spatal order.",
+    description="Geodata for calculating Peano curve spatal order.",
 )
 @knext.output_table(
     name="Output Table",
-    description="Output table with peano curve spatal order.",
+    description="Output table with Peano curve spatal order.",
 )
 class PeanoCurveNode:
     """
@@ -746,18 +774,18 @@ class PeanoCurveNode:
     )
 
     grid_k = knext.IntParameter(
-        "Binary-digit scale",
+        "Binary-digit scale or as powers of 2",
         "Grid scale defined for spatial filling.",
         default_value=32,
     )
 
-    _PEANO_CURVE_ORDER = "PeanoOrder"
+    _PEANO_CURVE_ORDER = "Peano Order"
 
     def configure(self, configure_context, input_schema):
         self.geo_col = knut.column_exists_or_preset(
             configure_context, self.geo_col, input_schema, knut.is_geo
         )
-        return input_schema.append(knext.Column( knext.double(), name=_CLUSTER_ID))
+        return input_schema.append(knext.Column( knext.double(), name=self._PEANO_CURVE_ORDER))
 
 
     def execute(self, exec_context: knext.ExecutionContext, input_1):
@@ -1032,7 +1060,7 @@ class MSSCNode:
 )
 @knext.input_table(
     name="Geodata table",
-    description="Geodata from the MSSC clustering.",
+    description="Geodata from the MSSC Initialization.",
 )
 @knext.output_table(
     name="Output Table",
@@ -1043,7 +1071,7 @@ class MSSCmodifierNode:
     Modified scale-space clustering(MSSC) Refiner.
 
     This node takes the clusters generated by the MSSC Initialization node and applies additional
-    steps to refine those clusters that do not meet the certain criteria.
+    steps to refine those clusters that do not do not meet certain criteria.
     The method combinies spatial weight matrix with spatial orders to address the jumping problem— disconnected members in a cluster.
 
     """
@@ -1267,8 +1295,8 @@ class MSSCisolationNode:
         include_none_column=False,
     )
     isolate_col = knext.ColumnParameter(
-        "isolate column from MSSC",
-        "Select the column 'isoloate'generated by MSSC clustering.",
+        "Isolate column from MSSC",
+        "Select the column 'Isoloate' generated by MSSC clustering.",
         port_index=0,
         column_filter=knut.is_numeric,
         include_row_key=False,
