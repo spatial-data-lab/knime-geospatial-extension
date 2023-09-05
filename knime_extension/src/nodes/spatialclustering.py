@@ -905,7 +905,7 @@ class MSSCNode:
         "Input the capacity list with Semicolon.",
         "",
     )
-    _isolated = "isolate"
+    _isolated = "Isolate"
 
     def configure(self, configure_context, input_schema):
         self.geo_col = knut.column_exists_or_preset(
