@@ -177,15 +177,19 @@ class StandardEllipseNode:
     name="Output Table",
     description="Output table with cluster tag.",
 )
-class SKATERNode:
-    """
-    The Spatial C(K)luster Analysis by Tree Edge Removal(SKATER).
-    This node use the Pysal package [pygeoda](https://geodacenter.github.io/pygeoda/generated/pygeoda.clustering.skater.html).
-    The Spatial C(K)luster Analysis by Tree Edge Removal(SKATER) algorithm introduced by Assuncao et al. (2006)
+@knut.geoda_node_description(
+    short_description="Spatial C(K)luster Analysis by Tree Edge Removal(SKATER).",
+    description="""The Spatial C(K)luster Analysis by Tree Edge Removal(SKATER). The Spatial C(K)luster Analysis by Tree Edge Removal(SKATER) algorithm introduced by Assuncao et al. (2006)
     is based on the optimal pruning of a minimum spanning tree that reflects the contiguity structure among the observations.
-    It provides an optimized algorithm to prune to tree into several clusters that their values of selected variables are as similar as possible.
-    """
-
+    It provides an optimized algorithm to prune to tree into several clusters that their values of selected variables are as similar as possible. 
+    """,
+    references={
+        "Spatial Clustering": "https://geodacenter.github.io/pygeoda/spatial_clustering.html",
+        "SKATER": "https://geodacenter.github.io/pygeoda/_modules/pygeoda/clustering/skater.html",
+        "Spatially Constrained Clustering - Hierarchical Methods": "https://geodacenter.github.io/workbook/9c_spatial3/lab9c.html",
+    },
+)
+class SKATERNode:
     geo_col = knut.geo_col_parameter(
         description="Select the geometry column to implement spatial clustering."
     )
@@ -294,7 +298,8 @@ class SKATERNode:
     """,
     references={
         "Spatial Clustering": "https://geodacenter.github.io/pygeoda/spatial_clustering.html",
-        "REDCAP": "https://geodacenter.github.io/workbook/9c_spatial3/lab9c.html#redcap",
+        "REDCAP": "https://geodacenter.github.io/pygeoda/_modules/pygeoda/clustering/redcap.html",
+        "Spatially Constrained Clustering - Hierarchical Methods ": "https://geodacenter.github.io/workbook/9c_spatial3/lab9c.html",
     },
 )
 class REDCAPNode:
@@ -425,11 +430,9 @@ class REDCAPNode:
     name="Output Table",
     description="Output table with cluster tag.",
 )
-class SCHCNode:
-    """
-    SCHC (Spatially constrained hierarchical clustering).
-
-    It is a special form of constrained clustering, where the constraint is based on contiguity
+@knut.geoda_node_description(
+    short_description="SCHC (Spatially constrained hierarchical clustering).",
+    description="""SCHC (Spatially constrained hierarchical clustering).It is a special form of constrained clustering, where the constraint is based on contiguity
      (common borders). The method builds up the clusters using agglomerative hierarchical clustering methods:
      single linkage, complete linkage, average linkage and Ward’s method (a special form of centroid linkage).
      Meanwhile, it also maintains the spatial contiguity when merging two clusters. The method builds up the
@@ -439,7 +442,14 @@ class SCHCNode:
      - Complete
      - Average
      - Ward
-    """
+    """,
+    references={
+        "Spatial Clustering": "https://geodacenter.github.io/pygeoda/spatial_clustering.html",
+        "SCHC": "https://geodacenter.github.io/pygeoda/_modules/pygeoda/clustering/schc.html",
+        "Spatially Constrained Clustering - Hierarchical Methods ": "https://geodacenter.github.io/workbook/9c_spatial3/lab9c.html",
+    },
+)
+class SCHCNode:
     class LinkageModes(knext.EnumParameterOptions):
         SINGLE= (
             "Single linkage",
@@ -543,7 +553,7 @@ class SCHCNode:
 # MaxP Greedy
 ############################################
 @knext.node(
-    name="MaxP-Greedy",
+    name="MaxP",
     node_type=knext.NodeType.MANIPULATOR,
     icon_path=__NODE_ICON_PATH + "maxp.png",
     category=__category,
@@ -557,9 +567,9 @@ class SCHCNode:
     name="Output Table",
     description="Output table with cluster tag.",
 )
-class MaxPgreedyNode:
-    """
-    A greedy algorithm to solve the max-p-region problem.
+@knut.geoda_node_description(
+    short_description="Max-P Greedy.",
+    description="""Max-P Greedy.A greedy algorithm to solve the max-p-region problem.
 
     The so-called max-p regions model (outlined in [Duque, Anselin, and Rey 2012](https://doi.org/10.1111/j.1467-9787.2011.00743.x))
     uses a different approach and considers the regionalization problem as an application of
@@ -567,9 +577,14 @@ class MaxPgreedyNode:
 
     The algorithm itself consists of a search process that starts with an initial feasible
     solution and iteratively improves upon it while maintaining contiguity among the elements of each cluster.
-
-    """
-
+    """,
+    references={
+        "Spatial Clustering": "https://geodacenter.github.io/pygeoda/spatial_clustering.html",
+        "Max-P": "https://geodacenter.github.io/pygeoda/_modules/pygeoda/clustering/maxp.html",
+        "Spatially Constrained Clustering - Partitioning Methods ": "https://geodacenter.github.io/workbook/9d_spatial4/lab9d.html",
+    },
+)
+class MaxPgreedyNode:
     geo_col = knut.geo_col_parameter(
         description="Select the geometry column to implement spatial clustering."
     )
@@ -636,7 +651,7 @@ class MaxPgreedyNode:
 # AZP Greedy
 ############################################
 @knext.node(
-    name="AZP-Greedy",
+    name="AZP",
     node_type=knext.NodeType.MANIPULATOR,
     icon_path=__NODE_ICON_PATH + "azp.png",
     category=__category,
@@ -650,18 +665,22 @@ class MaxPgreedyNode:
     name="Output Table",
     description="Output table with cluster tag.",
 )
+@knut.geoda_node_description(
+    short_description="AZP Greedy.",
+    description="""AZP Greedy.A greedy algorithm for automatic zoning procedure (AZP).
+
+    The automatic zoning procedure (AZP) was initially outlined in [Openshaw (1977)](https://doi.org/10.2307/622300) as a way to address some of the 
+    consequences of the modifiable areal unit problem (MAUP). In essence, it consists of a heuristic to find the best 
+    set of combinations of contiguous spatial units into p regions, minimizing the within sum of squares as a criterion of homogeneity. 
+    The number of regions needs to be specified beforehand, as in most other clustering methods considered so far.
+    """,
+    references={
+        "Spatial Clustering": "https://geodacenter.github.io/pygeoda/spatial_clustering.html",
+        "AZP": "https://geodacenter.github.io/pygeoda/_modules/pygeoda/clustering/azp.html",
+        "Spatially Constrained Clustering - Partitioning Methods ": "https://geodacenter.github.io/workbook/9d_spatial4/lab9d.html",
+    },
+)
 class AZPgreedyNode:
-    """
-    A greedy algorithm to solve the max-p-region problem.
-
-    The so-called max-p regions model (outlined in Duque, Anselin, and Rey 2012)
-    uses a different approach and considers the regionalization problem as an application of
-    integer programming. In addition, the number of regions is determined endogenously.
-
-    The algorithm itself consists of a search process that starts with an initial feasible
-    solution and iteratively improves upon it while maintaining contiguity among the elements of each cluster.
-
-    """
 
     geo_col = knut.geo_col_parameter(
         description="Select the geometry column to implement spatial clustering."
@@ -874,7 +893,7 @@ class MSSCNode:
     This node performs the initial MSSC clustering based on the input data.
     The MSSC model (Mu and Wang 2008) follows the values of spatial order along the Peano curve with breaking points that are defined by a threshold population size.
     Through iterations in programming, each cluster satisfies the criterias of ascending spatial order and aggregation volumn minimum constraints.
-    MSSC(Mu and Wang 2008) is developed based on scale-space theory, an earlier algorithm and applications of the theory in remote sensing and GIS.
+    MSSC (Mu and Wang 2008) is developed based on scale-space theory, an earlier algorithm and applications of the theory in remote sensing and GIS.
     Using analogies of solid melting and viewing images, scale-space theory treats “scale”—corresponding to temperature in solid melting or distance in viewing
     images—as a parameter in describing the processes and phenomena. With the increase of scale (as temperature in
     the melting algorithm), a piece of metal will melt into liquid but not evenly,
