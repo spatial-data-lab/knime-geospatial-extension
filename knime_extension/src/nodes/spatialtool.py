@@ -24,15 +24,15 @@ __category = knext.category(
 class _JoinModes(knext.EnumParameterOptions):
     INNER = (
         "Inner",
-        "Use intersection of index values and retain only the geometry column from the left (top) input table.",
+        "Use intersection of index values and retain only the geometry column from the top (left) input table.",
     )
     LEFT = (
         "Left",
-        "Use the index and retain the geometry column from the left (top) input table.",
+        "Use the index and retain the geometry column from the top (left) input table.",
     )
     RIGHT = (
         "Right",
-        "Use the index and retain the geometry column from the right (bottom) input table.",
+        "Use the index and retain the geometry column from the bottom (right) input table.",
     )
 
     @classmethod
@@ -185,6 +185,23 @@ class DissolveNode:
 ############################################
 # Spatial Join
 ############################################
+@knext.parameter_group(
+    label="Column selection", since_version="1.2.0", is_advanced=True
+)
+class ColumnSelection:
+    left = knext.ColumnFilterParameter(
+        "Top input (left table)",
+        "Select the columns from the top (left) input table to include into the result table.",
+        port_index=0,
+        is_advanced=True,
+    )
+
+    right = knext.ColumnFilterParameter(
+        "Bottom input (right table)",
+        "Select the columns from the bottom (right) input table to include into the result table.",
+        port_index=1,
+        is_advanced=True,
+    )
 
 
 @knext.node(
@@ -275,8 +292,8 @@ class SpatialJoinNode:
             return cls.INTERSECTS
 
     left_geo_col = knext.ColumnParameter(
-        "Left geometry column",
-        "Select the geometry column from the left (top) input table to join on.",
+        "Top (left) geometry column",
+        "Select the geometry column from the top (left) input table to join on.",
         # Allow only GeoValue compatible columns
         port_index=0,
         column_filter=knut.is_geo,
@@ -285,8 +302,8 @@ class SpatialJoinNode:
     )
 
     right_geo_col = knext.ColumnParameter(
-        "Right geometry column",
-        "Select the geometry column from the right (bottom) input table to join on.",
+        "Bottom (right) geometry column",
+        "Select the geometry column from the bottom (right) input table to join on.",
         # Allow only GeoValue compatible columns
         port_index=1,
         column_filter=knut.is_geo,
@@ -308,6 +325,8 @@ class SpatialJoinNode:
         enum=MatchModes,
     )
 
+    column_selection = ColumnSelection()
+
     def configure(self, configure_context, left_input_schema, right_input_schema):
         self.left_geo_col = knut.column_exists_or_preset(
             configure_context, self.left_geo_col, left_input_schema, knut.is_geo
@@ -319,10 +338,23 @@ class SpatialJoinNode:
         return None
 
     def execute(self, exec_context: knext.ExecutionContext, left_input, right_input):
-        left_gdf = knut.load_geo_data_frame(left_input, self.left_geo_col, exec_context)
-        right_gdf = knut.load_geo_data_frame(
-            right_input, self.right_geo_col, exec_context
+        left_columns = self.column_selection.left.apply(left_input.schema).column_names
+        # ensure that the geo column is part of the filtered data frame
+        if self.left_geo_col not in left_columns:
+            left_columns.append(self.left_geo_col)
+        left_gdf = knut.load_geo_data_frame(
+            left_input[left_columns], self.left_geo_col, exec_context
         )
+        right_columns = self.column_selection.right.apply(
+            right_input.schema
+        ).column_names
+        # ensure that the geo column is part of the filtered data frame
+        if self.right_geo_col not in right_columns:
+            right_columns.append(self.right_geo_col)
+        right_gdf = knut.load_geo_data_frame(
+            right_input[right_columns], self.right_geo_col, exec_context
+        )
+
         knut.check_canceled(exec_context)
         right_gdf.to_crs(left_gdf.crs, inplace=True)
         if self.match_mode not in [
@@ -333,13 +365,13 @@ class SpatialJoinNode:
                 right_gdf, how=self.join_mode.lower(), predicate=self.match_mode.lower()
             )
         elif self.match_mode == self.MatchModes.HAS_ITS_CENTER_IN.name:
-            rep_center = knut.get_unique_column_name("rep_center", left_input.schema)
+            rep_center = knut.get_unique_name("rep_center", left_columns)
             left_gdf[rep_center] = left_gdf.representative_point()
             left_gdf_temp = left_gdf.set_geometry(rep_center)
             gdf = gp.sjoin(left_gdf_temp, right_gdf, predicate="within")
             gdf = gdf.set_geometry(self.left_geo_col).drop(columns=[rep_center])
         else:
-            rep_center = knut.get_unique_column_name("rep_center", right_input.schema)
+            rep_center = knut.get_unique_name("rep_center", right_columns)
             right_gdf[rep_center] = right_gdf.representative_point()
             right_gdf_temp = right_gdf.set_geometry(rep_center).drop(
                 columns=[self.right_geo_col]
@@ -391,8 +423,8 @@ class SpatialJoinNode:
 )
 class NearestJoinNode2:
     left_geo_column = knext.ColumnParameter(
-        "Left geometry column",
-        "Select the geometry column from the left (top) input table to join on.",
+        "Top (left) geometry column",
+        "Select the geometry column from the top (left) input table to join on.",
         # Allow only GeoValue compatible columns
         port_index=0,
         column_filter=knut.is_geo,
@@ -401,8 +433,8 @@ class NearestJoinNode2:
     )
 
     right_geo_column = knext.ColumnParameter(
-        "Right geometry column",
-        "Select the geometry column from the right (bottom) input table to join on.",
+        "Bottom (right) geometry column",
+        "Select the geometry column from the bottom (right ) input table to join on.",
         # Allow only GeoValue compatible columns
         port_index=1,
         column_filter=knut.is_geo,
@@ -432,61 +464,44 @@ class NearestJoinNode2:
         + "for the selected distance unit.",
     )
 
-    # left_include_columns = knext.MultiColumnParameter(
-    #     "Left columns",
-    #     "Select columns which should be included in the join result from the left (top) input table.",
-    #     port_index=0,
-    # )
-
-    # right_include_columns = knext.MultiColumnParameter(
-    #     "Right columns",
-    #     "Select columns which should be included in the join result from the right (bottom) input table.",
-    #     port_index=1,
-    # )
+    column_selection = ColumnSelection()
 
     def configure(self, configure_context, left_input_schema, right_input_schema):
-        self.left_geo_col = knut.column_exists_or_preset(
+        self.left_geo_column = knut.column_exists_or_preset(
             configure_context, self.left_geo_column, left_input_schema, knut.is_geo
         )
-        self.right_geo_col = knut.column_exists_or_preset(
+        self.right_geo_column = knut.column_exists_or_preset(
             configure_context, self.right_geo_column, right_input_schema, knut.is_geo
         )
         # TODO Create combined schema
         return None
 
     def execute(self, exec_context: knext.ExecutionContext, left_input, right_input):
-        # keep only selected columns
-        # left_include_columns = {self.left_geo_column}
-        # if self.left_include_columns is not None:
-        #     left_include_columns.update(self.left_include_columns)
-        # filtered_left = left_input[list(left_include_columns)]
-        # right_include_columns = {self.right_geo_column}
-        # if self.right_include_columns is not None:
-        #     right_include_columns.update(self.right_include_columns)
-        # filtered_right = right_input[list(right_include_columns)]
-
-        # left_gdf = knut.load_geo_data_frame(
-        #     filtered_left, self.left_geo_column, exec_context
-        # )
-        # right_gdf = knut.load_geo_data_frame(
-        #     filtered_right, self.right_geo_column, exec_context
-        # )
+        left_columns = self.column_selection.left.apply(left_input.schema).column_names
+        # ensure that the geo column is part of the filtered data frame
+        if self.left_geo_column not in left_columns:
+            left_columns.append(self.left_geo_column)
         left_gdf = knut.load_geo_data_frame(
-            left_input, self.left_geo_column, exec_context
+            left_input[left_columns], self.left_geo_column, exec_context
         )
+
+        right_columns = self.column_selection.right.apply(
+            right_input.schema
+        ).column_names
+        # ensure that the geo column is part of the filtered data frame
+        if self.right_geo_column not in right_columns:
+            right_columns.append(self.right_geo_column)
         right_gdf = knut.load_geo_data_frame(
-            right_input, self.right_geo_column, exec_context
+            right_input[right_columns], self.right_geo_column, exec_context
         )
+
         knut.check_canceled(exec_context)
         distance_helper = kproj.Distance(self.unit, self.keep_input_crs)
-        # distance_helper.pre_processing(exec_context, right_gdf, True)
         # process left last to keep its CRS as described in the node description
         distance_helper.pre_processing(exec_context, left_gdf, True)
         right_gdf = right_gdf.to_crs(left_gdf.crs)
-        # left_include_columns.update(right_include_columns)
-        # distance_col_name = knut.get_unique_name("Distance", left_include_columns)
-        col_names = set(left_input.column_names)
-        col_names.update(right_input.column_names)
+        col_names = set(left_columns)
+        col_names.update(right_columns)
         distance_col_name = knut.get_unique_name(
             kproj.DEFAULT_DISTANCE_COLUMN_NAME, col_names
         )
