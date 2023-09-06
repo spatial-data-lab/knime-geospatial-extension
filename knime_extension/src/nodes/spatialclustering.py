@@ -16,6 +16,7 @@ __category = knext.category(
 __NODE_ICON_PATH = "icons/icon/SpatialClustering/"
 _CLUSTER_ID = "Cluster ID"
 
+
 # def  geodataframe to PPP
 def gdf2ppp(gdf):
     from pointpats import PointPattern
@@ -208,7 +209,7 @@ class SKATERNode:
         port_index=0,
         column_filter=knut.is_numeric,
     )
- 
+
     cluster_k = knext.IntParameter(
         "Number of clusters",
         "The number of user-defined clusters.",
@@ -229,10 +230,11 @@ class SKATERNode:
         self.geo_col = knut.column_exists_or_preset(
             configure_context, self.geo_col, input_schema, knut.is_geo
         )
-        return input_schema.append(knext.Column( knext.int64(), name=_CLUSTER_ID))
+        return input_schema.append(knext.Column(knext.int64(), name=_CLUSTER_ID))
 
     def execute(self, exec_context: knext.ExecutionContext, input_1):
         import pygeoda
+
         k = abs(self.cluster_k)
         controlVar = self.bound_col
         m_bound = self.minibound
@@ -315,7 +317,7 @@ class REDCAPNode:
             and measures the distance between clusters as the shortest distance between any pair of points from each cluster.""",
         )
         FULLORDER_COMPLETELINKAGE = (
-            "Full-order and Average-linkage",
+            "Full-order and Complete-linkage",
             """This method also considers all points in the dataset for clustering and calculates 
             the distance between clusters as the average distance between all pairs of points, one from each cluster.""",
         )
@@ -328,7 +330,7 @@ class REDCAPNode:
             "Full-order and Wards-linkage",
             """All points in the dataset are considered for clustering, and the distance 
             between clusters is calculated in a way that minimizes the internal variance within each cluster.""",
-        )  
+        )
 
         @classmethod
         def get_default(cls):
@@ -369,7 +371,7 @@ class REDCAPNode:
         enum=["Queen", "Rook"],
     )
 
-    link_mode  = knext.EnumParameter(
+    link_mode = knext.EnumParameter(
         label="Linkage mode",
         description="Input linkage mode.",
         default_value=LinkageModes.get_default().name,
@@ -380,7 +382,7 @@ class REDCAPNode:
         self.geo_col = knut.column_exists_or_preset(
             configure_context, self.geo_col, input_schema, knut.is_geo
         )
-        return input_schema.append(knext.Column( knext.int64(), name=_CLUSTER_ID))
+        return input_schema.append(knext.Column(knext.int64(), name=_CLUSTER_ID))
 
     def execute(self, exec_context: knext.ExecutionContext, input_1):
         import pygeoda
@@ -409,7 +411,7 @@ class REDCAPNode:
         )
         gdf[_CLUSTER_ID] = final_cluster["Clusters"]
         gdf.reset_index(drop=True, inplace=True)
-        return knut.to_table(gdf , exec_context)
+        return knut.to_table(gdf, exec_context)
 
 
 ############################################
@@ -451,7 +453,7 @@ class REDCAPNode:
 )
 class SCHCNode:
     class LinkageModes(knext.EnumParameterOptions):
-        SINGLE= (
+        SINGLE = (
             "Single linkage",
             """Forms clusters by linking geographical units based on the shortest distance between them, while maintaining spatial contiguity.""",
         )
@@ -463,16 +465,16 @@ class SCHCNode:
             "Average linkage",
             """Groups units into clusters by calculating the average distance among all possible pairs, while also preserving spatial contiguity.""",
         )
-        WARD= (
+        WARD = (
             "Ward linkage",
             """Minimizes within-cluster variance by clustering units that have similar centroids, 
             all while maintaining common borders between units in each cluster.""",
         )
-   
+
         @classmethod
         def get_default(cls):
             return cls.COMPLETE
-        
+
     geo_col = knut.geo_col_parameter(
         description="Select the geometry column to implement spatial clustering."
     )
@@ -507,17 +509,18 @@ class SCHCNode:
         enum=["Queen", "Rook"],
     )
 
-    link_mode  = knext.EnumParameter(
+    link_mode = knext.EnumParameter(
         label="Linkage mode",
         description="Input linkage mode.",
         default_value=LinkageModes.get_default().name,
         enum=LinkageModes,
     )
+
     def configure(self, configure_context, input_schema):
         self.geo_col = knut.column_exists_or_preset(
             configure_context, self.geo_col, input_schema, knut.is_geo
         )
-        return input_schema.append(knext.Column( knext.int64(), name=_CLUSTER_ID))
+        return input_schema.append(knext.Column(knext.int64(), name=_CLUSTER_ID))
 
     def execute(self, exec_context: knext.ExecutionContext, input_1):
         import pygeoda
@@ -618,7 +621,7 @@ class MaxPgreedyNode:
         self.geo_col = knut.column_exists_or_preset(
             configure_context, self.geo_col, input_schema, knut.is_geo
         )
-        return input_schema.append(knext.Column( knext.int64(), name=_CLUSTER_ID))
+        return input_schema.append(knext.Column(knext.int64(), name=_CLUSTER_ID))
 
     def execute(self, exec_context: knext.ExecutionContext, input_1):
         import pygeoda
@@ -681,7 +684,6 @@ class MaxPgreedyNode:
     },
 )
 class AZPgreedyNode:
-
     geo_col = knut.geo_col_parameter(
         description="Select the geometry column to implement spatial clustering."
     )
@@ -720,7 +722,7 @@ class AZPgreedyNode:
         self.geo_col = knut.column_exists_or_preset(
             configure_context, self.geo_col, input_schema, knut.is_geo
         )
-        return input_schema.append(knext.Column( knext.int64(), name=_CLUSTER_ID))
+        return input_schema.append(knext.Column(knext.int64(), name=_CLUSTER_ID))
 
     def execute(self, exec_context: knext.ExecutionContext, input_1):
         import pygeoda
@@ -804,8 +806,9 @@ class PeanoCurveNode:
         self.geo_col = knut.column_exists_or_preset(
             configure_context, self.geo_col, input_schema, knut.is_geo
         )
-        return input_schema.append(knext.Column( knext.double(), name=self._PEANO_CURVE_ORDER))
-
+        return input_schema.append(
+            knext.Column(knext.double(), name=self._PEANO_CURVE_ORDER)
+        )
 
     def execute(self, exec_context: knext.ExecutionContext, input_1):
         # Copy input to output
