@@ -655,7 +655,7 @@ class LineEndpointNode:
         endp = knut.get_unique_column_name(self._ENDP, input.schema)
 
         def get_line_endpoints(row):
-            line_geom = row.geometry
+            line_geom = row[self.geo_col]
             line = LineString(line_geom)
             start_point = Point(line.coords[0])
             end_point = Point(line.coords[-1])
