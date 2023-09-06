@@ -50,7 +50,7 @@ class MeanCenterNode:
     """
     Mean center and standard distance.
 
-    This node use the Pysal package [pointpats](http://pysal.org/pointpats/)
+    This node uses the Pysal package [pointpats](http://pysal.org/pointpats/)
     to  measure the compactness of a spatial distribution of features around its mean center.
     Standard distance (or standard distance deviation) is usually represented as a circle where the radius of the circle is the standard distance.
     """
@@ -61,7 +61,7 @@ class MeanCenterNode:
 
     weight_col = knext.ColumnParameter(
         "Weight column",
-        "Select the weighting column for calculate the mean center (Optional).",
+        "Select the weighting column to calculate the mean center (Optional).",
         column_filter=knut.is_numeric,
         include_row_key=False,
         include_none_column=True,
@@ -119,7 +119,7 @@ class StandardEllipseNode:
     """
     Standard deviational ellipse.
 
-    This node use the Pysal package [pointpats](http://pysal.org/pointpats/)
+    This node uses the Pysal package [pointpats](http://pysal.org/pointpats/)
     to  calculate parameters of standard deviational ellipse for a point pattern, which is a common way of measuring
     the trend for a set of points or areas. These measures define the axes of an ellipse (or ellipsoid) encompassing the distribution of features.
     """
@@ -180,9 +180,11 @@ class StandardEllipseNode:
 )
 @knut.geoda_node_description(
     short_description="Spatial C(K)luster Analysis by Tree Edge Removal(SKATER).",
-    description="""The Spatial C(K)luster Analysis by Tree Edge Removal(SKATER). The Spatial C(K)luster Analysis by Tree Edge Removal(SKATER) algorithm introduced by Assuncao et al. (2006)
+    description="""The Spatial C(K)luster Analysis by Tree Edge Removal (SKATER). The Spatial C(K)luster Analysis by 
+    Tree Edge Removal (SKATER) algorithm introduced by Assuncao et al. (2006)
     is based on the optimal pruning of a minimum spanning tree that reflects the contiguity structure among the observations.
-    It provides an optimized algorithm to prune to tree into several clusters that their values of selected variables are as similar as possible. 
+    It provides an optimized algorithm to prune to tree into several clusters that their values of selected variables 
+    are as similar as possible. 
     """,
     references={
         "Spatial Clustering": "https://geodacenter.github.io/pygeoda/spatial_clustering.html",
@@ -280,22 +282,22 @@ class SKATERNode:
 )
 @knut.geoda_node_description(
     short_description="REDCAP (Regionalization with dynamically constrained agglomerative clustering and partitioning).",
-    description="""It is developed by [D. Guo (2008)](https://doi.org/10.1080/13658810701674970). Like SKATER, REDCAP starts from building a spanning tree with
-    4 different ways (single-linkage, average-linkage, complete-linkage and wards-linkage).
-    Then,REDCAP provides 2 different ways (first‐order and full-order constraining) to prune
-    the tree to find clusters. The first-order approach with a minimum spanning tree is exactly
+    description="""It is developed by [D. Guo (2008).](https://doi.org/10.1080/13658810701674970) Like SKATER, REDCAP 
+    starts from building a spanning tree with 4 different ways (single-linkage, average-linkage, 
+    complete-linkage and wards-linkage). Then, REDCAP provides 2 different ways (first‐order and full-order constraining) 
+    to prune the tree to find clusters. The first-order approach with a minimum spanning tree is exactly
     the same with SKATER. In GeoDa and pygeoda, the following methods are provided:
     
-     - First-order and Single-linkage:in this local approach, clusters are formed by considering only immediate neighbors, 
-            and their distance is measured by the shortest distance between any pair of points from each cluster.
-     - Full-order and Complete-linkage:This method also considers all points in the dataset for clustering and calculates 
-            the distance between clusters as the average distance between all pairs of points, one from each cluster.
-     - Full-order and Average-linkage:This method also considers all points in the dataset for clustering and calculates 
-            the distance between clusters as the average distance between all pairs of points, one from each cluster.
-     - Full-order and Single-linkage:Using a global context, this approach considers all points in the dataset for clustering 
-            and measures the distance between clusters as the shortest distance between any pair of points from each cluster.
-     - Full-order and Wards-linkage:All points in the dataset are considered for clustering, and the distance 
-            between clusters is calculated in a way that minimizes the internal variance within each cluster.
+- First-order and Single-linkage: In this local approach, clusters are formed by considering only immediate neighbors, 
+    and their distance is measured by the shortest distance between any pair of points from each cluster.
+- Full-order and Complete-linkage: This method also considers all points in the dataset for clustering and calculates 
+    the distance between clusters as the average distance between all pairs of points, one from each cluster.
+- Full-order and Average-linkage: This method also considers all points in the dataset for clustering and calculates 
+    the distance between clusters as the average distance between all pairs of points, one from each cluster.
+- Full-order and Single-linkage: Using a global context, this approach considers all points in the dataset for clustering 
+    and measures the distance between clusters as the shortest distance between any pair of points from each cluster.
+- Full-order and Wards-linkage: All points in the dataset are considered for clustering, and the distance 
+    between clusters is calculated in a way that minimizes the internal variance within each cluster.
 
     """,
     references={
@@ -309,27 +311,27 @@ class REDCAPNode:
         FIRSTORDER_SINGLELINKAGE = (
             "First-order and Single-linkage",
             """In this local approach, clusters are formed by considering only immediate neighbors, 
-            and their distance is measured by the shortest distance between any pair of points from each cluster.""",
+and their distance is measured by the shortest distance between any pair of points from each cluster.""",
         )
         FULLORDER_SINGLELINKAGE = (
             "Full-order and Single-linkage",
             """Using a global context, this approach considers all points in the dataset for clustering 
-            and measures the distance between clusters as the shortest distance between any pair of points from each cluster.""",
+and measures the distance between clusters as the shortest distance between any pair of points from each cluster.""",
         )
         FULLORDER_COMPLETELINKAGE = (
             "Full-order and Complete-linkage",
             """This method also considers all points in the dataset for clustering and calculates 
-            the distance between clusters as the average distance between all pairs of points, one from each cluster.""",
+the distance between clusters as the average distance between all pairs of points, one from each cluster.""",
         )
         FULLORDER_AVERAGELINKAGE = (
             "Full-order and Average-linkage",
             """This method also considers all points in the dataset for clustering and calculates 
-            the distance between clusters as the average distance between all pairs of points, one from each cluster.""",
+the distance between clusters as the average distance between all pairs of points, one from each cluster.""",
         )
         FULLORDER_WARDLINKAGE = (
             "Full-order and Wards-linkage",
             """All points in the dataset are considered for clustering, and the distance 
-            between clusters is calculated in a way that minimizes the internal variance within each cluster.""",
+between clusters is calculated in a way that minimizes the internal variance within each cluster.""",
         )
 
         @classmethod
@@ -434,16 +436,16 @@ class REDCAPNode:
 )
 @knut.geoda_node_description(
     short_description="SCHC (Spatially constrained hierarchical clustering).",
-    description="""SCHC (Spatially constrained hierarchical clustering).It is a special form of constrained clustering, where the constraint is based on contiguity
-     (common borders). The method builds up the clusters using agglomerative hierarchical clustering methods:
-     single linkage, complete linkage, average linkage and Ward’s method (a special form of centroid linkage).
-     Meanwhile, it also maintains the spatial contiguity when merging two clusters. The method builds up the
-     clusters using agglomerative hierarchical clustering methods:
+    description="""SCHC (Spatially constrained hierarchical clustering). It is a special form of constrained clustering, 
+    where the constraint is based on contiguity (common borders). The method builds up the clusters using agglomerative 
+    hierarchical clustering methods: single linkage, complete linkage, average linkage, and Ward’s method 
+    (a special form of centroid linkage). Meanwhile, it also maintains the spatial contiguity when merging two clusters. 
+    The method builds up the clusters using agglomerative hierarchical clustering methods:
 
-     - Single
-     - Complete
-     - Average
-     - Ward
+- Single
+- Complete
+- Average
+- Ward
     """,
     references={
         "Spatial Clustering": "https://geodacenter.github.io/pygeoda/spatial_clustering.html",
@@ -574,12 +576,12 @@ class SCHCNode:
     short_description="Max-P Greedy.",
     description="""Max-P Greedy.A greedy algorithm to solve the max-p-region problem.
 
-    The so-called max-p regions model (outlined in [Duque, Anselin, and Rey 2012](https://doi.org/10.1111/j.1467-9787.2011.00743.x))
-    uses a different approach and considers the regionalization problem as an application of
-    integer programming. In addition, the number of regions is determined endogenously.
+The so-called max-p regions model (outlined in [Duque, Anselin, and Rey 2012](https://doi.org/10.1111/j.1467-9787.2011.00743.x))
+uses a different approach and considers the regionalization problem as an application of
+integer programming. In addition, the number of regions is determined endogenously.
 
-    The algorithm itself consists of a search process that starts with an initial feasible
-    solution and iteratively improves upon it while maintaining contiguity among the elements of each cluster.
+The algorithm itself consists of a search process that starts with an initial feasible
+solution and iteratively improves upon it while maintaining contiguity among the elements of each cluster.
     """,
     references={
         "Spatial Clustering": "https://geodacenter.github.io/pygeoda/spatial_clustering.html",
@@ -672,10 +674,12 @@ class MaxPgreedyNode:
     short_description="AZP Greedy.",
     description="""AZP Greedy.A greedy algorithm for automatic zoning procedure (AZP).
 
-    The automatic zoning procedure (AZP) was initially outlined in [Openshaw (1977)](https://doi.org/10.2307/622300) as a way to address some of the 
-    consequences of the modifiable areal unit problem (MAUP). In essence, it consists of a heuristic to find the best 
-    set of combinations of contiguous spatial units into p regions, minimizing the within sum of squares as a criterion of homogeneity. 
-    The number of regions needs to be specified beforehand, as in most other clustering methods considered so far.
+The automatic zoning procedure (AZP) was initially outlined in [Openshaw (1977)](https://doi.org/10.2307/622300) to 
+address some of the consequences of the modifiable areal unit problem (MAUP). In essence, it consists of a heuristic 
+to find the best set of combinations of contiguous spatial units into p regions, minimizing the within sum of squares 
+as a criterion of homogeneity. The number of regions needs to be specified beforehand, as in most other clustering 
+methods considered so far.
+
     """,
     references={
         "Spatial Clustering": "https://geodacenter.github.io/pygeoda/spatial_clustering.html",
@@ -766,11 +770,11 @@ class AZPgreedyNode:
 )
 @knext.input_table(
     name="Geodata table",
-    description="Geodata for calculating Peano curve spatal order.",
+    description="Geodata for calculating Peano curve spatial order.",
 )
 @knext.output_table(
     name="Output Table",
-    description="Output table with Peano curve spatal order.",
+    description="Output table with Peano curve spatial order.",
 )
 class PeanoCurveNode:
     """
@@ -778,7 +782,7 @@ class PeanoCurveNode:
 
     Peano curves are space-filling curves first introduced by Italian mathematician Giuseppe Peano (1890).
     A variation and more complicated form is called Hilbert curves because Hilbert (1891) visualized the
-    spacefilling idea described in Peano curves and later referred to it as “topological monsters”(Bartholdi and Platzman 1988).
+    space filling idea described in Peano curves and later referred to it as “topological monsters”(Bartholdi and Platzman 1988).
 
     Peano and Hilbert curves have been used to find all-nearest-neighbors (Chen and Chang 2011) and spatial ordering of
     geographic data (Guo and Gahegan 2006). Conceptually, Peano curves use algorithms to assign spatial orders to
@@ -883,7 +887,7 @@ class PeanoCurveNode:
 )
 @knext.input_table(
     name="Geodata table",
-    description="Geodata for implementating modified scale-space clustering.",
+    description="Geodata for implementing modified scale-space clustering.",
 )
 @knext.output_table(
     name="Output Table",
@@ -894,13 +898,14 @@ class MSSCNode:
     Modified scale-space clustering(MSSC) Initialization.
 
     This node performs the initial MSSC clustering based on the input data.
-    The MSSC model (Mu and Wang 2008) follows the values of spatial order along the Peano curve with breaking points that are defined by a threshold population size.
-    Through iterations in programming, each cluster satisfies the criterias of ascending spatial order and aggregation volumn minimum constraints.
-    MSSC (Mu and Wang 2008) is developed based on scale-space theory, an earlier algorithm and applications of the theory in remote sensing and GIS.
-    Using analogies of solid melting and viewing images, scale-space theory treats “scale”—corresponding to temperature in solid melting or distance in viewing
-    images—as a parameter in describing the processes and phenomena. With the increase of scale (as temperature in
-    the melting algorithm), a piece of metal will melt into liquid but not evenly,
-    showing a clustering pattern; with the increase of scale (as distance in the blurring algorithm),
+    The MSSC model (Mu and Wang 2008) follows the values of spatial order along the Peano curve with breaking points
+    that are defined by a threshold population size. Through iterations in programming, each cluster satisfies the
+    criteria of ascending spatial order and aggregation volume minimum constraints. MSSC (Mu and Wang 2008) is
+    developed based on scale-space theory, an earlier algorithm, and applications of the theory in remote sensing and GIS.
+    Using analogies of solid melting and viewing images, scale-space theory treats “scale”—corresponding to temperature
+    in solid melting or distance in viewing images—as a parameter in describing the processes and phenomena.
+    With the increase of scale (as temperature in the melting algorithm), a piece of metal will melt into liquid
+    but not evenly, showing a clustering pattern; with the increase of scale (as distance in the blurring algorithm),
     the same image can reveal different levels of generalizations and details, or different cluster centers.
 
     """
@@ -1094,7 +1099,8 @@ class MSSCmodifierNode:
 
     This node takes the clusters generated by the MSSC Initialization node and applies additional
     steps to refine those clusters that do not do not meet certain criteria.
-    The method combinies spatial weight matrix with spatial orders to address the jumping problem— disconnected members in a cluster.
+    The method combines spatial weight matrix with spatial orders to address the jumping problem— disconnected members
+    in a cluster.
 
     """
 
@@ -1116,7 +1122,7 @@ class MSSCmodifierNode:
     )
     isolate_col = knext.ColumnParameter(
         "Isolate column from MSSC",
-        "Select the column 'isoloate'generated by MSSC clustering.",
+        "Select the column 'isoloate' generated by MSSC clustering.",
         port_index=0,
         column_filter=knut.is_numeric,
         include_row_key=False,
@@ -1286,7 +1292,7 @@ class MSSCmodifierNode:
 )
 @knext.input_table(
     name="Geodata table",
-    description="Geodata with tags of cluster and isoloate status .",
+    description="Geodata with tags of cluster and isoloate status.",
 )
 @knext.output_table(
     name="Output Table",
@@ -1296,7 +1302,8 @@ class MSSCisolationNode:
     """
     Modified scale-space clustering(MSSC).
 
-    The node forces a cluster membership for unclaimed or loose-end units, especially useful for the enclave units in Mixed level regionalization model.
+    The node forces a cluster membership for unclaimed or loose-end units, especially useful for the enclave units in
+    Mixed level regionalization model.
 
     """
 
