@@ -614,7 +614,8 @@ class BoundCircleNode:
 )
 @knut.geo_node_description(
     short_description="This node returns two geometry columns representing the start and end points of each line in the input data.",
-    description="This node returns two geometry columns representing the start and end points of each line in the input data.",
+    description="""This node returns two geometry columns representing the start and end points of each line in the 
+input data. Any none LineString geometry types will return a missing value for the start and endpoint.""",
     references={
         "LineString": "https://shapely.readthedocs.io/en/stable/reference/shapely.LineString.html#shapely.LineString",
         "Point": "https://shapely.readthedocs.io/en/stable/reference/shapely.Point.html",
@@ -622,7 +623,7 @@ class BoundCircleNode:
 )
 class LineEndpointNode:
     geo_col = knut.geo_col_parameter(
-        description="Select the geometry column to compute the endpoints."
+        description="Select the geometry column to compute the endpoints.",
     )
     _STARTP = "Start Point"
     _ENDP = "End Point"
@@ -655,16 +656,20 @@ class LineEndpointNode:
         endp = knut.get_unique_column_name(self._ENDP, input.schema)
 
         def get_line_endpoints(row):
-            line_geom = row[self.geo_col]
-            line = LineString(line_geom)
-            start_point = Point(line.coords[0])
-            end_point = Point(line.coords[-1])
+            geom = row[self.geo_col]
+            geom_type = geom.geom_type
+            if geom_type == "LineString":
+                line = LineString(geom)
+                start_point = Point(line.coords[0])
+                end_point = Point(line.coords[-1])
+            else:
+                start_point = None
+                end_point = None
             return (start_point, end_point)
 
         gdf[[startp, endp]] = gdf.apply(
             get_line_endpoints, axis=1, result_type="expand"
         )
-
         gdf[startp] = gp.GeoSeries(gdf[startp], crs=gdf.crs)
         gdf[endp] = gp.GeoSeries(gdf[endp], crs=gdf.crs)
 
