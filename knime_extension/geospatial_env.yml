@@ -32,3 +32,4 @@ dependencies:
   - pip=23.0.1
   - pip:
     - pyecharts==2.0.2
+    - ipinfo==4.4.2
