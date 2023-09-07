@@ -16,6 +16,11 @@ category = knext.category(
 __NODE_ICON_PATH = "icons/icon/Visualization/"
 
 
+class ImageTypeOption(knext.EnumParameterOptions):
+    SVG = ("SVG", "Scalable support vector graphic (SVG) best suited for PDF reports.")
+    PNG = ("PNG", "PNG image best suited for presentations.")
+
+
 def replace_external_js_css_paths(
     replacement: str,
     html: str,
@@ -218,7 +223,7 @@ class ColorSettings:
             "Percentiles",
             "StdMean",
         ],
-    )
+    ).rule(knext.OneOf(use_classify, [True]), knext.Effect.SHOW)
 
     classification_bins = knext.IntParameter(
         "Number of classes",
@@ -226,7 +231,7 @@ class ColorSettings:
         default_value=5,
         min_value=1,
         max_value=50,
-    )
+    ).rule(knext.OneOf(use_classify, [True]), knext.Effect.SHOW)
 
 
 @knext.parameter_group(label="Color Legend Settings")
@@ -247,6 +252,7 @@ class LegendSettings:
         "Set the caption for the color legend. By default, the caption is the name of the selected color column or "
         + "empty for heat map.",
         default_value="",
+        is_advanced=True,
     )
 
 
@@ -691,7 +697,7 @@ class StaticColorSettings:
             "Percentiles",
             "StdMean",
         ],
-    )
+    ).rule(knext.OneOf(use_classify, [True]), knext.Effect.SHOW)
 
     classification_bins = knext.IntParameter(
         "Number of classes",
@@ -699,7 +705,7 @@ class StaticColorSettings:
         default_value=5,
         min_value=1,
         max_value=50,
-    )
+    ).rule(knext.OneOf(use_classify, [True]), knext.Effect.SHOW)
 
     edge_color = knext.StringParameter(
         "Edge color",
@@ -752,7 +758,7 @@ class StaticLegendSettings:
         "Set the caption for the legend. By default, the caption is the name of the selected color column or "
         + "empty for heat map.",
         default_value="",
-        # default_value=color_col,
+        is_advanced=True,
     )
 
     caption_fontsize = knext.IntParameter(
@@ -761,12 +767,14 @@ class StaticLegendSettings:
         default_value=10,
         min_value=1,
         max_value=100,
+        is_advanced=True,
     )
 
     expand = knext.BoolParameter(
         "Expand legend",
         "If checked, the legend will be horizontally expanded to fill the axes area.",
         default_value=False,
+        is_advanced=True,
     )
 
     location = knext.StringParameter(
@@ -788,6 +796,7 @@ class StaticLegendSettings:
             "upper left",
             "upper right",
         ],
+        is_advanced=True,
     )
 
     columns = knext.IntParameter(
@@ -796,6 +805,7 @@ class StaticLegendSettings:
         default_value=1,
         min_value=1,
         max_value=30,
+        is_advanced=True,
     )
 
     size = knext.IntParameter(
@@ -804,6 +814,7 @@ class StaticLegendSettings:
         default_value=8,
         min_value=1,
         max_value=30,
+        is_advanced=True,
     )
 
     fontsize = knext.IntParameter(
@@ -812,6 +823,7 @@ class StaticLegendSettings:
         default_value=10,
         min_value=1,
         max_value=30,
+        is_advanced=True,
     )
 
     labelcolor = knext.StringParameter(
@@ -819,12 +831,14 @@ class StaticLegendSettings:
         "Select the label color for the legend.",
         default_value="black",
         enum=["black", "blue", "green", "orange", "purple", "red", "white", "yellow"],
+        is_advanced=True,
     )
 
     frame = knext.BoolParameter(
         "Show legend frame",
         "If checked, a frame will be shown in the legend.",
         default_value=True,
+        is_advanced=True,
     )
 
     framealpha = knext.DoubleParameter(
@@ -833,6 +847,7 @@ class StaticLegendSettings:
         default_value=1.0,
         min_value=0.0,
         max_value=1.0,
+        is_advanced=True,
     )
 
     borderpad = knext.DoubleParameter(
@@ -841,6 +856,7 @@ class StaticLegendSettings:
         default_value=0.5,
         min_value=0.0,
         max_value=3.0,
+        is_advanced=True,
     )
 
     labelspacing = knext.DoubleParameter(
@@ -849,6 +865,7 @@ class StaticLegendSettings:
         default_value=0.5,
         min_value=0.0,
         max_value=1.0,
+        is_advanced=True,
     )
 
     colorbar_shrink = knext.DoubleParameter(
@@ -857,6 +874,7 @@ class StaticLegendSettings:
         default_value=1.0,
         min_value=0.0,
         max_value=1.0,
+        is_advanced=True,
     )
 
     colorbar_pad = knext.DoubleParameter(
@@ -865,6 +883,7 @@ class StaticLegendSettings:
         default_value=0.1,
         min_value=0.0,
         max_value=0.99,
+        is_advanced=True,
     )
 
 
@@ -878,6 +897,9 @@ class StaticLegendSettings:
 @knext.input_table(
     name="Geospatial Table to Visualize",
     description="Table with geospatial data to visualize",
+)
+@knext.output_image(
+    name="Geospatial View Image", description="Image of a map with the geospatial data"
 )
 @knext.output_view(
     name="Geospatial View", description="Showing a map with the geospatial data"
@@ -926,12 +948,14 @@ class ViewNodeStatic:
         default_value=10,
         min_value=1,
         max_value=100,
+        is_advanced=True,
     )
 
     set_axis_off = knext.BoolParameter(
         "Set axis off",
         "If checked, the axis will be set off.",
         default_value=False,
+        is_advanced=True,
     )
 
     size_settings = SizeSettings()
@@ -940,13 +964,28 @@ class ViewNodeStatic:
 
     legend_settings = StaticLegendSettings()
 
+    image_type = knext.EnumParameter(
+        label="Image output type",
+        description="Select the type of output image.",
+        default_value=ImageTypeOption.SVG.name,
+        enum=ImageTypeOption,
+        since_version="1.2.0",
+        is_advanced=True,
+    )
+
     def configure(self, configure_context, input_schema):
         self.geo_col = knut.column_exists_or_preset(
             configure_context, self.geo_col, input_schema, knut.is_geo
         )
         # if self.name_cols is None:
         #     self.name_cols = [c.name for c in input_schema if knut.is_string(c)]
-        return None
+
+        if self.image_type is ImageTypeOption.SVG.name:
+            output_image_type = knext.ImageFormat.SVG
+        else:
+            output_image_type = knext.ImageFormat.PNG
+
+        return knext.ImagePortObjectSpec(output_image_type)
 
     def execute(self, exec_context: knext.ExecutionContext, input_table):
         gdf = gp.GeoDataFrame(input_table.to_pandas(), geometry=self.geo_col)
@@ -1066,7 +1105,14 @@ class ViewNodeStatic:
         # knut.check_canceled(exec_context)
         # cx.add_basemap(map, crs=gdf.crs.to_string(), source=cx.providers.flatten()[self.base_map])
 
-        return knext.view_matplotlib(map.get_figure())
+        # create the output image
+        import io
+
+        fig = map.get_figure()
+        out_image_buffer = io.BytesIO()
+        fig.savefig(out_image_buffer, format=self.image_type.lower())
+
+        return (out_image_buffer.getvalue(), knext.view_matplotlib(fig))
 
 
 ############################################
@@ -1522,6 +1568,7 @@ class ViewNodeHeatmap:
         "Select the color map to use for the heatmap. See [branca](https://python-visualization.github.io/branca/colormap.html) for more information.",
         default_value="YlOrRd_09",
         enum=list(_color_bars.keys()),
+        is_advanced=True,
     )
 
     weight_col = knext.ColumnParameter(
@@ -1536,6 +1583,7 @@ class ViewNodeHeatmap:
         "Minimum opacity",
         "The minimum opacity the lowest value in the heatmap will have.",
         default_value=0.5,
+        is_advanced=True,
     )
 
     max_zoom = knext.IntParameter(
@@ -1543,12 +1591,14 @@ class ViewNodeHeatmap:
         """Zoom level where the points reach maximum intensity (as intensity scales with zoom), 
         equals maxZoom of the map by default.""",
         default_value=18,
+        is_advanced=True,
     )
 
     radius = knext.IntParameter(
         "Radius",
         "Radius of each datapoint of the heatmap.",
         default_value=25,
+        is_advanced=True,
     )
 
     blur = knext.IntParameter(
@@ -1556,6 +1606,7 @@ class ViewNodeHeatmap:
         """The blur factor that will be applied to all data points. 
         The higher the blur factor is, the smoother the gradients will be.""",
         default_value=15,
+        is_advanced=True,
     )
 
     basemap_settings = BaseMapSettings()
