@@ -72,11 +72,6 @@ class CrsTransformerNode:
         new_name="Projected",
     )
 
-    def __init__(self):
-        # set twice as workaround until fixed in KNIME framework
-        self.result_settings.mode = knut.ResultSettingsMode.REPLACE.name
-        self.result_settings.new_column_name = "Projected"
-
     def configure(self, configure_context, input_schema):
         self.geo_col = knut.column_exists_or_preset(
             configure_context, self.geo_col, input_schema, knut.is_geo
@@ -151,11 +146,6 @@ class GeometryToPointNode:
         mode=knut.ResultSettingsMode.REPLACE.name,
         new_name="Point",
     )
-
-    def __init__(self):
-        # set twice as workaround until fixed in KNIME framework
-        self.result_settings.mode = knut.ResultSettingsMode.REPLACE.name
-        self.result_settings.new_column_name = "Point"
 
     def configure(self, configure_context, input_schema):
         self.geo_col = knut.column_exists_or_preset(
@@ -280,11 +270,6 @@ class PolygonToLineNode:
         mode=knut.ResultSettingsMode.REPLACE.name,
         new_name="Line",
     )
-
-    def __init__(self):
-        # set twice as workaround until fixed in KNIME framework
-        self.result_settings.mode = knut.ResultSettingsMode.REPLACE.name
-        self.result_settings.new_column_name = "Line"
 
     def configure(self, configure_context, input_schema_1):
         self.geo_col = knut.column_exists_or_preset(
@@ -442,11 +427,6 @@ class GeometryToMultiPointNode:
         new_name="Multipoint",
     )
 
-    def __init__(self):
-        # set twice as workaround until fixed in KNIME framework
-        self.result_settings.mode = knut.ResultSettingsMode.REPLACE.name
-        self.result_settings.new_column_name = "Multipoint"
-
     def configure(self, configure_context, input_schema):
         self.geo_col = knut.column_exists_or_preset(
             configure_context, self.geo_col, input_schema, knut.is_geo_line
@@ -528,7 +508,7 @@ class RandomPointNode:
     num_col = knext.ColumnParameter(
         "Number of points column",
         "Select the column for the number of points to draw.",
-        column_filter=knut.is_int,
+        column_filter=knut.is_long,
         include_row_key=False,
         include_none_column=False,
     )
@@ -552,7 +532,7 @@ class RandomPointNode:
         knut.column_exists(self.id_col, input_schema_1, knut.is_numeric_or_string)
         id_type = input_schema_1[self.id_col].ktype
 
-        knut.column_exists(self.num_col, input_schema_1, knut.is_int)
+        knut.column_exists(self.num_col, input_schema_1, knut.is_long)
         num_type = input_schema_1[self.num_col].ktype
 
         return knext.Schema.from_columns(

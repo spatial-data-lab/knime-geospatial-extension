@@ -133,14 +133,6 @@ def boolean_and(*functions):
     return new_function
 
 
-def is_int(column: knext.Column) -> bool:
-    """
-    Checks if column is int.
-    @return: True if Column is int
-    """
-    return column.ktype == knext.int32()
-
-
 def is_numeric(column: knext.Column) -> bool:
     """
     Checks if column is numeric e.g. int, long or double.
@@ -155,8 +147,16 @@ def is_numeric(column: knext.Column) -> bool:
 
 def is_int(column: knext.Column) -> bool:
     """
-    Checks if column is integer.
+    Checks if column is integer (int32 only).
     @return: True if Column is integer
+    """
+    return column.ktype == knext.int32()
+
+
+def is_long(column: knext.Column) -> bool:
+    """
+    Checks if column is long (e.g. int32 or int64).
+    @return: True if Column is long
     """
     return column.ktype in [
         knext.int32(),
@@ -618,22 +618,21 @@ class ResultSettings:
     Group of settings that define the format of the result table.
     """
 
-    mode = knext.EnumParameter(
-        label="Output column",
-        description="Choose where to place the result column:",
-        default_value=ResultSettingsMode.get_default().name,
-        enum=ResultSettingsMode,
-    )
-
-    new_column_name = knext.StringParameter(
-        "New column name",
-        "The name of the new column that is appended if 'Append' is selected.",
-        default_value="geometry",
-    ).rule(knext.OneOf(mode, [ResultSettingsMode.APPEND.name]), knext.Effect.SHOW)
-
     def __init__(self, mode=ResultSettingsMode.get_default().name, new_name="geometry"):
-        self.mode = mode
-        self.new_column_name = new_name
+        mode_param = knext.EnumParameter(
+            label="Output column",
+            description="Choose where to place the result column:",
+            default_value=mode,
+            enum=ResultSettingsMode,
+        )
+        self.mode = mode_param
+        self.new_column_name = knext.StringParameter(
+            "New column name",
+            "The name of the new column that is appended if 'Append' is selected.",
+            default_value=new_name,
+        ).rule(
+            knext.OneOf(mode_param, [ResultSettingsMode.APPEND.name]), knext.Effect.SHOW
+        )
 
     def get_result_schema(
         self,

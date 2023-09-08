@@ -86,11 +86,6 @@ class BufferNode2:
         new_name="Buffer",
     )
 
-    def __init__(self):
-        # set twice as workaround until fixed in KNIME framework
-        self.result_settings.mode = knut.ResultSettingsMode.APPEND.name
-        self.result_settings.new_column_name = "Buffer"
-
     def configure(self, configure_context, input_schema):
         self.geo_col = knut.column_exists_or_preset(
             configure_context, self.geo_col, input_schema, knut.is_geo
@@ -605,11 +600,6 @@ class ClipNode:
         new_name="Clipped",
     )
 
-    def __init__(self):
-        # set twice as workaround until fixed in KNIME framework
-        self.result_settings.mode = knut.ResultSettingsMode.REPLACE.name
-        self.result_settings.new_column_name = "Clipped"
-
     def configure(self, configure_context, left_input_schema, right_input_schema):
         self.left_geo_col = knut.column_exists_or_preset(
             configure_context, self.left_geo_col, left_input_schema, knut.is_geo
@@ -1090,11 +1080,6 @@ class SimplifyNode2:
         mode=knut.ResultSettingsMode.APPEND.name,
         new_name="Simplified",
     )
-
-    def __init__(self):
-        # set twice as workaround until fixed in KNIME framework
-        self.result_settings.mode = knut.ResultSettingsMode.APPEND.name
-        self.result_settings.new_column_name = "Simplified"
 
     def configure(self, configure_context, input_schema_1):
         self.geo_col = knut.column_exists_or_preset(
