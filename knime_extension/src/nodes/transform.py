@@ -72,11 +72,6 @@ class CrsTransformerNode:
         new_name="Projected",
     )
 
-    def __init__(self):
-        # set twice as workaround until fixed in KNIME framework
-        self.result_settings.mode = knut.ResultSettingsMode.REPLACE.name
-        self.result_settings.new_column_name = "Projected"
-
     def configure(self, configure_context, input_schema):
         self.geo_col = knut.column_exists_or_preset(
             configure_context, self.geo_col, input_schema, knut.is_geo
@@ -151,11 +146,6 @@ class GeometryToPointNode:
         mode=knut.ResultSettingsMode.REPLACE.name,
         new_name="Point",
     )
-
-    def __init__(self):
-        # set twice as workaround until fixed in KNIME framework
-        self.result_settings.mode = knut.ResultSettingsMode.REPLACE.name
-        self.result_settings.new_column_name = "Point"
 
     def configure(self, configure_context, input_schema):
         self.geo_col = knut.column_exists_or_preset(
@@ -280,11 +270,6 @@ class PolygonToLineNode:
         mode=knut.ResultSettingsMode.REPLACE.name,
         new_name="Line",
     )
-
-    def __init__(self):
-        # set twice as workaround until fixed in KNIME framework
-        self.result_settings.mode = knut.ResultSettingsMode.REPLACE.name
-        self.result_settings.new_column_name = "Line"
 
     def configure(self, configure_context, input_schema_1):
         self.geo_col = knut.column_exists_or_preset(
@@ -441,11 +426,6 @@ class GeometryToMultiPointNode:
         mode=knut.ResultSettingsMode.REPLACE.name,
         new_name="Multipoint",
     )
-
-    def __init__(self):
-        # set twice as workaround until fixed in KNIME framework
-        self.result_settings.mode = knut.ResultSettingsMode.REPLACE.name
-        self.result_settings.new_column_name = "Multipoint"
 
     def configure(self, configure_context, input_schema):
         self.geo_col = knut.column_exists_or_preset(
