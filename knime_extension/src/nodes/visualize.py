@@ -1165,28 +1165,33 @@ class ViewNodeKepler:
         include_none_column=False,
     )
 
-    # save_config = knext.BoolParameter(
-    #     "Save config",
-    #     "Save the config for the map",
-    #     default_value=False,
-    # )
-
-    # load_config = knext.BoolParameter(
-    #     "Load config",
-    #     "Load the config for the map",
-    #     default_value=False,
-    # )
+    attribute_cols = knext.ColumnFilterParameter(
+        "Attribute columns",
+        "Select the attribute columns to visualize.",
+        column_filter=knut.negate(knut.is_geo),  # Filter out all geo columns
+        since_version="1.2.0",
+    )
 
     def configure(self, configure_context, input_schema):
         self.geo_col = knut.column_exists_or_preset(
             configure_context, self.geo_col, input_schema, knut.is_geo
         )
-        # if self.name_cols is None:
-        #     self.name_cols = [c.name for c in input_schema if knut.is_string(c)]
         return None
 
     def execute(self, exec_context: knext.ExecutionContext, input_table):
-        df = input_table.to_pandas()
+        # include only selected attribute columns that are not geospatial and the selected geospatial column
+        attribute_columns = self.attribute_cols.apply(input_table.schema)
+
+        # this code is only necessary since the apply function ignores the column_filter parameter and would return
+        # all geo columns if the "Any unknown columns" option is added to the include list
+        included_column_names = list()
+        for c in attribute_columns:
+            if not knut.is_geo(c):
+                included_column_names.append(c.name)
+        included_column_names.append(self.geo_col)
+
+        df = input_table[included_column_names].to_pandas()
+
         df.rename(columns={self.geo_col: "geometry"}, inplace=True)
         gdf = gp.GeoDataFrame(df, geometry="geometry")
 
