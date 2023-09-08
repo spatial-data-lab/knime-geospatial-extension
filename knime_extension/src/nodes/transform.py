@@ -508,7 +508,7 @@ class RandomPointNode:
     num_col = knext.ColumnParameter(
         "Number of points column",
         "Select the column for the number of points to draw.",
-        column_filter=knut.is_int,
+        column_filter=knut.is_long,
         include_row_key=False,
         include_none_column=False,
     )
@@ -532,7 +532,7 @@ class RandomPointNode:
         knut.column_exists(self.id_col, input_schema_1, knut.is_numeric_or_string)
         id_type = input_schema_1[self.id_col].ktype
 
-        knut.column_exists(self.num_col, input_schema_1, knut.is_int)
+        knut.column_exists(self.num_col, input_schema_1, knut.is_long)
         num_type = input_schema_1[self.num_col].ktype
 
         return knext.Schema.from_columns(

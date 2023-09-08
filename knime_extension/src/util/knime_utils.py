@@ -133,14 +133,6 @@ def boolean_and(*functions):
     return new_function
 
 
-def is_int(column: knext.Column) -> bool:
-    """
-    Checks if column is int.
-    @return: True if Column is int
-    """
-    return column.ktype == knext.int32()
-
-
 def is_numeric(column: knext.Column) -> bool:
     """
     Checks if column is numeric e.g. int, long or double.
@@ -153,7 +145,7 @@ def is_numeric(column: knext.Column) -> bool:
     )
 
 
-def is_int(column: knext.Column) -> bool:
+def is_long(column: knext.Column) -> bool:
     """
     Checks if column is integer.
     @return: True if Column is integer
