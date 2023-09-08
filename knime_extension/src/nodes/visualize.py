@@ -67,7 +67,7 @@ class ColorSettings:
 
     color_map = knext.StringParameter(
         "Color map",
-        """Select the color map to use for the color column. `xxx_r` mean the reverse of the `xxx` color map. 
+        """Select the color map to use for the color column. 'xxx_r' mean the reverse of the 'xxx' color map. 
         See [Colormaps in Matplotlib](https://matplotlib.org/stable/tutorials/colors/colormaps.html)""",
         default_value="viridis",
         enum=[
@@ -194,14 +194,14 @@ class ColorSettings:
             "YlOrRd",
             "YlOrRd_r",
         ],
-    )
+    ).rule(knext.OneOf(color_col, [None, "<none>"]), knext.Effect.HIDE)
 
     use_classify = knext.BoolParameter(
         "Classify numerical marker color columns",
         """If checked, a numerical marker color column will be classified using the selected classification method. 
         The 'Number of classes' will be used to determine the number of bins.""",
         default_value=False,
-    )
+    ).rule(knext.OneOf(color_col, [None, "<none>"]), knext.Effect.HIDE)
 
     classification_method = knext.StringParameter(
         "Classification method",
@@ -252,15 +252,14 @@ class LegendSettings:
         "Set the caption for the color legend. By default, the caption is the name of the selected color column or "
         + "empty for heat map.",
         default_value="",
-        is_advanced=True,
-    )
+    ).rule(knext.OneOf(plot, [True]), knext.Effect.SHOW)
 
 
 @knext.parameter_group(label="Size Settings")
 class SizeSettings:
     """
     Group of settings that define the size of the geometric objects. The size column should be numerical.
-    The size is fixed by default. If the `Marker size column` is selected, the `Marker size scale` option will
+    The size is fixed by default. If the 'Marker size column' is selected, the 'Marker size scale' option will
     be ignored, and size will be scaled by the values of the column. For point features, the size is the radius
     of the circle. For line features, the size is the width of the line. For polygon features, the size is the
     radius of the centroid of the polygon.
@@ -283,7 +282,7 @@ class SizeSettings:
         default_value=float(1.0),
         min_value=None,
         max_value=None,
-    )
+    ).rule(knext.OneOf(size_col, [None, "<none>"]), knext.Effect.SHOW)
 
 
 @knext.parameter_group(label="Base Map Setting")
@@ -292,8 +291,8 @@ class BaseMapSettings:
 
     base_map = knext.StringParameter(
         "Base map",
-        """Select the base map to use for the visualization. If choose `Don't show base map`, the base map will be hidden.
-        The default base map is `OpenStreetMap`.
+        """Select the base map to use for the visualization. If choose 'Don't show base map', the base map will be hidden.
+        The default base map is 'OpenStreetMap'.
         See [Folium base maps](https://python-visualization.github.io/folium/quickstart.html#Tiles).""",
         default_value="OpenStreetMap",
         enum=[
@@ -580,9 +579,8 @@ class StaticColorSettings:
 
     color = knext.StringParameter(
         "Marker color",
-        """Select marker color. It will assign a unified color for all features. If the a `Marker color column` 
-        is selected and not `None` option, this option will be ignored.
-        Select none if you don't want to set a unified marker color.""",
+        """Select marker color. It will assign a unified color for all features. If a 'Marker color column' 
+        is selected, this option will be ignored. Select none if you don't want to set a unified marker color.""",
         default_value="none",
         enum=[
             "beige",
@@ -606,7 +604,7 @@ class StaticColorSettings:
             "red",
             "white",
         ],
-    )
+    ).rule(knext.OneOf(color_col, [None, "<none>"]), knext.Effect.SHOW)
 
     color_map = knext.StringParameter(
         "Color map",
@@ -668,14 +666,14 @@ class StaticColorSettings:
             "plasma",
             "viridis",
         ],
-    )
+    ).rule(knext.OneOf(color_col, [None, "<none>"]), knext.Effect.HIDE)
 
     use_classify = knext.BoolParameter(
         "Classify numerical marker color columns",
         """If checked, the numerical marker color column will be classified using the selected classification method. 
         # The 'Number of classes' will be used to determine the number of bins.""",
-        default_value=True,
-    )
+        default_value=False,
+    ).rule(knext.OneOf(color_col, [None, "<none>"]), knext.Effect.HIDE)
 
     classification_method = knext.StringParameter(
         "Classification method",
@@ -758,8 +756,7 @@ class StaticLegendSettings:
         "Set the caption for the legend. By default, the caption is the name of the selected color column or "
         + "empty for heat map.",
         default_value="",
-        is_advanced=True,
-    )
+    ).rule(knext.OneOf(plot, [True]), knext.Effect.SHOW)
 
     caption_fontsize = knext.IntParameter(
         "Caption font size",
@@ -768,14 +765,14 @@ class StaticLegendSettings:
         min_value=1,
         max_value=100,
         is_advanced=True,
-    )
+    ).rule(knext.OneOf(plot, [True]), knext.Effect.SHOW)
 
     expand = knext.BoolParameter(
         "Expand legend",
         "If checked, the legend will be horizontally expanded to fill the axes area.",
         default_value=False,
         is_advanced=True,
-    )
+    ).rule(knext.OneOf(plot, [True]), knext.Effect.SHOW)
 
     location = knext.StringParameter(
         "Legend location",
@@ -797,7 +794,7 @@ class StaticLegendSettings:
             "upper right",
         ],
         is_advanced=True,
-    )
+    ).rule(knext.OneOf(plot, [True]), knext.Effect.SHOW)
 
     columns = knext.IntParameter(
         "Legend columns",
@@ -806,7 +803,7 @@ class StaticLegendSettings:
         min_value=1,
         max_value=30,
         is_advanced=True,
-    )
+    ).rule(knext.OneOf(plot, [True]), knext.Effect.SHOW)
 
     size = knext.IntParameter(
         "Legend size",
@@ -815,7 +812,7 @@ class StaticLegendSettings:
         min_value=1,
         max_value=30,
         is_advanced=True,
-    )
+    ).rule(knext.OneOf(plot, [True]), knext.Effect.SHOW)
 
     fontsize = knext.IntParameter(
         "Legend font size",
@@ -824,7 +821,7 @@ class StaticLegendSettings:
         min_value=1,
         max_value=30,
         is_advanced=True,
-    )
+    ).rule(knext.OneOf(plot, [True]), knext.Effect.SHOW)
 
     labelcolor = knext.StringParameter(
         "Legend label color",
@@ -832,14 +829,14 @@ class StaticLegendSettings:
         default_value="black",
         enum=["black", "blue", "green", "orange", "purple", "red", "white", "yellow"],
         is_advanced=True,
-    )
+    ).rule(knext.OneOf(plot, [True]), knext.Effect.SHOW)
 
     frame = knext.BoolParameter(
         "Show legend frame",
         "If checked, a frame will be shown in the legend.",
         default_value=True,
         is_advanced=True,
-    )
+    ).rule(knext.OneOf(plot, [True]), knext.Effect.SHOW)
 
     framealpha = knext.DoubleParameter(
         "Legend frame alpha",
@@ -848,7 +845,7 @@ class StaticLegendSettings:
         min_value=0.0,
         max_value=1.0,
         is_advanced=True,
-    )
+    ).rule(knext.OneOf(plot, [True]), knext.Effect.SHOW)
 
     borderpad = knext.DoubleParameter(
         "Legend border pad",
@@ -857,7 +854,7 @@ class StaticLegendSettings:
         min_value=0.0,
         max_value=3.0,
         is_advanced=True,
-    )
+    ).rule(knext.OneOf(plot, [True]), knext.Effect.SHOW)
 
     labelspacing = knext.DoubleParameter(
         "Legend label spacing",
@@ -866,7 +863,7 @@ class StaticLegendSettings:
         min_value=0.0,
         max_value=1.0,
         is_advanced=True,
-    )
+    ).rule(knext.OneOf(plot, [True]), knext.Effect.SHOW)
 
     colorbar_shrink = knext.DoubleParameter(
         "Color bar legend shrink",
@@ -875,7 +872,7 @@ class StaticLegendSettings:
         min_value=0.0,
         max_value=1.0,
         is_advanced=True,
-    )
+    ).rule(knext.OneOf(plot, [True]), knext.Effect.SHOW)
 
     colorbar_pad = knext.DoubleParameter(
         "Color bar legend pad",
@@ -884,7 +881,7 @@ class StaticLegendSettings:
         min_value=0.0,
         max_value=0.99,
         is_advanced=True,
-    )
+    ).rule(knext.OneOf(plot, [True]), knext.Effect.SHOW)
 
 
 @knext.node(
@@ -958,20 +955,19 @@ class ViewNodeStatic:
         is_advanced=True,
     )
 
-    size_settings = SizeSettings()
-
-    color_settings = StaticColorSettings()
-
-    legend_settings = StaticLegendSettings()
-
     image_type = knext.EnumParameter(
         label="Image output type",
         description="Select the type of output image.",
         default_value=ImageTypeOption.SVG.name,
         enum=ImageTypeOption,
         since_version="1.2.0",
-        is_advanced=True,
     )
+
+    size_settings = SizeSettings()
+
+    color_settings = StaticColorSettings()
+
+    legend_settings = StaticLegendSettings()
 
     def configure(self, configure_context, input_schema):
         self.geo_col = knut.column_exists_or_preset(
@@ -1573,7 +1569,6 @@ class ViewNodeHeatmap:
         "Select the color map to use for the heatmap. See [branca](https://python-visualization.github.io/branca/colormap.html) for more information.",
         default_value="YlOrRd_09",
         enum=list(_color_bars.keys()),
-        is_advanced=True,
     )
 
     weight_col = knext.ColumnParameter(
@@ -1582,6 +1577,19 @@ class ViewNodeHeatmap:
         column_filter=knut.is_numeric,
         include_row_key=False,
         include_none_column=True,
+    )
+
+    radius = knext.IntParameter(
+        "Radius",
+        "Radius of each datapoint of the heatmap.",
+        default_value=25,
+    )
+
+    blur = knext.IntParameter(
+        "Blur",
+        """The blur factor that will be applied to all data points. 
+        The higher the blur factor is, the smoother the gradients will be.""",
+        default_value=15,
     )
 
     min_opacity = knext.DoubleParameter(
@@ -1596,21 +1604,6 @@ class ViewNodeHeatmap:
         """Zoom level where the points reach maximum intensity (as intensity scales with zoom), 
         equals maxZoom of the map by default.""",
         default_value=18,
-        is_advanced=True,
-    )
-
-    radius = knext.IntParameter(
-        "Radius",
-        "Radius of each datapoint of the heatmap.",
-        default_value=25,
-        is_advanced=True,
-    )
-
-    blur = knext.IntParameter(
-        "Blur",
-        """The blur factor that will be applied to all data points. 
-        The higher the blur factor is, the smoother the gradients will be.""",
-        default_value=15,
         is_advanced=True,
     )
 
