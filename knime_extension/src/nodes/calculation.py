@@ -57,31 +57,26 @@ class _SingleCalculator:
         ]
 
     def configure(self, configure_context, input_schema):
-        # geo_col needs to be defined in the child class
+        # geo_col and result_settings needs to be defined in the child class
 
         self.geo_col = knut.column_exists_or_preset(
             configure_context, self.geo_col, input_schema, knut.is_geo
         )
-
-        # We have to do this twice because configure and execute are executed in different processes so they
-        # have different instances!!!
-        self.col_name = knut.get_unique_column_name(self.col_name, input_schema)
         if self.coltype is not None:
-            return input_schema.append(knext.Column(self.coltype, self.col_name))
+            return self.result_settings.get_result_schema(
+                configure_context,
+                input_schema,
+                self.geo_col,
+                self.coltype,
+            )
 
     def execute(self, exec_context, input_table):
         # create GeoDataFrame with the selected column as active geometry column.
-        # The geo_col needs to be defined in the child class
+        # The geo_col and result_settings needs to be defined in the child class
 
-        # We have to do this twice because configure and execute are executed in different processes so they
-        # have different instances!!!
-        self.col_name = knut.get_unique_column_name(self.col_name, input_table.schema)
-
-        gdf = knut.load_geo_data_frame(input_table, self.geo_col, exec_context)
-        gdf[self.col_name] = self.func(
-            gdf
-        )  # execute the function and append the result
-        return knut.to_table(gdf, exec_context)
+        return self.result_settings.get_computed_result_table(
+            exec_context, input_table, self.geo_col, self.func
+        )
 
 
 ############################################
@@ -107,12 +102,20 @@ class _SingleCalculator:
     },
 )
 class AreaNode(_SingleCalculator):
+    __COL_NAME = "area"
+
     geo_col = knut.geo_col_parameter(
         description="Select the geometry column to compute the area."
     )
 
+    result_settings = knut.ResultSettings(
+        mode=knut.ResultSettingsMode.APPEND.name,
+        new_name=__COL_NAME,
+        since_version="1.2.0",
+    )
+
     def __init__(self):
-        super().__init__(lambda gdf: gdf.area, "area")
+        super().__init__(lambda gdf: gdf.area, self.__COL_NAME)
 
 
 ############################################
@@ -138,12 +141,20 @@ class AreaNode(_SingleCalculator):
     },
 )
 class LengthNode(_SingleCalculator):
+    __COL_NAME = "length"
+
     geo_col = knut.geo_col_parameter(
         description="Select the geometry column to compute the length."
     )
 
+    result_settings = knut.ResultSettings(
+        mode=knut.ResultSettingsMode.APPEND.name,
+        new_name=__COL_NAME,
+        since_version="1.2.0",
+    )
+
     def __init__(self):
-        super().__init__(lambda gdf: gdf.length, "length")
+        super().__init__(lambda gdf: gdf.length, self.__COL_NAME)
 
 
 ############################################
@@ -174,12 +185,20 @@ class LengthNode(_SingleCalculator):
     },
 )
 class BoundingBoxNode(_SingleCalculator):
+    __COL_NAME = "box"
+
     geo_col = knut.geo_col_parameter(
         description="Select the geometry column to compute the bounding box."
     )
 
+    result_settings = knut.ResultSettings(
+        mode=knut.ResultSettingsMode.APPEND.name,
+        new_name=__COL_NAME,
+        since_version="1.2.0",
+    )
+
     def __init__(self):
-        super().__init__(lambda gdf: gdf.envelope, "box", knut.TYPE_GEO)
+        super().__init__(lambda gdf: gdf.envelope, self.__COL_NAME, knut.TYPE_GEO)
 
 
 ############################################
@@ -211,12 +230,20 @@ class BoundingBoxNode(_SingleCalculator):
     },
 )
 class ConvexHullNode(_SingleCalculator):
+    __COL_NAME = "hull"
+
     geo_col = knut.geo_col_parameter(
         description="Select the geometry column to compute the convex hull."
     )
 
+    result_settings = knut.ResultSettings(
+        mode=knut.ResultSettingsMode.APPEND.name,
+        new_name=__COL_NAME,
+        since_version="1.2.0",
+    )
+
     def __init__(self):
-        super().__init__(lambda gdf: gdf.convex_hull, "hull", knut.TYPE_GEO)
+        super().__init__(lambda gdf: gdf.convex_hull, self.__COL_NAME, knut.TYPE_GEO)
 
 
 ############################################
@@ -539,11 +566,6 @@ class BoundCircleNode:
         mode=knut.ResultSettingsMode.APPEND.name,
         new_name="Circle",
     )
-
-    def __init__(self):
-        # set twice as workaround until fixed in KNIME framework
-        self.result_settings.mode = knut.ResultSettingsMode.APPEND.name
-        self.result_settings.new_column_name = "Circle"
 
     def configure(self, configure_context, input_schema):
         self.geo_col = knut.column_exists_or_preset(
