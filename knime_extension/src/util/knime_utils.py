@@ -145,10 +145,18 @@ def is_numeric(column: knext.Column) -> bool:
     )
 
 
+def is_int(column: knext.Column) -> bool:
+    """
+    Checks if column is integer (int32 only).
+    @return: True if Column is integer
+    """
+    return column.ktype == knext.int32()
+
+
 def is_long(column: knext.Column) -> bool:
     """
-    Checks if column is integer.
-    @return: True if Column is integer
+    Checks if column is long (e.g. int32 or int64).
+    @return: True if Column is long
     """
     return column.ktype in [
         knext.int32(),
