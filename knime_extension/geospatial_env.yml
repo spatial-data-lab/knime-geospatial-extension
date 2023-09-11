@@ -33,3 +33,4 @@ dependencies:
   - pygeoda=0.0.8
   - pip:
     - pyecharts==2.0.2
+    - ipinfo==4.4.2

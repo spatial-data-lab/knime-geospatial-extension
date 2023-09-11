@@ -7,7 +7,7 @@ __category = knext.category(
     path="/community/geo",
     level_id="spatialstatistic",
     name="Exploratory Spatial Data Analysis",
-    description="Spatial Statistic Nodes",
+    description="Nodes that provide various measures and methods to analyze spatial autocorrelation.",
     # starting at the root folder of the extension_module parameter in the knime.yml file
     icon="icons/icon/SpatialStatisticsCategory.png",
     after="viz",
@@ -86,7 +86,7 @@ class spatialWeights:
         modeling nodes.
         """,
         include_none_column=True,
-        column_filter=knut.is_int,
+        column_filter=knut.is_long,
         since_version="1.1.0",
     )
 
@@ -230,8 +230,7 @@ class spatialWeights:
             wname = "Inverse Distance"
             w.transform = "r"
         if self.category == "Binary Distance Band":
-
-            import util.projection as kproj 
+            import util.projection as kproj
 
             crs = gdf.crs
             if (crs is not None) and (kproj.is_geographic(crs)):
@@ -332,7 +331,7 @@ class IDSetting:
         type integer. The values need to match the values from the ID column selected in the
         [Spatial Weights](https://hub.knime.com/center%20for%20geographic%20analysis%20at%20harvard%20university/extensions/sdl.harvard.features.geospatial/latest/org.knime.python3.nodes.extension.ExtensionNodeSetFactory$DynamicExtensionNodeFactory:4d710eae/) node.
         If you selected 'none' in the Spatial Weights node select it here as well.""",
-        column_filter=knut.is_int,
+        column_filter=knut.is_long,
         include_none_column=True,
     )
 

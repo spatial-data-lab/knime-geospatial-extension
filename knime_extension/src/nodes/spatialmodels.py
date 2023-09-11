@@ -8,7 +8,7 @@ __category = knext.category(
     path="/community/geo",
     level_id="spatialmodels",
     name="Spatial Modelling",
-    description="Spatial Models Nodes",
+    description="Nodes that conduct spatial regression, panel modelling, and geographically weighted regression analyses.",
     # starting at the root folder of the extension_module parameter in the knime.yml file
     icon="icons/icon/SpatialModelCategory.png",
     after="spatialstatistic",
@@ -36,7 +36,7 @@ def get_id_col_parameter(
         label=label,
         description=description,
         include_none_column=True,
-        column_filter=knut.is_int,
+        column_filter=knut.is_long,
         since_version="1.1.0",
     )
 

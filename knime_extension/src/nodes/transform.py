@@ -12,7 +12,7 @@ category = knext.category(
     path="/community/geo",
     level_id="transform",
     name="Spatial Transformation",
-    description="Geospatial transformation nodes",
+    description="Nodes that transform, decompose, and generate new geometric entities from single geometric objects.",
     # starting at the root folder of the extension_module parameter in the knime.yml file
     icon="icons/icon/TransformationCategory.png",
     after="spatialtool",
@@ -71,11 +71,6 @@ class CrsTransformerNode:
         mode=knut.ResultSettingsMode.REPLACE.name,
         new_name="Projected",
     )
-
-    def __init__(self):
-        # set twice as workaround until fixed in KNIME framework
-        self.result_settings.mode = knut.ResultSettingsMode.REPLACE.name
-        self.result_settings.new_column_name = "Projected"
 
     def configure(self, configure_context, input_schema):
         self.geo_col = knut.column_exists_or_preset(
@@ -151,11 +146,6 @@ class GeometryToPointNode:
         mode=knut.ResultSettingsMode.REPLACE.name,
         new_name="Point",
     )
-
-    def __init__(self):
-        # set twice as workaround until fixed in KNIME framework
-        self.result_settings.mode = knut.ResultSettingsMode.REPLACE.name
-        self.result_settings.new_column_name = "Point"
 
     def configure(self, configure_context, input_schema):
         self.geo_col = knut.column_exists_or_preset(
@@ -280,11 +270,6 @@ class PolygonToLineNode:
         mode=knut.ResultSettingsMode.REPLACE.name,
         new_name="Line",
     )
-
-    def __init__(self):
-        # set twice as workaround until fixed in KNIME framework
-        self.result_settings.mode = knut.ResultSettingsMode.REPLACE.name
-        self.result_settings.new_column_name = "Line"
 
     def configure(self, configure_context, input_schema_1):
         self.geo_col = knut.column_exists_or_preset(
@@ -442,11 +427,6 @@ class GeometryToMultiPointNode:
         new_name="Multipoint",
     )
 
-    def __init__(self):
-        # set twice as workaround until fixed in KNIME framework
-        self.result_settings.mode = knut.ResultSettingsMode.REPLACE.name
-        self.result_settings.new_column_name = "Multipoint"
-
     def configure(self, configure_context, input_schema):
         self.geo_col = knut.column_exists_or_preset(
             configure_context, self.geo_col, input_schema, knut.is_geo_line
@@ -465,3 +445,112 @@ class GeometryToMultiPointNode:
         return self.result_settings.get_computed_result_table(
             exec_context, input_table, self.geo_col, lambda l: MultiPoint(l.coords)
         )
+
+
+############################################
+# Create points in polygon
+############################################
+
+
+@knext.node(
+    name="Create Random Points",
+    node_type=knext.NodeType.MANIPULATOR,
+    icon_path="icons/icon/GeometryTransformation/RandomPoint.png",
+    category=category,
+    after="",
+)
+@knext.input_table(
+    name="Geo table",
+    description="Table with geometry column.",
+)
+@knext.output_table(
+    name="Transformed geo table",
+    description="Table with transformed geometry column.",
+)
+@knut.geo_node_description(
+    short_description="This node generates random points in polygons.",
+    description="""This node generates random points from a uniform distribution within (or along) each input geometry.
+For polygons, the points will be sampled within the area of the polygon. For lines, they will be sampled along
+the length of the LineString. For multi-part geometries, the weights of each part are selected according to their
+relevant attribute (area for Polygons, length for LineStrings), and then points are sampled from each part.
+Any other geometry type (e.g., Point, MultiPoint, GeometryCollection) is ignored, and an empty MultiPoint geometry
+is returned.
+    
+The numerical value column is used to determine the number of points to be generated 
+for the geometry of the same row. Additionally, you need to provide an ID column that will be used to 
+identify the original input row.
+    
+The node will create a new MultiPoint geometry that includes the random set of points for each input geometry, 
+which can be exploded into individual points using the 
+[Multipart To Singlepart node.](https://hub.knime.com/center%20for%20geographic%20analysis%20at%20harvard%20university/extensions/sdl.harvard.features.geospatial/latest/org.knime.python3.nodes.extension.ExtensionNodeSetFactory$DynamicExtensionNodeFactory:55ec235c/)
+    """,
+    references={
+        "Sampling points user guide": "https://geopandas.org/en/stable/docs/user_guide/sampling.html",
+        "sample_points method": "https://geopandas.org/en/stable/docs/reference/api/geopandas.GeoSeries.sample_points.html",
+    },
+)
+class RandomPointNode:
+    geo_col = knext.ColumnParameter(
+        "Geometry column",
+        "Select the geometry column to transform.",
+        # Allow only GeoValue compatible columns
+        column_filter=knut.is_geo,
+        include_row_key=False,
+        include_none_column=False,
+    )
+    id_col = knext.ColumnParameter(
+        "Unique ID column",
+        "Select the column as polygon ID for points.",
+        column_filter=knut.is_numeric_or_string,
+        include_row_key=False,
+        include_none_column=False,
+    )
+    num_col = knext.ColumnParameter(
+        "Number of points column",
+        "Select the column for the number of points to draw.",
+        column_filter=knut.is_long,
+        include_row_key=False,
+        include_none_column=False,
+    )
+    use_seed = knext.BoolParameter(
+        "Use random seed",
+        "I selected you may enter a fixed seed here to get reproducible results upon re-execution. "
+        + "If you do not specify a seed, a new random seed is taken for each execution.",
+        False,
+    )
+    seed = knext.IntParameter(
+        "Seed",
+        "A seed to initialize the random number generator.",
+        1234,
+    ).rule(knext.OneOf(use_seed, [True]), knext.Effect.SHOW)
+
+    def configure(self, configure_context, input_schema_1):
+        self.geo_col = knut.column_exists_or_preset(
+            configure_context, self.geo_col, input_schema_1, knut.is_geo
+        )
+
+        knut.column_exists(self.id_col, input_schema_1, knut.is_numeric_or_string)
+        id_type = input_schema_1[self.id_col].ktype
+
+        knut.column_exists(self.num_col, input_schema_1, knut.is_long)
+        num_type = input_schema_1[self.num_col].ktype
+
+        return knext.Schema.from_columns(
+            [
+                knext.Column(id_type, self.id_col),
+                knext.Column(num_type, self.num_col),
+                knext.Column(knut.TYPE_MULTI_POINT, "Geometry"),
+            ]
+        )
+
+    def execute(self, exec_context: knext.ExecutionContext, input_1):
+        gdf = knut.load_geo_data_frame(input_1, self.geo_col, exec_context)
+        gdf2 = gdf[[self.id_col, self.num_col]]
+        if self.use_seed:
+            seed = self.seed
+        else:
+            seed = None
+        gdf2["Geometry"] = gdf[self.geo_col].sample_points(
+            size=gdf[self.num_col], method="uniform", seed=seed
+        )
+        return knut.to_table(gdf2, exec_context)
