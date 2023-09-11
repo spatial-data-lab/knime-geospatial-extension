@@ -15,6 +15,18 @@ __category = knext.category(
 # Root path for all node icons in this file
 __NODE_ICON_PATH = "icons/icon/SpatialClustering/"
 _CLUSTER_ID = "Cluster ID"
+_ISOLATED = "Isolate"
+
+
+def validate_k(
+    value: int, min_val: int = 1, msg: str = "Number of clusters must be greater 1."
+) -> int:
+    """
+    Checks if the cluster k value is larger than 1.
+    """
+    if value <= min_val:
+        raise knext.InvalidParametersError(msg)
+    return int(value)
 
 
 # def  geodataframe to PPP
@@ -28,8 +40,102 @@ def gdf2ppp(gdf):
     return pp
 
 
+def get_cluster_k():
+    return knext.IntParameter(
+        "Number of clusters",
+        "The number of user-defined clusters.",
+        default_value=4,
+        validator=validate_k,
+    )
+
+
+def get_seed():
+    return knext.IntParameter(
+        "Seed",
+        "The seed for the random number generator.",
+        default_value=123456789,
+        is_advanced=True,
+    )
+
+
+@knext.parameter_group(label="Cluster settings")
+class ClusterSettings:
+    class WeightModel(knext.EnumParameterOptions):
+        QUEEN = (
+            "Queen",
+            "Queen contiguity weights.",
+        )
+        ROOK = ("Rook", "Rook contiguity weights.")
+
+    geo_col = knut.geo_col_parameter(
+        description="Select the geometry column to implement spatial clustering."
+    )
+
+    # expose seed
+
+    bound_col = knext.ColumnParameter(
+        "Bound column for minibound",
+        "Select the bound column for clusters with minibound.",
+        port_index=0,
+        column_filter=knut.is_numeric,
+        include_row_key=False,
+        include_none_column=False,
+    )
+
+    # use column filter
+
+    attribute_list = knext.ColumnFilterParameter(
+        "Attribute columns for clustering",
+        "Select columns for calculating attribute distance.",
+        port_index=0,
+        column_filter=knut.is_numeric,
+    )
+    minibound = knext.DoubleParameter(
+        "Minimum total value for the bounding variable in each output cluster",
+        "The sum of the bounding variable in each cluster must be greater than this minimum value.",
+    )
+    weight_mode = knext.EnumParameter(
+        label="Spatial weight model",
+        description="Input spatial weight mode.",
+        default_value=WeightModel.QUEEN.name,
+        enum=WeightModel,
+    )
+
+    def __weight(self, geoda_df):
+        import pygeoda
+
+        if self.weight_mode == self.WeightModel.QUEEN.name:
+            w = pygeoda.queen_weights(geoda_df)
+        else:
+            w = pygeoda.rook_weights(geoda_df)
+        return w
+
+    def do_configure(self, configure_context, input_schema):
+        self.geo_col = knut.column_exists_or_preset(
+            configure_context, self.geo_col, input_schema, knut.is_geo
+        )
+        return input_schema.append(knext.Column(knext.int64(), name=_CLUSTER_ID))
+
+    def do_clustering(self, exec_context: knext.ExecutionContext, input_1, fnc):
+        gdf = knut.load_geo_data_frame(input_1, self.geo_col, exec_context)
+        import pygeoda
+
+        geoda_df = pygeoda.open(gdf)
+        attributelist = self.attribute_list.apply(input_1.schema).column_names
+        data = geoda_df[attributelist]
+        b_vals = geoda_df.GetRealCol(self.bound_col)
+        w = self.__weight(geoda_df)
+        m_bound = self.minibound
+
+        knut.check_canceled(exec_context)
+        cluster = fnc(w, data, b_vals, m_bound)
+        gdf[_CLUSTER_ID] = cluster["Clusters"]
+        gdf.reset_index(drop=True, inplace=True)
+        return knut.to_table(gdf, exec_context)
+
+
 ############################################
-# MeanCenter and StandarDistance
+# MeanCenter and StandardDistance
 ############################################
 @knext.node(
     name="Mean Center",
@@ -133,7 +239,11 @@ class StandardEllipseNode:
         self.geo_col = knut.column_exists_or_preset(
             configure_context, self.geo_col, input_schema, knut.is_geo
         )
-        return knext.Schema(knut.TYPE_POLYGON, self._COL_GEOMETRY)
+        return knext.Schema.from_columns(
+            [
+                knext.Column(knut.TYPE_POLYGON, self._COL_GEOMETRY),
+            ]
+        )
 
     def execute(self, exec_context: knext.ExecutionContext, input_1):
         import pointpats
@@ -193,74 +303,28 @@ class StandardEllipseNode:
     },
 )
 class SKATERNode:
-    geo_col = knut.geo_col_parameter(
-        description="Select the geometry column to implement spatial clustering."
-    )
+    cluster_settings = ClusterSettings()
 
-    bound_col = knext.ColumnParameter(
-        "Bound column for minibound",
-        "Select the bound column for clusters with minibound.",
-        port_index=0,
-        column_filter=knut.is_numeric,
-        include_row_key=False,
-        include_none_column=False,
-    )
-    attribute_list = knext.MultiColumnParameter(
-        "Attribute columns for clustering",
-        "Select columns for calculating attribute distance.",
-        port_index=0,
-        column_filter=knut.is_numeric,
-    )
+    cluster_k = get_cluster_k()
 
-    cluster_k = knext.IntParameter(
-        "Number of clusters",
-        "The number of user-defined clusters.",
-        default_value=4,
-    )
-    minibound = knext.DoubleParameter(
-        "Minimum total value for the bounding variable in each output cluster",
-        "The sum of the bounding variable in each cluster must be greater than this minimum value.",
-    )
-    weight_mode = knext.StringParameter(
-        "Spatial weight model",
-        "Input spatial weight mode.",
-        "Queen",
-        enum=["Queen", "Rook"],
-    )
+    seed = get_seed()
 
     def configure(self, configure_context, input_schema):
-        self.geo_col = knut.column_exists_or_preset(
-            configure_context, self.geo_col, input_schema, knut.is_geo
-        )
-        return input_schema.append(knext.Column(knext.int64(), name=_CLUSTER_ID))
+        return self.cluster_settings.do_configure(configure_context, input_schema)
 
     def execute(self, exec_context: knext.ExecutionContext, input_1):
         import pygeoda
 
-        k = abs(self.cluster_k)
-        controlVar = self.bound_col
-        m_bound = self.minibound
-        attributelist = self.bound_col.split(";")
-        gdf = knut.load_geo_data_frame(input_1, self.geo_col, exec_context)
-        geodadf = pygeoda.open(gdf)
-        data = geodadf[attributelist]
-        b_vals = geodadf.GetRealCol(controlVar)
-        knut.check_canceled(exec_context)
-        if self.weight_mode == "Queen":
-            w = pygeoda.queen_weights(geodadf)
-        else:
-            w = pygeoda.rook_weights(geodadf)
-        skatercluster = pygeoda.skater(
-            k,
+        fnc = lambda w, data, b_vals, m_bound: pygeoda.skater(
+            self.cluster_k,
             w,
             data,
             distance_method="euclidean",
             bound_variable=b_vals,
             min_bound=m_bound,
+            random_seed=self.seed,
         )
-        gdf[_CLUSTER_ID] = skatercluster["Clusters"]
-        gdf.reset_index(drop=True, inplace=True)
-        return knut.to_table(gdf, exec_context)
+        return self.cluster_settings.do_clustering(exec_context, input_1, fnc)
 
 
 ############################################
@@ -339,40 +403,11 @@ between clusters is calculated in a way that minimizes the internal variance wit
         def get_default(cls):
             return cls.FULLORDER_COMPLETELINKAGE
 
-    geo_col = knut.geo_col_parameter(
-        description="Select the geometry column to implement spatial clustering."
-    )
+    cluster_settings = ClusterSettings()
 
-    bound_col = knext.ColumnParameter(
-        "Bound column for minibound",
-        "Select the bound column for clusters with minibound.",
-        port_index=0,
-        column_filter=knut.is_numeric,
-        include_row_key=False,
-        include_none_column=False,
-    )
+    cluster_k = get_cluster_k()
 
-    attribute_list = knext.MultiColumnParameter(
-        "Attribute columns for clustering",
-        "Select columns for calculating attribute distance.",
-        port_index=0,
-        column_filter=knut.is_numeric,
-    )
-    cluster_k = knext.IntParameter(
-        "Number of clusters",
-        "The Number of user-defined clusters.",
-        default_value=4,
-    )
-    minibound = knext.DoubleParameter(
-        "Minimum total value for the bounding variable in each output cluster",
-        "The sum of the bounding variable in each cluster must be greater than this minimum value.",
-    )
-    weight_mode = knext.StringParameter(
-        "Spatial weight model",
-        "Input spatial weight mode.",
-        "Queen",
-        enum=["Queen", "Rook"],
-    )
+    seed = get_seed()
 
     link_mode = knext.EnumParameter(
         label="Linkage mode",
@@ -382,39 +417,22 @@ between clusters is calculated in a way that minimizes the internal variance wit
     )
 
     def configure(self, configure_context, input_schema):
-        self.geo_col = knut.column_exists_or_preset(
-            configure_context, self.geo_col, input_schema, knut.is_geo
-        )
-        return input_schema.append(knext.Column(knext.int64(), name=_CLUSTER_ID))
+        return self.cluster_settings.do_configure(configure_context, input_schema)
 
     def execute(self, exec_context: knext.ExecutionContext, input_1):
+        linkage = self.link_mode.lower().replace("_", "-")
         import pygeoda
 
-        k = self.cluster_k
-        controlVar = self.bound_col
-        m_bound = self.minibound
-        attributelist = self.bound_col.split(";")
-        linkage = self.link_mode.lower().replace("_", "-")
-        gdf = knut.load_geo_data_frame(input_1, self.geo_col, exec_context)
-        geodadf = pygeoda.open(gdf)
-        data = geodadf[attributelist]
-        b_vals = geodadf.GetRealCol(controlVar)
-        knut.check_canceled(exec_context)
-        if self.weight_mode == "Queen":
-            w = pygeoda.queen_weights(geodadf)
-        else:
-            w = pygeoda.rook_weights(geodadf)
-        final_cluster = pygeoda.redcap(
-            k,
+        fnc = lambda w, data, b_vals, m_bound: pygeoda.redcap(
+            self.cluster_k,
             w,
             data,
             linkage,
             bound_variable=b_vals,
             min_bound=m_bound,
+            random_seed=self.seed,
         )
-        gdf[_CLUSTER_ID] = final_cluster["Clusters"]
-        gdf.reset_index(drop=True, inplace=True)
-        return knut.to_table(gdf, exec_context)
+        return self.cluster_settings.do_clustering(exec_context, input_1, fnc)
 
 
 ############################################
@@ -478,39 +496,9 @@ class SCHCNode:
         def get_default(cls):
             return cls.COMPLETE
 
-    geo_col = knut.geo_col_parameter(
-        description="Select the geometry column to implement spatial clustering."
-    )
+    cluster_settings = ClusterSettings()
 
-    bound_col = knext.ColumnParameter(
-        "Bound column for minibound",
-        "Select the bound column for clusters with minibound.",
-        port_index=0,
-        column_filter=knut.is_numeric,
-        include_row_key=False,
-        include_none_column=False,
-    )
-    attribute_list = knext.MultiColumnParameter(
-        "Attribute columns for clustering",
-        "Select columns for calculating attribute distance.",
-        port_index=0,
-        column_filter=knut.is_numeric,
-    )
-    cluster_k = knext.IntParameter(
-        "Number of clusters",
-        "The Number of user-defined clusters.",
-        default_value=4,
-    )
-    minibound = knext.DoubleParameter(
-        "Minimum total value for the bounding variable in each output cluster",
-        "The sum of the bounding variable in each cluster must be greater than this minimum value.",
-    )
-    weight_mode = knext.StringParameter(
-        "Spatial weight model",
-        "Input spatial weight mode.",
-        "Queen",
-        enum=["Queen", "Rook"],
-    )
+    cluster_k = get_cluster_k()
 
     link_mode = knext.EnumParameter(
         label="Linkage mode",
@@ -520,41 +508,22 @@ class SCHCNode:
     )
 
     def configure(self, configure_context, input_schema):
-        self.geo_col = knut.column_exists_or_preset(
-            configure_context, self.geo_col, input_schema, knut.is_geo
-        )
-        return input_schema.append(knext.Column(knext.int64(), name=_CLUSTER_ID))
+        return self.cluster_settings.do_configure(configure_context, input_schema)
 
     def execute(self, exec_context: knext.ExecutionContext, input_1):
+        linkage = self.link_mode.lower()
+
         import pygeoda
 
-        k = abs(self.cluster_k)
-        controlVar = self.bound_col
-        m_bound = self.minibound
-        attributelist = self.bound_col.split(";")
-        linkage = self.link_mode.lower()
-        gdf = knut.load_geo_data_frame(input_1, self.geo_col, exec_context)
-        geodadf = pygeoda.open(gdf)
-        data = geodadf[attributelist]
-        b_vals = geodadf.GetRealCol(controlVar)
-
-        knut.check_canceled(exec_context)
-
-        if self.weight_mode == "Queen":
-            w = pygeoda.queen_weights(geodadf)
-        else:
-            w = pygeoda.rook_weights(geodadf)
-        final_cluster = pygeoda.schc(
-            k,
+        fnc = lambda w, data, b_vals, m_bound: pygeoda.schc(
+            self.cluster_k,
             w,
             data,
             linkage,
             bound_variable=b_vals,
             min_bound=m_bound,
         )
-        gdf[_CLUSTER_ID] = final_cluster["Clusters"]
-        gdf.reset_index(drop=True, inplace=True)
-        return knut.to_table(gdf, exec_context)
+        return self.cluster_settings.do_clustering(exec_context, input_1, fnc)
 
 
 ############################################
@@ -577,7 +546,7 @@ class SCHCNode:
 )
 @knut.geoda_node_description(
     short_description="Max-P Greedy.",
-    description="""Max-P Greedy.A greedy algorithm to solve the max-p-region problem.
+    description="""Max-P Greedy. A greedy algorithm to solve the max-p-region problem.
 
 The so-called max-p regions model (outlined in [Duque, Anselin, and Rey 2012](https://doi.org/10.1111/j.1467-9787.2011.00743.x))
 uses a different approach and considers the regionalization problem as an application of
@@ -593,68 +562,20 @@ solution and iteratively improves upon it while maintaining contiguity among the
     },
 )
 class MaxPgreedyNode:
-    geo_col = knut.geo_col_parameter(
-        description="Select the geometry column to implement spatial clustering."
-    )
+    cluster_settings = ClusterSettings()
 
-    bound_col = knext.ColumnParameter(
-        "Bound column for minibound",
-        "Select the bound column for clusters with minibound.",
-        port_index=0,
-        column_filter=knut.is_numeric,
-        include_row_key=False,
-        include_none_column=False,
-    )
-    attribute_list = knext.MultiColumnParameter(
-        "Attribute columns for clustering",
-        "Select columns for calculating attribute distance.",
-        port_index=0,
-        column_filter=knut.is_numeric,
-    )
-    minibound = knext.DoubleParameter(
-        "Minimum total value for the bounding variable in each output cluster",
-        "The sum of the bounding variable in each cluster must be greater than this minimum value.",
-    )
-    weight_mode = knext.StringParameter(
-        "Spatial weight model",
-        "Input spatial weight mode.",
-        "Queen",
-        enum=["Queen", "Rook"],
-    )
+    seed = get_seed()
 
     def configure(self, configure_context, input_schema):
-        self.geo_col = knut.column_exists_or_preset(
-            configure_context, self.geo_col, input_schema, knut.is_geo
-        )
-        return input_schema.append(knext.Column(knext.int64(), name=_CLUSTER_ID))
+        return self.cluster_settings.do_configure(configure_context, input_schema)
 
     def execute(self, exec_context: knext.ExecutionContext, input_1):
         import pygeoda
 
-        controlVar = self.bound_col
-        m_bound = self.minibound
-        attributelist = self.bound_col.split(";")
-
-        gdf = knut.load_geo_data_frame(input_1, self.geo_col, exec_context)
-        geodadf = pygeoda.open(gdf)
-        data = geodadf[attributelist]
-        b_vals = geodadf.GetRealCol(controlVar)
-
-        knut.check_canceled(exec_context)
-
-        if self.weight_mode == "Queen":
-            w = pygeoda.queen_weights(geodadf)
-        else:
-            w = pygeoda.rook_weights(geodadf)
-        final_cluster = pygeoda.maxp_greedy(
-            w,
-            data,
-            bound_variable=b_vals,
-            min_bound=m_bound,
+        fnc = lambda w, data, b_vals, m_bound: pygeoda.maxp_greedy(
+            w, data, bound_variable=b_vals, min_bound=m_bound, random_seed=self.seed
         )
-        gdf[_CLUSTER_ID] = final_cluster["Clusters"]
-        gdf.reset_index(drop=True, inplace=True)
-        return knut.to_table(gdf, exec_context)
+        return self.cluster_settings.do_clustering(exec_context, input_1, fnc)
 
 
 ############################################
@@ -677,7 +598,7 @@ class MaxPgreedyNode:
 )
 @knut.geoda_node_description(
     short_description="AZP Greedy.",
-    description="""AZP Greedy.A greedy algorithm for automatic zoning procedure (AZP).
+    description="""AZP Greedy. A greedy algorithm for automatic zoning procedure (AZP).
 
 The automatic zoning procedure (AZP) was initially outlined in [Openshaw (1977)](https://doi.org/10.2307/622300) to 
 address some of the consequences of the modifiable areal unit problem (MAUP). In essence, it consists of a heuristic 
@@ -693,76 +614,27 @@ methods considered so far.
     },
 )
 class AZPgreedyNode:
-    geo_col = knut.geo_col_parameter(
-        description="Select the geometry column to implement spatial clustering."
-    )
+    cluster_settings = ClusterSettings()
 
-    bound_col = knext.ColumnParameter(
-        "Bound column for minibound",
-        "Select the bound column for clusters with minibound.",
-        port_index=0,
-        column_filter=knut.is_numeric,
-        include_row_key=False,
-        include_none_column=False,
-    )
-    attribute_list = knext.MultiColumnParameter(
-        "Attribute columns for clustering",
-        "Select columns for calculating attribute distance.",
-        port_index=0,
-        column_filter=knut.is_numeric,
-    )
-    cluster_k = knext.IntParameter(
-        "Number of clusters",
-        "The Number of user-defined clusters.",
-        default_value=4,
-    )
-    minibound = knext.DoubleParameter(
-        "Minimum total value for the bounding variable in each output cluster",
-        "The sum of the bounding variable in each cluster must be greater than this minimum value.",
-    )
-    weight_mode = knext.StringParameter(
-        "Spatial weight model",
-        "Input spatial weight mode.",
-        "Queen",
-        enum=["Queen", "Rook"],
-    )
+    cluster_k = get_cluster_k()
+
+    seed = get_seed()
 
     def configure(self, configure_context, input_schema):
-        self.geo_col = knut.column_exists_or_preset(
-            configure_context, self.geo_col, input_schema, knut.is_geo
-        )
-        return input_schema.append(knext.Column(knext.int64(), name=_CLUSTER_ID))
+        return self.cluster_settings.do_configure(configure_context, input_schema)
 
     def execute(self, exec_context: knext.ExecutionContext, input_1):
         import pygeoda
-        import numpy as np
 
-        k = abs(self.cluster_k)
-        controlVar = self.bound_col
-        m_bound = self.minibound
-        attributelist = self.bound_col.split(";")
-
-        gdf = knut.load_geo_data_frame(input_1, self.geo_col, exec_context)
-        geodadf = pygeoda.open(gdf)
-        data = geodadf[attributelist]
-        b_vals = np.array(geodadf.GetRealCol(controlVar))
-
-        knut.check_canceled(exec_context)
-
-        if self.weight_mode == "Queen":
-            w = pygeoda.queen_weights(geodadf)
-        else:
-            w = pygeoda.rook_weights(geodadf)
-        final_cluster = pygeoda.azp_greedy(
-            k,
+        fnc = lambda w, data, b_vals, m_bound: pygeoda.azp_greedy(
+            self.cluster_k,
             w,
             data,
             bound_variable=b_vals,
             min_bound=m_bound,
+            random_seed=self.seed,
         )
-        gdf[_CLUSTER_ID] = final_cluster["Clusters"]
-        gdf.reset_index(drop=True, inplace=True)
-        return knut.to_table(gdf, exec_context)
+        return self.cluster_settings.do_clustering(exec_context, input_1, fnc)
 
 
 ############################################
@@ -789,7 +661,7 @@ class PeanoCurveNode:
 
     Peano curves are space-filling curves first introduced by Italian mathematician Giuseppe Peano (1890).
     A variation and more complicated form is called Hilbert curves because Hilbert (1891) visualized the
-    space filling idea described in Peano curves and later referred to it as “topological monsters”(Bartholdi and Platzman 1988).
+    space filling idea described in Peano curves and later referred to it as “topological monsters” (Bartholdi and Platzman 1988).
 
     Peano and Hilbert curves have been used to find all-nearest-neighbors (Chen and Chang 2011) and spatial ordering of
     geographic data (Guo and Gahegan 2006). Conceptually, Peano curves use algorithms to assign spatial orders to
@@ -799,6 +671,9 @@ class PeanoCurveNode:
     and the connected line in 2D space (on the right) is the Peano curve. Following the spatial orders along the 1D line,
     spatial clustering can be achieved by classification with many methods.
 
+    The value of the binary-digit scale (n) will be calculated as the grid scale value, 2^n.
+    This value will then be used to generate a 2^n x 2^n grid.
+
     """
 
     geo_col = knut.geo_col_parameter(
@@ -806,9 +681,12 @@ class PeanoCurveNode:
     )
 
     grid_k = knext.IntParameter(
-        "Binary-digit scale or as powers of 2",
-        "Grid scale defined for spatial filling.",
-        default_value=32,
+        "Binary-digit scale as powers of 2",
+        "Grid scale of 2^n defined for spatial filling.",
+        default_value=5,
+        validator=lambda k: validate_k(
+            k, 2, "Binary-digit scale must be greater than 2"
+        ),
     )
 
     _PEANO_CURVE_ORDER = "Peano Order"
@@ -826,6 +704,8 @@ class PeanoCurveNode:
         import math
         import pandas as pd
         import numpy as np
+
+        k = 2 ^ self.grid_k
 
         gdf0 = knut.load_geo_data_frame(input_1, self.geo_col, exec_context)
         gdf = gp.GeoDataFrame(geometry=gdf0.geometry, crs=gdf0.crs)
@@ -875,13 +755,48 @@ class PeanoCurveNode:
 
         gdf["theid"] = np.arange(gdf.shape[0]).tolist()
         gdf["peanoorder"] = 0
+        row_count = gdf.shape[0]
         for i in range(gdf.shape[0]):
             x = gdf.loc[(gdf.theid == i), "unitx"].item()
             y = gdf.loc[(gdf.theid == i), "unity"].item()
             gdf.loc[(gdf.theid == i), "peanoorder"] = Peano(x, y, self.grid_k)
+            exec_context.set_progress(
+                i / row_count, f"Processing row {i} of {row_count}"
+            )
+            knut.check_canceled(exec_context)
+
         gdf0[self._PEANO_CURVE_ORDER] = gdf.peanoorder
         gdf0.reset_index(drop=True, inplace=True)
         return knut.to_table(gdf0, exec_context)
+
+
+@knext.parameter_group(label="Constraints")
+class MSSCConstraints:
+    columns = knext.ColumnFilterParameter(
+        "Constraint columns for clustering",
+        "The constraints columns used for the clustering.",
+        port_index=0,
+    )
+
+    capacities = knext.StringParameter(
+        "Minimum constraint values for clustering",
+        "Input the capacity list with one value for each selected constrained column separated by semicolon.",
+        "",
+    )
+
+    def get_capacities(self):
+        return [float(x) for x in self.capacities.split(";")]
+
+    def get_columns(self, schema):
+        return self.columns.apply(schema).column_names
+
+    def validate_settings(self, schema):
+        cols = self.get_columns(schema)
+        caps = self.get_capacities()
+        if len(cols) != len(caps):
+            raise knext.InvalidParametersError(
+                "Please provide a capacity value for each selected constrained column."
+            )
 
 
 ############################################
@@ -907,7 +822,7 @@ class MSSCNode:
     Modified scale-space clustering(MSSC) Initialization.
 
     This node performs the initial MSSC clustering based on the input data.
-    The MSSC model (Mu and Wang 2008) follows the values of spatial order along the Peano curve with breaking points
+    The MSSC model [(Mu and Wang 2008)](https://doi.org/10.1080/00045608.2014.968910) follows the values of spatial order along the Peano curve with breaking points
     that are defined by a threshold population size. Through iterations in programming, each cluster satisfies the
     criteria of ascending spatial order and aggregation volume minimum constraints. MSSC (Mu and Wang 2008) is
     developed based on scale-space theory, an earlier algorithm, and applications of the theory in remote sensing and GIS.
@@ -931,27 +846,19 @@ class MSSCNode:
         include_row_key=False,
         include_none_column=False,
     )
-    constraint_list = knext.StringParameter(
-        "Constraints columns names for clustering",
-        "Input the column names with Semicolon.",
-        "",
-    )
-    const_capacity_list = knext.StringParameter(
-        "Minimum constraint values for clustering",
-        "Input the capacity list with Semicolon.",
-        "",
-    )
-    _isolated = "Isolate"
+
+    constraints = MSSCConstraints()
 
     def configure(self, configure_context, input_schema):
         self.geo_col = knut.column_exists_or_preset(
             configure_context, self.geo_col, input_schema, knut.is_geo
         )
+        self.constraints.validate_settings(input_schema)
         result = input_schema.append(
             [
                 knext.Column(
                     knext.int64(),
-                    knut.get_unique_column_name(self._isolated, input_schema),
+                    knut.get_unique_column_name(_ISOLATED, input_schema),
                 ),
                 knext.Column(
                     knext.int64(),
@@ -965,20 +872,17 @@ class MSSCNode:
         # Copy input to output
         import libpysal
 
-        ConstraintList = self.constraint_list.split(";")
-        CapacityList = [float(x) for x in self.const_capacity_list.split(";")]
+        constraintList = self.constraints.get_columns(input_1.schema)
+        capacityList = self.constraints.get_capacities()
 
-        exec_context.flow_variables["constraint_variable"] = self.constraint_list
-        exec_context.flow_variables["constraint_capacity"] = self.const_capacity_list
-
-        newlist = ConstraintList + [self.order_col] + [self.geo_col]
+        newlist = constraintList + [self.order_col] + [self.geo_col]
 
         gdf = knut.load_geo_data_frame(input_1, self.geo_col, exec_context)
 
         df = gdf[newlist].copy()
         df["OriginalID"] = list(range(df.shape[0]))
-        df["TheID"] = df[self.order_col].rank().astype(int) - 1
-        df = df.set_index("TheID", drop=False).sort_index().rename_axis(None)
+        df["theid"] = df[self.order_col].rank(method="first").astype(int) - 1
+        df = df.set_index("theid", drop=False).sort_index().rename_axis(None)
 
         # Create spatial weight matrix
         wq = libpysal.weights.Rook.from_dataframe(df)
@@ -986,7 +890,7 @@ class MSSCNode:
 
         df["isolate"] = 0
         df["included"] = 0
-        tmp_df = df
+        tmp_df = df.copy()
 
         class_value = 1
         count = 0
@@ -1000,21 +904,31 @@ class MSSCNode:
         knut.check_canceled(exec_context)
 
         acc_capacity = []
-        for i in range(len(ConstraintList)):
+        for i in range(len(constraintList)):
             acc_capacity.append(0)
 
         # Major round of clustering starts
 
         while tmp_df.shape[0] > 0:
             tmp_df = tmp_df[tmp_df["included"] == 0]
+            processed_rows = 0
+            total_rows = tmp_df.shape[0]
             # print('dfFC:',dfFC.shape[0])
             for indexs, row in tmp_df.iterrows():
-                index = int(row["TheID"])
+                n_loop = tmp_df.shape[0]
+                index = int(row["theid"])
                 count += 1
                 roundCount += 1
+                processed_rows += 1
+                exec_context.set_progress(
+                    processed_rows / float(total_rows),
+                    f"Processing row {processed_rows} of {total_rows}",
+                )
+                knut.check_canceled(exec_context)
+
                 cur_capacity = []
-                for i in range(len(ConstraintList)):
-                    cur_capacity.append(row[ConstraintList[i]])
+                for i in range(len(constraintList)):
+                    cur_capacity.append(row[constraintList[i]])
 
                 if count == 1:
                     tmp_df.loc[indexs, "included"] = 1
@@ -1032,19 +946,19 @@ class MSSCNode:
                                 break
 
                 if tmp_df.loc[indexs, "included"] == 1:
-                    for i in range(len(ConstraintList)):
+                    for i in range(len(constraintList)):
                         acc_capacity[i] += cur_capacity[i]
                     classValueDict[class_value].append(index)
 
                     satisfyAll = 1
-                    for i in range(len(ConstraintList)):
-                        if float(acc_capacity[i]) >= float(CapacityList[i]):
+                    for i in range(len(constraintList)):
+                        if float(acc_capacity[i]) >= float(capacityList[i]):
                             satisfyAll = satisfyAll * 1
                         else:
                             satisfyAll = satisfyAll * 0
 
                     if satisfyAll == 1 and count < tot_rec:
-                        for i in range(len(ConstraintList)):
+                        for i in range(len(constraintList)):
                             acc_capacity[i] = 0
 
                         class_value += 1
@@ -1065,7 +979,7 @@ class MSSCNode:
                     if orphanCount > 0:
                         orphanIteration += 1
                         if len(classValueDict[class_value]) > 0:
-                            for i in range(len(ConstraintList)):
+                            for i in range(len(constraintList)):
                                 acc_capacity[i] = 0
                             class_value += 1
                             classValueDict[class_value] = []
@@ -1075,13 +989,13 @@ class MSSCNode:
                         roundCount = 0
                         break
 
-        df["SubClusID"] = 0
+        df["subclusid"] = 0
         for k in classValueDict.keys():
-            df.loc[(df.TheID.isin(classValueDict[k])), "SubClusID"] = k
+            df.loc[(df.theid.isin(classValueDict[k])), "subclusid"] = k
         df = df.set_index("OriginalID", drop=False).sort_index()
 
-        gdf[self._isolated] = df.isolate.tolist()
-        gdf[_CLUSTER_ID] = df.SubClusID.tolist()
+        gdf[_ISOLATED] = df.isolate.tolist()
+        gdf[_CLUSTER_ID] = df.subclusid.tolist()
         gdf.reset_index(drop=True, inplace=True)
         return knut.to_table(gdf, exec_context)
 
@@ -1133,28 +1047,26 @@ class MSSCmodifierNode:
     )
     isolate_col = knext.ColumnParameter(
         "Isolate column from MSSC",
-        "Select the column 'isoloate' generated by MSSC clustering.",
+        "Select the column 'isolate' generated by MSSC clustering.",
         port_index=0,
         column_filter=knut.is_numeric,
         include_row_key=False,
         include_none_column=False,
     )
 
-    constraint_list = knext.StringParameter(
-        "Constraints columns names for clustering",
-        "Input the column names with Semicolon.",
-        "",
-    )
-    const_capacity_list = knext.StringParameter(
-        "Minimum constraint values for clustering",
-        "Input the capacity list with Semicolon.",
-        "",
-    )
+    constraints = MSSCConstraints()
 
     def configure(self, configure_context, input_schema):
         self.geo_col = knut.column_exists_or_preset(
             configure_context, self.geo_col, input_schema, knut.is_geo
         )
+        self.clusterid_col = knut.column_exists_or_preset(
+            configure_context, _CLUSTER_ID, input_schema, knut.is_long
+        )
+        self.isolate_col = knut.column_exists_or_preset(
+            configure_context, _ISOLATED, input_schema, knut.is_long
+        )
+        self.constraints.validate_settings(input_schema)
         return input_schema
 
     def execute(self, exec_context: knext.ExecutionContext, input_1):
@@ -1162,34 +1074,32 @@ class MSSCmodifierNode:
         import libpysal
         import pandas as pd
 
-        ConstraintList = self.constraint_list.split(";")
-        CapacityList = [float(x) for x in self.const_capacity_list.split(";")]
+        constraintList = self.constraints.get_columns(input_1.schema)
+        capacityList = self.constraints.get_capacities()
 
-        SubClusID = self.clusterid_col
-        TheID = "TheID"
+        subclusid = self.clusterid_col
+        theid = "theid"
         isolateid = self.isolate_col
-        keycolum = ConstraintList + [SubClusID] + [isolateid] + [self.geo_col]
+        keycolum = constraintList + [subclusid] + [isolateid] + [self.geo_col]
         gdf = knut.load_geo_data_frame(input_1, self.geo_col, exec_context)
         df = gdf[keycolum].copy()
 
-        df = df.rename(columns={isolateid: "isolate", SubClusID: "SubClusID"})
-        df["TheID"] = list(range(df.shape[0]))
-        df = df.set_index("TheID", drop=False).rename_axis(None)
+        df = df.rename(columns={isolateid: "isolate", subclusid: "subclusid"})
+        df["theid"] = list(range(df.shape[0]))
+        df = df.set_index("theid", drop=False).rename_axis(None)
 
-        keycolum1 = ["SubClusID"] + ConstraintList
-        sum_tmp = df[keycolum1].groupby("SubClusID").sum().reset_index()
-        classValueDict = df.groupby("SubClusID")["TheID"].apply(list).to_dict()
+        keycolum1 = ["subclusid"] + constraintList
+        sum_tmp = df[keycolum1].groupby("subclusid").sum().reset_index()
+        classValueDict = df.groupby("subclusid")["theid"].apply(list).to_dict()
 
         # Create spatial weight matrix
         wq = libpysal.weights.Rook.from_dataframe(df)
         w = wq.neighbors
 
-        knut.check_canceled(exec_context)
-
         df_list = []
         # Loop through the constraint and capacity lists
-        for j in range(len(ConstraintList)):
-            df_filtered = sum_tmp[sum_tmp[ConstraintList[j]] < CapacityList[j]]
+        for j in range(len(constraintList)):
+            df_filtered = sum_tmp[sum_tmp[constraintList[j]] < capacityList[j]]
             df_list.append(df_filtered)
         df2 = pd.concat(df_list).drop_duplicates()
 
@@ -1198,17 +1108,23 @@ class MSSCmodifierNode:
             isoClus = []
             rowCount = 0
             clusAdjDict = {}
-            class_value = max(df2["SubClusID"])
+            class_value = max(df2["subclusid"])
             for index, rowLocal in df2.iterrows():
+                n_loop = df2.shape[0]
                 rowCount += 1
                 FoundIt = False
                 foundCount = 0
-                currentClus = rowLocal["SubClusID"]
+                currentClus = rowLocal["subclusid"]
                 theCluster = currentClus
+                exec_context.set_progress(
+                    0.8 * rowCount / n_loop,
+                    f"Batch {rowCount} of {n_loop} processed",
+                )
+                knut.check_canceled(exec_context)
 
                 capA = []
-                for j in range(len(ConstraintList)):
-                    capA.append(rowLocal[ConstraintList[j]])
+                for j in range(len(constraintList)):
+                    capA.append(rowLocal[constraintList[j]])
 
                 swmRows = []
                 for ids in classValueDict[currentClus]:
@@ -1223,17 +1139,17 @@ class MSSCmodifierNode:
                                 matching_indices.add(i)
 
                 for i in matching_indices:
-                    foundRow = sum_tmp[sum_tmp.SubClusID == i]
+                    foundRow = sum_tmp[sum_tmp.subclusid == i]
                     capB = []
-                    for j in range(len(ConstraintList)):
-                        capB.append(foundRow[ConstraintList[j]])
+                    for j in range(len(constraintList)):
+                        capB.append(foundRow[constraintList[j]])
                     newcap = []
-                    for j in range(len(ConstraintList)):
+                    for j in range(len(constraintList)):
                         newcap.append(capA[j] + capB[j])
 
                     newSatisfyAll = 1
-                    for j in range(len(ConstraintList)):
-                        if float(newcap[j]) >= float(CapacityList[j]):
+                    for j in range(len(constraintList)):
+                        if float(newcap[j]) >= float(capacityList[j]):
                             newSatisfyAll = newSatisfyAll * 1
                         else:
                             newSatisfyAll = newSatisfyAll * 0
@@ -1243,7 +1159,7 @@ class MSSCmodifierNode:
                         foundCount += 1
                         if foundCount == 1:
                             mincap = []
-                            for k in range(len(ConstraintList)):
+                            for k in range(len(constraintList)):
                                 mincap.append(newcap[k])
                             FoundIt = True
                             theCluster = i
@@ -1251,14 +1167,14 @@ class MSSCmodifierNode:
                         # elif foundCount > 1 and newcap1 < mincap1 and newcap2 < mincap2:
                         elif foundCount > 1:
                             minSatisfyAll = 1
-                            for j in range(len(ConstraintList)):
+                            for j in range(len(constraintList)):
                                 if float(newcap[j]) < float(mincap[j]):
                                     minSatisfyAll = minSatisfyAll * 1
                                 else:
                                     minSatisfyAll = minSatisfyAll * 0
 
                             if minSatisfyAll == 1:
-                                for k in range(len(ConstraintList)):
+                                for k in range(len(constraintList)):
                                     mincap[k] = newcap[k]
                                 FoundIt = True
                                 theCluster = i
@@ -1266,10 +1182,10 @@ class MSSCmodifierNode:
 
                 if FoundIt == True:
                     clusAdjDict[currentClus] = theCluster
-                    df.loc[(df.SubClusID == currentClus), "SubClusID"] = theCluster
-                    df.loc[(df.SubClusID == currentClus), "isolate"] = 0
+                    df.loc[(df.subclusid == currentClus), "subclusid"] = theCluster
+                    df.loc[(df.subclusid == currentClus), "isolate"] = 0
                 else:
-                    df.loc[(df.SubClusID == currentClus), "isolate"] = 1
+                    df.loc[(df.subclusid == currentClus), "isolate"] = 1
                     isoClus.append(currentClus)
 
                 clusAdjList.append(FoundIt)
@@ -1280,13 +1196,13 @@ class MSSCmodifierNode:
             for indexs, rowLocal in df2.iterrows():
                 if len(clusAdjList) > 0:
                     if clusAdjList[listInd] == True:
-                        index = rowLocal["SubClusID"]
-                        df.loc[(df.SubClusID > (index - clusAdjust)), "SubClusID"] -= 1
+                        index = rowLocal["subclusid"]
+                        df.loc[(df.subclusid > (index - clusAdjust)), "subclusid"] -= 1
                         clusAdjust += 1
                         listInd += 1
 
-        # df = df.set_index("TheID", drop=False).sort_index()
-        gdf[SubClusID] = df.SubClusID.tolist()
+        # df = df.set_index("theid", drop=False).sort_index()
+        gdf[subclusid] = df.subclusid.tolist()
         gdf[isolateid] = df.isolate.tolist()
 
         # gdf.reset_index(drop=True, inplace=True)
@@ -1316,7 +1232,7 @@ class MSSCisolationNode:
     Modified scale-space clustering(MSSC).
 
     The node forces a cluster membership for unclaimed or loose-end units, especially useful for the enclave units in
-    Mixed level regionalization model.
+    mixed level (MLR) regionalization model.
 
     """
 
@@ -1345,21 +1261,19 @@ class MSSCisolationNode:
         include_none_column=False,
     )
 
-    constraint_list = knext.StringParameter(
-        "Constraints columns names for clustering",
-        "Input the column names with Semicolon.",
-        "",
-    )
-    const_capacity_list = knext.StringParameter(
-        "Minimum constraint values for clustering",
-        "Input the capacity list with Semicolon.",
-        "",
-    )
+    constraints = MSSCConstraints()
 
     def configure(self, configure_context, input_schema):
         self.geo_col = knut.column_exists_or_preset(
             configure_context, self.geo_col, input_schema, knut.is_geo
         )
+        self.clusterid_col = knut.column_exists_or_preset(
+            configure_context, _CLUSTER_ID, input_schema, knut.is_long
+        )
+        self.isolate_col = knut.column_exists_or_preset(
+            configure_context, _ISOLATED, input_schema, knut.is_long
+        )
+        self.constraints.validate_settings(input_schema)
         return input_schema
 
     def execute(self, exec_context: knext.ExecutionContext, input_1):
@@ -1367,31 +1281,31 @@ class MSSCisolationNode:
         import libpysal
         import pandas as pd
 
-        ConstraintList = self.constraint_list.split(";")
-        CapacityList = [float(x) for x in self.const_capacity_list.split(";")]
+        constraintList = self.constraints.get_columns(input_1.schema)
+        capacityList = self.constraints.get_capacities()
 
-        SubClusID = self.clusterid_col
+        subclusid = self.clusterid_col
         isolateid = self.isolate_col
-        keycolum = ConstraintList + [SubClusID] + [isolateid] + [self.geo_col]
+        keycolum = constraintList + [subclusid] + [isolateid] + [self.geo_col]
         gdf0 = knut.load_geo_data_frame(input_1, self.geo_col, exec_context)
         gdf = gdf0[keycolum].copy()
 
         gdf = gdf.rename(
             columns={
                 isolateid: "isolate",
-                SubClusID: "SubClusID",
+                subclusid: "subclusid",
                 self.geo_col: "geometry",
             }
         )
-        gdf["FinalClus"] = gdf["SubClusID"]
+        gdf["FinalClus"] = gdf["subclusid"]
 
         knut.check_canceled(exec_context)
 
         # Create dictionary of Constraint list
         mixStatFlds = {}
-        for i in ConstraintList:
+        for i in constraintList:
             mixStatFlds[i] = "sum"
-        mixStatFlds["SubClusID"] = "first"
+        mixStatFlds["subclusid"] = "first"
         mixStatFlds["isolate"] = "min"
 
         # Dissolve gdf based on  Constraint list
@@ -1433,7 +1347,7 @@ class MSSCisolationNode:
             count = lyr6select.shape[0]
             if count > 0:
                 # get the smaller group
-                minClus = lyr6select[ConstraintList[0]].idxmin()
+                minClus = lyr6select[constraintList[0]].idxmin()
                 theNewClusID = minClus
             else:
                 lyr6["centroid"] = lyr6.centroid
@@ -1446,7 +1360,7 @@ class MSSCisolationNode:
                     df2=lyr6,
                     geom1_col="centroid",
                     geom2_col="centroid",
-                    src_column="SubClusID",
+                    src_column="subclusid",
                     axis=1,
                 )
                 theNewClusID = lyr5["nearest_id"].values[0]
@@ -1460,11 +1374,18 @@ class MSSCisolationNode:
         for index, row in lyrIso.iterrows():
             isoClusters.append(index)
         for i in range(isoCount1):
-            theClusID, theNewClusID = MergeIsolated(tmpMixedClusFC, isoClusters[i])
-            gdf.loc[(gdf["SubClusID"] == theClusID), fldIso] = 0
-            gdf.loc[(gdf["SubClusID"] == theClusID), "SubClusID"] = theNewClusID
+            process_counter = i + 1
+            exec_context.set_progress(
+                0.8 * process_counter / isoCount1,
+                f"Batch {process_counter} of {isoCount1} processed",
+            )
+            knut.check_canceled(exec_context)
 
-        gdf0[SubClusID] = gdf.SubClusID.tolist()
+            theClusID, theNewClusID = MergeIsolated(tmpMixedClusFC, isoClusters[i])
+            gdf.loc[(gdf["subclusid"] == theClusID), fldIso] = 0
+            gdf.loc[(gdf["subclusid"] == theClusID), "subclusid"] = theNewClusID
+
+        gdf0[subclusid] = gdf.subclusid.tolist()
         gdf0[isolateid] = gdf.isolate.tolist()
 
         gdf0.reset_index(drop=True, inplace=True)

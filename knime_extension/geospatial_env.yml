@@ -31,6 +31,7 @@ dependencies:
   - sympy=1.11.1
   - pip=23.0.1
   - pygeoda=0.0.8
+  - pointpats=2.2.0
   - pip:
     - pyecharts==2.0.2
     - ipinfo==4.4.2

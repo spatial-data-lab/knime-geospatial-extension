@@ -422,26 +422,6 @@ def pulp_node_description(short_description: str, description: str, references: 
 
     return set_description
 
-def geoda_node_description(short_description: str, description: str, references: dict):
-    """This decorator takes the provided information and generates a standardized node description
-    for nodes that are based on pygeoda functionality."""
-
-    def set_description(node_factory):
-        s = f"{short_description}\n"
-        s += f"{description}\n\n"
-        # s += "___\n\n"  # separator line between description and general part
-        s += "The node is based on the package [pygeoda](https://geodacenter.github.io/pygeoda/index.html)  and here are related tools and references"
-        if references is not None:
-            if len(references) > 1:
-                s += "s"
-            s += ":"
-            s += "\n\n"
-            for key in references:
-                s += f"- [{key}]({references[key]})\n"
-        node_factory.__doc__ = s
-        return node_factory
-
-    return set_description
 
 def geoda_node_description(short_description: str, description: str, references: dict):
     """This decorator takes the provided information and generates a standardized node description
@@ -451,10 +431,8 @@ def geoda_node_description(short_description: str, description: str, references:
         s = f"{short_description}\n"
         s += f"{description}\n\n"
         # s += "___\n\n"  # separator line between description and general part
-        s += "The node is based on the package [pygeoda](https://geodacenter.github.io/pygeoda/index.html)  and here are related tools and references"
+        s += "The node is based on the package [pygeoda](https://geodacenter.github.io/pygeoda/index.html) and here are related tools and references:\n\n"
         if references is not None:
-            s += ":"
-            s += "\n\n"
             for key in references:
                 s += f"- [{key}]({references[key]})\n"
         node_factory.__doc__ = s
