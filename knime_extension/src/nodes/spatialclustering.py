@@ -245,6 +245,7 @@ class SKATERNode:
         geodadf = pygeoda.open(gdf)
         data = geodadf[attributelist]
         b_vals = geodadf.GetRealCol(controlVar)
+        knut.check_canceled(exec_context)
         if self.weight_mode == "Queen":
             w = pygeoda.queen_weights(geodadf)
         else:
@@ -398,7 +399,7 @@ between clusters is calculated in a way that minimizes the internal variance wit
         geodadf = pygeoda.open(gdf)
         data = geodadf[attributelist]
         b_vals = geodadf.GetRealCol(controlVar)
-
+        knut.check_canceled(exec_context)
         if self.weight_mode == "Queen":
             w = pygeoda.queen_weights(geodadf)
         else:
@@ -537,6 +538,8 @@ class SCHCNode:
         data = geodadf[attributelist]
         b_vals = geodadf.GetRealCol(controlVar)
 
+        knut.check_canceled(exec_context)
+
         if self.weight_mode == "Queen":
             w = pygeoda.queen_weights(geodadf)
         else:
@@ -636,6 +639,8 @@ class MaxPgreedyNode:
         geodadf = pygeoda.open(gdf)
         data = geodadf[attributelist]
         b_vals = geodadf.GetRealCol(controlVar)
+
+        knut.check_canceled(exec_context)
 
         if self.weight_mode == "Queen":
             w = pygeoda.queen_weights(geodadf)
@@ -742,6 +747,8 @@ class AZPgreedyNode:
         data = geodadf[attributelist]
         b_vals = np.array(geodadf.GetRealCol(controlVar))
 
+        knut.check_canceled(exec_context)
+
         if self.weight_mode == "Queen":
             w = pygeoda.queen_weights(geodadf)
         else:
@@ -828,6 +835,8 @@ class PeanoCurveNode:
         Xmin, Ymin, Xmax, Ymax = gdf.total_bounds
         dx = Xmax - Xmin
         dy = Ymax - Ymin
+
+        knut.check_canceled(exec_context)
 
         if dx >= dy:
             offsetx = 0.0
@@ -987,6 +996,8 @@ class MSSCNode:
         roundCount = 0
         newRoundCount = tot_rec
         orphanIteration = 0
+
+        knut.check_canceled(exec_context)
 
         acc_capacity = []
         for i in range(len(ConstraintList)):
@@ -1172,6 +1183,8 @@ class MSSCmodifierNode:
         # Create spatial weight matrix
         wq = libpysal.weights.Rook.from_dataframe(df)
         w = wq.neighbors
+
+        knut.check_canceled(exec_context)
 
         df_list = []
         # Loop through the constraint and capacity lists
@@ -1371,6 +1384,8 @@ class MSSCisolationNode:
             }
         )
         gdf["FinalClus"] = gdf["SubClusID"]
+
+        knut.check_canceled(exec_context)
 
         # Create dictionary of Constraint list
         mixStatFlds = {}
