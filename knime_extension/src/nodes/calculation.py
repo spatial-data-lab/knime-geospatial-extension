@@ -614,7 +614,6 @@ class BoundCircleNode:
         )
 
 
-
 ############################################
 # Line Endpoints
 ############################################
@@ -629,35 +628,53 @@ class BoundCircleNode:
 )
 @knext.input_table(
     name="Geo table",
-    description="Table with geometry column to transform",
+    description="Table with the geometry column to compute the end points for",
 )
 @knext.output_table(
-    name="Transformed geo table",
-    description="Transformed Geo input table",
+    name="Geo table with endpoints",
+    description="Input table with the computed endpoints",
 )
 @knut.geo_node_description(
     short_description="This node returns two geometry columns representing the start and end points of each line in the input data.",
     description="This node returns two geometry columns representing the start and end points of each line in the input data.",
     references={
-        "Unary union": "https://geopandas.org/en/stable/docs/reference/api/geopandas.GeoSeries.unary_union.html",
+        "LineString": "https://shapely.readthedocs.io/en/stable/reference/shapely.LineString.html#shapely.LineString",
+        "Point": "https://shapely.readthedocs.io/en/stable/reference/shapely.Point.html",
     },
 )
 class LineEndpointNode:
-
     geo_col = knut.geo_col_parameter(
         description="Select the geometry column to compute the endpoints."
     )
+    _STARTP = "Start Point"
+    _ENDP = "End Point"
 
     def configure(self, configure_context, input_schema):
         self.geo_col = knut.column_exists_or_preset(
             configure_context, self.geo_col, input_schema, knut.is_geo_line
         )
-        return None
+        from shapely.geometry import Point
+
+        return input_schema.append(
+            [
+                knext.Column(
+                    ktype=knext.logical(Point),
+                    name=knut.get_unique_column_name(self._STARTP, input_schema),
+                ),
+                knext.Column(
+                    ktype=knext.logical(Point),
+                    name=knut.get_unique_column_name(self._ENDP, input_schema),
+                ),
+            ]
+        )
 
     def execute(self, exec_context: knext.ExecutionContext, input):
-        gdf = gp.GeoDataFrame(input.to_pandas(), geometry=self.geo_col)
+        gdf = knut.load_geo_data_frame(input, self.geo_col, exec_context)
 
         from shapely.geometry import Point, LineString
+
+        startp = knut.get_unique_column_name(self._STARTP, input.schema)
+        endp = knut.get_unique_column_name(self._ENDP, input.schema)
 
         def get_line_endpoints(row):
             line_geom = row.geometry
@@ -666,13 +683,13 @@ class LineEndpointNode:
             end_point = Point(line.coords[-1])
             return (start_point, end_point)
 
-        gdf[["start_point", "end_point"]] = gdf.apply(
+        gdf[[startp, endp]] = gdf.apply(
             get_line_endpoints, axis=1, result_type="expand"
         )
 
-        gdf["start_point"] = gp.GeoSeries(gdf.start_point, crs=gdf.crs)
-        gdf["end_point"] = gp.GeoSeries(gdf.start_point, crs=gdf.crs)
+        gdf[startp] = gp.GeoSeries(gdf[startp], crs=gdf.crs)
+        gdf[endp] = gp.GeoSeries(gdf[endp], crs=gdf.crs)
 
         gdf.reset_index(drop=True, inplace=True)
 
-        return knext.Table.from_pandas(gdf)
+        return knut.to_table(gdf, exec_context)
