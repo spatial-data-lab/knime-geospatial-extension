@@ -612,3 +612,67 @@ class BoundCircleNode:
         return self.result_settings.get_computed_result_table(
             exec_context, input, self.geo_col, compute_circle
         )
+
+
+
+############################################
+# Line Endpoints
+############################################
+
+
+@knext.node(
+    name="Line Endpoints",
+    node_type=knext.NodeType.MANIPULATOR,
+    icon_path=__NODE_ICON_PATH + "LineEndpoints.png",
+    category=__category,
+    after="",
+)
+@knext.input_table(
+    name="Geo table",
+    description="Table with geometry column to transform",
+)
+@knext.output_table(
+    name="Transformed geo table",
+    description="Transformed Geo input table",
+)
+@knut.geo_node_description(
+    short_description="This node returns two geometry columns representing the start and end points of each line in the input data.",
+    description="This node returns two geometry columns representing the start and end points of each line in the input data.",
+    references={
+        "Unary union": "https://geopandas.org/en/stable/docs/reference/api/geopandas.GeoSeries.unary_union.html",
+    },
+)
+class LineEndpointNode:
+
+    geo_col = knut.geo_col_parameter(
+        description="Select the geometry column to compute the endpoints."
+    )
+
+    def configure(self, configure_context, input_schema):
+        self.geo_col = knut.column_exists_or_preset(
+            configure_context, self.geo_col, input_schema, knut.is_geo_line
+        )
+        return None
+
+    def execute(self, exec_context: knext.ExecutionContext, input):
+        gdf = gp.GeoDataFrame(input.to_pandas(), geometry=self.geo_col)
+
+        from shapely.geometry import Point, LineString
+
+        def get_line_endpoints(row):
+            line_geom = row.geometry
+            line = LineString(line_geom)
+            start_point = Point(line.coords[0])
+            end_point = Point(line.coords[-1])
+            return (start_point, end_point)
+
+        gdf[["start_point", "end_point"]] = gdf.apply(
+            get_line_endpoints, axis=1, result_type="expand"
+        )
+
+        gdf["start_point"] = gp.GeoSeries(gdf.start_point, crs=gdf.crs)
+        gdf["end_point"] = gp.GeoSeries(gdf.start_point, crs=gdf.crs)
+
+        gdf.reset_index(drop=True, inplace=True)
+
+        return knext.Table.from_pandas(gdf)
