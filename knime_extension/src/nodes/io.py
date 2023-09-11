@@ -35,6 +35,17 @@ class Compression(knext.EnumParameterOptions):
     )
 
 
+class ExistingFile(knext.EnumParameterOptions):
+    FAIL = (
+        "Fail",
+        "Will issue an error during the node's execution (to prevent unintentional overwrite).",
+    )
+    OVERWRITE = (
+        "Overwrite",
+        "Will replace any existing file.",
+    )
+
+
 ############################################
 # GeoFile Reader
 ############################################
@@ -151,9 +162,7 @@ Examples of standard local file paths are *C:\\KNIMEworkspace\\test.shp* for Win
 */KNIMEworkspace/test.geojson* for Linux. 
 
 The file extension e.g. *.shp*, *.geojson*,  or *.parquet* is appended automatically
-depending on the selected file format if not specified.
-
-**Note:** Existing files will be overwritten without a warning!""",
+depending on the selected file format if not specified.""",
     references={
         "Writing Spatial Data": "https://geopandas.org/en/stable/docs/user_guide/io.html",
         "To file": "https://geopandas.org/en/stable/docs/reference/api/geopandas.GeoDataFrame.to_file.html",
@@ -175,6 +184,16 @@ class GeoFileWriterNode:
         """The file path for writing data. The file extension e.g. *.shp*, *.geojson*,  or *.parquet* is appended 
 automatically depending on the selected file format if not specified.""",
         "",
+    )
+
+    existing_file = knext.EnumParameter(
+        "If exists:",
+        "Specify the behavior of the node in case the output file already exists.",
+        lambda v: ExistingFile.OVERWRITE.name
+        if v < knext.Version(1, 2, 0)
+        else ExistingFile.FAIL.name,
+        enum=ExistingFile,
+        since_version="1.2.0",
     )
 
     dataformat = knext.StringParameter(
@@ -210,6 +229,7 @@ automatically depending on the selected file format if not specified.""",
             gdf = gdf.drop(columns="<RowID>")
         if self.dataformat == "Shapefile":
             fileurl = knut.ensure_file_extension(self.data_url, ".shp")
+            self.__check_overwrite(fileurl)
             gdf.to_file(fileurl)
         elif self.dataformat == "GeoParquet":
             if self.parquet_compression == Compression.NONE.name:
@@ -225,11 +245,22 @@ automatically depending on the selected file format if not specified.""",
                 file_extension = ".parquet.snappy"
                 compression = "snappy"
             fileurl = knut.ensure_file_extension(self.data_url, file_extension)
+            self.__check_overwrite(fileurl)
             gdf.to_parquet(fileurl, compression=compression)
         else:
             fileurl = knut.ensure_file_extension(self.data_url, ".geojson")
+            self.__check_overwrite(fileurl)
             gdf.to_file(fileurl, driver="GeoJSON")
         return None
+
+    def __check_overwrite(self, fileurl):
+        if self.existing_file == ExistingFile.FAIL.name:
+            import os.path
+
+            if os.path.exists(fileurl):
+                raise knext.InvalidParametersError(
+                    "File already exists and should not be overwritten."
+                )
 
 
 ############################################
