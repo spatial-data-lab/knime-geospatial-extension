@@ -36,7 +36,7 @@ def get_id_col_parameter(
         label=label,
         description=description,
         include_none_column=True,
-        column_filter=knut.is_int,
+        column_filter=knut.is_long,
         since_version="1.1.0",
     )
 
