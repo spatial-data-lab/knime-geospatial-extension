@@ -143,7 +143,7 @@ class Spatial2SLSModel:
 
     Spatial_Diagnostics = knext.BoolParameter(
         "Spatial Diagnostics",
-        "If selected, the node computes the Anselin-Kelejian test",
+        "If selected, the node computes the Anselin-Kelejian test.",
         default_value=False,
     )
 
@@ -273,7 +273,7 @@ class AdvancedLagErrorSetting:
 
     vm = knext.BoolParameter(
         "VM",
-        """if True, include variance-covariance matrix in summary results""",
+        """if True, include variance-covariance matrix in summary results.""",
         default_value=False,
         is_advanced=True,
     )
@@ -610,7 +610,7 @@ class AdvancedGWRSetting:
         "Sigma2 v1",
         """specify form of corrected denominator of sigma squared to use for model diagnostics; 
         Acceptable options are:
-        ‘True’: n-tr(S) (defualt) ‘False’: n-2(tr(S)+tr(S’S))""",
+        ‘True’: n-tr(S) (default) ‘False’: n-2(tr(S)+tr(S’S))""",
         default_value=True,
         is_advanced=True,
     )
@@ -624,14 +624,14 @@ class AdvancedGWRSetting:
 
     spherical = knext.BoolParameter(
         "Spherical",
-        """True for shperical coordinates (long-lat), False for projected coordinates (defalut).""",
+        """True for spherical coordinates (long-lat), False for projected coordinates (default).""",
         default_value=False,
         is_advanced=True,
     )
 
     hat_matrix = knext.BoolParameter(
         "Hat Matrix",
-        """True to store full n by n hat matrix, False to not store full hat matrix to minimize memory footprint (defalut).""",
+        """True to store full n by n hat matrix, False to not store full hat matrix to minimize memory footprint (default).""",
         default_value=False,
         is_advanced=True,
     )
@@ -672,7 +672,7 @@ class AdvancedGWRSetting:
 )
 class GeographicallyWeightedRegression:
     """Geographically Weighted Regression node.
-    Performs Geographically Weighted Regression (GWR), a local form of linear regression used to model spatially varying relationships. Can currently estimate Gaussian, Poisson, and logistic models(built on a GLM framework).
+    Performs Geographically Weighted Regression (GWR), a local form of linear regression used to model spatially varying relationships. Can currently estimate Gaussian, Poisson, and logistic models (built on a GLM framework).
     More details can be found at [here](https://desktop.arcgis.com/en/arcmap/10.3/tools/spatial-statistics-toolbox/geographically-weighted-regression.htm).
 
     **Note:** The input table should not contain missing values. You can use the
@@ -694,15 +694,15 @@ class GeographicallyWeightedRegression:
     )
 
     fixed = knext.BoolParameter(
-        "Fixed bandwith",
-        """True for distance based kernel function and False for adaptive (nearest neighbor) kernel function (default)""",
+        "Fixed bandwidth",
+        """True for distance-based kernel function and False for adaptive (nearest neighbor) kernel function (default)""",
         default_value=False,
         since_version="1.2.0",
     )
 
     kernel = knext.StringParameter(
         "Kernel",
-        "Type of kernel function used to weight observations; available options: ‘gaussian’ ‘bisquare’ ‘exponential’",
+        "Type of kernel function used to weight observations; available options: ‘gaussian’, ‘bisquare’, ‘exponential’.",
         default_value="bisquare",
         enum=["gaussian", "bisquare", "exponential"],
     )
@@ -716,21 +716,21 @@ class GeographicallyWeightedRegression:
 
     search_method = knext.StringParameter(
         "Search method",
-        "Bw search method: ‘golden’, ‘interval’",
+        "Bw search method: ‘golden’, ‘interval’.",
         default_value="golden",
         enum=["golden", "interval"],
     )
     # .rule(knext.OneOf(use_bindwidth_search, [True]), knext.Effect.SHOW)
 
     bandwith_min = knext.IntParameter(
-        "Bandwith min",
-        "Min value used in bandwidth search",
+        "Bandwidth min",
+        "Min value used in bandwidth search.",
         default_value=2,
     )
     # .rule(knext.OneOf(use_bindwidth_search, [True]), knext.Effect.SHOW)
 
     # bandwith_max = knext.IntParameter(
-    #     "Bandwith Max",
+    #     "Bandwidth Max",
     #     "max value used in bandwidth search",
     #     default_value=200,
     #     since_version="1.2.0",
@@ -752,7 +752,7 @@ class GeographicallyWeightedRegression:
     # ).rule(knext.OneOf(use_bindwidth_search, [True]), knext.Effect.SHOW)
 
     # bw = knext.IntParameter(
-    #     "Bandwith",
+    #     "Bandwidth",
     #     "bandwidth value consisting of either a distance or N nearest neighbors",
     #     default_value=100,
     #     since_version="1.2.0",
@@ -977,7 +977,7 @@ class MultiscaleGeographicallyWeightedRegression:
 
     dependent_variable = knext.ColumnParameter(
         "Dependent variable",
-        "The column containing the dependent variable to use for the calculation of Multiscale Geographically Weighted Regression.",
+        "The column contains the dependent variable to use for the calculation of Multiscale Geographically Weighted Regression.",
         column_filter=knut.is_numeric,
     )
 
@@ -988,15 +988,15 @@ class MultiscaleGeographicallyWeightedRegression:
     )
 
     fixed = knext.BoolParameter(
-        "Fixed bandwith",
-        """True for distance based kernel function and False for adaptive (nearest neighbor) kernel function (default)""",
+        "Fixed bandwidth",
+        """True for distance-based kernel function and False for adaptive (nearest neighbor) kernel function (default).""",
         default_value=False,
         since_version="1.2.0",
     )
 
     kernel = knext.StringParameter(
         "Kernel",
-        "Type of kernel function used to weight observations; available options: ‘gaussian’ ‘bisquare’ ‘exponential’",
+        "Type of kernel function used to weight observations; available options: ‘gaussian’, ‘bisquare’, ‘exponential’.",
         default_value="bisquare",
         enum=["gaussian", "bisquare", "exponential"],
         # since_version="1.2.0",
@@ -1013,28 +1013,28 @@ class MultiscaleGeographicallyWeightedRegression:
     )
 
     bandwith_min = knext.IntParameter(
-        "Bandwith min",
-        "Min value used in bandwidth search",
+        "Bandwidth min",
+        "Min value used in bandwidth search.",
         default_value=2,
     )
 
     bandwith_max = knext.IntParameter(
-        "Bandwith Max",
-        "max value used in bandwidth search",
+        "Bandwidth Max",
+        "Max value used in bandwidth search.",
         default_value=200,
         since_version="1.2.0",
     )
 
     interval = knext.IntParameter(
         "Interval",
-        "Interval used in bandwidth search",
+        "Interval used in bandwidth search.",
         default_value=1,
         since_version="1.2.0",
     )
 
     criterion = knext.StringParameter(
         "Criterion",
-        "Criterion used in bandwidth search: ‘AICc’, ‘AIC’, ‘BIC’, ‘CV’",
+        "Criterion used in bandwidth search: ‘AICc’, ‘AIC’, ‘BIC’, ‘CV’.",
         default_value="AICc",
         enum=["AICc", "AIC", "BIC", "CV"],
         since_version="1.2.0",
@@ -1292,7 +1292,7 @@ class SpatialOLS:
 
     white_test = knext.BoolParameter(
         "White Test",
-        """If True, compute White’s specification robust test. (requires nonspat_diag=True)
+        """If True, compute White’s specification robust test (requires nonspat_diag=True).
         Default set to True.""",
         default_value=True,
         is_advanced=True,
