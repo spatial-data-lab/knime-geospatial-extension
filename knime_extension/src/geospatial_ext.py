@@ -56,6 +56,7 @@ import nodes.conversion
 import nodes.io
 import nodes.locationanalysis
 import nodes.opendata
+import nodes.spatialclustering
 import nodes.spatialmodels
 import nodes.spatialstatistics
 import nodes.spatialtool
