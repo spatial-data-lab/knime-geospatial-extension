@@ -635,7 +635,6 @@ class MCLPNode:
         return knext.Table.from_pandas(DemandPt)
 
 
-
 ############################################
 # Location-allocation MAEP Solver
 ############################################
@@ -647,67 +646,87 @@ class MCLPNode:
     after="",
 )
 @knext.input_table(
-    name="Input tabale for demand and new facilities",
-    description="""The table MUST contain m rows and (k+1) columns, 
-    with the first column representing demand (e.g., population) 
-    and the remaining k columns representing the distance 
-    between each demand location and each new facility.
+    name="Input demand table",
+    description=""" Each row in this table represents a demand location (m). It consists of three types of columns: 
+    - demand ID
+    - demand size (e.g., population)
+    - distance columns, which represent the distances to the new facilities (k).
     """,
 )
 @knext.input_table(
-    name="Input OD matrix for existing facilities ",
-    description="""The table contains the origin-destination (OD) matrix for demand locations(m) to all existing facilities(n) .
-    This table MUST have m rows and n columns, with each entry representing the distance between a demand location and an existing facility.
+    name="Input distance matrix to existing facilities ",
+    description="""This table represents the Origin-Destination (OD) matrix, showing the distances between demand locations (m) and existing facilities (n).
+    It MUST consist of m rows and (n+1) columns, where one column is dedicated to Demand ID, 
+    and the remaining columns represent the distances between each demand location and an existing facility.
     """,
 )
 @knext.input_table(
     name="Input capacity table for existing facilities ",
-    description="""The table provides information on the supply capacity of each existing facility.
-    This table can be used in conjunction with the other input tables to determine the optimal location of 
-    new facilities while taking into account the capacity constraints of existing facilities.
-    Please ensure that the order of rows in the capacity column is consistent with the order of columns OD Matrix for Existing Facilities.
+    description="""This table provides information regarding the supply capacity of each existing facility.
+    The values in the Facility ID column must exactly match the column names for facilityies in the distance matrix table.
     """,
 )
 @knext.output_table(
-    name="P-median result table",
-    description="candidate column name and chosen status(1/0)",
-)
-@knut.pulp_node_description(
-    short_description="maximal accessibility equality problem (MAEP)",
-    description="""The optimization objective of MAEP is to minimize inequality in accessibility of facilities 
-    and is currently formulated as minimal variance across geographic areas. Specifically, 
-    it becomes a nonlinear programming (NLP) or quadratic programming (QP).
-    The MAEP problem will be solved by cvxopt package. 
-    """,
-    references={
-        "cvxopt": "https://cvxopt.org/",
-    },
+    name="MAEP result table",
+    description="Facilities with assigned capacities",
 )
 class MAEPSolverNode:
+    """
+    Maximal Accessibility Equality Problem (MAEP).
 
-    Newcapacity = knext.DoubleParameter(
-        "Input new capacity",
-        "New resource or capacility for facilities .",
+    The Maximal Accessibility Equality Problem (MAEP), originally introduced by [Jin et al.](https://doi.org/10.1155/2017/2094654),
+    addresses capacity adjustments for minimizing inequality in accessibility. It takes into account the match ratio between supply and demand, along with intricate spatial interactions.
+
+    The optimization objective of MAEP aims to minimize inequality in facility accessibility,
+    with a focus on reducing variance across geographic areas. This problem can be formulated as either a Nonlinear Programming (NLP) or a Quadratic Programming (QP) task.
+
+    To solve the MAEP problem, this node utilizes the [cvxopt package](https://cvxopt.org/).
+
+    """
+
+    id_left = knext.ColumnParameter(
+        "Demand ID column from demand table",
+        "The column for demand IDs from the first table. ",
+        port_index=0,
+        column_filter=knut.is_int_or_string,
+        include_row_key=False,
+        include_none_column=False,
     )
-    Demand = knext.ColumnParameter(
-        "Demand column",
-        "The column for demand(e.g.,population). ",
+
+    demand = knext.ColumnParameter(
+        "Demand size column",
+        "The column for demand size (e.g.,population). ",
         port_index=0,
         column_filter=knut.is_numeric,
         include_row_key=False,
         include_none_column=False,
     )
-
-    Supply = knext.ColumnParameter(
-        "Column for supply facility",
-        "Travel cost column of  required facility or Travel cost column of nearest required facilities. ",
+    id_right = knext.ColumnParameter(
+        "Demand ID column from distance matrix table",
+        "The column for demand IDs from the second input table. ",
+        port_index=1,
+        column_filter=knut.is_int_or_string,
+        include_row_key=False,
+        include_none_column=False,
+    )
+    id_supply = knext.ColumnParameter(
+        "Facility ID column ",
+        "The column for facility IDs from the third input table. ",
+        port_index=2,
+        column_filter=knut.is_int_or_string,
+        include_row_key=False,
+        include_none_column=False,
+    )
+    supply = knext.ColumnParameter(
+        "Capacity column of existing facility",
+        "The column representing the capacities of existing supply facilities.",
         port_index=2,
         column_filter=knut.is_numeric,
         include_row_key=False,
         include_none_column=False,
     )
 
-    Decaymodel = knext.StringParameter(
+    decaymodel = knext.StringParameter(
         label="Distance decay model",
         description="The model representing distance decay effect. ",
         default_value="Power",
@@ -717,9 +736,13 @@ class MAEPSolverNode:
             "2SFCA",
         ],
     )
-    Decaypara = knext.DoubleParameter(
+    decaypara = knext.DoubleParameter(
         "Distance decay parameters",
-        "It works for the parameters for the chosen corresponding models",
+        "It works for the parameters for the chosen corresponding models.",
+    )
+    newcapacity = knext.DoubleParameter(
+        "Input new capacity",
+        "Total capacility assigned to all new facilities.",
     )
 
     def configure(
@@ -727,7 +750,7 @@ class MAEPSolverNode:
     ):
         return knext.Schema.from_columns(
             [
-                knext.Column(knext.string(), "FacilityID"),
+                knext.Column(knext.string(), "Facility ID"),
                 knext.Column(knext.double(), "All"),
                 knext.Column(knext.double(), "Fixed"),
             ]
@@ -742,27 +765,26 @@ class MAEPSolverNode:
         import cvxopt
         import pandas as pd
 
-        D = df1[self.Demand]
+        D = df1[self.demand]
 
-        dist = pd.concat([df2, df1.drop(columns=[self.Demand])], axis=1)
-        fixhosp = df3[self.Supply]
+        dist = pd.concat([df2, df1.drop(columns=[self.demand])], axis=1)
+        fixhosp = df3[self.supply]
 
         # Calcualte indicators
-        fixH = fixhosp.shape[0]
+        fixh = fixhosp.shape[0]
         fixcapacity = fixhosp.sum()
         demand_popu = D.sum()
-        NewCapacity = 7200
-        Totalcapacity = fixcapacity + self.Newcapacity
+        Totalcapacity = fixcapacity + self.newcapacity
         ave_accessibility = Totalcapacity / demand_popu
         supplypt = dist.shape[1]
         demandpt = D.shape[0]
-        newH = supplypt - fixH
+        newH = supplypt - fixh
         # Convert D dataframe to matrix
         dij = dist.values
-        if self.Decaymodel == "Power":
+        if self.decaymodel == "Power":
             fij = np.power(dij, (-1 * self.Decaypara))
-        elif self.Decaymodel == "Exponential":
-            math.exp(-1 * self.Decaypara * dij)
+        elif self.decaymodel == "Exponential":
+            math.exp(-1 * self.decaypara * dij)
             fij = np.power(dij, (-1 * self.Decaypara))
         else:
             fij = np.where(fij <= self.Decaypara, 1, 0)
@@ -808,13 +830,13 @@ class MAEPSolverNode:
         # Extract the solution
         x = solution["x"]
         A2 = np.identity(supplypt)
-        A2 = A2[:fixH, :]
+        A2 = A2[:fixh, :]
         G2 = np.identity(supplypt)
         np.fill_diagonal(G2, -1)
-        G2 = G2[fixH:, :]
+        G2 = G2[fixh:, :]
         h2 = np.zeros((newH, 1))
 
-        print(G2.shape)
+        # print(G2.shape)
 
         # build constraints
         A3 = np.vstack((A1, A2))
@@ -829,6 +851,6 @@ class MAEPSolverNode:
         solution = cvxopt.solvers.qp(Q, p, Gn, hn, An, bn)
         # Extract the solution
         x1 = solution["x"]
-        dff = pd.DataFrame({"FacilityID": dist.columns, "All": x, "Fixed": x1})
+        dff = pd.DataFrame({"Facility ID": dist.columns, "All": x, "Fixed": x1})
 
         return knext.Table.from_pandas(dff)
