@@ -1001,7 +1001,7 @@ class LocalGetisOrd:
         lo = esda.getisord.G_Local(
             y,
             w,
-            transformation=self.transformation,
+            transform=self.transformation,
             permutations=self.advanced_setting.permutations,
             keep_simulations=self.advanced_setting.keep_simulations,
             n_jobs=self.advanced_setting.n_jobs,
