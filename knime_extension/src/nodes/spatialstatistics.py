@@ -25,7 +25,7 @@ the z-score for the local statistic value.
 __global_statistics_interactive_view_description = """
 The interactive view shows the density plot of the statistic values for permuted samples.
 The red line is the value of Moran’s I
-The blue line is the expected value under normality assumption
+The blue line is the expected value under normality assumption.
 """
 
 __local_statistics_output_table_description = """
@@ -330,7 +330,7 @@ class VariableSetting:
 
     Field_col = knext.ColumnParameter(
         "Variable column",
-        "The variable column you want to use for the analysis",
+        "The variable column you want to use for the analysis.",
         column_filter=knut.is_numeric,
         include_none_column=False,
     )
@@ -373,7 +373,7 @@ class GlobalStasticAdvancedSetting:
 
     permutations = knext.IntParameter(
         "Permutations",
-        """number of random permutations for calculation of pseudo-p_values""",
+        """Number of random permutations for calculation of pseudo-p_values.""",
         default_value=999,
         is_advanced=True,
     )
@@ -513,7 +513,7 @@ class LocalStasticAdvancedSetting:
 
     permutations = knext.IntParameter(
         "Permutations",
-        """number of random permutations for calculation of pseudo_p_values""",
+        """Number of random permutations for calculation of pseudo_p_values.""",
         default_value=999,
         is_advanced=True,
     )
