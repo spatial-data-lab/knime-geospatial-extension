@@ -911,21 +911,16 @@ class MSSCNode:
 
         while tmp_df.shape[0] > 0:
             tmp_df = tmp_df[tmp_df["included"] == 0]
-            processed_rows = 0
-            total_rows = tmp_df.shape[0]
-            # print('dfFC:',dfFC.shape[0])
             for indexs, row in tmp_df.iterrows():
                 n_loop = tmp_df.shape[0]
                 index = int(row["theid"])
                 count += 1
                 roundCount += 1
-                processed_rows += 1
                 exec_context.set_progress(
-                    processed_rows / float(total_rows),
-                    f"Processing row {processed_rows} of {total_rows}",
+                    0.8 * roundCount / n_loop,
+                    f"Batch {roundCount} of {n_loop} processed",
                 )
                 knut.check_canceled(exec_context)
-
                 cur_capacity = []
                 for i in range(len(constraintList)):
                     cur_capacity.append(row[constraintList[i]])
