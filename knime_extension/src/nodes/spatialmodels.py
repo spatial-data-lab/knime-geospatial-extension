@@ -705,7 +705,7 @@ class GeographicallyWeightedRegression:
         "Type of kernel function used to weight observations; available options: ‘gaussian’ ‘bisquare’ ‘exponential’",
         default_value="bisquare",
         enum=["gaussian", "bisquare", "exponential"],
-                )
+    )
 
     # use_bindwidth_search = knext.BoolParameter(
     #     "Use Bindwidth Search",
@@ -797,9 +797,9 @@ class GeographicallyWeightedRegression:
         # if self.use_bindwidth_search:
         #     from mgwr.sel_bw import Sel_BW
 
-            # gwr_selector = Sel_BW(
-            #     g_coords, g_y, g_X, kernel=self.kernel, fixed=self.fixed
-            # )
+        # gwr_selector = Sel_BW(
+        #     g_coords, g_y, g_X, kernel=self.kernel, fixed=self.fixed
+        # )
 
         #     gwr_bw = gwr_selector.search(
         #         bw_min=self.bandwith_min,
@@ -812,13 +812,12 @@ class GeographicallyWeightedRegression:
         #     kws["bw"] = gwr_bw
         # else:
         #     kws["bw"] = self.bw
-            # kws["fixed"] = self.fixed
-            
+        # kws["fixed"] = self.fixed
+
         from mgwr.sel_bw import Sel_BW
-        gwr_selector = Sel_BW(
-                g_coords, g_y, g_X, kernel=self.kernel, fixed=self.fixed
-            )
-        gwr_bw = gwr_selector.search(bw_min=self.bandwith_min,search_method=self.search_method)
+
+        gwr_selector = Sel_BW(g_coords, g_y, g_X)
+        gwr_bw = gwr_selector.search(bw_min=self.bandwith_min)
         # print(gwr_bw)
 
         # gwr_model = GWR(**kws).fit()
@@ -1043,8 +1042,6 @@ class MultiscaleGeographicallyWeightedRegression:
 
     advanced_settings = AdvancedGWRSetting()
 
-
-
     def configure(self, configure_context, input_schema):
         self.geo_col = knut.column_exists_or_preset(
             configure_context, self.geo_col, input_schema, knut.is_geo
@@ -1066,15 +1063,17 @@ class MultiscaleGeographicallyWeightedRegression:
         # Calibrate MGWR model
         from mgwr.sel_bw import Sel_BW
 
-        mgwr_selector = Sel_BW(g_coords, g_y, g_X, multi=True,
-                               kernel=self.kernel, fixed=self.fixed)
-        mgwr_bw = mgwr_selector.search(multi_bw_min=[self.bandwith_min],
-                                    #    multi_bw_max=[self.bandwith_max],
-                                    #    multi_bw_interval=[self.interval],
-                                    #    criterion=self.criterion,
-                                    #    search_method=self.search_method
-                                       )
-        
+        mgwr_selector = Sel_BW(
+            g_coords, g_y, g_X, multi=True, kernel=self.kernel, fixed=self.fixed
+        )
+        mgwr_bw = mgwr_selector.search(
+            multi_bw_min=[self.bandwith_min],
+            #    multi_bw_max=[self.bandwith_max],
+            #    multi_bw_interval=[self.interval],
+            #    criterion=self.criterion,
+            #    search_method=self.search_method
+        )
+
         from mgwr.gwr import MGWR
 
         mgwr_model = MGWR(
