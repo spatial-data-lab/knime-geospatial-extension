@@ -366,7 +366,7 @@ class GlobalStasticAdvancedSetting:
         “D”: doubly-standardized, “U”: untransformed (general weights), 
         “V”: variance-stabilizing.""",
         default_value="r",
-        # is_advanced=True,
+        is_advanced=True,
         enum=["r","B", "D", "U", "V"]
     )
 
@@ -374,7 +374,7 @@ class GlobalStasticAdvancedSetting:
         "Permutations",
         """number of random permutations for calculation of pseudo-p_values""",
         default_value=999,
-        # is_advanced=True,
+        is_advanced=True,
     )
 
 
@@ -433,7 +433,7 @@ class GlobalMoransI:
         "Two-tailed",
         """If True (default), compute two-tailed p-values. Otherwise, one-tailed.""",
         default_value = True,
-        # is_advanced=True
+        is_advanced=True
     )
 
     def configure(self, configure_context, input_schema_1, input_schema_2):
@@ -661,6 +661,8 @@ class GlobalGearysC:
 
     variable_setting = VariableSetting()
 
+    advanced_setting = GlobalStasticAdvancedSetting()
+
     def configure(self, configure_context, input_schema_1, input_schema_2):
         self.geo_col = knut.column_exists_or_preset(
             configure_context, self.geo_col, input_schema_1, knut.is_geo
@@ -692,7 +694,8 @@ class GlobalGearysC:
 
         import esda
 
-        gc = esda.geary.Geary(y, w)
+        gc = esda.geary.Geary(y=y, w=w, transformation=self.advanced_setting.transformation,
+                              permutations=self.advanced_setting.permutations)
 
         import pandas as pd
 
@@ -762,6 +765,13 @@ class GlobalGetisOrd:
 
     variable_setting = VariableSetting()
 
+    permutations = knext.IntParameter(
+        "Permutations",
+        """number of random permutations for calculation of pseudo_p_values""",
+        999,
+        is_advanced=True,
+    )
+
     def configure(self, configure_context, input_schema_1, input_schema_2):
         self.geo_col = knut.column_exists_or_preset(
             configure_context, self.geo_col, input_schema_1, knut.is_geo
@@ -793,7 +803,7 @@ class GlobalGetisOrd:
 
         import esda
 
-        go = esda.getisord.G(y, w)
+        go = esda.getisord.G(y=y, w=w, permutations=self.permutations)
 
         import pandas as pd
 
