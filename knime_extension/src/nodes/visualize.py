@@ -7,13 +7,18 @@ category = knext.category(
     path="/community/geo",
     level_id="viz",
     name="Spatial Visualization",  # Spatial Visualization
-    description="Spatial view nodes",
+    description="Nodes that facilitate the visualization and exploration of geospatial data.",
     # starting at the root folder of the extension_module parameter in the knime.yml file
-    icon="icons/icon/VisulizationCategory.png",
+    icon="icons/icon/VisualizationCategory.png",
     after="conversion",
 )
 # Root path for all node icons in this file
-__NODE_ICON_PATH = "icons/icon/Visulization/"
+__NODE_ICON_PATH = "icons/icon/Visualization/"
+
+
+class ImageTypeOption(knext.EnumParameterOptions):
+    SVG = ("SVG", "Scalable support vector graphic (SVG) best suited for PDF reports.")
+    PNG = ("PNG", "PNG image best suited for presentations.")
 
 
 def replace_external_js_css_paths(
@@ -27,9 +32,9 @@ def replace_external_js_css_paths(
     URL. The second matching group is the file name.
     The method will also add the closing ".
 
-    For example if the HTML code is <script src="https://cdn.jsdelivr.net/npm/leaflet@1.6.0/dist/leaflet.js">
+    For example if the HTML code is <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.3/dist/leaflet.js">
     the first group is <script src=" and the second group is leaflet.js so using the following replacement
-    r'\1./libs/leaflet/1.6.0/\3"\4' will lead to this URL: <script src="./libs/leaflet/1.6.0/leaflet.js">.
+    r'\1./libs/leaflet/1.9.3/\3"\4' will lead to this URL: <script src="./libs/leaflet/1.9.3/leaflet.js">.
     """
     import re
 
@@ -62,7 +67,7 @@ class ColorSettings:
 
     color_map = knext.StringParameter(
         "Color map",
-        """Select the color map to use for the color column. `xxx_r` mean the reverse of the `xxx` color map. 
+        """Select the color map to use for the color column. 'xxx_r' mean the reverse of the 'xxx' color map. 
         See [Colormaps in Matplotlib](https://matplotlib.org/stable/tutorials/colors/colormaps.html)""",
         default_value="viridis",
         enum=[
@@ -189,14 +194,14 @@ class ColorSettings:
             "YlOrRd",
             "YlOrRd_r",
         ],
-    )
+    ).rule(knext.OneOf(color_col, [None, "<none>"]), knext.Effect.HIDE)
 
     use_classify = knext.BoolParameter(
         "Classify numerical marker color columns",
         """If checked, a numerical marker color column will be classified using the selected classification method. 
         The 'Number of classes' will be used to determine the number of bins.""",
         default_value=False,
-    )
+    ).rule(knext.OneOf(color_col, [None, "<none>"]), knext.Effect.HIDE)
 
     classification_method = knext.StringParameter(
         "Classification method",
@@ -218,7 +223,7 @@ class ColorSettings:
             "Percentiles",
             "StdMean",
         ],
-    )
+    ).rule(knext.OneOf(use_classify, [True]), knext.Effect.SHOW)
 
     classification_bins = knext.IntParameter(
         "Number of classes",
@@ -226,33 +231,35 @@ class ColorSettings:
         default_value=5,
         min_value=1,
         max_value=50,
-    )
+    ).rule(knext.OneOf(use_classify, [True]), knext.Effect.SHOW)
 
 
-@knext.parameter_group(label="Legend Settings")
+@knext.parameter_group(label="Color Legend Settings")
 class LegendSettings:
     """
-    Group of settings that define if a legend is shown on the map and if so how it should be formatted.
+    Group of settings that define if a color legend is shown on the map and if so how it should be formatted.
+    The color legend is only shown if you have selected a color column.
     """
 
     plot = knext.BoolParameter(
-        "Show legend",
-        "If checked, a legend will be shown in the plot.",
+        "Show color legend",
+        "If checked, the color legend will be shown in the plot.",
         default_value=False,
     )
 
     caption = knext.StringParameter(
         "Legend caption",
-        "Set the caption for the legend. By default, the caption is the name of the selected color column or empty for heat map.",
+        "Set the caption for the color legend. By default, the caption is the name of the selected color column or "
+        + "empty for heat map.",
         default_value="",
-    )
+    ).rule(knext.OneOf(plot, [True]), knext.Effect.SHOW)
 
 
 @knext.parameter_group(label="Size Settings")
 class SizeSettings:
     """
     Group of settings that define the size of the geometric objects. The size column should be numerical.
-    The size is fixed by default. If the `Marker size column` is selected, the `Marker size scale` option will
+    The size is fixed by default. If the 'Marker size column' is selected, the 'Marker size scale' option will
     be ignored, and size will be scaled by the values of the column. For point features, the size is the radius
     of the circle. For line features, the size is the width of the line. For polygon features, the size is the
     radius of the centroid of the polygon.
@@ -275,7 +282,7 @@ class SizeSettings:
         default_value=float(1.0),
         min_value=None,
         max_value=None,
-    )
+    ).rule(knext.OneOf(size_col, [None, "<none>"]), knext.Effect.SHOW)
 
 
 @knext.parameter_group(label="Base Map Setting")
@@ -284,8 +291,8 @@ class BaseMapSettings:
 
     base_map = knext.StringParameter(
         "Base map",
-        """Select the base map to use for the visualization. If choose `Don't show base map`, the base map will be hidden.
-        The default base map is `OpenStreetMap`.
+        """Select the base map to use for the visualization. If choose 'Don't show base map', the base map will be hidden.
+        The default base map is 'OpenStreetMap'.
         See [Folium base maps](https://python-visualization.github.io/folium/quickstart.html#Tiles).""",
         default_value="OpenStreetMap",
         enum=[
@@ -340,7 +347,6 @@ class BaseMapSettings:
             "Stamen TopOSMFeatures",
             "Stamen TopOSMRelief",
             "Stamen Watercolor",
-            "Stamen Watercolor",
             "Strava All",
             "Strava Ride",
             "Strava Run",
@@ -365,7 +371,7 @@ class BaseMapSettings:
 @knext.output_view(
     name="Geospatial View",
     description="Showing an interactive map with the geospatial data",
-    static_resources="libs/leaflet/1.6.0",
+    static_resources="libs/leaflet/1.9.3",
 )
 class ViewNode:
     """Creates an interactive map view based on the selected geometric elements of the input table.
@@ -540,7 +546,7 @@ class ViewNode:
         # replace css and JavaScript paths
         html = map.get_root().render()
         html = replace_external_js_css_paths(
-            r'\1./libs/leaflet/1.6.0/\3"\4',
+            r'\1./libs/leaflet/1.9.3/\3"\4',
             html,
         )
 
@@ -573,9 +579,8 @@ class StaticColorSettings:
 
     color = knext.StringParameter(
         "Marker color",
-        """Select marker color. It will assign a unified color for all features. If the a `Marker color column` 
-        is selected and not `None` option, this option will be ignored.
-        Select none if you don't want to set a unified marker color.""",
+        """Select marker color. It will assign a unified color for all features. If a 'Marker color column' 
+        is selected, this option will be ignored. Select none if you don't want to set a unified marker color.""",
         default_value="none",
         enum=[
             "beige",
@@ -599,7 +604,7 @@ class StaticColorSettings:
             "red",
             "white",
         ],
-    )
+    ).rule(knext.OneOf(color_col, [None, "<none>"]), knext.Effect.SHOW)
 
     color_map = knext.StringParameter(
         "Color map",
@@ -607,20 +612,68 @@ class StaticColorSettings:
         See [Colormaps in Matplotlib](https://matplotlib.org/stable/tutorials/colors/colormaps.html).""",
         default_value="viridis",
         enum=[
+            "afmhot",
+            "autumn",
+            "binary",
+            "Blues",
+            "bone",
+            "BrBG",
+            "BuGn",
+            "BuPu",
+            "bwr",
+            "cool",
+            "coolwarm",
+            "copper",
+            "gist_gray",
+            "gist_heat",
+            "gist_yarg",
+            "GnBu",
+            "gray",
+            "Greens",
+            "Greys",
+            "hot",
+            "hsv" "Oranges",
+            "OrRd",
+            "pink",
+            "PiYG",
+            "PRGn",
+            "PuBu",
+            "PuBuGn",
+            "PuOr",
+            "PuRd",
+            "Purples",
+            "RdBu",
+            "RdGy",
+            "RdPu",
+            "RdYlBu",
+            "RdYlGn",
+            "Reds",
+            "seismic",
+            "Spectral",
+            "spring",
+            "summer",
+            "twilight_shifted",
+            "twilight",
+            "winter",
+            "Wistia",
+            "YlGn",
+            "YlGnBu",
+            "YlOrBr",
+            "YlOrRd",
             "cividis",
             "inferno",
             "magma",
             "plasma",
             "viridis",
         ],
-    )
+    ).rule(knext.OneOf(color_col, [None, "<none>"]), knext.Effect.HIDE)
 
     use_classify = knext.BoolParameter(
         "Classify numerical marker color columns",
         """If checked, the numerical marker color column will be classified using the selected classification method. 
         # The 'Number of classes' will be used to determine the number of bins.""",
-        default_value=True,
-    )
+        default_value=False,
+    ).rule(knext.OneOf(color_col, [None, "<none>"]), knext.Effect.HIDE)
 
     classification_method = knext.StringParameter(
         "Classification method",
@@ -642,7 +695,7 @@ class StaticColorSettings:
             "Percentiles",
             "StdMean",
         ],
-    )
+    ).rule(knext.OneOf(use_classify, [True]), knext.Effect.SHOW)
 
     classification_bins = knext.IntParameter(
         "Number of classes",
@@ -650,7 +703,7 @@ class StaticColorSettings:
         default_value=5,
         min_value=1,
         max_value=50,
-    )
+    ).rule(knext.OneOf(use_classify, [True]), knext.Effect.SHOW)
 
     edge_color = knext.StringParameter(
         "Edge color",
@@ -682,40 +735,44 @@ class StaticColorSettings:
     )
 
 
-@knext.parameter_group(label="Legend Settings")
+@knext.parameter_group(label="Color Legend Settings")
 class StaticLegendSettings:
     """
-    Group of settings that define if a legend is shown on the map and if so how it should be formatted.
+    Group of settings that define if a color legend is shown on the map and if so how it should be formatted.
+    The color legend is only shown if you have selected a color column.
+
     More details about the legend settings can be found [matplotlib.pyplot.legend](https://matplotlib.org/stable/api/_as_gen/matplotlib.pyplot.legend.html#matplotlib.pyplot.legend)
     and [matplotlib.pyplot.colorbar](https://matplotlib.org/stable/api/_as_gen/matplotlib.pyplot.colorbar.html#matplotlib.pyplot.colorbar).
     """
 
     plot = knext.BoolParameter(
-        "Show legend",
-        "If checked, a legend will be shown in the plot.",
+        "Show color legend",
+        "If checked, the color legend will be shown in the plot.",
         default_value=True,
     )
 
     caption = knext.StringParameter(
         "Legend caption",
-        "Set the caption for the legend. By default, the caption is the name of the selected color column or empty for heat map.",
+        "Set the caption for the legend. By default, the caption is the name of the selected color column or "
+        + "empty for heat map.",
         default_value="",
-        # default_value=color_col,
-    )
+    ).rule(knext.OneOf(plot, [True]), knext.Effect.SHOW)
 
     caption_fontsize = knext.IntParameter(
-        "Legend caption font size",
+        "Caption font size",
         "Set the font size for the legend caption.",
         default_value=10,
         min_value=1,
         max_value=100,
-    )
+        is_advanced=True,
+    ).rule(knext.OneOf(plot, [True]), knext.Effect.SHOW)
 
     expand = knext.BoolParameter(
         "Expand legend",
         "If checked, the legend will be horizontally expanded to fill the axes area.",
         default_value=False,
-    )
+        is_advanced=True,
+    ).rule(knext.OneOf(plot, [True]), knext.Effect.SHOW)
 
     location = knext.StringParameter(
         "Legend location",
@@ -736,7 +793,8 @@ class StaticLegendSettings:
             "upper left",
             "upper right",
         ],
-    )
+        is_advanced=True,
+    ).rule(knext.OneOf(plot, [True]), knext.Effect.SHOW)
 
     columns = knext.IntParameter(
         "Legend columns",
@@ -744,7 +802,8 @@ class StaticLegendSettings:
         default_value=1,
         min_value=1,
         max_value=30,
-    )
+        is_advanced=True,
+    ).rule(knext.OneOf(plot, [True]), knext.Effect.SHOW)
 
     size = knext.IntParameter(
         "Legend size",
@@ -752,7 +811,8 @@ class StaticLegendSettings:
         default_value=8,
         min_value=1,
         max_value=30,
-    )
+        is_advanced=True,
+    ).rule(knext.OneOf(plot, [True]), knext.Effect.SHOW)
 
     fontsize = knext.IntParameter(
         "Legend font size",
@@ -760,20 +820,23 @@ class StaticLegendSettings:
         default_value=10,
         min_value=1,
         max_value=30,
-    )
+        is_advanced=True,
+    ).rule(knext.OneOf(plot, [True]), knext.Effect.SHOW)
 
     labelcolor = knext.StringParameter(
         "Legend label color",
         "Select the label color for the legend.",
         default_value="black",
         enum=["black", "blue", "green", "orange", "purple", "red", "white", "yellow"],
-    )
+        is_advanced=True,
+    ).rule(knext.OneOf(plot, [True]), knext.Effect.SHOW)
 
     frame = knext.BoolParameter(
         "Show legend frame",
         "If checked, a frame will be shown in the legend.",
         default_value=True,
-    )
+        is_advanced=True,
+    ).rule(knext.OneOf(plot, [True]), knext.Effect.SHOW)
 
     framealpha = knext.DoubleParameter(
         "Legend frame alpha",
@@ -781,7 +844,8 @@ class StaticLegendSettings:
         default_value=1.0,
         min_value=0.0,
         max_value=1.0,
-    )
+        is_advanced=True,
+    ).rule(knext.OneOf(plot, [True]), knext.Effect.SHOW)
 
     borderpad = knext.DoubleParameter(
         "Legend border pad",
@@ -789,7 +853,8 @@ class StaticLegendSettings:
         default_value=0.5,
         min_value=0.0,
         max_value=3.0,
-    )
+        is_advanced=True,
+    ).rule(knext.OneOf(plot, [True]), knext.Effect.SHOW)
 
     labelspacing = knext.DoubleParameter(
         "Legend label spacing",
@@ -797,23 +862,26 @@ class StaticLegendSettings:
         default_value=0.5,
         min_value=0.0,
         max_value=1.0,
-    )
+        is_advanced=True,
+    ).rule(knext.OneOf(plot, [True]), knext.Effect.SHOW)
 
     colorbar_shrink = knext.DoubleParameter(
-        "Colorbar legend shrink",
-        "Select the shrinking value for the colorbar legend. Only work for colorbar.",
+        "Color bar legend shrink",
+        "Select the shrinking value for the color bar legend. Only works for color bar.",
         default_value=1.0,
         min_value=0.0,
         max_value=1.0,
-    )
+        is_advanced=True,
+    ).rule(knext.OneOf(plot, [True]), knext.Effect.SHOW)
 
     colorbar_pad = knext.DoubleParameter(
-        "Colorbar legend pad",
-        "Select the pad value for the colorbar legend. Only work for colorbar",
+        "Color bar legend pad",
+        "Select the pad value for the color bar legend. Only works for color bar",
         default_value=0.1,
         min_value=0.0,
         max_value=0.99,
-    )
+        is_advanced=True,
+    ).rule(knext.OneOf(plot, [True]), knext.Effect.SHOW)
 
 
 @knext.node(
@@ -826,6 +894,9 @@ class StaticLegendSettings:
 @knext.input_table(
     name="Geospatial Table to Visualize",
     description="Table with geospatial data to visualize",
+)
+@knext.output_image(
+    name="Geospatial View Image", description="Image of a map with the geospatial data"
 )
 @knext.output_view(
     name="Geospatial View", description="Showing a map with the geospatial data"
@@ -874,12 +945,22 @@ class ViewNodeStatic:
         default_value=10,
         min_value=1,
         max_value=100,
+        is_advanced=True,
     )
 
     set_axis_off = knext.BoolParameter(
         "Set axis off",
         "If checked, the axis will be set off.",
         default_value=False,
+        is_advanced=True,
+    )
+
+    image_type = knext.EnumParameter(
+        label="Image output type",
+        description="Select the type of output image.",
+        default_value=ImageTypeOption.SVG.name,
+        enum=ImageTypeOption,
+        since_version="1.2.0",
     )
 
     size_settings = SizeSettings()
@@ -894,7 +975,13 @@ class ViewNodeStatic:
         )
         # if self.name_cols is None:
         #     self.name_cols = [c.name for c in input_schema if knut.is_string(c)]
-        return None
+
+        if self.image_type is ImageTypeOption.SVG.name:
+            output_image_type = knext.ImageFormat.SVG
+        else:
+            output_image_type = knext.ImageFormat.PNG
+
+        return knext.ImagePortObjectSpec(output_image_type)
 
     def execute(self, exec_context: knext.ExecutionContext, input_table):
         gdf = gp.GeoDataFrame(input_table.to_pandas(), geometry=self.geo_col)
@@ -1014,7 +1101,14 @@ class ViewNodeStatic:
         # knut.check_canceled(exec_context)
         # cx.add_basemap(map, crs=gdf.crs.to_string(), source=cx.providers.flatten()[self.base_map])
 
-        return knext.view_matplotlib(map.get_figure())
+        # create the output image
+        import io
+
+        fig = map.get_figure()
+        out_image_buffer = io.BytesIO()
+        fig.savefig(out_image_buffer, format=self.image_type.lower())
+
+        return (out_image_buffer.getvalue(), knext.view_matplotlib(fig))
 
 
 ############################################
@@ -1067,28 +1161,33 @@ class ViewNodeKepler:
         include_none_column=False,
     )
 
-    # save_config = knext.BoolParameter(
-    #     "Save config",
-    #     "Save the config for the map",
-    #     default_value=False,
-    # )
-
-    # load_config = knext.BoolParameter(
-    #     "Load config",
-    #     "Load the config for the map",
-    #     default_value=False,
-    # )
+    attribute_cols = knext.ColumnFilterParameter(
+        "Attribute columns",
+        "Select the attribute columns to visualize.",
+        column_filter=knut.negate(knut.is_geo),  # Filter out all geo columns
+        since_version="1.2.0",
+    )
 
     def configure(self, configure_context, input_schema):
         self.geo_col = knut.column_exists_or_preset(
             configure_context, self.geo_col, input_schema, knut.is_geo
         )
-        # if self.name_cols is None:
-        #     self.name_cols = [c.name for c in input_schema if knut.is_string(c)]
         return None
 
     def execute(self, exec_context: knext.ExecutionContext, input_table):
-        df = input_table.to_pandas()
+        # include only selected attribute columns that are not geospatial and the selected geospatial column
+        attribute_columns = self.attribute_cols.apply(input_table.schema)
+
+        # this code is only necessary since the apply function ignores the column_filter parameter and would return
+        # all geo columns if the "Any unknown columns" option is added to the include list
+        included_column_names = list()
+        for c in attribute_columns:
+            if not knut.is_geo(c):
+                included_column_names.append(c.name)
+        included_column_names.append(self.geo_col)
+
+        df = input_table[included_column_names].to_pandas()
+
         df.rename(columns={self.geo_col: "geometry"}, inplace=True)
         gdf = gp.GeoDataFrame(df, geometry="geometry")
 
@@ -1168,7 +1267,7 @@ class ViewNodeKepler:
 @knext.output_view(
     name="Heatmap View",
     description="Showing a heatmap with the data",
-    static_resources="libs/leaflet/1.6.0",
+    static_resources="libs/leaflet/1.9.3",
 )
 class ViewNodeHeatmap:
     """This node will visualize the given data on a heatmap.
@@ -1480,19 +1579,6 @@ class ViewNodeHeatmap:
         include_none_column=True,
     )
 
-    min_opacity = knext.DoubleParameter(
-        "Minimum opacity",
-        "The minimum opacity the lowest value in the heatmap will have.",
-        default_value=0.5,
-    )
-
-    max_zoom = knext.IntParameter(
-        "Maximum zoom",
-        """Zoom level where the points reach maximum intensity (as intensity scales with zoom), 
-        equals maxZoom of the map by default.""",
-        default_value=18,
-    )
-
     radius = knext.IntParameter(
         "Radius",
         "Radius of each datapoint of the heatmap.",
@@ -1504,6 +1590,21 @@ class ViewNodeHeatmap:
         """The blur factor that will be applied to all data points. 
         The higher the blur factor is, the smoother the gradients will be.""",
         default_value=15,
+    )
+
+    min_opacity = knext.DoubleParameter(
+        "Minimum opacity",
+        "The minimum opacity the lowest value in the heatmap will have.",
+        default_value=0.5,
+        is_advanced=True,
+    )
+
+    max_zoom = knext.IntParameter(
+        "Maximum zoom",
+        """Zoom level where the points reach maximum intensity (as intensity scales with zoom), 
+        equals maxZoom of the map by default.""",
+        default_value=18,
+        is_advanced=True,
     )
 
     basemap_settings = BaseMapSettings()
@@ -1568,7 +1669,7 @@ class ViewNodeHeatmap:
         # replace css and JavaScript paths
         html = map.get_root().render()
         html = replace_external_js_css_paths(
-            r'\1./libs/leaflet/1.6.0/\3"\4',
+            r'\1./libs/leaflet/1.9.3/\3"\4',
             html,
         )
 

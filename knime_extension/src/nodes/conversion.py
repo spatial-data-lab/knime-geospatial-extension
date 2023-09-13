@@ -1,13 +1,14 @@
 import geopandas as gp
 import knime_extension as knext
 import util.knime_utils as knut
+import util.projection as kproj
 
 
 __category = knext.category(
     path="/community/geo",
     level_id="conversion",
     name="Spatial Conversion",
-    description="Nodes that perform conversions from/to geometric objects.",
+    description="Nodes that convert between various geometric and textual representations, or apply geocoding operations, and extract metadata from geometries.",
     # starting at the root folder of the extension_module parameter in the knime.yml file
     icon="icons/icon/ConversionCategory.png",
     after="transform",
@@ -23,13 +24,13 @@ __NODE_ICON_PATH = "icons/icon/GeometryConversion/"
 
 def crs_input_parameter(
     label: str = "CRS",
-    description: str = knut.DEF_CRS_DESCRIPTION,
+    description: str = kproj.DEF_CRS_DESCRIPTION,
 ) -> knext.StringParameter:
     """Returns a CRS (coordinate reference system) string input parameter."""
     return knext.StringParameter(
         label=label,
         description=description,
-        default_value=knut.DEFAULT_CRS,
+        default_value=kproj.DEFAULT_CRS,
     )
 
 
@@ -142,7 +143,6 @@ class _ToGeoConverter:
     },
 )
 class WKTtoGeoNode(_ToGeoConverter):
-
     input_column = knext.ColumnParameter(
         label="WKT column",
         description="[Well-known-text (WKT)](https://en.wikipedia.org/wiki/Well-known_text_representation_of_geometry) column to convert",
@@ -218,7 +218,6 @@ class WKTtoGeoNode(_ToGeoConverter):
     },
 )
 class GeoJSONtoGeoNode(_ToGeoConverter):
-
     input_column = knext.ColumnParameter(
         label="GeoJSON formatted string column",
         description="String column with a [GeoJSON](https://en.wikipedia.org/wiki/GeoJSON) string to convert",
@@ -283,7 +282,6 @@ class GeoJSONtoGeoNode(_ToGeoConverter):
     },
 )
 class LatLongToGeoNode:
-
     lat_col = knext.ColumnParameter(
         label="Latitude column",
         description="Please select the latitude column",
@@ -424,7 +422,6 @@ class _FromGeoConverter:
     },
 )
 class GeoToWKTNode(_FromGeoConverter):
-
     geo_column = knut.geo_col_parameter(
         description="Geometry column to convert to [Well-known-text (WKT)](https://en.wikipedia.org/wiki/Well-known_text_representation_of_geometry)"
     )
@@ -491,7 +488,6 @@ class GeoToWKTNode(_FromGeoConverter):
     },
 )
 class GeoToGeoJSONNode(_FromGeoConverter):
-
     geo_column = knut.geo_col_parameter(
         description="Geometry column to convert to [GeoJSON](https://en.wikipedia.org/wiki/GeoJSON)"
     )
@@ -550,7 +546,6 @@ class GeoToGeoJSONNode(_FromGeoConverter):
     },
 )
 class GeoToLatLongNode:
-
     geo_col = knut.geo_point_col_parameter(
         description="Select the point geometry column to extract the latitude and longitude from."
     )
@@ -588,7 +583,6 @@ class GeoToLatLongNode:
 
 
 class _ServiceProvider(knext.EnumParameterOptions):
-
     arcgis = (
         "arcgis",
         "Using [ArcGIS online service](https://developers.arcgis.com/rest/geocode/api-reference/overview-world-geocoding-service.htm) to do geocoding or reverse geocoding.",
@@ -710,7 +704,6 @@ class GeocodingServiceSettings:
     },
 )
 class GeoGeocodingNode:
-
     address_col = knext.ColumnParameter(
         "Address column",
         "Select the address column to geocode."
@@ -777,7 +770,7 @@ class GeoGeocodingNode:
 
         df[result_col_name] = gp.points_from_xy(df[tmp_long], df[tmp_lat])
 
-        gdf = gp.GeoDataFrame(df, geometry=result_col_name, crs=knut.DEFAULT_CRS)
+        gdf = gp.GeoDataFrame(df, geometry=result_col_name, crs=kproj.DEFAULT_CRS)
 
         gdf.drop(columns=[tmp_col, tmp_lat, tmp_long], inplace=True)
 
@@ -821,7 +814,6 @@ class GeoGeocodingNode:
     },
 )
 class GeoReverseGeocodingNode:
-
     geo_col = knext.ColumnParameter(
         "Geometry column",
         "Select the geometry column to reverse geocode."
@@ -919,6 +911,304 @@ class GeoReverseGeocodingNode:
 
 
 ############################################
+# ip to geometry
+############################################
+@knext.node(
+    name="IP to Geometry",
+    node_type=knext.NodeType.MANIPULATOR,
+    icon_path=__NODE_ICON_PATH + "IPToGeo.png",
+    category=__category,
+    after="",
+)
+@knext.input_table(
+    name="Input table",
+    description="Table with an IP address column to geocode.",
+)
+@knext.output_table(
+    name="Table with geometry",
+    description="Table with the geometry for all given IP addresses.",
+)
+class IPToGeometryNode:
+    """Geocodes the given IP addresses.
+    Gets the geo location of the provided IP addresses by using one of the supported services.
+    Please choose the desired service provider and enter your personal API key in the node settings (optional).
+
+    To register for an API key please visit the homepage of the service provider of your choice at:
+
+    - [ipinfo](https://ipinfo.io/)
+    - [ipapi](https://ipapi.co/)
+    - [abstract IP Geolocation API](https://www.abstractapi.com/ip-geolocation-api)
+    """
+
+    class _ProviderOptions(knext.EnumParameterOptions):
+        IPINFO = (
+            "ipinfo.io",
+            "Pricing and limits can be found [here.](https://ipinfo.io/pricing)",
+        )
+        IPAPI = (
+            "ipapi",
+            "Pricing and limits can be found [here.](https://ipapi.co/#pricing)",
+        )
+        ABSTRACT = (
+            "abstract IP Geolocation API",
+            "Pricing and limits can be found [here.](https://www.abstractapi.com/api/ip-geolocation-api#pricing)",
+        )
+
+    ip_col = knext.ColumnParameter(
+        "IP address column",
+        "Select the IP address column to geocode. It should contain a string with the IP address to geocode. such as `8.8.8.8`.",
+        column_filter=knut.is_string,
+        include_row_key=False,
+        include_none_column=False,
+    )
+
+    service_provider = knext.EnumParameter(
+        "Service provider",
+        "Select the service provider to use for IP to geometry conversion.",
+        default_value=_ProviderOptions.IPINFO.name,
+        enum=_ProviderOptions,
+    )
+
+    access_token = knext.StringParameter(
+        "Access token",
+        """Enter the access token for the service provider.
+        You can leave this field empty if the service provider doesn't require an access token.""",
+        default_value="",
+    )
+
+    min_delay_seconds = knext.IntParameter(
+        "Minimum delay (seconds)",
+        "Enter the minimum delay in seconds between two requests.",
+        default_value=1,
+        is_advanced=True,
+    )
+
+    default_timeout = knext.IntParameter(
+        "Default timeout (seconds)",
+        "Enter the default timeout in seconds for each request.",
+        default_value=10,
+        is_advanced=True,
+    )
+
+    max_retry = knext.IntParameter(
+        "Maximum retries on error",
+        "Number of retries to perform for each IP address.",
+        1,
+        is_advanced=True,
+    )
+
+    fail_on_error = knext.BoolParameter(
+        "Fail on error",
+        "If there are errors the execution will stop, and all results are discarded. "
+        + "Otherwise, missing values are returned for each failing request. "
+        + "In this case you can inspect the KNIME log file for any error messages.",
+        True,
+        is_advanced=True,
+    )
+
+    name = "Geometry"
+
+    def configure(self, configure_context, input_schema):
+        self.ip_col = knut.column_exists_or_preset(
+            configure_context, self.ip_col, input_schema, knut.is_string
+        )
+
+        output_schema = input_schema.append(
+            knext.Column(
+                ktype=knext.string(),
+                name=knut.get_unique_column_name("City", input_schema),
+            )
+        )
+
+        output_schema = output_schema.append(
+            knext.Column(
+                ktype=knext.string(),
+                name=knut.get_unique_column_name("Region", input_schema),
+            )
+        )
+
+        output_schema = output_schema.append(
+            knext.Column(
+                ktype=knext.string(),
+                name=knut.get_unique_column_name("Country", input_schema),
+            )
+        )
+
+        output_schema = output_schema.append(
+            knext.Column(
+                ktype=knext.double(),
+                name=knut.get_unique_column_name("Latitude", input_schema),
+            )
+        )
+
+        output_schema = output_schema.append(
+            knext.Column(
+                ktype=knext.double(),
+                name=knut.get_unique_column_name("Longitude", input_schema),
+            )
+        )
+
+        output_schema = output_schema.append(
+            knext.Column(
+                ktype=knut.TYPE_POINT,
+                name=knut.get_unique_column_name(self.name, input_schema),
+            )
+        )
+
+        return output_schema
+
+    def execute(self, exec_context: knext.ExecutionContext, input_table):
+        df = input_table.to_pandas()
+        import time
+
+        access_token = self.access_token
+        if self.service_provider == self._ProviderOptions.IPINFO.name:
+            import ipinfo
+
+            handler = ipinfo.getHandler(access_token)
+        process_counter = 1
+        n_loop = len(df)
+
+        city_col = knut.get_unique_column_name("City", input_table.schema)
+        region_col = knut.get_unique_column_name("Region", input_table.schema)
+        country_col = knut.get_unique_column_name("Country", input_table.schema)
+        latitude_col = knut.get_unique_column_name("Latitude", input_table.schema)
+        longitude_col = knut.get_unique_column_name("Longitude", input_table.schema)
+
+        for index, row in df.iterrows():
+            ip = row[self.ip_col]
+            try:
+                if self.service_provider == self._ProviderOptions.IPINFO.name:
+                    result = self._call_ipinfo(handler, ip)
+                elif self.service_provider == self._ProviderOptions.IPAPI.name:
+                    result = self._call_ipapi(ip)
+                elif self.service_provider == self._ProviderOptions.ABSTRACT.name:
+                    result = self._call_abstract(ip)
+                else:
+                    raise RuntimeError(
+                        f"Unknown service provider: {self.service_provider}"
+                    )
+            except Exception as e:
+                if self.fail_on_error:
+                    raise e
+                else:
+                    result = dict(
+                        city=None,
+                        region=None,
+                        country=None,
+                        latitude=None,
+                        longitude=None,
+                    )
+
+            df.at[index, city_col] = result["city"]
+            df.at[index, region_col] = result["region"]
+            df.at[index, country_col] = result["country"]
+            df.at[index, latitude_col] = result["latitude"]
+            df.at[index, longitude_col] = result["longitude"]
+            exec_context.set_progress(
+                0.9 * process_counter / n_loop,
+                "Batch %d of %d processed" % (process_counter, n_loop),
+            )
+            knut.check_canceled(exec_context)
+            process_counter += 1
+
+            time.sleep(self.min_delay_seconds)
+
+        # convert to GeoDataFrame
+        geo_col_name = knut.get_unique_column_name("Geometry", input_table.schema)
+        # will return POINT(NaN NaN) for None values https://github.com/geopandas/geopandas/issues/1805
+        df[geo_col_name] = gp.points_from_xy(df[longitude_col], df[latitude_col])
+        gdf = gp.GeoDataFrame(df, geometry=geo_col_name, crs=kproj.DEFAULT_CRS)
+
+        return knut.to_table(gdf)
+
+    def _call_abstract(self, ip):
+        if self.access_token is None or self.access_token == "":
+            raise RuntimeError("Access token required for abstractapi.com")
+        url = "https://ipgeolocation.abstractapi.com/v1/?api_key=%s&ip_address=%s" % (
+            self.access_token,
+            ip,
+        )
+        return self._do_request(
+            url,
+            dict(
+                city="city",
+                region="region",
+                country="country",
+                latitude="latitude",
+                longitude="longitude",
+            ),
+        )
+
+    def _call_ipapi(self, ip):
+        url = "https://ipapi.co/%s/json" % (ip)
+        if self.access_token != "":
+            url += "?key=%s" % (self.access_token)
+        return self._do_request(
+            url,
+            dict(
+                city="city",
+                region="region",
+                country="country_name",
+                latitude="latitude",
+                longitude="longitude",
+            ),
+        )
+
+    def _call_ipinfo(self, handler, ip):
+        for i in range(self.max_retry):
+            try:
+                details = handler.getDetails(ip, timeout=self.default_timeout)
+                break
+            except Exception as e:
+                import time
+
+                knut.LOGGER.warning(f"Exception while calling ipinfo.io API: {e}")
+                time.sleep(1)
+                continue
+        if "bogon" in details.all:
+            raise RuntimeError(f"Invalid IP: {ip}")
+        return dict(
+            city=details.city,
+            region=details.region,
+            country=details.country_name,
+            latitude=float(details.latitude),
+            longitude=float(details.longitude),
+        )
+
+    def _do_request(self, url, col_map):
+        import time
+        import requests
+
+        last_error = None
+        for i in range(self.max_retry):
+            try:
+                r = requests.get(url, timeout=self.default_timeout)
+                if r:
+                    res_json = r.json()
+                    last_error = None
+                    break
+                else:
+                    last_error = r.text
+                    raise Exception("Request did fail: " + last_error)
+            except Exception as e:
+                knut.LOGGER.warning(f"Exception while calling API: {e}")
+                time.sleep(1)
+                continue
+        if last_error:
+            raise Exception(
+                f"Request did fail: {last_error}. For more details see the KNIME log file"
+            )
+        return dict(
+            city=res_json[col_map["city"]],
+            region=res_json[col_map["region"]],
+            country=res_json[col_map["country"]],
+            latitude=res_json[col_map["latitude"]],
+            longitude=res_json[col_map["longitude"]],
+        )
+
+
+############################################
 # Geometry to Metadata
 ############################################
 @knext.node(
@@ -999,7 +1289,6 @@ class MetadataNode:
         return output_schema
 
     def execute(self, exec_context: knext.ExecutionContext, input):
-
         t = input.to_pyarrow()
         t_dict = t.to_pydict()
 

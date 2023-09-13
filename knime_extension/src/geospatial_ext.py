@@ -1,7 +1,17 @@
 # The root category of all Geospatial categories
 import knime_extension as knext
-import util.knime_utils as knut
 import sys
+
+# this section is used for things that need to be executed prior the Geopandas lib is imported which happens with the
+# import util.knime_utils line
+
+# enforce use of Shapely 2.0 even if PyGEOS is installed which is required by the momepy, segregation and tobler package
+import os
+
+os.environ["USE_PYGEOS"] = "0"
+
+
+import util.knime_utils as knut
 
 
 # this section is used for things that need to be executed prior any of the nodes is used e.g. global setups such as
@@ -18,6 +28,7 @@ def __initialize_pyproj():
 
 
 __initialize_pyproj()
+
 
 # Fake the libpysal.examples import to prevent it from downloading data from the internet which might cause problems
 # in environments without internet access: https://github.com/spatial-data-lab/knime-geospatial-extension/issues/165
@@ -45,6 +56,7 @@ import nodes.conversion
 import nodes.io
 import nodes.locationanalysis
 import nodes.opendata
+import nodes.spatialclustering
 import nodes.spatialmodels
 import nodes.spatialstatistics
 import nodes.spatialtool

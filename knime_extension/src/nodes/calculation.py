@@ -7,7 +7,7 @@ __category = knext.category(
     path="/community/geo",
     level_id="calculation",
     name="Spatial Calculation",
-    description="Nodes that calculate properties for given geometric objects.",
+    description="Nodes that facilitate the calculation and representation of spatial properties, enveloping geometries, and complex geometric unions.",
     # starting at the root folder of the extension_module parameter in the knime.yml file
     icon="icons/icon/CalculationCategory.png",
     after="io",
@@ -15,6 +15,7 @@ __category = knext.category(
 
 # Root path for all node icons in this file
 __NODE_ICON_PATH = "icons/icon/GeometryCalculation/"
+
 
 ############################################
 # Simple transformation helper class
@@ -56,31 +57,26 @@ class _SingleCalculator:
         ]
 
     def configure(self, configure_context, input_schema):
-        # geo_col needs to be defined in the child class
+        # geo_col and result_settings needs to be defined in the child class
 
         self.geo_col = knut.column_exists_or_preset(
             configure_context, self.geo_col, input_schema, knut.is_geo
         )
-
-        # We have to do this twice because configure and execute are executed in different processes so they
-        # have different instances!!!
-        self.col_name = knut.get_unique_column_name(self.col_name, input_schema)
         if self.coltype is not None:
-            return input_schema.append(knext.Column(self.coltype, self.col_name))
+            return self.result_settings.get_result_schema(
+                configure_context,
+                input_schema,
+                self.geo_col,
+                self.coltype,
+            )
 
     def execute(self, exec_context, input_table):
         # create GeoDataFrame with the selected column as active geometry column.
-        # The geo_col needs to be defined in the child class
+        # The geo_col and result_settings needs to be defined in the child class
 
-        # We have to do this twice because configure and execute are executed in different processes so they
-        # have different instances!!!
-        self.col_name = knut.get_unique_column_name(self.col_name, input_table.schema)
-
-        gdf = knut.load_geo_data_frame(input_table, self.geo_col, exec_context)
-        gdf[self.col_name] = self.func(
-            gdf
-        )  # execute the function and append the result
-        return knut.to_table(gdf, exec_context)
+        return self.result_settings.get_computed_result_table(
+            exec_context, input_table, self.geo_col, self.func
+        )
 
 
 ############################################
@@ -106,13 +102,20 @@ class _SingleCalculator:
     },
 )
 class AreaNode(_SingleCalculator):
+    __COL_NAME = "area"
 
     geo_col = knut.geo_col_parameter(
         description="Select the geometry column to compute the area."
     )
 
+    result_settings = knut.ResultSettings(
+        mode=knut.ResultSettingsMode.APPEND.name,
+        new_name=__COL_NAME,
+        since_version="1.2.0",
+    )
+
     def __init__(self):
-        super().__init__(lambda gdf: gdf.area, "area")
+        super().__init__(lambda gdf: gdf.area, self.__COL_NAME)
 
 
 ############################################
@@ -138,13 +141,20 @@ class AreaNode(_SingleCalculator):
     },
 )
 class LengthNode(_SingleCalculator):
+    __COL_NAME = "length"
 
     geo_col = knut.geo_col_parameter(
         description="Select the geometry column to compute the length."
     )
 
+    result_settings = knut.ResultSettings(
+        mode=knut.ResultSettingsMode.APPEND.name,
+        new_name=__COL_NAME,
+        since_version="1.2.0",
+    )
+
     def __init__(self):
-        super().__init__(lambda gdf: gdf.length, "length")
+        super().__init__(lambda gdf: gdf.length, self.__COL_NAME)
 
 
 ############################################
@@ -175,13 +185,20 @@ class LengthNode(_SingleCalculator):
     },
 )
 class BoundingBoxNode(_SingleCalculator):
+    __COL_NAME = "box"
 
     geo_col = knut.geo_col_parameter(
         description="Select the geometry column to compute the bounding box."
     )
 
+    result_settings = knut.ResultSettings(
+        mode=knut.ResultSettingsMode.APPEND.name,
+        new_name=__COL_NAME,
+        since_version="1.2.0",
+    )
+
     def __init__(self):
-        super().__init__(lambda gdf: gdf.envelope, "box", knut.TYPE_GEO)
+        super().__init__(lambda gdf: gdf.envelope, self.__COL_NAME, knut.TYPE_GEO)
 
 
 ############################################
@@ -213,13 +230,20 @@ class BoundingBoxNode(_SingleCalculator):
     },
 )
 class ConvexHullNode(_SingleCalculator):
+    __COL_NAME = "hull"
 
     geo_col = knut.geo_col_parameter(
         description="Select the geometry column to compute the convex hull."
     )
 
+    result_settings = knut.ResultSettings(
+        mode=knut.ResultSettingsMode.APPEND.name,
+        new_name=__COL_NAME,
+        since_version="1.2.0",
+    )
+
     def __init__(self):
-        super().__init__(lambda gdf: gdf.convex_hull, "hull", knut.TYPE_GEO)
+        super().__init__(lambda gdf: gdf.convex_hull, self.__COL_NAME, knut.TYPE_GEO)
 
 
 ############################################
@@ -251,7 +275,6 @@ class ConvexHullNode(_SingleCalculator):
     },
 )
 class CoordinatesNode:
-
     geo_col = knut.geo_point_col_parameter(
         description="Select the point geometry column to extract the coordinates from."
     )
@@ -414,7 +437,6 @@ class BoundsNode:
     },
 )
 class TotalBoundsNode:
-
     geo_col = knut.geo_col_parameter(
         description="Select the geometry column to compute the total bounds for."
     )
@@ -483,7 +505,6 @@ class TotalBoundsNode:
     },
 )
 class UnaryUnionNode:
-
     geo_col = knut.geo_col_parameter(
         description="Select the geometry column to compute the unary union."
     )
@@ -537,26 +558,20 @@ class UnaryUnionNode:
     },
 )
 class BoundCircleNode:
-
     geo_col = knut.geo_col_parameter(
         description="Select the geometry column to compute the minimum bounding circle."
     )
 
     result_settings = knut.ResultSettings(
-        "Result", "1.1.0", None, knut.ResultSettings.Mode.APPEND.name, "circle"
+        mode=knut.ResultSettingsMode.APPEND.name,
+        new_name="Circle",
     )
-
-    def __init__(self):
-        # set twice as workaround until fixed in KNIME framework
-        self.result_settings.mode = knut.ResultSettings.Mode.APPEND.name
-        self.result_settings.new_column_name = "circle"
 
     def configure(self, configure_context, input_schema):
         self.geo_col = knut.column_exists_or_preset(
             configure_context, self.geo_col, input_schema, knut.is_geo
         )
-        return knut.get_result_schema(
-            self.result_settings,
+        return self.result_settings.get_result_schema(
             configure_context,
             input_schema,
             self.geo_col,
@@ -594,6 +609,92 @@ class BoundCircleNode:
             center, radius = minimum_bounding_circle(points)
             return center.buffer(radius)
 
-        return knut.get_computed_result_table(
-            self.result_settings, exec_context, input, self.geo_col, compute_circle
+        return self.result_settings.get_computed_result_table(
+            exec_context, input, self.geo_col, compute_circle
         )
+
+
+############################################
+# Line Endpoints
+############################################
+
+
+@knext.node(
+    name="Line Endpoints",
+    node_type=knext.NodeType.MANIPULATOR,
+    icon_path=__NODE_ICON_PATH + "LineEndpoints.png",
+    category=__category,
+    after="",
+)
+@knext.input_table(
+    name="Geo table",
+    description="Table with the geometry column to compute the end points for",
+)
+@knext.output_table(
+    name="Geo table with endpoints",
+    description="Input table with the computed endpoints",
+)
+@knut.geo_node_description(
+    short_description="This node returns two geometry columns representing the start and end points of each line in the input data.",
+    description="""This node returns two geometry columns representing the start and end points of each line in the 
+input data. Any none LineString geometry types will return a missing value for the start and endpoint.""",
+    references={
+        "LineString": "https://shapely.readthedocs.io/en/stable/reference/shapely.LineString.html#shapely.LineString",
+        "Point": "https://shapely.readthedocs.io/en/stable/reference/shapely.Point.html",
+    },
+)
+class LineEndpointNode:
+    geo_col = knut.geo_col_parameter(
+        description="Select the geometry column to compute the endpoints.",
+    )
+    _STARTP = "Start Point"
+    _ENDP = "End Point"
+
+    def configure(self, configure_context, input_schema):
+        self.geo_col = knut.column_exists_or_preset(
+            configure_context, self.geo_col, input_schema, knut.is_geo
+        )
+        from shapely.geometry import Point
+
+        return input_schema.append(
+            [
+                knext.Column(
+                    ktype=knext.logical(Point),
+                    name=knut.get_unique_column_name(self._STARTP, input_schema),
+                ),
+                knext.Column(
+                    ktype=knext.logical(Point),
+                    name=knut.get_unique_column_name(self._ENDP, input_schema),
+                ),
+            ]
+        )
+
+    def execute(self, exec_context: knext.ExecutionContext, input):
+        gdf = knut.load_geo_data_frame(input, self.geo_col, exec_context)
+
+        from shapely.geometry import Point, LineString
+
+        startp = knut.get_unique_column_name(self._STARTP, input.schema)
+        endp = knut.get_unique_column_name(self._ENDP, input.schema)
+
+        def get_line_endpoints(row):
+            geom = row[self.geo_col]
+            geom_type = geom.geom_type
+            if geom_type == "LineString":
+                line = LineString(geom)
+                start_point = Point(line.coords[0])
+                end_point = Point(line.coords[-1])
+            else:
+                start_point = None
+                end_point = None
+            return (start_point, end_point)
+
+        gdf[[startp, endp]] = gdf.apply(
+            get_line_endpoints, axis=1, result_type="expand"
+        )
+        gdf[startp] = gp.GeoSeries(gdf[startp], crs=gdf.crs)
+        gdf[endp] = gp.GeoSeries(gdf[endp], crs=gdf.crs)
+
+        gdf.reset_index(drop=True, inplace=True)
+
+        return knut.to_table(gdf, exec_context)
