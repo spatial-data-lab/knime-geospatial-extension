@@ -25,7 +25,7 @@ the z-score for the local statistic value.
 __global_statistics_interactive_view_description = """
 The interactive view shows the density plot of the statistic values for permuted samples.
 The red line is the value of Moran’s I
-The blue line is the expected value under normality assumption
+The blue line is the expected value under normality assumption.
 """
 
 __local_statistics_output_table_description = """
@@ -115,7 +115,6 @@ class spatialWeights:
             "Rook",
             "Binary Distance Band",
             "Inverse Distance",
-            "Lattice",
             "K nearest",
             "Lattice",
             "Kernel",
@@ -123,34 +122,51 @@ class spatialWeights:
         ],
     )
     order = knext.IntParameter(
-        "Order for Queen or Rook",
+        "Order",
         """The order of the weight matrix is 1 by default. Users can change the order of the weights, higher order 
         weights will treat further units as neighbors.""",
         1,
+    ).rule(
+        knext.OneOf(
+            category,
+            [
+                "Queen",
+                "Rook",
+                "Binary Distance Band",
+                "Inverse Distance",
+                "K nearest",
+                "Lattice",
+            ],
+        ),
+        knext.Effect.SHOW,
     )
 
     Threshold = knext.IntParameter(
         "Threshold for Inverse Distance or Binary Distance Band",
         """The distance threshold for constructing binary distance band and inverse distance weights. Defaults to 1""",
         1,
+    ).rule(
+        knext.OneOf(category, ["Binary Distance Band", "Inverse Distance"]),
+        knext.Effect.SHOW,
     )
 
-    Power = knext.IntParameter(
-        "Power for Inverse Distance",
-        """The power for constructing inverse distance weights. Defaults to 1.""",
-        1,
-    )
+    # Power = knext.IntParameter(
+    #     "Power for Inverse Distance",
+    #     """The power for constructing inverse distance weights. Defaults to 1.""",
+    #     1,
+    # )
 
     Rows = knext.IntParameter(
         "Rows for Lattice",
         "The number of rows for constructing a lattice spatial weights matrix. Defaults to 5.",
         5,
-    )
+    ).rule(knext.OneOf(category, ["Lattice"]), knext.Effect.SHOW)
+
     Columns = knext.IntParameter(
         "Columns for Lattice",
         "The number of columns for constructing a lattice spatial weights matrix. Defaults to 5.",
         5,
-    )
+    ).rule(knext.OneOf(category, ["Lattice"]), knext.Effect.SHOW)
 
     # k = knext.IntParameter(
     #     "K for K nearest or Kernel",
@@ -162,13 +178,13 @@ class spatialWeights:
         "Nearest k",
         "The number of nearest neighbors to use for constructing k-nearest neighbors weights. Defaults to 4.",
         4,
-    )
+    ).rule(knext.OneOf(category, ["K nearest"]), knext.Effect.SHOW)
 
     Kernel_K = knext.IntParameter(
         "Kernel K",
         "The number of nearest neighbors to use for determining the bandwidth in kernel weights. Defaults to 12.",
         12,
-    )
+    ).rule(knext.OneOf(category, ["Kernel"]), knext.Effect.SHOW)
 
     Kernel_type = knext.StringParameter(
         "Kernel type",
@@ -181,7 +197,7 @@ class spatialWeights:
             "triangular",
             "uniform",
         ],
-    )
+    ).rule(knext.OneOf(category, ["Kernel"]), knext.Effect.SHOW)
 
     Kernel_bandwidth = knext.StringParameter(
         "Kernel bandwidth",
@@ -191,7 +207,7 @@ class spatialWeights:
             "Adaptive",
             "Fixed",
         ],
-    )
+    ).rule(knext.OneOf(category, ["Kernel"]), knext.Effect.SHOW)
 
     Your_own_matrix_local_path = knext.StringParameter(
         "Get spatial weights matrix from file",
@@ -199,6 +215,9 @@ class spatialWeights:
         Please enter the path of the spatial weights matrix in CSV format in the following options. 
         The weights matrix must be in matrix format and in the order of the samples. """,
         "",
+    ).rule(
+        knext.OneOf(category, ["Get spatial weights matrix from file"]),
+        knext.Effect.SHOW,
     )
 
     def configure(self, configure_context, input_schema_1):
@@ -311,7 +330,7 @@ class VariableSetting:
 
     Field_col = knext.ColumnParameter(
         "Variable column",
-        "The variable column you want to use for the analysis",
+        "The variable column you want to use for the analysis.",
         column_filter=knut.is_numeric,
         include_none_column=False,
     )
@@ -333,6 +352,30 @@ class IDSetting:
         If you selected 'none' in the Spatial Weights node select it here as well.""",
         column_filter=knut.is_long,
         include_none_column=True,
+    )
+
+
+@knext.parameter_group(label="Advanced Setting", since_version="1.2.0")
+class GlobalStasticAdvancedSetting:
+    """
+    Advanced settings for Global Statistics.
+    """
+
+    transformation = knext.StringParameter(
+        "Transformation",
+        """weights transformation, default is row-standardized “r”. Other options include “B”: binary, 
+        “D”: doubly-standardized, “U”: untransformed (general weights), 
+        “V”: variance-stabilizing.""",
+        default_value="r",
+        is_advanced=True,
+        enum=["r", "B", "D", "U", "V"],
+    )
+
+    permutations = knext.IntParameter(
+        "Permutations",
+        """Number of random permutations for calculation of pseudo-p_values.""",
+        default_value=999,
+        is_advanced=True,
     )
 
 
@@ -385,6 +428,16 @@ class GlobalMoransI:
 
     variable_setting = VariableSetting()
 
+    advanced_setting = GlobalStasticAdvancedSetting()
+
+    two_tailed = knext.BoolParameter(
+        "Two-tailed",
+        """If True (default), compute two-tailed p-values. Otherwise, one-tailed.""",
+        default_value=True,
+        since_version="1.2.0",
+        is_advanced=True,
+    )
+
     def configure(self, configure_context, input_schema_1, input_schema_2):
         self.geo_col = knut.column_exists_or_preset(
             configure_context, self.geo_col, input_schema_1, knut.is_geo
@@ -416,7 +469,13 @@ class GlobalMoransI:
 
         import esda
 
-        mi = esda.moran.Moran(y, w)
+        mi = esda.moran.Moran(
+            y=y,
+            w=w,
+            transformation=self.advanced_setting.transformation,
+            permutations=self.advanced_setting.permutations,
+            two_tailed=self.two_tailed,
+        )
         result = {"Moran's I": mi.I, "p-value": mi.p_norm, "z-score": mi.z_norm}
 
         import pandas as pd
@@ -434,6 +493,55 @@ class GlobalMoransI:
         plt.xlabel("Moran's I")
 
         return knext.Table.from_pandas(out), knext.view_matplotlib(ax.get_figure())
+
+
+@knext.parameter_group(label="Advanced Setting", since_version="1.2.0")
+class LocalStasticAdvancedSetting:
+    """
+    Advanced settings for Local Statistics.
+    """
+
+    # transformation = knext.StringParameter(
+    #     "Transformation",
+    #     """weights transformation, default is row-standardized “r”. Other options include “B”: binary,
+    #     “D”: doubly-standardized, “U”: untransformed (general weights),
+    #     “V”: variance-stabilizing.""",
+    #     default_value="r",
+    #     is_advanced=True,
+    #     enum=["r","B", "D", "U", "V"]
+    # )
+
+    permutations = knext.IntParameter(
+        "Permutations",
+        """Number of random permutations for calculation of pseudo_p_values.""",
+        default_value=999,
+        is_advanced=True,
+    )
+
+    keep_simulations = knext.BoolParameter(
+        "Keep simulations",
+        """(default=True) If True, the entire matrix of replications under the null is stored in memory and accessible; 
+        otherwise, replications are not saved.""",
+        default_value=True,
+        is_advanced=True,
+    )
+
+    n_jobs = knext.IntParameter(
+        "Number of jobs",
+        """The number of cores to be used in the conditional randomization. If -1, all available cores are used.""",
+        default_value=1,
+        is_advanced=True,
+    )
+
+    seed = knext.IntParameter(
+        "Seed",
+        """Seed for random number generator. Default is None.""",
+        default_value=1,
+        is_advanced=True,
+    )
+
+    # island_weight = knext.BoolParameter(
+    #     "Island weight",
 
 
 ############################################
@@ -481,6 +589,19 @@ class LocalMoransI:
 
     variable_setting = VariableSetting()
 
+    advanced_setting = LocalStasticAdvancedSetting()
+
+    transformation = knext.StringParameter(
+        "Transformation",
+        """weights transformation, default is row-standardized “r”. Other options include “B”: binary, 
+        “D”: doubly-standardized, “U”: untransformed (general weights), 
+        “V”: variance-stabilizing.""",
+        default_value="r",
+        enum=["r", "B", "D", "U", "V"],
+        since_version="1.2.0",
+        is_advanced=True,
+    )
+
     def configure(self, configure_context, input_schema_1, input_schema_2):
         self.geo_col = knut.column_exists_or_preset(
             configure_context, self.geo_col, input_schema_1, knut.is_geo
@@ -512,7 +633,15 @@ class LocalMoransI:
 
         import esda
 
-        li = esda.moran.Moran_Local(y, w)
+        li = esda.moran.Moran_Local(
+            y,
+            w,
+            transformation=self.transformation,
+            permutations=self.advanced_setting.permutations,
+            keep_simulations=self.advanced_setting.keep_simulations,
+            n_jobs=self.advanced_setting.n_jobs,
+            seed=self.advanced_setting.seed,
+        )
 
         # gdf.loc[:,"spots_type"] = gdf["spots_type"].fillna("Not Significant")
 
@@ -608,6 +737,8 @@ class GlobalGearysC:
 
     variable_setting = VariableSetting()
 
+    advanced_setting = GlobalStasticAdvancedSetting()
+
     def configure(self, configure_context, input_schema_1, input_schema_2):
         self.geo_col = knut.column_exists_or_preset(
             configure_context, self.geo_col, input_schema_1, knut.is_geo
@@ -639,7 +770,12 @@ class GlobalGearysC:
 
         import esda
 
-        gc = esda.geary.Geary(y, w)
+        gc = esda.geary.Geary(
+            y=y,
+            w=w,
+            transformation=self.advanced_setting.transformation,
+            permutations=self.advanced_setting.permutations,
+        )
 
         import pandas as pd
 
@@ -709,6 +845,14 @@ class GlobalGetisOrd:
 
     variable_setting = VariableSetting()
 
+    permutations = knext.IntParameter(
+        "Permutations",
+        """number of random permutations for calculation of pseudo_p_values""",
+        999,
+        since_version="1.2.0",
+        is_advanced=True,
+    )
+
     def configure(self, configure_context, input_schema_1, input_schema_2):
         self.geo_col = knut.column_exists_or_preset(
             configure_context, self.geo_col, input_schema_1, knut.is_geo
@@ -740,7 +884,7 @@ class GlobalGetisOrd:
 
         import esda
 
-        go = esda.getisord.G(y, w)
+        go = esda.getisord.G(y=y, w=w, permutations=self.permutations)
 
         import pandas as pd
 
@@ -812,6 +956,17 @@ class LocalGetisOrd:
 
     variable_setting = VariableSetting()
 
+    advanced_setting = LocalStasticAdvancedSetting()
+
+    transformation = knext.StringParameter(
+        "Transformation",
+        """The type of w, either ‘B’ (binary) or ‘R’ (row-standardized)""",
+        default_value="R",
+        enum=["R", "B"],
+        since_version="1.2.0",
+        is_advanced=True,
+    )
+
     def configure(self, configure_context, input_schema_1, input_schema_2):
         self.geo_col = knut.column_exists_or_preset(
             configure_context, self.geo_col, input_schema_1, knut.is_geo
@@ -843,7 +998,15 @@ class LocalGetisOrd:
 
         import esda
 
-        lo = esda.getisord.G_Local(y, w)
+        lo = esda.getisord.G_Local(
+            y,
+            w,
+            transform=self.transformation,
+            permutations=self.advanced_setting.permutations,
+            keep_simulations=self.advanced_setting.keep_simulations,
+            n_jobs=self.advanced_setting.n_jobs,
+            seed=self.advanced_setting.seed,
+        )
 
         gdf.loc[:, "Local Getis-Ord G"] = lo.Gs
         gdf.loc[:, "p-value"] = lo.p_sim
