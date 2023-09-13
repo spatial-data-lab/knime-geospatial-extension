@@ -115,7 +115,6 @@ class spatialWeights:
             "Rook",
             "Binary Distance Band",
             "Inverse Distance",
-            "Lattice",
             "K nearest",
             "Lattice",
             "Kernel",
@@ -123,34 +122,51 @@ class spatialWeights:
         ],
     )
     order = knext.IntParameter(
-        "Order for Queen or Rook",
+        "Order",
         """The order of the weight matrix is 1 by default. Users can change the order of the weights, higher order 
         weights will treat further units as neighbors.""",
         1,
+    ).rule(
+        knext.OneOf(
+            category,
+            [
+                "Queen",
+                "Rook",
+                "Binary Distance Band",
+                "Inverse Distance",
+                "K nearest",
+                "Lattice",
+            ],
+        ),
+        knext.Effect.SHOW,
     )
 
     Threshold = knext.IntParameter(
         "Threshold for Inverse Distance or Binary Distance Band",
         """The distance threshold for constructing binary distance band and inverse distance weights. Defaults to 1""",
         1,
+    ).rule(
+        knext.OneOf(category, ["Binary Distance Band", "Inverse Distance"]),
+        knext.Effect.SHOW,
     )
 
-    Power = knext.IntParameter(
-        "Power for Inverse Distance",
-        """The power for constructing inverse distance weights. Defaults to 1.""",
-        1,
-    )
+    # Power = knext.IntParameter(
+    #     "Power for Inverse Distance",
+    #     """The power for constructing inverse distance weights. Defaults to 1.""",
+    #     1,
+    # )
 
     Rows = knext.IntParameter(
         "Rows for Lattice",
         "The number of rows for constructing a lattice spatial weights matrix. Defaults to 5.",
         5,
-    )
+    ).rule(knext.OneOf(category, ["Lattice"]), knext.Effect.SHOW)
+
     Columns = knext.IntParameter(
         "Columns for Lattice",
         "The number of columns for constructing a lattice spatial weights matrix. Defaults to 5.",
         5,
-    )
+    ).rule(knext.OneOf(category, ["Lattice"]), knext.Effect.SHOW)
 
     # k = knext.IntParameter(
     #     "K for K nearest or Kernel",
@@ -162,13 +178,13 @@ class spatialWeights:
         "Nearest k",
         "The number of nearest neighbors to use for constructing k-nearest neighbors weights. Defaults to 4.",
         4,
-    )
+    ).rule(knext.OneOf(category, ["K nearest"]), knext.Effect.SHOW)
 
     Kernel_K = knext.IntParameter(
         "Kernel K",
         "The number of nearest neighbors to use for determining the bandwidth in kernel weights. Defaults to 12.",
         12,
-    )
+    ).rule(knext.OneOf(category, ["Kernel"]), knext.Effect.SHOW)
 
     Kernel_type = knext.StringParameter(
         "Kernel type",
@@ -181,7 +197,7 @@ class spatialWeights:
             "triangular",
             "uniform",
         ],
-    )
+    ).rule(knext.OneOf(category, ["Kernel"]), knext.Effect.SHOW)
 
     Kernel_bandwidth = knext.StringParameter(
         "Kernel bandwidth",
@@ -191,7 +207,7 @@ class spatialWeights:
             "Adaptive",
             "Fixed",
         ],
-    )
+    ).rule(knext.OneOf(category, ["Kernel"]), knext.Effect.SHOW)
 
     Your_own_matrix_local_path = knext.StringParameter(
         "Get spatial weights matrix from file",
@@ -199,6 +215,9 @@ class spatialWeights:
         Please enter the path of the spatial weights matrix in CSV format in the following options. 
         The weights matrix must be in matrix format and in the order of the samples. """,
         "",
+    ).rule(
+        knext.OneOf(category, ["Get spatial weights matrix from file"]),
+        knext.Effect.SHOW,
     )
 
     def configure(self, configure_context, input_schema_1):
