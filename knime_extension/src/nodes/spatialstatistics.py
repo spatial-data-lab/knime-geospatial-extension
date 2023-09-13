@@ -434,6 +434,7 @@ class GlobalMoransI:
         "Two-tailed",
         """If True (default), compute two-tailed p-values. Otherwise, one-tailed.""",
         default_value=True,
+        since_version="1.2.0",
         is_advanced=True,
     )
 
@@ -597,6 +598,7 @@ class LocalMoransI:
         “V”: variance-stabilizing.""",
         default_value="r",
         enum=["r", "B", "D", "U", "V"],
+        since_version="1.2.0",
         is_advanced=True,
     )
 
@@ -847,6 +849,7 @@ class GlobalGetisOrd:
         "Permutations",
         """number of random permutations for calculation of pseudo_p_values""",
         999,
+        since_version="1.2.0",
         is_advanced=True,
     )
 
@@ -960,6 +963,7 @@ class LocalGetisOrd:
         """The type of w, either ‘B’ (binary) or ‘R’ (row-standardized)""",
         default_value="R",
         enum=["R", "B"],
+        since_version="1.2.0",
         is_advanced=True,
     )
 
