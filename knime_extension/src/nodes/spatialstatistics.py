@@ -354,6 +354,29 @@ class IDSetting:
         include_none_column=True,
     )
 
+@knext.parameter_group(label="Advanced Setting", since_version="1.2.0")
+class GlobalStasticAdvancedSetting:
+    """
+    Advanced settings for Global Statistics.
+    """
+
+    transformation = knext.StringParameter(
+        "Transformation",
+        """weights transformation, default is row-standardized “r”. Other options include “B”: binary, 
+        “D”: doubly-standardized, “U”: untransformed (general weights), 
+        “V”: variance-stabilizing.""",
+        default_value="r",
+        # is_advanced=True,
+        enum=["r","B", "D", "U", "V"]
+    )
+
+    permutations = knext.IntParameter(
+        "Permutations",
+        """number of random permutations for calculation of pseudo-p_values""",
+        default_value=999,
+        # is_advanced=True,
+    )
+
 
 ############################################
 # Global Moran's I node
@@ -404,6 +427,15 @@ class GlobalMoransI:
 
     variable_setting = VariableSetting()
 
+    advanced_setting = GlobalStasticAdvancedSetting()
+
+    two_tailed = knext.BoolParameter(
+        "Two-tailed",
+        """If True (default), compute two-tailed p-values. Otherwise, one-tailed.""",
+        default_value = True,
+        # is_advanced=True
+    )
+
     def configure(self, configure_context, input_schema_1, input_schema_2):
         self.geo_col = knut.column_exists_or_preset(
             configure_context, self.geo_col, input_schema_1, knut.is_geo
@@ -435,7 +467,9 @@ class GlobalMoransI:
 
         import esda
 
-        mi = esda.moran.Moran(y, w)
+        mi = esda.moran.Moran(y=y, w=w, transformation=self.advanced_setting.transformation,
+                              permutations=self.advanced_setting.permutations, 
+                              two_tailed=self.two_tailed)
         result = {"Moran's I": mi.I, "p-value": mi.p_norm, "z-score": mi.z_norm}
 
         import pandas as pd
