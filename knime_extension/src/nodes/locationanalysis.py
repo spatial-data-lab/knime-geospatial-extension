@@ -680,6 +680,10 @@ class MAEPSolverNode:
     The optimization objective of MAEP aims to minimize inequality in facility accessibility,
     with a focus on reducing variance across geographic areas. This problem can be formulated as either a Nonlinear Programming (NLP) or a Quadratic Programming (QP) task.
 
+    The result table comprises three columns: Facility IDs and their assigned capacities under two scenarios, denoted by the 'All' and 'Fixed' columns:
+    Global Optimization: New capacity is allocated to both existing and new facilities by adding the specified new capacity to the total capacity of existing facilities.
+    Local Optimization: New capacity is exclusively assigned to new facilities based on the specified new capacity, with no impact on the capacities of existing facilities.
+
     To solve the MAEP problem, this node utilizes the [cvxopt package](https://cvxopt.org/).
 
     """
@@ -696,6 +700,14 @@ class MAEPSolverNode:
     demand = knext.ColumnParameter(
         "Demand size column",
         "The column for demand size (e.g.,population). ",
+        port_index=0,
+        column_filter=knut.is_numeric,
+        include_row_key=False,
+        include_none_column=False,
+    )
+    newdistance = knext.ColumnFilterParameter(
+        "Distance columns",
+        "Distance columns representing the distances to the new facilities ",
         port_index=0,
         column_filter=knut.is_numeric,
         include_row_key=False,
@@ -757,13 +769,25 @@ class MAEPSolverNode:
         )
 
     def execute(self, exec_context: knext.ExecutionContext, input_1, input_2, input_3):
-        df1 = gp.GeoDataFrame(input_1.to_pandas()).reset_index(drop=True)
+        dfn1 = gp.GeoDataFrame(input_1.to_pandas()).reset_index(drop=True)
         df2 = gp.GeoDataFrame(input_2.to_pandas()).reset_index(drop=True)
         df3 = gp.GeoDataFrame(input_3.to_pandas()).reset_index(drop=True)
         import numpy as np
         import math
         import cvxopt
         import pandas as pd
+
+        df1_list = self.newdistance.extend([self.id_left, self.demand])
+        df1 = dfn1[[df1_list]]
+        # TODO , use Class function from another pull request
+        df1 = df1.sort_values(by=self.id_left).drop(columns=[self.id_left])
+        df2 = df2.sort_values(by=self.id_right).drop(columns=[self.id_right])
+        try:
+            df2 = df2[df3[self.id_supply]]
+        except:
+            raise RuntimeError(
+                "Facility ID inconsistency between Distance Matrix and Facility Data. Ensure consistent and aligned IDs."
+            )
 
         D = df1[self.demand]
 
