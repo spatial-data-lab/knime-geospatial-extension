@@ -494,7 +494,7 @@ class NearestJoinNode2:
         distance_helper = kproj.Distance(self.unit, self.keep_input_crs)
         # process left last to keep its CRS as described in the node description
         distance_helper.pre_processing(exec_context, left_gdf, True)
-        right_gdf = right_gdf.to_crs(left_gdf.crs)
+        right_gdf.to_crs(left_gdf.crs, inplace=True)
         col_names = set(left_columns)
         col_names.update(right_columns)
         distance_col_name = knut.get_unique_name(
