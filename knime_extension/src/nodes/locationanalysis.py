@@ -2,11 +2,6 @@ import geopandas as gp
 import knime_extension as knext
 import util.knime_utils as knut
 
-
-# import pickle
-# from io import StringIO
-# import sys
-
 __category = knext.category(
     path="/community/geo",
     level_id="LocationAnalysis",
@@ -663,7 +658,7 @@ class MCLPNode:
 @knext.input_table(
     name="Input capacity table for existing facilities ",
     description="""This table provides information regarding the supply capacity of each existing facility.
-    The values in the Facility ID column must exactly match the column names for facilityies in the distance matrix table.
+    The values in the Facility ID column must exactly match the column names for facilities in the distance matrix table.
     """,
 )
 @knext.output_table(
@@ -704,11 +699,11 @@ class MAEPSolverNode:
 
         @classmethod
         def get_default(cls):
-            return cls.Power
+            return cls.POWER
 
     id_left = knext.ColumnParameter(
         "Demand ID column from demand table",
-        "The column for demand IDs from the first table. ",
+        "The column for demand IDs from the first table.",
         port_index=0,
         column_filter=knut.is_int_or_string,
         include_row_key=False,
@@ -717,23 +712,21 @@ class MAEPSolverNode:
 
     demand = knext.ColumnParameter(
         "Demand size column",
-        "The column for demand size (e.g.,population). ",
+        "The column for demand size (e.g.,population).",
         port_index=0,
         column_filter=knut.is_numeric,
         include_row_key=False,
         include_none_column=False,
     )
-    newdistance = knext.ColumnFilterParameter(
+    distance_columns = knext.ColumnFilterParameter(
         "Distance columns",
-        "Distance columns representing the distances to the new facilities ",
+        "Distance columns representing the distances to the new facilities.",
         port_index=0,
         column_filter=knut.is_numeric,
-        include_row_key=False,
-        include_none_column=False,
     )
     id_right = knext.ColumnParameter(
         "Demand ID column from distance matrix table",
-        "The column for demand IDs from the second input table. ",
+        "The column for demand IDs from the second input table.",
         port_index=1,
         column_filter=knut.is_int_or_string,
         include_row_key=False,
@@ -741,7 +734,7 @@ class MAEPSolverNode:
     )
     id_supply = knext.ColumnParameter(
         "Facility ID column ",
-        "The column for facility IDs from the third input table. ",
+        "The column for facility IDs from the third input table.",
         port_index=2,
         column_filter=knut.is_int_or_string,
         include_row_key=False,
@@ -756,19 +749,19 @@ class MAEPSolverNode:
         include_none_column=False,
     )
 
-    decaymodel = knext.EnumParameter(
+    decay_model = knext.EnumParameter(
         label="Distance decay model",
         description="The model representing distance decay effect.",
         default_value=DistDecayModes.get_default().name,
         enum=DistDecayModes,
     )
-    decaypara = knext.DoubleParameter(
+    decay_parameter = knext.DoubleParameter(
         "Distance decay parameters",
         "It works for the parameters for the chosen corresponding models.",
     )
-    newcapacity = knext.DoubleParameter(
+    new_capacity = knext.DoubleParameter(
         "Input new capacity",
-        "Total capacility assigned to all new facilities.",
+        "Total capacity assigned to all new facilities.",
     )
 
     def configure(
@@ -791,7 +784,7 @@ class MAEPSolverNode:
         import cvxopt
         import pandas as pd
 
-        df1_list = self.newdistance.extend([self.id_left, self.demand])
+        df1_list = self.distance_columns.extend([self.id_left, self.demand])
         df1 = dfn1[[df1_list]]
         # TODO , use Class function from another pull request
         df1 = df1.sort_values(by=self.id_left).drop(columns=[self.id_left])
@@ -812,20 +805,20 @@ class MAEPSolverNode:
         fixh = fixhosp.shape[0]
         fixcapacity = fixhosp.sum()
         demand_popu = D.sum()
-        Totalcapacity = fixcapacity + self.newcapacity
+        Totalcapacity = fixcapacity + self.new_capacity
         ave_accessibility = Totalcapacity / demand_popu
         supplypt = dist.shape[1]
         demandpt = D.shape[0]
         newH = supplypt - fixh
         # Convert D dataframe to matrix
         dij = dist.values
-        if self.decaymodel == self.DistDecayModes.POWER.name:
-            fij = np.power(dij, (-1 * self.decaypara))
-        elif self.decaymodel == self.DistDecayModes.EXPONENTIAL.name:
-            math.exp(-1 * self.decaypara * dij)
-            fij = np.power(dij, (-1 * self.decaypara))
+        if self.decay_model == self.DistDecayModes.POWER.name:
+            fij = np.power(dij, (-1 * self.decay_parameter))
+        elif self.decay_model == self.DistDecayModes.EXPONENTIAL.name:
+            math.exp(-1 * self.decay_parameter * dij)
+            fij = np.power(dij, (-1 * self.decay_parameter))
         else:
-            fij = np.where(fij <= self.decaypara, 1, 0)
+            fij = np.where(fij <= self.decay_parameter, 1, 0)
 
         Dfij = fij * D.values.reshape(-1, 1)
         # Compute the row sums
