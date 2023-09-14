@@ -688,6 +688,24 @@ class MAEPSolverNode:
 
     """
 
+    class DistDecayModes(knext.EnumParameterOptions):
+        POWER = (
+            "Power",
+            """Apply the power function, power(distance, -n), to model distance decay effect.""",
+        )
+        EXPONENTIAL = (
+            "Exponential",
+            """Apply the exponential function, exp(-distance * n), to model distance decay effect.""",
+        )
+        BINARY = (
+            "2SFCA binary",
+            "Use a threshold to create a binary value for distance decay effect.",
+        )
+
+        @classmethod
+        def get_default(cls):
+            return cls.Power
+
     id_left = knext.ColumnParameter(
         "Demand ID column from demand table",
         "The column for demand IDs from the first table. ",
@@ -738,15 +756,11 @@ class MAEPSolverNode:
         include_none_column=False,
     )
 
-    decaymodel = knext.StringParameter(
+    decaymodel = knext.EnumParameter(
         label="Distance decay model",
-        description="The model representing distance decay effect. ",
-        default_value="Power",
-        enum=[
-            "Power",
-            "Exponential",
-            "2SFCA",
-        ],
+        description="The model representing distance decay effect.",
+        default_value=DistDecayModes.get_default().name,
+        enum=DistDecayModes,
     )
     decaypara = knext.DoubleParameter(
         "Distance decay parameters",
@@ -805,13 +819,13 @@ class MAEPSolverNode:
         newH = supplypt - fixh
         # Convert D dataframe to matrix
         dij = dist.values
-        if self.decaymodel == "Power":
-            fij = np.power(dij, (-1 * self.Decaypara))
-        elif self.decaymodel == "Exponential":
+        if self.decaymodel == self.DistDecayModes.POWER.name:
+            fij = np.power(dij, (-1 * self.decaypara))
+        elif self.decaymodel == self.DistDecayModes.EXPONENTIAL.name:
             math.exp(-1 * self.decaypara * dij)
-            fij = np.power(dij, (-1 * self.Decaypara))
+            fij = np.power(dij, (-1 * self.decaypara))
         else:
-            fij = np.where(fij <= self.Decaypara, 1, 0)
+            fij = np.where(fij <= self.decaypara, 1, 0)
 
         Dfij = fij * D.values.reshape(-1, 1)
         # Compute the row sums
