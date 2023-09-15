@@ -593,7 +593,7 @@ class OSMnetworkNode:
         "Geometry column",
         "Select the geometry column as boundary to get POIs.",
         # Allow only GeoValue compatible columns
-        column_filter=knut.is_geo_polygon,
+        column_filter=knut.is_geo,
         include_row_key=False,
         include_none_column=False,
     )
@@ -623,15 +623,13 @@ class OSMnetworkNode:
         gdf = gp.GeoDataFrame(input_1.to_pandas(), geometry=self.geo_col)
         gdf.to_crs(4326, inplace=True)
         gdf_union = gdf.unary_union
-
+        # check geometry type
+        geom_type = gdf_union.geom_type
+        if geom_type not in ["Polygon", "MultiPolygon"]:
+            raise RuntimeError("Input data must be Polygon or MultiPolygon")
         ox = get_osmnx()
-
+        knut.check_canceled(exec_context)
         G = ox.graph.graph_from_polygon(gdf_union, self.networktype)
-        if self.networktype == "drive":
-            # impute speed on all edges missing data
-            G = ox.add_edge_speeds(G)
-            # calculate travel time (seconds) for all edges
-            G = ox.add_edge_travel_times(G)
         edges = ox.utils_graph.graph_to_gdfs(G, nodes=False)
         objcolumn = edges.select_dtypes(include=["object"]).columns.tolist()
 
