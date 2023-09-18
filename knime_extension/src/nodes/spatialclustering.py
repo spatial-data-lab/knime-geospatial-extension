@@ -785,17 +785,21 @@ class MSSCConstraints:
     )
 
     def get_capacities(self):
+        if (
+            not self.capacities or self.capacities.isspace()
+        ):  # return empty array if capacities string is empty
+            return []
         return [float(x) for x in self.capacities.split(";")]
 
     def get_columns(self, schema):
         return self.columns.apply(schema).column_names
 
     def validate_settings(self, schema):
-        cols = self.get_columns(schema)
-        caps = self.get_capacities()
-        if len(cols) != len(caps):
+        cols = len(self.get_columns(schema))
+        caps = len(self.get_capacities())
+        if cols != caps:
             raise knext.InvalidParametersError(
-                "Please provide a capacity value for each selected constrained column."
+                f"Please provide a minimum constraint value for each selected constrained column ({caps} vs {cols})."
             )
 
 
