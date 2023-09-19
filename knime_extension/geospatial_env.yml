@@ -35,4 +35,3 @@ dependencies:
   - pointpats=2.3.0
   - pip:
     - ipinfo==4.4.3
-    - pyecharts==2.0.4
