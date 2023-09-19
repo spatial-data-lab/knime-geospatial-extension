@@ -1337,7 +1337,7 @@ class MSSCisolationNode:
             lyr5 = tmpMixedClusFC[tmpMixedClusFC.index == theClus]
             theClusID = lyr5.FinalClus.to_list()[0]
             # get satified layer out
-            lyr6 = tmpMixedClusFC[tmpMixedClusFC[isolateid] == 0]
+            lyr6 = tmpMixedClusFC[tmpMixedClusFC["isolate"] == 0]
             # get weight
             wq = libpysal.weights.Rook.from_dataframe(tmpMixedClusFC)
             w_mix = wq.neighbors
