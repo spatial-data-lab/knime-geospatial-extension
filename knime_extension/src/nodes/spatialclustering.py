@@ -705,7 +705,7 @@ class PeanoCurveNode:
         import pandas as pd
         import numpy as np
 
-        k = 2 ^ self.grid_k
+        k = 2**self.grid_k
 
         gdf0 = knut.load_geo_data_frame(input_1, self.geo_col, exec_context)
         gdf = gp.GeoDataFrame(geometry=gdf0.geometry, crs=gdf0.crs)
@@ -759,7 +759,7 @@ class PeanoCurveNode:
         for i in range(gdf.shape[0]):
             x = gdf.loc[(gdf.theid == i), "unitx"].item()
             y = gdf.loc[(gdf.theid == i), "unity"].item()
-            gdf.loc[(gdf.theid == i), "peanoorder"] = Peano(x, y, self.grid_k)
+            gdf.loc[(gdf.theid == i), "peanoorder"] = Peano(x, y, k)
             exec_context.set_progress(
                 i / row_count, f"Processing row {i} of {row_count}"
             )
@@ -1337,7 +1337,7 @@ class MSSCisolationNode:
             lyr5 = tmpMixedClusFC[tmpMixedClusFC.index == theClus]
             theClusID = lyr5.FinalClus.to_list()[0]
             # get satified layer out
-            lyr6 = tmpMixedClusFC[tmpMixedClusFC[isolateid] == 0]
+            lyr6 = tmpMixedClusFC[tmpMixedClusFC["isolate"] == 0]
             # get weight
             wq = libpysal.weights.Rook.from_dataframe(tmpMixedClusFC)
             w_mix = wq.neighbors
