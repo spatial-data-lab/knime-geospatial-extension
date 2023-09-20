@@ -539,7 +539,7 @@ class RandomPointNode:
             [
                 knext.Column(id_type, self.id_col),
                 knext.Column(num_type, self.num_col),
-                knext.Column(knut.TYPE_MULTI_POINT, "Geometry"),
+                knext.Column(knut.TYPE_GEO, "geometry"),
             ]
         )
 
@@ -550,7 +550,7 @@ class RandomPointNode:
             seed = self.seed
         else:
             seed = None
-        gdf2["Geometry"] = gdf[self.geo_col].sample_points(
+        gdf2["geometry"] = gdf[self.geo_col].sample_points(
             size=gdf[self.num_col], method="uniform", seed=seed
         )
         return knut.to_table(gdf2, exec_context)
