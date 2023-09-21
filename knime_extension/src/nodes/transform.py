@@ -498,13 +498,6 @@ class RandomPointNode:
         include_row_key=False,
         include_none_column=False,
     )
-    id_col = knext.ColumnParameter(
-        "Unique ID column",
-        "Select the column as polygon ID for points.",
-        column_filter=knut.is_numeric_or_string,
-        include_row_key=False,
-        include_none_column=False,
-    )
     num_col = knext.ColumnParameter(
         "Number of points column",
         "Select the column for the number of points to draw.",
@@ -524,33 +517,38 @@ class RandomPointNode:
         1234,
     ).rule(knext.OneOf(use_seed, [True]), knext.Effect.SHOW)
 
+    result_settings = knut.ResultSettings(
+        mode=knut.ResultSettingsMode.APPEND.name,
+        new_name="Points",
+    )
+
     def configure(self, configure_context, input_schema_1):
         self.geo_col = knut.column_exists_or_preset(
             configure_context, self.geo_col, input_schema_1, knut.is_geo
         )
 
-        knut.column_exists(self.id_col, input_schema_1, knut.is_numeric_or_string)
-        id_type = input_schema_1[self.id_col].ktype
-
         knut.column_exists(self.num_col, input_schema_1, knut.is_long)
-        num_type = input_schema_1[self.num_col].ktype
 
-        return knext.Schema.from_columns(
-            [
-                knext.Column(id_type, self.id_col),
-                knext.Column(num_type, self.num_col),
-                knext.Column(knut.TYPE_MULTI_POINT, "Geometry"),
-            ]
+        return self.result_settings.get_result_schema(
+            configure_context,
+            input_schema_1,
+            self.geo_col,
+            knut.TYPE_GEO,
         )
 
     def execute(self, exec_context: knext.ExecutionContext, input_1):
         gdf = knut.load_geo_data_frame(input_1, self.geo_col, exec_context)
-        gdf2 = gdf[[self.id_col, self.num_col]]
         if self.use_seed:
             seed = self.seed
         else:
             seed = None
-        gdf2["Geometry"] = gdf[self.geo_col].sample_points(
+        if self.result_settings.mode == knut.ResultSettingsMode.APPEND.name:
+            result_col = knut.get_unique_column_name(
+                self.result_settings.new_column_name, input_1.schema
+            )
+        else:
+            result_col = self.geo_col
+        gdf[result_col] = gdf[self.geo_col].sample_points(
             size=gdf[self.num_col], method="uniform", seed=seed
         )
-        return knut.to_table(gdf2, exec_context)
+        return knut.to_table(gdf, exec_context)

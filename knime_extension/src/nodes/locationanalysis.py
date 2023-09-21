@@ -1058,7 +1058,7 @@ class MCLPSolverNode:
 ############################################
 @knext.node(
     name="LSCP Solver",
-    node_type=knext.NodeType.MANIPULATOR,
+    node_type=knext.NodeType.PREDICTOR,
     icon_path=__NODE_ICON_PATH + "LSCP.png",
     category=__category,
     after="",
