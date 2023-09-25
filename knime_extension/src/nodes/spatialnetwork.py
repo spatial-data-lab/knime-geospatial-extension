@@ -471,6 +471,12 @@ class OSRMDistanceMatrix:
         include_row_key=False,
         include_none_column=False,
     )
+    result_model = knext.EnumParameter(
+        label="Result mode",
+        description="Supports the following result modes:",
+        default_value=_OSRMResultModel.get_default().name,
+        enum=_OSRMResultModel,
+    )
     min_delay_seconds = knext.IntParameter(
         label="Minimum delay (seconds)",
         description="The minimum delay in seconds between two requests to the OSRM server.",
@@ -492,13 +498,6 @@ class OSRMDistanceMatrix:
         since_version="1.2.0",
         is_advanced=True,
     )
-    result_model = knext.EnumParameter(
-        label="Result mode",
-        description="Supports the following result modes:",
-        default_value=_OSRMResultModel.get_default().name,
-        enum=_OSRMResultModel,
-    )
-
     # Constant for distance matrix
     _COL_GEOMETRY = "Route"
 
