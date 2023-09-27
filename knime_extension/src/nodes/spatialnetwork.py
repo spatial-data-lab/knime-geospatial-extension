@@ -477,12 +477,32 @@ class OSRMDistanceMatrix:
         default_value=_OSRMResultModel.get_default().name,
         enum=_OSRMResultModel,
     )
-
+    min_delay_seconds = knext.IntParameter(
+        label="Minimum delay (seconds)",
+        description="The minimum delay in seconds between two requests to the OSRM server.",
+        default_value=1,
+        since_version="1.2.0",
+        is_advanced=True,
+    )
+    default_timeout = knext.IntParameter(
+        label="Default timeout (seconds)",
+        description="The default timeout in seconds for a request to the OSRM server.",
+        default_value=10,
+        since_version="1.2.0",
+        is_advanced=True,
+    )
+    osrm_server = knext.StringParameter(
+        label="OSRM server",
+        description="""The URL of the OSRM server to use. The default value is the demo server hosted at https://map.project-osrm.org""",
+        default_value="https://router.project-osrm.org",
+        since_version="1.2.0",
+        is_advanced=True,
+    )
     # Constant for distance matrix
     _COL_GEOMETRY = "Route"
 
     # For details see: http://project-osrm.org/docs/v5.5.1/api/#route-service
-    _BASE_URL = "https://router.project-osrm.org"
+    # _BASE_URL = "https://router.project-osrm.org"
     # only supports car as profile: https://github.com/Project-OSRM/osrm-backend/issues/4034
     _PROFILE = "driving"
     # For details see: http://project-osrm.org/docs/v5.5.1/api/#route-service
@@ -491,10 +511,10 @@ class OSRMDistanceMatrix:
     # number of pairs send per request
     _BATCH_SIZE = 50
     # Number of seconds to wait after each request
-    _REQUEST_DELAY = 1
+    # _REQUEST_DELAY = 1
     # Request timeout
     # do not send more than 1 request per second https://github.com/Project-OSRM/osrm-backend/wiki/Demo-server
-    _REQUEST_TIMEOUT = None
+    # _REQUEST_TIMEOUT = None
 
     def configure(self, configure_context, o_schema, d_schema):
         self.o_geo_col = knut.column_exists_or_preset(
@@ -587,7 +607,7 @@ class OSRMDistanceMatrix:
         # http://project-osrm.org/docs/v5.5.1/api/#route-service
         coordinate_query_list = [";".join(df_batch["period"])]
         request_url = (
-            self._BASE_URL
+            self.osrm_server
             + "/route/v1/"
             + self._PROFILE
             + "/"
@@ -599,9 +619,9 @@ class OSRMDistanceMatrix:
                 request_url,
                 params=self._REQUEST_PARAMETER,
                 headers=knut.WEB_REQUEST_HEADER,
-                timeout=self._REQUEST_TIMEOUT,
+                timeout=self.default_timeout,
             )
-            time.sleep(self._REQUEST_DELAY)
+            time.sleep(self.min_delay_seconds)
             data = json.loads(r.text)
             if data["code"] == "Ok":
                 if model.append_distance():
