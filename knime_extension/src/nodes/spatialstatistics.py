@@ -681,10 +681,8 @@ class LocalMoransI:
         plt.ylabel("Spatial Lag of %s" % self.variable_setting.Field_col)
         plt.xlabel("%s" % self.variable_setting.Field_col)
 
-        # out.drop(columns=[self.geo_col], inplace=True)
-        # out.reset_index(inplace=True)
-
-        # return knext.Table.from_pandas(out)
+        # enforce int as output column type
+        gdf["spots"] = gdf["spots"].astype(np.int32)
         return knext.Table.from_pandas(gdf), knext.view_matplotlib(f)
 
 
