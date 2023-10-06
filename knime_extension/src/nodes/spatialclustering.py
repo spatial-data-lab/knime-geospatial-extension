@@ -875,6 +875,7 @@ class MSSCNode:
     def execute(self, exec_context: knext.ExecutionContext, input_1):
         # Copy input to output
         import libpysal
+        import numpy as np
 
         constraintList = self.constraints.get_columns(input_1.schema)
         capacityList = self.constraints.get_capacities()
@@ -885,7 +886,7 @@ class MSSCNode:
 
         df = gdf[newlist].copy()
         df["OriginalID"] = list(range(df.shape[0]))
-        df["theid"] = df[self.order_col].rank(method="first").astype(int) - 1
+        df["theid"] = df[self.order_col].rank(method="first").astype(np.int32) - 1
         df = df.set_index("theid", drop=False).sort_index().rename_axis(None)
 
         # Create spatial weight matrix
