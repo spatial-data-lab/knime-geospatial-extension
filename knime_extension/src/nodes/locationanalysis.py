@@ -791,6 +791,7 @@ class PcenterSolverNode:
 
         import pulp
         import pandas as pd
+        import numpy as np
 
         # Define the optimization problem
         prob = pulp.LpProblem("p-center", pulp.LpMinimize)
@@ -836,7 +837,7 @@ class PcenterSolverNode:
         for j in range(candidate):
             dfy.loc[j, _Chosen] = pulp.value(y[j])
         dfy[_FACILITYID] = dfy[_FACILITYID].astype(str)
-        dfy[_Chosen] = dfy[_Chosen].astype(int)
+        dfy[_Chosen] = dfy[_Chosen].astype(np.int32)
         return knext.Table.from_pandas(dfy)
 
 
@@ -898,6 +899,7 @@ class PmedianSolverNode:
 
         import pulp
         import pandas as pd
+        import numpy as np
 
         # Define the optimization problem
         prob = pulp.LpProblem("p-media", pulp.LpMinimize)
@@ -939,7 +941,7 @@ class PmedianSolverNode:
         for j in range(candidate):
             dfy.loc[j, _Chosen] = pulp.value(y[j])
         dfy[_FACILITYID] = dfy[_FACILITYID].astype(str)
-        dfy[_Chosen] = dfy[_Chosen].astype(int)
+        dfy[_Chosen] = dfy[_Chosen].astype(np.int32)
         return knext.Table.from_pandas(dfy)
 
 
@@ -994,6 +996,7 @@ class MCLPSolverNode:
     def execute(self, exec_context: knext.ExecutionContext, input_1):
         import pulp
         import pandas as pd
+        import numpy as np
 
         cost_matrix = LocationData.load(input_1, self.candidates_dist, self.required_id)
         demand, candidate, p, nrequire = LocationData.process(
@@ -1049,7 +1052,7 @@ class MCLPSolverNode:
         for j in range(candidate):
             dfy.loc[j, _Chosen] = pulp.value(y[j])
         dfy[_FACILITYID] = dfy[_FACILITYID].astype(str)
-        dfy[_Chosen] = dfy[_Chosen].astype(int)
+        dfy[_Chosen] = dfy[_Chosen].astype(np.int32)
         return knext.Table.from_pandas(dfy)
 
 
@@ -1101,6 +1104,7 @@ class LSCPSolverNode:
     def execute(self, exec_context: knext.ExecutionContext, input_1):
         import pulp
         import pandas as pd
+        import numpy as np
 
         cost_matrix = LocationData.load(input_1, self.candidates_dist, self.required_id)
         demand, candidate, nrequire = LocationData.process(
@@ -1110,7 +1114,7 @@ class LSCPSolverNode:
         cutoff = self.threshold
 
         # transform costmatrix to binary matrix by cutoff
-        cost_matrix = (cost_matrix <= cutoff).astype(int)
+        cost_matrix = (cost_matrix <= cutoff).astype(np.int32)
 
         # Define the optimization problem
         prob = pulp.LpProblem("lscp", pulp.LpMinimize)
@@ -1148,7 +1152,7 @@ class LSCPSolverNode:
         for j in range(candidate):
             dfy.loc[j, _Chosen] = pulp.value(y[j])
         dfy[_FACILITYID] = dfy[_FACILITYID].astype(str)
-        dfy[_Chosen] = dfy[_Chosen].astype(int)
+        dfy[_Chosen] = dfy[_Chosen].astype(np.int32)
         return knext.Table.from_pandas(dfy)
 
 

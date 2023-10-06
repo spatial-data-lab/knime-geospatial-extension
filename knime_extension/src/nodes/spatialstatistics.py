@@ -276,6 +276,7 @@ class spatialWeights:
 
         if self.category == "Get spatial weights matrix from file":
             import pandas as pd
+            import numpy as np
 
             z = pd.read_csv(self.Your_own_matrix_local_path, header=None)
             zz = np.array(z)
@@ -312,12 +313,12 @@ class spatialWeights:
         )
 
         # focal and neighbor should always be int
-        out["focal"] = out["focal"].astype(int)
-        out["neighbor"] = out["neighbor"].astype(int)
+        out["focal"] = out["focal"].astype(np.int32)
+        out["neighbor"] = out["neighbor"].astype(np.int32)
 
         # focal and neighbor should always be int
-        out["focal"] = out["focal"].astype(int)
-        out["neighbor"] = out["neighbor"].astype(int)
+        out["focal"] = out["focal"].astype(np.int32)
+        out["neighbor"] = out["neighbor"].astype(np.int32)
 
         return knext.Table.from_pandas(out)
 
