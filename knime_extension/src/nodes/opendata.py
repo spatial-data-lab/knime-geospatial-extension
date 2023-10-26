@@ -552,7 +552,7 @@ class OSMdataNode:
             tags = {self.taginfo: True}
         # tags = {self.taginfo: self.tagvalue}
 
-        gdfpoi = get_osmnx().geometries.geometries_from_polygon(gdf_union, tags)
+        gdfpoi = get_osmnx().features.features_from_polygon(gdf_union, tags)
         gdfpoi = gdfpoi.reset_index(drop=True)
         return knext.Table.from_pandas(gdfpoi)
 
@@ -683,6 +683,6 @@ class OSMGeoBoundaryNode:
         return None
 
     def execute(self, exec_context: knext.ExecutionContext):
-        gdf = get_osmnx().geocode_to_gdf(self.placename)
+        gdf = get_osmnx().geocoder.geocode_to_gdf(self.placename)
         gdf = gdf.reset_index(drop=True)
         return knext.Table.from_pandas(gdf)
