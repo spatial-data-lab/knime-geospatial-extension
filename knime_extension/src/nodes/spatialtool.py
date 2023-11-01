@@ -1196,6 +1196,103 @@ class CreateGrid:
 
 
 ############################################
+# Create H3 Grid Node
+############################################
+
+
+@knext.node(
+    name="Create H3 Grid",
+    node_type=knext.NodeType.MANIPULATOR,
+    icon_path=__NODE_ICON_PATH + "CreateH3Grid.png",
+    category=__category,
+    after="",
+)
+@knext.input_table(
+    name="Input Table",
+    description="Input table with the geometry to fill with the H3 grid.",
+)
+@knext.output_table(
+    name="Output Table",
+    description="""Output table with the 
+    [H3 Cell Indices](https://h3geo.org/docs/library/index/cell#h3-cell-index) and hexagons column.
+    """,
+)
+class CreateH3Grid:
+    """Create H3 Grid node.
+    This node creates hexagonal grid inside the input polygon using [H3](https://h3geo.org/).
+    Your input polygon(s) will be automatically convert to a single polygon by calculating the union of all polygons
+    and projected to EPSG:4326 before creating the grid.
+    """
+
+    geo_col = knut.geo_col_parameter()
+
+    zoom = knext.IntParameter(
+        "Zoom level",
+        """The zoom level of the grid from 0 to 15 (default value is 8). The bigger the zoom level, the smaller the 
+        hexagon. If the zoom level is too small, the hexagon might be too big to fit in the input polygon which will
+        result in an error. A very small zoom level might result in a very large output table even for smaller 
+        input polygons. 
+        For more details about the zoom levels  refer to 
+        [Tables of Cell Statistics Across Resolutions.](https://h3geo.org/docs/core-library/restable/)
+        """,
+        default_value=8,
+        min_value=0,
+        max_value=15,
+    )
+
+    _COL_ID = "H3 Cell Index"
+    _COL_GEOMETRY = "geometry"
+
+    def configure(self, configure_context, input_schema):
+        self.geo_col = knut.column_exists_or_preset(
+            configure_context, self.geo_col, input_schema, knut.is_geo
+        )
+
+        return knext.Schema.from_columns(
+            [
+                knext.Column(knext.string(), self._COL_ID),
+                knext.Column(input_schema[self.geo_col].ktype, self._COL_GEOMETRY),
+            ]
+        )
+
+    def execute(self, exec_context: knext.ExecutionContext, input_table):
+        import h3
+        from shapely.geometry import Polygon
+        import geopandas as gpd
+        import pandas as pd
+
+        gdf_boundary = knut.load_geo_data_frame(input_table, self.geo_col, exec_context)
+
+        knut.check_canceled(exec_context)
+        exec_context.set_progress(0.1, "Projecting input polygon...")
+        gdf_boundary.to_crs(4326, inplace=True)
+
+        knut.check_canceled(exec_context)
+        exec_context.set_progress(0.3, "Combining input polygon...")
+        gdf_boundary["geometry"] = gdf_boundary.unary_union
+
+        knut.check_canceled(exec_context)
+        exec_context.set_progress(0.5, "Computing H3 hexagons...")
+        h3_hexes = h3.polyfill_geojson(
+            gdf_boundary.geometry.__geo_interface__["features"][0]["geometry"],
+            self.zoom,
+        )
+
+        knut.check_canceled(exec_context)
+        exec_context.set_progress(0.9, "Generating output table...")
+        grid = gpd.GeoDataFrame(
+            pd.DataFrame(h3_hexes, columns=[self._COL_ID]),
+            geometry=[
+                Polygon(h3.h3_to_geo_boundary(h3_hex, geo_json=True))
+                for h3_hex in h3_hexes
+            ],
+            crs=gdf_boundary.crs,
+        )
+
+        return knut.to_table(grid, exec_context)
+
+
+############################################
 # Get Geodesic Haversine Distance
 ############################################
 @knext.node(
