@@ -1335,17 +1335,27 @@ class CreateH3Grid:
         import h3
         from shapely.geometry import Polygon
         import geopandas as gpd
+        import pandas as pd
 
         gdf_boundary = knut.load_geo_data_frame(input_table, self.geo_col, exec_context)
 
+        h3_hexes = h3.polyfill_geojson(
+            gdf_boundary.geometry.__geo_interface__["features"][0]["geometry"],
+            self.zoom,
+        )
         grid = gpd.GeoDataFrame(
+            pd.DataFrame(h3_hexes, columns=["h3_hex"]),
             geometry=[
                 Polygon(h3.h3_to_geo_boundary(h3_hex, geo_json=True))
+<<<<<<< Upstream, based on main
                 for h3_hex in h3.polyfill_geojson(
                     gdf_boundary.geometry.__geo_interface__["features"][0]["geometry"],
                     self.zoom,
                 )
 >>>>>>> 3b2b1a2 add h3 grid
+=======
+                for h3_hex in h3_hexes
+>>>>>>> 65cd1d3 add h3 hex
             ],
             crs=USE_CRS,
         )
