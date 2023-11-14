@@ -35,3 +35,4 @@ dependencies:
   - pointpats=2.3.0
   - pip:
     - ipinfo==4.4.3
+    - sodapy==2.2.0
