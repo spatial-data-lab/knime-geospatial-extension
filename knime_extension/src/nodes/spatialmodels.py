@@ -1718,8 +1718,6 @@ class SpatialML_Error:
         )
 
 
-# New added from Geolab in 2023-11-20
-
 SHOULD_NOT_CONTAIN_MISSING_VALUES = """
    **Note:** The input table should not contain missing values. You can use the
     [Missing Value](https://hub.knime.com/knime/extensions/org.knime.features.base/latest/org.knime.base.node.preproc.pmml.missingval.compute.MissingValueHandlerNodeFactory/) node to replace them."""
@@ -1759,16 +1757,12 @@ __NODE_ICON_PATH_2 = "icons/icon/Geolab/"
     description="Model summary view of the spatial GM Error model.",
 )
 class SpatialGM_Error:
-    (
-        """
+    """
     Spatial GM Error Model.
     GMM method for a spatial error model, with results and diagnostics; based on Kelejian and Prucha (1998, 1999) [KP98] [KP99]. More information can be found at [here](https://spreg.readthedocs.io/en/latest/generated/spreg.GM_Error.html#spreg.GM_Error). Please refer the following papers for more details.
     - %s
     - %s
-    """
-        % (mrs.model_references["KP98"], mrs.model_references["KP99"])
-        + SHOULD_NOT_CONTAIN_MISSING_VALUES
-    )
+    """ % ( mrs.model_references["KP98"], mrs.model_references["KP99"] ) + SHOULD_NOT_CONTAIN_MISSING_VALUES
 
     geo_col = knut.geo_col_parameter()
 
@@ -1895,15 +1889,12 @@ class SpatialGM_Error:
     description="Model summary view of the spatial GM Error Het model.",
 )
 class SpatialGM_Error_Het:
-    (
-        """
+    """
     Spatial GM Error Het.
     GMM method for a spatial error model with heteroskedasticity, with results and diagnostics; based on Kelejian and Prucha (1998). More information can be found at [here](https://spreg.readthedocs.io/en/latest/generated/spreg.GM_Error_Het.html#spreg.GM_Error_Het). Please refer the following papers for more details.
     - Irani Arraiz, David M. Drukker, Harry H. Kelejian, and Ingmar R. Prucha. A spatial Cliff-Ord-type model with heteroskedastic innovations: Small and large sample results. Journal of Regional Science, 50(2):592–614, 2010. doi:10.1111/j.1467-9787.2009.00618.x
     - Luc Anselin. GMM estimation of spatial error autocorrelation with and without heteroskedasticity. Technical Report, GeoDa Center for Geospatial Analysis and Computation, 2011.
-    """
-        + SHOULD_NOT_CONTAIN_MISSING_VALUES
-    )
+    """ + SHOULD_NOT_CONTAIN_MISSING_VALUES
 
     geo_col = knut.geo_col_parameter()
 
@@ -2687,308 +2678,288 @@ class SpatialGM_Endog_Error:
             knext.view_html(html),
         )
 
-# The following two models are rarely used and complex, so I comment them out.
 
 ############################################
 # spatial GM_Endog_Error_Het node
 ############################################
-# @knext.node(
-#     name="Spatial GM Endog Error Het",
-#     node_type=knext.NodeType.LEARNER,
-#     category=__category,
-#     icon_path=__NODE_ICON_PATH_2 + "GMendogErrHet.png",
-# )
-# @knext.input_table(
-#     name="Input Table",
-#     description="Input Table with dependent and independent variables for calculation of the spatial GM Endog Error Het model.",
-# )
-# @knext.input_table(
-#     name="Spatial Weights",
-#     description="Input Table with spatial weights for calculation of the spatial GM Endog Error Het model.",
-# )
-# @knext.output_table(
-#     name="Output Table",
-#     description="Description of the spatial GM Endog Error Het model.",
-# )
-# @knext.output_table(
-#     name="Variable and Coefficient Table",
-#     description="Variable and Coefficient Table of the spatial GM Endog Error Het model.",
-# )
-# @knext.output_view(
-#     name="Model summary view",
-#     description="Model summary view of the spatial GM Endog Error Het model.",
-# )
-# class SpatialGM_Endog_Error_Het:
-#     (
-#         """
-#     Spatial GM Endog Error Het Model.
-#     GMM method for a spatial error model with heteroskedasticity and endogenous variables, with results and diagnostics; based on [ADKP10], following [Ans11]. More information can be found at [here](https://spreg.readthedocs.io/en/latest/generated/spreg.GM_Endog_Error_Het.html#spreg.GM_Endog_Error_Het). Please refer the following papers for more details.
 
-#     - Irani Arraiz, David M. Drukker, Harry H. Kelejian, and Ingmar R. Prucha. A spatial Cliff-Ord-type model with heteroskedastic innovations: Small and large sample results. Journal of Regional Science, 50(2):592–614, 2010. doi:10.1111/j.1467-9787.2009.00618.x.
-#     - Luc Anselin. GMM estimation of spatial error autocorrelation with and without heteroskedasticity. Technical Report, GeoDa Center for Geospatial Analysis and Computation, 2011.
-#     """
-#         + SHOULD_NOT_CONTAIN_MISSING_VALUES
-#     )
+@knext.node(
+    name="Spatial GM Endog Error Het",
+    node_type=knext.NodeType.LEARNER,
+    category=__category,
+    icon_path=__NODE_ICON_PATH_2 + "GMendogErrHet.png",
+)
+@knext.input_table(
+    name="Input Table",
+    description="Input Table with dependent and independent variables for calculation of the spatial GM Endog Error Het model.",
+)
+@knext.input_table(
+    name="Spatial Weights",
+    description="Input Table with spatial weights for calculation of the spatial GM Endog Error Het model.",
+)
+@knext.output_table(
+    name="Output Table",
+    description="Description of the spatial GM Endog Error Het model.",
+)
+@knext.output_table(
+    name="Variable and Coefficient Table",
+    description="Variable and Coefficient Table of the spatial GM Endog Error Het model.",
+)
+@knext.output_view(
+    name="Model summary view",
+    description="Model summary view of the spatial GM Endog Error Het model.",
+)
+class SpatialGM_Endog_Error_Het:
+    """
+    Spatial GM Endog Error Het Model.
+    GMM method for a spatial error model with heteroskedasticity and endogenous variables, with results and diagnostics; based on [ADKP10], following [Ans11]. More information can be found at [here](https://spreg.readthedocs.io/en/latest/generated/spreg.GM_Endog_Error_Het.html#spreg.GM_Endog_Error_Het). Please refer the following papers for more details.
 
-#     geo_col = knut.geo_col_parameter()
-
-#     id_col = get_id_col_parameter()
-
-#     dependent_variable = knext.ColumnParameter(
-#         "Dependent variable",
-#         "The column containing the dependent variable to use for the calculation of the spatial GM Endog Error Het model.",
-#         column_filter=knut.is_numeric,
-#         include_none_column=False,
-#     )
-
-#     independent_variables = knext.MultiColumnParameter(
-#         "Independent variables",
-#         "The columns containing the independent variables to use for the calculation of the spatial GM Endog Error Het model.",
-#         column_filter=knut.is_numeric,
-#     )
-
-#     yend = knext.ColumnParameter(
-#         "Endogenous variable",
-#         "The column containing the endogenous variable to use for the calculation of the spatial GM Endog Error Het model.",
-#         column_filter=knut.is_numeric,
-#         include_none_column=False,
-#     )
-
-#     q = knext.ColumnParameter(
-#         "External exogenous variable",
-#         "The column containing the external exogenous variable to use for the calculation of the spatial GM Endog Error Het model.",
-#         column_filter=knut.is_numeric,
-#         include_none_column=False,
-#     )
-
-#     def configure(self, configure_context, input_schema, input_schema_2):
-#         self.geo_col = knut.column_exists_or_preset(
-#             configure_context, self.geo_col, input_schema, knut.is_geo
-#         )
-
-#         return None
-
-#     def execute(self, exec_context: knext.ExecutionContext, input_1, input_2):
-#         gdf = gp.GeoDataFrame(input_1.to_pandas(), geometry=self.geo_col)
-#         adjust_list = input_2.to_pandas()
-
-#         if "none" not in str(self.id_col).lower():
-#             gdf.index = range(len(gdf))
-#             id_map = dict(zip(gdf[self.id_col], gdf.index))
-#             adjust_list["focal"] = adjust_list["focal"].map(id_map)
-#             adjust_list["neighbor"] = adjust_list["neighbor"].map(id_map)
-
-#         import pandas as pd
-#         import spreg
-#         from libpysal.weights import W
-
-#         w = W.from_adjlist(adjust_list)
-#         # Prepare Georgia dataset inputs
-#         X = gdf[self.independent_variables].values
-#         y = gdf[self.dependent_variable].values
-#         yend = gdf[self.yend].values
-#         q = gdf[self.q].values
-
-#         model = spreg.GM_Endog_Error_Het(y=y, x=X, w=w, yend=yend, q=q)
-
-#         results = pd.DataFrame(
-#             [model.name_x, model.betas, model.std_err, model.z_stat]
-#         ).T
-#         results.columns = ["Variable", "Coefficient", "Std.Error", "Z-Statistic"]
-#         results = results.dropna()
-#         results.loc[:, "Coefficient"] = results.loc[:, "Coefficient"].map(
-#             lambda x: x[0]
-#         )
-#         results.loc[:, "Probability"] = results.loc[:, "Z-Statistic"].map(
-#             lambda x: x[1]
-#         )
-#         results.loc[:, "Z-Statistic"] = results.loc[:, "Z-Statistic"].map(
-#             lambda x: x[0]
-#         )
-#         # #
-#         results.loc[:, "Coefficient"] = results.loc[:, "Coefficient"].map(
-#             lambda x: round(x, 7)
-#         )
-#         results.loc[:, "Std.Error"] = results.loc[:, "Std.Error"].map(
-#             lambda x: round(x, 7)
-#         )
-#         results.loc[:, "Z-Statistic"] = results.loc[:, "Z-Statistic"].map(
-#             lambda x: round(x, 7)
-#         )
-#         results.loc[:, "Probability"] = results.loc[:, "Probability"].map(
-#             lambda x: round(x, 7)
-#         )
-
-#         result2 = pd.DataFrame(
-#             {
-#                 "Pseudo R-squared ": model.pr2,
-#                 "Number of Observations": model.n,
-#                 "Number of Variables": model.k,
-#             },
-#             index=[0],
-#         )
-#         result2 = result2.round(7)
-
-#         html = """<p><pre>%s</pre>""" % model.summary.replace("\n", "<br/>")
-
-#         return (
-#             knext.Table.from_pandas(result2),
-#             knext.Table.from_pandas(results),
-#             knext.view_html(html),
-#         )
+    - Irani Arraiz, David M. Drukker, Harry H. Kelejian, and Ingmar R. Prucha. A spatial Cliff-Ord-type model with heteroskedastic innovations: Small and large sample results. Journal of Regional Science, 50(2):592–614, 2010. doi:10.1111/j.1467-9787.2009.00618.x.
+    - Luc Anselin. GMM estimation of spatial error autocorrelation with and without heteroskedasticity. Technical Report, GeoDa Center for Geospatial Analysis and Computation, 2011.
+    """ + SHOULD_NOT_CONTAIN_MISSING_VALUES
 
 
-# ############################################
-# # spatial GM_Endog_Error_Hom node
-# ############################################
-# # FIXME: add another two parameters
-# @knext.node(
-#     name="Spatial GM Endog Error_Hom",
-#     node_type=knext.NodeType.LEARNER,
-#     category=__category,
-#     icon_path=__NODE_ICON_PATH_2 + "GMendogErrHom.png",
-# )
-# @knext.input_table(
-#     name="Input Table",
-#     description="Input Table with dependent and independent variables for calculation of the spatial GM Endog Error_Hom model.",
-# )
-# @knext.input_table(
-#     name="Spatial Weights",
-#     description="Input Table with spatial weights for calculation of the spatial GM Endog Error_Hom model.",
-# )
-# @knext.output_table(
-#     name="Output Table",
-#     description="Description of the spatial GM Endog Error_Hom model.",
-# )
-# @knext.output_table(
-#     name="Variable and Coefficient Table",
-#     description="Variable and Coefficient Table of the spatial GM Endog Error_Hom model.",
-# )
-# @knext.output_view(
-#     name="Model summary view",
-#     description="Model summary view of the spatial GM Endog Error_Hom model.",
-# )
-# class SpatialGM_Endog_Error_Hom:
-#     (
-#         """
-#     Spatial GM Endog Error Hom Model.
-#     GMM method for a spatial error model with homoskedasticity and endogenous variables, with results and diagnostics; based on Drukker et al. (2013) [DEP13], following Anselin (2011) [Ans11]. More information can be found at [here](https://spreg.readthedocs.io/en/latest/generated/spreg.GM_Endog_Error_Hom.html#spreg.GM_Endog_Error_Hom). Please refer the following papers for more details.
+    geo_col = knut.geo_col_parameter()
 
-#     - %s
-#     - %s
-#     """
-#         % (mrs.model_references["DEP13"], mrs.model_references["Ans11"])
-#         + SHOULD_NOT_CONTAIN_MISSING_VALUES
-#     )
+    id_col = get_id_col_parameter()
 
-#     geo_col = knext.ColumnParameter(
-#         "Geometry Column",
-#         "The column containing the geometry of the input table.",
-#         column_filter=knut.is_geo,
-#         include_row_key=False,
-#         include_none_column=False,
-#     )
+    dependent_variable = knext.ColumnParameter(
+        "Dependent variable",
+        "The column containing the dependent variable to use for the calculation of the spatial GM Endog Error Het model.",
+        column_filter=knut.is_numeric,
+        include_none_column=False,
+    )
 
-#     dependent_variable = knext.ColumnParameter(
-#         "Dependent variable",
-#         "The column containing the dependent variable to use for the calculation of the spatial GM Endog Error Hom model.",
-#         column_filter=knut.is_numeric,
-#         include_none_column=False,
-#     )
+    independent_variables = knext.MultiColumnParameter(
+        "Independent variables",
+        "The columns containing the independent variables to use for the calculation of the spatial GM Endog Error Het model.",
+        column_filter=knut.is_numeric,
+    )
 
-#     independent_variables = knext.MultiColumnParameter(
-#         "Independent variables",
-#         "The columns containing the independent variables to use for the calculation of the spatial GM Endog Error Hom model.",
-#         column_filter=knut.is_numeric,
-#     )
+    yend = knext.ColumnParameter(
+        "Endogenous variable",
+        "The column containing the endogenous variable to use for the calculation of the spatial GM Endog Error Het model.",
+        column_filter=knut.is_numeric,
+        include_none_column=False,
+    )
 
-#     yend = knext.ColumnParameter(
-#         "Endogenous variable",
-#         "The column containing the endogenous variable to use for the calculation of the spatial GM Endog Error Hom model.",
-#         column_filter=knut.is_numeric,
-#         include_none_column=False,
-#     )
+    q = knext.ColumnParameter(
+        "External exogenous variable",
+        "The column containing the external exogenous variable to use for the calculation of the spatial GM Endog Error Het model.",
+        column_filter=knut.is_numeric,
+        include_none_column=False,
+    )
 
-#     q = knext.ColumnParameter(
-#         "External exogenous variable",
-#         "The column containing the external exogenous variable to use for the calculation of the spatial GM Endog Error Hom model.",
-#         column_filter=knut.is_numeric,
-#         include_none_column=False,
-#     )
+    def configure(self, configure_context, input_schema, input_schema_2):
+        self.geo_col = knut.column_exists_or_preset(
+            configure_context, self.geo_col, input_schema, knut.is_geo
+        )
 
-#     def configure(self, configure_context, input_schema, input_schema_2):
-#         self.geo_col = knut.column_exists_or_preset(
-#             configure_context, self.geo_col, input_schema, knut.is_geo
-#         )
+        return None
 
-#         return None
+    def execute(self, exec_context: knext.ExecutionContext, input_1, input_2):
+        gdf = gp.GeoDataFrame(input_1.to_pandas(), geometry=self.geo_col)
+        adjust_list = input_2.to_pandas()
+        import pandas as pd
+        import spreg
+        from libpysal.weights import W
 
-#     def execute(self, exec_context: knext.ExecutionContext, input_1, input_2):
-#         gdf = gp.GeoDataFrame(input_1.to_pandas(), geometry=self.geo_col)
-#         adjust_list = input_2.to_pandas()
+        w = W.from_adjlist(adjust_list)
+        # Prepare Georgia dataset inputs
+        X = gdf[self.independent_variables].values
+        y = gdf[self.dependent_variable].values
+        yend = gdf[self.yend].values
+        q = gdf[self.q].values
 
-#         import pandas as pd
-#         import spreg
-#         from libpysal.weights import W
+        model = spreg.GM_Endog_Error_Het(y=y, x=X, w=w, yend=yend, q=q)
 
-#         w = W.from_adjlist(adjust_list)
+        results = pd.DataFrame(
+            [model.name_x, model.betas, model.std_err, model.z_stat]
+        ).T
+        results.columns = ["Variable", "Coefficient", "Std.Error", "Z-Statistic"]
+        results = results.dropna()
+        results.loc[:, "Coefficient"] = results.loc[:, "Coefficient"].map(
+            lambda x: x[0]
+        )
+        results.loc[:, "Probability"] = results.loc[:, "Z-Statistic"].map(
+            lambda x: x[1]
+        )
+        results.loc[:, "Z-Statistic"] = results.loc[:, "Z-Statistic"].map(
+            lambda x: x[0]
+        )
+        # #
+        results.loc[:, "Coefficient"] = results.loc[:, "Coefficient"].map(
+            lambda x: round(x, 7)
+        )
+        results.loc[:, "Std.Error"] = results.loc[:, "Std.Error"].map(
+            lambda x: round(x, 7)
+        )
+        results.loc[:, "Z-Statistic"] = results.loc[:, "Z-Statistic"].map(
+            lambda x: round(x, 7)
+        )
+        results.loc[:, "Probability"] = results.loc[:, "Probability"].map(
+            lambda x: round(x, 7)
+        )
 
-#         if "none" not in str(self.id_col).lower():
-#             gdf.index = range(len(gdf))
-#             id_map = dict(zip(gdf[self.id_col], gdf.index))
-#             adjust_list["focal"] = adjust_list["focal"].map(id_map)
-#             adjust_list["neighbor"] = adjust_list["neighbor"].map(id_map)
+        result2 = pd.DataFrame(
+            {
+                "Pseudo R-squared ": model.pr2,
+                "Number of Observations": model.n,
+                "Number of Variables": model.k,
+            },
+            index=[0],
+        )
+        result2 = result2.round(7)
 
-#         # Prepare Georgia dataset inputs
-#         X = gdf[self.independent_variables].values
-#         y = gdf[self.dependent_variable].values
-#         yend = gdf[self.yend].values
-#         q = gdf[self.q].values
+        html = """<p><pre>%s</pre>""" % model.summary.replace("\n", "<br/>")
 
-#         model = spreg.GM_Endog_Error_Hom(y=y, x=X, w=w, yend=yend, q=q)
+        return (
+            knext.Table.from_pandas(result2),
+            knext.Table.from_pandas(results),
+            knext.view_html(html),
+        )
 
-#         results = pd.DataFrame(
-#             [model.name_x, model.betas, model.std_err, model.z_stat]
-#         ).T
-#         results.columns = ["Variable", "Coefficient", "Std.Error", "Z-Statistic"]
-#         results = results.dropna()
-#         results.loc[:, "Coefficient"] = results.loc[:, "Coefficient"].map(
-#             lambda x: x[0]
-#         )
-#         results.loc[:, "Probability"] = results.loc[:, "Z-Statistic"].map(
-#             lambda x: x[1]
-#         )
-#         results.loc[:, "Z-Statistic"] = results.loc[:, "Z-Statistic"].map(
-#             lambda x: x[0]
-#         )
-#         # #
-#         results.loc[:, "Coefficient"] = results.loc[:, "Coefficient"].map(
-#             lambda x: round(x, 7)
-#         )
-#         results.loc[:, "Std.Error"] = results.loc[:, "Std.Error"].map(
-#             lambda x: round(x, 7)
-#         )
-#         results.loc[:, "Z-Statistic"] = results.loc[:, "Z-Statistic"].map(
-#             lambda x: round(x, 7)
-#         )
-#         results.loc[:, "Probability"] = results.loc[:, "Probability"].map(
-#             lambda x: round(x, 7)
-#         )
 
-#         result2 = pd.DataFrame(
-#             {
-#                 "Pseudo R-squared ": model.pr2,
-#                 "Number of Observations": model.n,
-#                 "Number of Variables": model.k,
-#             },
-#             index=[0],
-#         )
-#         result2 = result2.round(7)
+############################################
+# spatial GM_Endog_Error_Hom node
+############################################
+# FIXME: add another two parameters
+@knext.node(
+    name="Spatial GM Endog Error_Hom",
+    node_type=knext.NodeType.LEARNER,
+    category=__category,
+    icon_path=__NODE_ICON_PATH_2 + "GMendogErrHom.png",
+)
+@knext.input_table(
+    name="Input Table",
+    description="Input Table with dependent and independent variables for calculation of the spatial GM Endog Error_Hom model.",
+)
+@knext.input_table(
+    name="Spatial Weights",
+    description="Input Table with spatial weights for calculation of the spatial GM Endog Error_Hom model.",
+)
+@knext.output_table(
+    name="Output Table",
+    description="Description of the spatial GM Endog Error_Hom model.",
+)
+@knext.output_table(
+    name="Variable and Coefficient Table",
+    description="Variable and Coefficient Table of the spatial GM Endog Error_Hom model.",
+)
+@knext.output_view(
+    name="Model summary view",
+    description="Model summary view of the spatial GM Endog Error_Hom model.",
+)
+class SpatialGM_Endog_Error_Hom:
+    """
+    Spatial GM Endog Error Hom Model.
+    GMM method for a spatial error model with homoskedasticity and endogenous variables, with results and diagnostics; based on Drukker et al. (2013) [DEP13], following Anselin (2011) [Ans11]. More information can be found at [here](https://spreg.readthedocs.io/en/latest/generated/spreg.GM_Endog_Error_Hom.html#spreg.GM_Endog_Error_Hom). Please refer the following papers for more details.
 
-#         html = """<p><pre>%s</pre>""" % model.summary.replace("\n", "<br/>")
+    - %s
+    - %s
+    """ % (mrs.model_references["DEP13"], mrs.model_references["Ans11"]) + SHOULD_NOT_CONTAIN_MISSING_VALUES
 
-#         return (
-#             knext.Table.from_pandas(result2),
-#             knext.Table.from_pandas(results),
-#             knext.view_html(html),
-#         )
+    geo_col = knext.ColumnParameter(
+        "Geometry Column",
+        "The column containing the geometry of the input table.",
+        column_filter=knut.is_geo,
+        include_row_key=False,
+        include_none_column=False,
+    )
+
+    dependent_variable = knext.ColumnParameter(
+        "Dependent variable",
+        "The column containing the dependent variable to use for the calculation of the spatial GM Endog Error Hom model.",
+        column_filter=knut.is_numeric,
+        include_none_column=False,
+    )
+
+    independent_variables = knext.MultiColumnParameter(
+        "Independent variables",
+        "The columns containing the independent variables to use for the calculation of the spatial GM Endog Error Hom model.",
+        column_filter=knut.is_numeric,
+    )
+
+    yend = knext.ColumnParameter(
+        "Endogenous variable",
+        "The column containing the endogenous variable to use for the calculation of the spatial GM Endog Error Hom model.",
+        column_filter=knut.is_numeric,
+        include_none_column=False,
+    )
+
+    q = knext.ColumnParameter(
+        "External exogenous variable",
+        "The column containing the external exogenous variable to use for the calculation of the spatial GM Endog Error Hom model.",
+        column_filter=knut.is_numeric,
+        include_none_column=False,
+    )
+
+    def configure(self, configure_context, input_schema, input_schema_2):
+        self.geo_col = knut.column_exists_or_preset(
+            configure_context, self.geo_col, input_schema, knut.is_geo
+        )
+
+        return None
+
+    def execute(self, exec_context: knext.ExecutionContext, input_1, input_2):
+        gdf = gp.GeoDataFrame(input_1.to_pandas(), geometry=self.geo_col)
+        adjust_list = input_2.to_pandas()
+
+        import pandas as pd
+        import spreg
+        from libpysal.weights import W
+
+        w = W.from_adjlist(adjust_list)
+        # Prepare Georgia dataset inputs
+        X = gdf[self.independent_variables].values
+        y = gdf[self.dependent_variable].values
+        yend = gdf[self.yend].values
+        q = gdf[self.q].values
+
+        model = spreg.GM_Endog_Error_Hom(y=y, x=X, w=w, yend=yend, q=q)
+
+        results = pd.DataFrame(
+            [model.name_x, model.betas, model.std_err, model.z_stat]
+        ).T
+        results.columns = ["Variable", "Coefficient", "Std.Error", "Z-Statistic"]
+        results = results.dropna()
+        results.loc[:, "Coefficient"] = results.loc[:, "Coefficient"].map(
+            lambda x: x[0]
+        )
+        results.loc[:, "Probability"] = results.loc[:, "Z-Statistic"].map(
+            lambda x: x[1]
+        )
+        results.loc[:, "Z-Statistic"] = results.loc[:, "Z-Statistic"].map(
+            lambda x: x[0]
+        )
+        # #
+        results.loc[:, "Coefficient"] = results.loc[:, "Coefficient"].map(
+            lambda x: round(x, 7)
+        )
+        results.loc[:, "Std.Error"] = results.loc[:, "Std.Error"].map(
+            lambda x: round(x, 7)
+        )
+        results.loc[:, "Z-Statistic"] = results.loc[:, "Z-Statistic"].map(
+            lambda x: round(x, 7)
+        )
+        results.loc[:, "Probability"] = results.loc[:, "Probability"].map(
+            lambda x: round(x, 7)
+        )
+
+        result2 = pd.DataFrame(
+            {
+                "Pseudo R-squared ": model.pr2,
+                "Number of Observations": model.n,
+                "Number of Variables": model.k,
+            },
+            index=[0],
+        )
+        result2 = result2.round(7)
+
+        html = """<p><pre>%s</pre>""" % model.summary.replace("\n", "<br/>")
+
+        return (
+            knext.Table.from_pandas(result2),
+            knext.Table.from_pandas(results),
+            knext.view_html(html),
+        )
