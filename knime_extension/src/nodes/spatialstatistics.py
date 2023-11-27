@@ -36,7 +36,7 @@ the local statistic value,
 """
 
 __spots = """
-`spots` are the values that indicate quadrant location 1 HH, 2 LH, 3 LL, 4 HL, 
+`spots` are the values that indicate quadrant location 0 Not Significant, 1 HH, 2 LH, 3 LL, 4 HL, 
 `spots_type` has the values of HH (High-High), LH (Low-High), LL (Low-Low),
 HL (High-Low), Not Significant (the p-value is greater than the significance level).
 """
@@ -655,6 +655,7 @@ class LocalMoransI:
             {1: "HH", 2: "LH", 3: "LL", 4: "HL"}
         )
         gdf.loc[gdf["p-value"] > 0.05, "spots_type"] = "Not Significant"
+        gdf.loc[gdf["p-value"] > 0.05, "spots"] = 0
         # out = pd.merge(gdf, out, left_index=True, right_index=True)
 
         import pysal.lib as lps
@@ -1018,6 +1019,7 @@ class LocalGetisOrd:
         gdf.loc[gdf["Standardized Gs"] > 0, "spots"] = 1
         gdf.loc[gdf["Standardized Gs"] < 0, "spots"] = 3
         gdf.loc[gdf["p-value"] > 0.05, "spots_type"] = "Not Significant"
+        gdf.loc[gdf["p-value"] > 0.05, "spots"] = 0
 
         import pysal.lib as lps
 
