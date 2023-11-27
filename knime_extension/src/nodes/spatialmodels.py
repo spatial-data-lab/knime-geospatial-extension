@@ -1718,6 +1718,8 @@ class SpatialML_Error:
         )
 
 
+# New added from Geolab in 2023-11-20
+
 SHOULD_NOT_CONTAIN_MISSING_VALUES = """
    **Note:** The input table should not contain missing values. You can use the
     [Missing Value](https://hub.knime.com/knime/extensions/org.knime.features.base/latest/org.knime.base.node.preproc.pmml.missingval.compute.MissingValueHandlerNodeFactory/) node to replace them."""
@@ -1757,12 +1759,16 @@ __NODE_ICON_PATH_2 = "icons/icon/Geolab/"
     description="Model summary view of the spatial GM Error model.",
 )
 class SpatialGM_Error:
-    """
+    (
+        """
     Spatial GM Error Model.
     GMM method for a spatial error model, with results and diagnostics; based on Kelejian and Prucha (1998, 1999) [KP98] [KP99]. More information can be found at [here](https://spreg.readthedocs.io/en/latest/generated/spreg.GM_Error.html#spreg.GM_Error). Please refer the following papers for more details.
     - %s
     - %s
-    """ % ( mrs.model_references["KP98"], mrs.model_references["KP99"] ) + SHOULD_NOT_CONTAIN_MISSING_VALUES
+    """
+        % (mrs.model_references["KP98"], mrs.model_references["KP99"])
+        + SHOULD_NOT_CONTAIN_MISSING_VALUES
+    )
 
     geo_col = knut.geo_col_parameter()
 
@@ -1889,12 +1895,15 @@ class SpatialGM_Error:
     description="Model summary view of the spatial GM Error Het model.",
 )
 class SpatialGM_Error_Het:
-    """
+    (
+        """
     Spatial GM Error Het.
     GMM method for a spatial error model with heteroskedasticity, with results and diagnostics; based on Kelejian and Prucha (1998). More information can be found at [here](https://spreg.readthedocs.io/en/latest/generated/spreg.GM_Error_Het.html#spreg.GM_Error_Het). Please refer the following papers for more details.
     - Irani Arraiz, David M. Drukker, Harry H. Kelejian, and Ingmar R. Prucha. A spatial Cliff-Ord-type model with heteroskedastic innovations: Small and large sample results. Journal of Regional Science, 50(2):592–614, 2010. doi:10.1111/j.1467-9787.2009.00618.x
     - Luc Anselin. GMM estimation of spatial error autocorrelation with and without heteroskedasticity. Technical Report, GeoDa Center for Geospatial Analysis and Computation, 2011.
-    """ + SHOULD_NOT_CONTAIN_MISSING_VALUES
+    """
+        + SHOULD_NOT_CONTAIN_MISSING_VALUES
+    )
 
     geo_col = knut.geo_col_parameter()
 
@@ -2710,14 +2719,16 @@ class SpatialGM_Endog_Error:
     description="Model summary view of the spatial GM Endog Error Het model.",
 )
 class SpatialGM_Endog_Error_Het:
-    """
+    (
+        """
     Spatial GM Endog Error Het Model.
     GMM method for a spatial error model with heteroskedasticity and endogenous variables, with results and diagnostics; based on [ADKP10], following [Ans11]. More information can be found at [here](https://spreg.readthedocs.io/en/latest/generated/spreg.GM_Endog_Error_Het.html#spreg.GM_Endog_Error_Het). Please refer the following papers for more details.
 
     - Irani Arraiz, David M. Drukker, Harry H. Kelejian, and Ingmar R. Prucha. A spatial Cliff-Ord-type model with heteroskedastic innovations: Small and large sample results. Journal of Regional Science, 50(2):592–614, 2010. doi:10.1111/j.1467-9787.2009.00618.x.
     - Luc Anselin. GMM estimation of spatial error autocorrelation with and without heteroskedasticity. Technical Report, GeoDa Center for Geospatial Analysis and Computation, 2011.
-    """ + SHOULD_NOT_CONTAIN_MISSING_VALUES
-
+    """
+        + SHOULD_NOT_CONTAIN_MISSING_VALUES
+    )
 
     geo_col = knut.geo_col_parameter()
 
@@ -2760,6 +2771,13 @@ class SpatialGM_Endog_Error_Het:
     def execute(self, exec_context: knext.ExecutionContext, input_1, input_2):
         gdf = gp.GeoDataFrame(input_1.to_pandas(), geometry=self.geo_col)
         adjust_list = input_2.to_pandas()
+
+        if "none" not in str(self.id_col).lower():
+            gdf.index = range(len(gdf))
+            id_map = dict(zip(gdf[self.id_col], gdf.index))
+            adjust_list["focal"] = adjust_list["focal"].map(id_map)
+            adjust_list["neighbor"] = adjust_list["neighbor"].map(id_map)
+
         import pandas as pd
         import spreg
         from libpysal.weights import W
@@ -2851,13 +2869,17 @@ class SpatialGM_Endog_Error_Het:
     description="Model summary view of the spatial GM Endog Error_Hom model.",
 )
 class SpatialGM_Endog_Error_Hom:
-    """
+    (
+        """
     Spatial GM Endog Error Hom Model.
     GMM method for a spatial error model with homoskedasticity and endogenous variables, with results and diagnostics; based on Drukker et al. (2013) [DEP13], following Anselin (2011) [Ans11]. More information can be found at [here](https://spreg.readthedocs.io/en/latest/generated/spreg.GM_Endog_Error_Hom.html#spreg.GM_Endog_Error_Hom). Please refer the following papers for more details.
 
     - %s
     - %s
-    """ % (mrs.model_references["DEP13"], mrs.model_references["Ans11"]) + SHOULD_NOT_CONTAIN_MISSING_VALUES
+    """
+        % (mrs.model_references["DEP13"], mrs.model_references["Ans11"])
+        + SHOULD_NOT_CONTAIN_MISSING_VALUES
+    )
 
     geo_col = knext.ColumnParameter(
         "Geometry Column",
@@ -2910,6 +2932,13 @@ class SpatialGM_Endog_Error_Hom:
         from libpysal.weights import W
 
         w = W.from_adjlist(adjust_list)
+
+        if "none" not in str(self.id_col).lower():
+            gdf.index = range(len(gdf))
+            id_map = dict(zip(gdf[self.id_col], gdf.index))
+            adjust_list["focal"] = adjust_list["focal"].map(id_map)
+            adjust_list["neighbor"] = adjust_list["neighbor"].map(id_map)
+
         # Prepare Georgia dataset inputs
         X = gdf[self.independent_variables].values
         y = gdf[self.dependent_variable].values
