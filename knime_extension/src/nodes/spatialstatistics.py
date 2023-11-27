@@ -56,6 +56,29 @@ def _var_col_exists_or_preset(
     )
 
 
+def get_id_col_parameter(
+    label: str = "ID column",
+    description: str = """Select the column which contains for each observation in the input data a unique ID, it should be an integer column.
+    The IDs must match with the values of the 
+    [Spatial Weights node](https://hub.knime.com/center%20for%20geographic%20analysis%20at%20harvard%20university/extensions/sdl.harvard.features.geospatial/latest/org.knime.python3.nodes.extension.ExtensionNodeSetFactory$DynamicExtensionNodeFactory:4d710eae/)
+    ID column.
+    If 'none' is selected, the IDs will be automatically generated from 0 to the number of rows flowing the order of 
+    the first input table.
+    """,
+):
+    """
+    Returns the unique ID column. It should always keep the same as the ID column in the spatial weights matrix node.
+    The selected column should contain unique IDs for each observation in the input data.
+    """
+    return knext.ColumnParameter(
+        label=label,
+        description=description,
+        include_none_column=True,
+        column_filter=knut.is_long,
+        since_version="1.1.0",
+    )
+
+
 ############################################
 # Spatial Weights
 ############################################
@@ -1042,5 +1065,241 @@ class LocalGetisOrd:
         plt.xlabel(self.variable_setting.Field_col)
         plt.ylabel("Spatial Lag of " + self.variable_setting.Field_col)
         plt.title("Local Getis-Ord G Scatterplot")
+
+        return knext.Table.from_pandas(gdf), knext.view_matplotlib(f)
+
+
+# new added nodes: 2023-11-27
+
+# Root path for all node icons in this file
+__NODE_ICON_PATH_2 = "icons/icon/Geolab/"
+
+
+############################################
+# Bivariate Global Moran’s I node
+############################################
+# FIXME: add test workflow
+@knext.node(
+    name="Bivariate Global Moran’s I",
+    node_type=knext.NodeType.LEARNER,
+    # node_type=knext.NodeType.MANIPULATOR,
+    category=__category,
+    icon_path=__NODE_ICON_PATH_2 + "BivariateGlobal.png",
+)
+@knext.input_table(
+    name="Input Table",
+    description="Input table for calculation of Bivariate Global Moran’s I",
+)
+@knext.input_table(
+    name="Spatial Weights",
+    description="Spatial Weights table for calculation of Bivariate Global Moran’s I",
+)
+@knext.output_table(
+    name="Output Table",
+    description="Output table results of Bivariate Global Moran’s I",
+)
+# @knext.output_binary(
+#     name="output model",
+#     description="Output model of Bivariate Global Moran’s I",
+#     id="pysal.esda.moran.Moran",
+# )
+@knext.output_view(
+    name="output view",
+    description="Output view of Bivariate Global Moran’s I",
+)
+class BivariateGlobalMoran:
+    """
+    Bivariate Global Moran’s I
+    """
+
+    # input parameters
+    geo_col = knext.ColumnParameter(
+        "Geometry column",
+        "The column containing the geometry to use for Bivariate Global Moran’s I.",
+        column_filter=knut.is_geo,
+        include_row_key=False,
+        include_none_column=False,
+    )
+
+    id_col = get_id_col_parameter()
+
+    Field_col1 = knext.ColumnParameter(
+        "Field column 1",
+        "The column containing the field to use for the calculation of Bivariate Global Moran’s I.",
+        column_filter=knut.is_numeric,
+        include_none_column=False,
+    )
+
+    Field_col2 = knext.ColumnParameter(
+        "Field column 2",
+        "The column containing the field to use for the calculation of Bivariate Global Moran’s I.",
+        column_filter=knut.is_numeric,
+        include_none_column=False,
+    )
+
+    def configure(self, configure_context, input_schema_1, input_schema_2):
+        self.geo_col = knut.column_exists_or_preset(
+            configure_context, self.geo_col, input_schema_1, knut.is_geo
+        )
+        return None
+
+    def execute(self, exec_context: knext.ExecutionContext, input_1, input_2):
+        gdf = gp.GeoDataFrame(input_1.to_pandas(), geometry=self.geo_col)
+        adjust_list = input_2.to_pandas()
+
+        if "none" not in str(self.id_col).lower():
+            gdf.index = range(len(gdf))
+            id_map = dict(zip(gdf[self.id_col], gdf.index))
+            adjust_list["focal"] = adjust_list["focal"].map(id_map)
+            adjust_list["neighbor"] = adjust_list["neighbor"].map(id_map)
+
+        import numpy as np
+        import pandas as pd
+        from libpysal.weights import W
+
+        w = W.from_adjlist(adjust_list)
+
+        x = gdf[self.Field_col1]
+        y = gdf[self.Field_col2]
+        np.random.seed(12345)
+        import esda
+
+        bi = esda.moran.Moran_BV(x, y, w)
+
+        out = pd.DataFrame(
+            {
+                "Bivariate Moran’s I": [bi.I],
+                "p-value": [bi.p_sim],
+                "z-score": [bi.z_sim],
+            }
+        )
+        out.reset_index(inplace=True)
+        import seaborn as sbn
+        import matplotlib.pyplot as plt
+
+        ax = sbn.kdeplot(bi.sim, shade=True)
+        plt.vlines(bi.I, 0, 1, color="r")
+        # plt.vlines(bi.EI, 0, 1)
+        plt.xlabel("Bivariate Moran’s I")
+
+        return knext.Table.from_pandas(out), knext.view_matplotlib(ax.get_figure())
+
+
+############################################
+# Bivariate Local Moran Statistics
+############################################
+# FIXME: add test workflow
+@knext.node(
+    name="Bivariate Local Moran Statistics",
+    node_type=knext.NodeType.LEARNER,
+    # node_type=knext.NodeType.MANIPULATOR,
+    category=__category,
+    icon_path=__NODE_ICON_PATH_2 + "BivariateLocal.png",
+)
+@knext.input_table(
+    name="Input Table",
+    description="Input table for calculation of Bivariate Local Moran Statistics",
+)
+@knext.input_table(
+    name="Spatial Weights",
+    description="Spatial Weights table for calculation of Bivariate Local Moran Statistics",
+)
+@knext.output_table(
+    name="Output Table",
+    description="Output table results of Bivariate Local Moran Statistics",
+)
+# @knext.output_binary(
+#     name="output model",
+#     description="Output model of Bivariate Local Moran Statistics",
+#     id="pysal.esda.moran.Moran_Local",
+# )
+@knext.output_view(
+    name="output view",
+    description="Output view of Bivariate Local Moran Statistics",
+)
+class BivariateLocalMoran:
+    """
+    Bivariate Local Moran Statistics
+    """
+
+    # input parameters
+    geo_col = knext.ColumnParameter(
+        "Geometry column",
+        "The column containing the geometry to use for Bivariate Local Moran Statistics.",
+        column_filter=knut.is_geo,
+        include_row_key=False,
+        include_none_column=False,
+    )
+
+    id_col = get_id_col_parameter()
+
+    Field_col1 = knext.ColumnParameter(
+        "Field column 1",
+        "The column containing the field to use for the calculation of Bivariate Local Moran Statistics.",
+        column_filter=knut.is_numeric,
+        include_none_column=False,
+    )
+
+    Field_col2 = knext.ColumnParameter(
+        "Field column 2",
+        "The column containing the field to use for the calculation of Bivariate Local Moran Statistics.",
+        column_filter=knut.is_numeric,
+        include_none_column=False,
+    )
+
+    def configure(self, configure_context, input_schema_1, input_schema_2):
+        self.geo_col = knut.column_exists_or_preset(
+            configure_context, self.geo_col, input_schema_1, knut.is_geo
+        )
+        return None
+
+    def execute(self, exec_context: knext.ExecutionContext, input_1, input_2):
+        gdf = gp.GeoDataFrame(input_1.to_pandas(), geometry=self.geo_col)
+        adjust_list = input_2.to_pandas()
+
+        if "none" not in str(self.id_col).lower():
+            gdf.index = range(len(gdf))
+            id_map = dict(zip(gdf[self.id_col], gdf.index))
+            adjust_list["focal"] = adjust_list["focal"].map(id_map)
+            adjust_list["neighbor"] = adjust_list["neighbor"].map(id_map)
+
+        import numpy as np
+        from libpysal.weights import W
+        import esda
+        import pysal.lib as lps
+        import matplotlib.pyplot as plt
+
+        w = W.from_adjlist(adjust_list)
+
+        x = gdf[self.Field_col1]
+        y = gdf[self.Field_col2]
+        np.random.seed(12345)
+        bi = esda.moran.Moran_Local_BV(x, y, w)
+
+        gdf.loc[:, "Bivariate Local Moran’s I"] = bi.Is
+        gdf.loc[:, "p-value"] = bi.p_sim
+        gdf.loc[:, "z-score"] = bi.z_sim
+        gdf.loc[:, "spots"] = bi.q
+
+        gdf.loc[:, "spots_type"] = gdf["spots"].replace(
+            {1: "HH", 2: "LH", 3: "LL", 4: "HL"}
+        )
+
+        gdf.loc[gdf["p-value"] > 0.05, "spots_type"] = "Not Significant"
+        gdf.loc[gdf["p-value"] > 0.05, "spots"] = 0
+
+        lag_index = lps.weights.lag_spatial(w, gdf[self.Field_col1])
+        index_v = gdf[self.Field_col1]
+        b, a = np.polyfit(index_v, lag_index, 1)
+        f, ax = plt.subplots(1, figsize=(9, 9))
+
+        plt.plot(index_v, lag_index, ".", color="firebrick")
+        plt.vlines(index_v.mean(), lag_index.min(), lag_index.max(), linestyle="--")
+        plt.hlines(lag_index.mean(), index_v.min(), index_v.max(), linestyle="--")
+
+        plt.plot(index_v, a + b * index_v, "r")
+        plt.title("Moran Scatterplot")
+        plt.ylabel("Spatial Lag of %s" % self.Field_col1)
+        plt.xlabel("%s" % self.Field_col1)
 
         return knext.Table.from_pandas(gdf), knext.view_matplotlib(f)
