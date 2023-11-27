@@ -2687,6 +2687,7 @@ class SpatialGM_Endog_Error:
             knext.view_html(html),
         )
 
+# The following two models are rarely used and complex, so I comment them out.
 
 ############################################
 # spatial GM_Endog_Error_Het node
