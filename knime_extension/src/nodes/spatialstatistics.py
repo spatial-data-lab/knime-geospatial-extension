@@ -1096,7 +1096,8 @@ __NODE_ICON_PATH_2 = "icons/icon/Geolab/"
 )
 @knext.output_table(
     name="Output Table",
-    description="Output table results of Bivariate Global Moran’s I",
+    description="Output table results of Bivariate Global Moran’s I"
+    + __global_statistics_output_table_description,
 )
 # @knext.output_binary(
 #     name="output model",
@@ -1105,11 +1106,12 @@ __NODE_ICON_PATH_2 = "icons/icon/Geolab/"
 # )
 @knext.output_view(
     name="output view",
-    description="Output view of Bivariate Global Moran’s I",
+    description="Output view of Bivariate Global Moran’s I"
+    + __global_statistics_interactive_view_description,
 )
 class BivariateGlobalMoran:
     """
-    Bivariate Global Moran’s I
+    Bivariate Global Moran’s I.
     """
 
     # input parameters
@@ -1124,15 +1126,15 @@ class BivariateGlobalMoran:
     id_col = get_id_col_parameter()
 
     Field_col1 = knext.ColumnParameter(
-        "Field column 1",
-        "The column containing the field to use for the calculation of Bivariate Global Moran’s I.",
+        "Variable column 1",
+        "The column containing the variable to use for the calculation of Bivariate Global Moran’s I.",
         column_filter=knut.is_numeric,
         include_none_column=False,
     )
 
     Field_col2 = knext.ColumnParameter(
-        "Field column 2",
-        "The column containing the field to use for the calculation of Bivariate Global Moran’s I.",
+        "Variable column 2",
+        "The column containing the variable to use for the calculation of Bivariate Global Moran’s I.",
         column_filter=knut.is_numeric,
         include_none_column=False,
     )
@@ -1206,7 +1208,9 @@ class BivariateGlobalMoran:
 )
 @knext.output_table(
     name="Output Table",
-    description="Output table results of Bivariate Local Moran Statistics",
+    description="Output table results of Bivariate Local Moran Statistics"
+    + __local_statistics_output_table_description
+    + __spots,
 )
 # @knext.output_binary(
 #     name="output model",
@@ -1234,15 +1238,15 @@ class BivariateLocalMoran:
     id_col = get_id_col_parameter()
 
     Field_col1 = knext.ColumnParameter(
-        "Field column 1",
-        "The column containing the field to use for the calculation of Bivariate Local Moran Statistics.",
+        "Variable column 1",
+        "The column containing the variable to use for the calculation of Bivariate Local Moran Statistics.",
         column_filter=knut.is_numeric,
         include_none_column=False,
     )
 
     Field_col2 = knext.ColumnParameter(
-        "Field column 2",
-        "The column containing the field to use for the calculation of Bivariate Local Moran Statistics.",
+        "Variable column 2",
+        "The column containing the variable to use for the calculation of Bivariate Local Moran Statistics.",
         column_filter=knut.is_numeric,
         include_none_column=False,
     )
