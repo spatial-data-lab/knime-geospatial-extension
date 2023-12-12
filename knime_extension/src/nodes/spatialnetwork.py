@@ -258,6 +258,13 @@ class GoogleDistanceMatrix:
         enum=_GoogleTravelMode,
     )
 
+    consider_traffic = knext.BoolParameter(
+        label="Consider traffic",
+        description="""If checked, the travel time and distance will be computed considering the traffic conditions.
+        If unchecked, the travel time and distance will be computed without considering the traffic conditions.""",
+        default_value=False,
+        since_version="1.2.0",
+    )
     # add traffic models
     traffic_model = knext.StringParameter(
         "Traffic model",
@@ -271,15 +278,7 @@ class GoogleDistanceMatrix:
         default_value="Best guess",
         since_version="1.2.0",
         enum=["Best guess", "Pessimistic", "Optimistic"],
-    )
-
-    use_departure_time = knext.BoolParameter(
-        label="Use departure time",
-        description="""If checked, the departure time will be used to compute the travel time and distance.
-        If unchecked, the travel time and distance will be computed without considering the departure time.""",
-        default_value=False,
-        since_version="1.2.0",
-    )
+    ).rule(knext.OneOf(consider_traffic, [True]), knext.Effect.SHOW)
 
     departure_time = knext.DateTimeParameter(
         label="Departure time",
@@ -293,9 +292,9 @@ class GoogleDistanceMatrix:
         since_version="1.2.0",
         show_time=True,
         show_seconds=True,
-    ).rule(knext.OneOf(use_departure_time, [True]), knext.Effect.SHOW)
+    ).rule(knext.OneOf(consider_traffic, [True]), knext.Effect.SHOW)
     # Constant for distance matrix
-    _BASE_URL = "https://maps.googleapis.com/maps/api/distancematrix/json?language=en&units=imperial&origins={0}&destinations={1}&key={2}&mode={3}&traffic_model={4}"
+    _BASE_URL = "https://maps.googleapis.com/maps/api/distancematrix/json?language=en&units=imperial&origins={0}&destinations={1}&key={2}&mode={3}"
 
     def configure(self, configure_context, o_schema, d_schema):
         self.o_geo_col = knut.column_exists_or_preset(
@@ -380,11 +379,16 @@ class GoogleDistanceMatrix:
                 destinations_lat_lon,
                 self.api_key,
                 self.travel_mode.lower(),
-                "_".join(self.traffic_model.lower().split("_")),
             )
-            if self.use_departure_time:
-                google_request_link = google_request_link + "&departure_time={}".format(
-                    self.departure_time.strftime("%s")
+            if self.consider_traffic:
+                google_request_link = (
+                    google_request_link
+                    + "&traffic_model="
+                    + "_".join(self.traffic_model.lower().split(" "))
+                    + "&departure_time={}".format(
+                        # FIXME: this is not working
+                        self.departure_time.strftime("%s")
+                    )
                 )
             google_travel_cost = fetch_google_od(google_request_link)
             # add duration result in minutes
