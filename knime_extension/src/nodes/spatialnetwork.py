@@ -385,10 +385,7 @@ class GoogleDistanceMatrix:
                     google_request_link
                     + "&traffic_model="
                     + "_".join(self.traffic_model.lower().split(" "))
-                    + "&departure_time={}".format(
-                        # FIXME: this is not working
-                        self.departure_time.timestamp()
-                    )
+                    + "&departure_time={}".format(int(self.departure_time.timestamp()))
                 )
             google_travel_cost = fetch_google_od(google_request_link)
             # add duration result in minutes
