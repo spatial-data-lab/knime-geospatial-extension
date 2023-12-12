@@ -268,7 +268,7 @@ class GoogleDistanceMatrix:
         - `pessimistic` indicates that the returned duration_in_traffic should be longer than the actual travel time on most days, though occasional days with particularly bad traffic conditions may exceed this value.
         - `optimistic` indicates that the returned duration_in_traffic should be shorter than the actual travel time on most days, though occasional days with particularly good traffic conditions may be faster than this value.
         """,
-        default_value="best_guess",
+        default_value="Best guess",
         since_version="1.2.0",
         enum=["Best guess", "Pessimistic", "Optimistic"],
     )
