@@ -387,7 +387,7 @@ class GoogleDistanceMatrix:
                     + "_".join(self.traffic_model.lower().split(" "))
                     + "&departure_time={}".format(
                         # FIXME: this is not working
-                        self.departure_time.strftime("%s")
+                        self.departure_time.timestamp()
                     )
                 )
             google_travel_cost = fetch_google_od(google_request_link)
