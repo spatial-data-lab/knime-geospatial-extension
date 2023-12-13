@@ -1423,3 +1423,98 @@ class RoadNetworkIsochroneMap:
         gd_fx.rename(columns={"geometry": self._COL_GEOMETRY}, inplace=True)
         gd_fx.reset_index(drop=True, inplace=True)
         return knut.to_table(gd_fx)
+
+
+############################################
+# TomTom Isochrone Map Node
+############################################
+@knext.node(
+    name="""TomTom Isochrone Map""",
+    node_type=knext.NodeType.MANIPULATOR,
+    category=__category,
+    icon_path=__NODE_ICON_PATH + "TomTomIsochrone.png",
+)
+@knext.input_table(
+    name="Input Table as Center",
+    description="Input table with point geometry.",
+)
+@knext.output_table(
+    name="Output Table",
+    description="Output table with isochrone geometry.",
+)
+class TomTomIsochroneMap:
+    """This node calculates the isochrone map based on TomTom API according to the specified travel time budget.
+    The input should be a table with point geometry column.
+    The output is a table with polygon geometry column.
+    """
+
+    # input parameters
+    c_geo_col = knext.ColumnParameter(
+        "Origin geometry column",
+        "Select the geometry column that describes the origin.",
+        # Allow only GeoValue compatible columns
+        port_index=0,
+        column_filter=knut.is_geo,
+        include_row_key=False,
+        include_none_column=False,
+    )
+
+    # distance_m = knext.int64_parameter(
+    #     "Distance in meters",
+    #     "Input the distance in meters.",
+    #     default_value=1000,
+    # )
+    timeBudgetInSec = knext.IntParameter(
+        "Time budget in seconds",
+        "Input the time budget in seconds.",
+        default_value=900,
+    )
+
+    tomtom_key = knext.StringParameter(
+        "TomTom API Key",
+        "Input the TomTom API Key.",
+        default_value="",
+    )
+
+    _COL_GEOMETRY = "Geometry"
+    _COL_ISOCHRONE = "Isochrone"
+
+    def configure(self, configure_context, input_schema_1):
+        self.c_geo_col = knut.column_exists_or_preset(
+            configure_context, self.c_geo_col, input_schema_1, knut.is_geo
+        )
+
+        return None
+
+    def execute(self, exec_context: knext.ExecutionContext, input1):
+        tomtom_base_url = "https://api.tomtom.com/routing/1/calculateReachableRange/"
+        # a sample url:
+        # url = """https://api.tomtom.com/routing/1/calculateReachableRange/52.50931,13.42936/json?energyBudgetInkWh=43&avoid=unpavedRoads&vehicleEngineType=electric&constantSpeedConsumptionInkWhPerHundredkm=50,8.2:130,21.3&key=%s"""%tomkey
+        import requests
+        import json
+        from shapely.geometry import Polygon
+
+        c_gdf = knut.load_geo_data_frame(input1, self.c_geo_col, exec_context)
+
+        URL = (
+            tomtom_base_url
+            + str(c_gdf[self.c_geo_col].get_coordinates()["y"].values[0])
+            + ","
+            + str(c_gdf[self.c_geo_col].get_coordinates()["x"].values[0])
+            + "/json?timeBudgetInSec="
+            + str(self.timeBudgetInSec)
+            + "&travelMode=car&traffic=true&key="
+            + self.tomtom_key
+        )
+
+        req = requests.get(URL, timeout=120)
+
+        data = json.loads(req.text)
+        bounds = data["reachableRange"]["boundary"]
+        bounds_polygon = Polygon([(x["longitude"], x["latitude"]) for x in bounds])
+        bounds_gdf = gp.GeoDataFrame(geometry=[bounds_polygon], crs="EPSG:4326")
+
+        # this line is only for testing
+        # bounds_gdf["url"] = URL
+
+        return knut.to_table(bounds_gdf)
