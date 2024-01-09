@@ -215,11 +215,14 @@ class Distance:
 
             # calculate UTM zone from avg longitude to define CRS to project to
             utm_zone = int(np.floor((avg_lng + 180) / 6) + 1)
-            new_crs = f"+proj=utm +zone={utm_zone} +ellps=WGS84 +datum=WGS84 +units=m +no_defs"
-            # TODO: workaround until Java part supports proj strings AP-20328
+            new_crs_proj = f"+proj=utm +zone={utm_zone} +ellps=WGS84 +datum=WGS84 +units=m +no_defs"
+
             from pyproj import CRS  # For CRS Units check
 
-            new_crs = CRS.from_user_input(new_crs).to_wkt()
+            new_crs = CRS.from_user_input(new_crs_proj).to_epsg()
+            if new_crs is None:
+                # fallback to WKT which shouldn't be required
+                new_crs = CRS.from_user_input(new_crs_proj).to_wkt()
 
         if new_crs is None:
             # this should not happen
