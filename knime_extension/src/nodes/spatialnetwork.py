@@ -1443,9 +1443,7 @@ class RoadNetworkIsochroneMap:
     description="Output table with isochrone geometry.",
 )
 class TomTomIsochroneMap:
-    """This node calculates the isochrone map based on TomTom API according to the specified travel time budget.
-    The input should be a table with point geometry column.
-    The output is a table with polygon geometry column.
+    """This node calculates the isochrone map based on TomTom API. More details please refer to https://developer.tomtom.com/routing-api/api-explorer
     """
 
     # input parameters
@@ -1468,6 +1466,38 @@ class TomTomIsochroneMap:
         "Time budget in seconds",
         "Input the time budget in seconds.",
         default_value=900,
+    )
+
+    departAt = knext.DateTimeParameter(
+        "Depart at",
+        "Input the departure time.",
+        default_value="",
+    )
+
+    arriveAt = knext.DateTimeParameter(
+        "Arrive at",
+        "Input the arrival time.",
+        default_value="",
+    )
+
+    routeType = knext.StringParameter(
+        "Route type",
+        "Input the route type.",
+        default_value="fastest",
+        enum=["fastest", "shortest", "eco", "thrilling"]
+    )
+
+    traffic = knext.BoolParameter(
+        "Traffic",
+        "Input the traffic.",
+        default_value=True,
+    )
+
+    travelMode = knext.StringParameter(
+        "Travel mode",
+        "Input the travel mode.",
+        default_value="car",
+        enum=["car", "truck", "taxi", "bus", "van", "motorcycle", "bicycle", "pedestrian"]
     )
 
     tomtom_key = knext.StringParameter(
