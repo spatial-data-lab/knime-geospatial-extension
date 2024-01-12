@@ -21,7 +21,7 @@ dependencies:
   - libpysal=4.7.0
   - mgwr=2.1.2
   - numpy=1.23.5 #required to fix problem with latest version of numpy
-  - osmnx=1.6.0
+  - osmnx=1.7.0
   - polyline 2.0.0
   - pulp=2.7.0
   - pyproj=3.5.0
