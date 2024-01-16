@@ -1443,14 +1443,18 @@ class RoadNetworkIsochroneMap:
     description="Output table with isochrone geometry.",
 )
 class TomTomIsochroneMap:
-    """This node calculates the isochrone map based on TomTom API. 
-    More details please refer to https://developer.tomtom.com/routing-api/api-explorer
+    """This node calculates the isochrone map based on the TomTom API.
+    It takes a point geometry as input and generates an isochrone map 
+    as output, illustrating areas reachable within a given time budget.
+
+    More details on the TomTom API can be found at:
+    https://developer.tomtom.com/routing-api/api-explorer
     """
 
     # input parameters
     c_geo_col = knext.ColumnParameter(
         "Origin geometry column",
-        "Select the geometry column that describes the origin.",
+        "This parameter selects the geometry column from the input table that represents the origin point for the isochrone calculation.",
         # Allow only GeoValue compatible columns
         port_index=0,
         column_filter=knut.is_geo,
@@ -1458,28 +1462,15 @@ class TomTomIsochroneMap:
         include_none_column=False,
     )
 
-    # distance_m = knext.int64_parameter(
-    #     "Distance in meters",
-    #     "Input the distance in meters.",
-    #     default_value=1000,
-    # )
     timeBudgetInSec = knext.IntParameter(
         "Time budget in seconds",
-        "Input the time budget in seconds.",
+        "Specifies the time budget for the isochrone map in seconds. The time budget determines the range of the isochrone, representing the maximum travel time from the origin point.",
         default_value=900,
     )
 
     departAt = knext.DateTimeParameter(
         "Depart at",
-        "Input the departure time.",
-        default_value=None,
-        show_time=True,
-        show_seconds=True,
-    )
-
-    arriveAt = knext.DateTimeParameter(
-        "Arrive at",
-        "Input the arrival time.",
+        "The departure time for the isochrone calculation. This parameter can affect the isochrone map due to varying traffic conditions at different times.",
         default_value=None,
         show_time=True,
         show_seconds=True,
@@ -1487,27 +1478,32 @@ class TomTomIsochroneMap:
 
     routeType = knext.StringParameter(
         "Route type",
-        "Input the route type.",
+        """Input the route type. Determines the type of route used for the isochrone calculation. Different route types can result in different isochrones.
+        "fastest": Focuses on reducing travel time.
+        "shortest": Prioritizes the shortest physical distance.
+        "eco": Optimizes for fuel efficiency.
+        "thrilling": Suitable for scenic or interesting routes.""",
         default_value="fastest",
         enum=["fastest", "shortest", "eco", "thrilling"]
     )
 
     traffic = knext.BoolParameter(
         "Traffic",
-        "Input the traffic.",
+        """Input the traffic. Indicates whether to consider current traffic conditions in the isochrone calculation.
+        Boolean value, where True includes traffic considerations and False ignores them.""",
         default_value=True,
     )
 
     travelMode = knext.StringParameter(
         "Travel mode",
-        "Input the travel mode.",
+        """Input the travel mode. Specifies the mode of travel for the isochrone calculation, which can significantly impact the shape and extent of the isochrone. Options include: "car", "truck", "taxi", "bus", "van", "motorcycle", "bicycle", "pedestrian".""",
         default_value="car",
         enum=["car", "truck", "taxi", "bus", "van", "motorcycle", "bicycle", "pedestrian"]
     )
 
     tomtom_key = knext.StringParameter(
         "TomTom API Key",
-        "Input the TomTom API Key.",
+        "Input the TomTom API Key. The API key required to authenticate requests to the TomTom API. This key is essential for accessing the routing services provided by TomTom. To get an API key, visit https://developer.tomtom.com/knowledgebase/platform/articles/how-to-get-an-tomtom-api-key/.",
         default_value="",
     )
 
@@ -1531,7 +1527,7 @@ class TomTomIsochroneMap:
 
         c_gdf = knut.load_geo_data_frame(input1, self.c_geo_col, exec_context)
 
-        URL = "%s%s,%s/json?timeBudgetInSec=%s&travelMode=%s&traffic=%s&key=%s&routeType=%s" % (
+        URL = "%s%s,%s/json?timeBudgetInSec=%s&travelMode=%s&traffic=%s&key=%s&routeType=%s&departAt=%s" % (
             tomtom_base_url,
             str(c_gdf[self.c_geo_col].get_coordinates()["y"].values[0]),
             str(c_gdf[self.c_geo_col].get_coordinates()["x"].values[0]),
@@ -1539,7 +1535,8 @@ class TomTomIsochroneMap:
             self.travelMode,
             str(self.traffic).lower(),
             self.tomtom_key,
-            self.routeType
+            self.routeType,
+            str(self.departAt).replace(" ", "T")
         )
 
         req = requests.get(URL, timeout=120)
@@ -1550,6 +1547,7 @@ class TomTomIsochroneMap:
         bounds_gdf = gp.GeoDataFrame(geometry=[bounds_polygon], crs="EPSG:4326")
 
         # this line is only for testing
-        bounds_gdf["url"] = URL
+        # c_gdf["url"] = URL
+        #  return knut.to_table(c_gdf)
 
         return knut.to_table(bounds_gdf)
