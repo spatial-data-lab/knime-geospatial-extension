@@ -1443,7 +1443,8 @@ class RoadNetworkIsochroneMap:
     description="Output table with isochrone geometry.",
 )
 class TomTomIsochroneMap:
-    """This node calculates the isochrone map based on TomTom API. More details please refer to https://developer.tomtom.com/routing-api/api-explorer
+    """This node calculates the isochrone map based on TomTom API. 
+    More details please refer to https://developer.tomtom.com/routing-api/api-explorer
     """
 
     # input parameters
@@ -1471,13 +1472,17 @@ class TomTomIsochroneMap:
     departAt = knext.DateTimeParameter(
         "Depart at",
         "Input the departure time.",
-        default_value="",
+        default_value=None,
+        show_time=True,
+        show_seconds=True,
     )
 
     arriveAt = knext.DateTimeParameter(
         "Arrive at",
         "Input the arrival time.",
-        default_value="",
+        default_value=None,
+        show_time=True,
+        show_seconds=True,
     )
 
     routeType = knext.StringParameter(
@@ -1525,18 +1530,16 @@ class TomTomIsochroneMap:
         from shapely.geometry import Polygon
 
         c_gdf = knut.load_geo_data_frame(input1, self.c_geo_col, exec_context)
-# FIXME: Handle the parameter dependency
-        URL = (
-            tomtom_base_url
-            + str(c_gdf[self.c_geo_col].get_coordinates()["y"].values[0])
-            + ","
-            + str(c_gdf[self.c_geo_col].get_coordinates()["x"].values[0])
-            + "/json?timeBudgetInSec="+ str(self.timeBudgetInSec) + 
-            "&travelMode=" +self.travelMode
-            +"&traffic="
-            + str(self.traffic).lower()
-            +"&key="
-            + self.tomtom_key
+
+        URL = "%s%s,%s/json?timeBudgetInSec=%s&travelMode=%s&traffic=%s&key=%s&routeType=%s" % (
+            tomtom_base_url,
+            str(c_gdf[self.c_geo_col].get_coordinates()["y"].values[0]),
+            str(c_gdf[self.c_geo_col].get_coordinates()["x"].values[0]),
+            str(self.timeBudgetInSec),
+            self.travelMode,
+            str(self.traffic).lower(),
+            self.tomtom_key,
+            self.routeType
         )
 
         req = requests.get(URL, timeout=120)
@@ -1547,6 +1550,6 @@ class TomTomIsochroneMap:
         bounds_gdf = gp.GeoDataFrame(geometry=[bounds_polygon], crs="EPSG:4326")
 
         # this line is only for testing
-        # bounds_gdf["url"] = URL
+        bounds_gdf["url"] = URL
 
         return knut.to_table(bounds_gdf)
