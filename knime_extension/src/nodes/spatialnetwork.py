@@ -1531,9 +1531,11 @@ class TomTomIsochroneMap:
             + str(c_gdf[self.c_geo_col].get_coordinates()["y"].values[0])
             + ","
             + str(c_gdf[self.c_geo_col].get_coordinates()["x"].values[0])
-            + "/json?timeBudgetInSec="
-            + str(self.timeBudgetInSec)
-            + "&travelMode=car&traffic=true&key="
+            + "/json?timeBudgetInSec="+ str(self.timeBudgetInSec) + 
+            "&travelMode=" +self.travelMode
+            +"&traffic="
+            + str(self.traffic).lower()
+            +"&key="
             + self.tomtom_key
         )
 
