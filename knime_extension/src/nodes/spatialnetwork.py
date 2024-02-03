@@ -173,6 +173,29 @@ class _GoogleTravelMode(knext.EnumParameterOptions):
         return cls.DRIVING
 
 
+class _GoogleTrafficModel(knext.EnumParameterOptions):
+    BEST_GUESS = (
+        "Best guess",
+        """Indicates that the returned duration in traffic should be the best estimate of travel time given what is 
+        known about both historical traffic conditions and live traffic. Live traffic becomes more important the closer
+        the departure time is to now.""",
+    )
+    PESSIMISTIC = (
+        "Pessimistic",
+        """Indicates that the returned duration in traffic should be longer than the actual travel time on most days, 
+        though occasional days with particularly bad traffic conditions may exceed this value.""",
+    )
+    OPTIMISTIC = (
+        "Optimistic",
+        """Indicates that the returned duration in traffic should be shorter than the actual travel time on most days, 
+        though occasional days with particularly good traffic conditions may be faster than this value.""",
+    )
+
+    @classmethod
+    def get_default(cls):
+        return cls.BEST_GUESS
+
+
 @knext.node(
     name="Google Distance Matrix",
     node_type=knext.NodeType.MANIPULATOR,
@@ -247,6 +270,7 @@ class GoogleDistanceMatrix:
         description="""Click [here](https://developers.google.com/maps/documentation/distance-matrix/get-api-key) for details on
         how to obtain and use a Google API key for the Distance Matrix API.""",
         default_value="",
+        # TODO: Check that API key is present
     )
 
     travel_mode = knext.EnumParameter(
@@ -266,18 +290,14 @@ class GoogleDistanceMatrix:
         since_version="1.2.0",
     )
     # add traffic models
-    traffic_model = knext.StringParameter(
+    traffic_model = knext.EnumParameter(
         "Traffic model",
-        """The following
-        [traffic models](https://developers.google.com/maps/documentation/distance-matrix/distance-matrix?hl=zh-cn#traffic_model)
-        are supported: 
-        - `best_guess` (default) indicates that the returned duration_in_traffic should be the best estimate of travel time given what is known about both historical traffic conditions and live traffic. Live traffic becomes more important the closer the departure_time is to now.
-        - `pessimistic` indicates that the returned duration_in_traffic should be longer than the actual travel time on most days, though occasional days with particularly bad traffic conditions may exceed this value.
-        - `optimistic` indicates that the returned duration_in_traffic should be shorter than the actual travel time on most days, though occasional days with particularly good traffic conditions may be faster than this value.
+        """The [traffic model](https://developers.google.com/maps/documentation/distance-matrix/distance-matrix#traffic_model)
+        specifies the assumptions to use when calculating time in traffic.
         """,
-        default_value="Best guess",
+        default_value=_GoogleTrafficModel.get_default().name,
         since_version="1.2.0",
-        enum=["Best guess", "Pessimistic", "Optimistic"],
+        enum=_GoogleTrafficModel,
     ).rule(knext.OneOf(consider_traffic, [True]), knext.Effect.SHOW)
 
     departure_time = knext.DateTimeParameter(
@@ -325,6 +345,7 @@ class GoogleDistanceMatrix:
             nt_duration = 0
             nt_distance = 0
             try:
+                # TODO: Add advanced timeout parameter
                 req = urllib2.urlopen(download_link)
                 jsonout = json.loads(req.read())
                 nt_duration = jsonout["rows"][0]["elements"][0]["duration"][
