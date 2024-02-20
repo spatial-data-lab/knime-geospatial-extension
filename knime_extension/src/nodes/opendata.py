@@ -727,6 +727,14 @@ class GDELTGKGNode:
         default_value=24,
     )
 
+    timeout = knext.IntParameter(
+        label="Request timeout in seconds",
+        description="The timeout in seconds for the request for GDELT GKG.",
+        default_value=120,
+        min_value=1,
+        is_advanced=True,
+    )
+
     def configure(self, configure_context):
         # TODO Create combined schema
         return None
@@ -739,7 +747,7 @@ class GDELTGKGNode:
             self.key_word,
             self.last_hours * 60,
         )
-        response = requests.get(url, timeout=120)
+        response = requests.get(url, timeout=self.timeout)
         data = response.json()
         gdf = gp.GeoDataFrame.from_features(data, crs="EPSG:4326")
         return knext.Table.from_pandas(gdf)
@@ -780,6 +788,14 @@ class OpenSkyNetworkDataNode:
         default_value="",
     )
 
+    timeout = knext.IntParameter(
+        label="Request timeout in seconds",
+        description="The timeout in seconds for the request for GDELT GKG.",
+        default_value=120,
+        min_value=1,
+        is_advanced=True,
+    )
+
     def configure(self, configure_context):
         # TODO Create combined schema
         return None
@@ -790,7 +806,7 @@ class OpenSkyNetworkDataNode:
         import requests
 
         url = "https://opensky-network.org/api/states/all"
-        kws = {"url": url, "timeout": 120}
+        kws = {"url": url, "timeout": self.timeout}
         if len(self.user) != 0 and len(self.password) != 0:
             kws["auth"] = (self.user, self.password)
 
@@ -850,6 +866,14 @@ class BlockchainDataCenterNode:
     Please refer to [Blockchain Data Center Dashboard](https://dashboard.internetcomputer.org/centers) for more details.
     """
 
+    timeout = knext.IntParameter(
+    label="Request timeout in seconds",
+    description="The timeout in seconds for the request for GDELT GKG.",
+    default_value=120,
+    min_value=1,
+    is_advanced=True,
+    )
+
     def configure(self, configure_context):
         # TODO Create combined schema
         return None
@@ -860,7 +884,7 @@ class BlockchainDataCenterNode:
         import requests
 
         url = "https://ic-api.internetcomputer.org/api/v3/data-centers"
-        response = requests.get(url, timeout=120)
+        response = requests.get(url, timeout=self.timeout)
         json_data = response.json()
         data = pd.DataFrame(json_data["data_centers"])
 
@@ -905,6 +929,13 @@ class DownloadDataFromArcGISOnlineNode:
         default_value="C:\\Users\\xif626\\Downloads",
     )
 
+    # timeout = knext.IntParameter(
+    #     label="Request timeout in seconds",
+    #     description="The timeout in seconds for the request for GDELT GKG.",
+    #     default_value=120,
+    #     min_value=1,
+    #     is_advanced=True,
+    # )
     def configure(self, configure_context):
         # TODO Create combined schema
         return None
