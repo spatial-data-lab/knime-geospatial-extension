@@ -296,7 +296,9 @@ class SpatialLagPanelModelwithFixedEffects:
 
     id_col = mut.get_id_col_parameter()
 
-    (dependent_variable, independent_variables) = mut.get_dependent_and_independent_variables()
+    (dependent_variable, independent_variables) = (
+        mut.get_dependent_and_independent_variables()
+    )
 
     advanced_settings = AdvancedLagErrorSetting()
 
@@ -423,7 +425,9 @@ class SpatialErrorPanelModelwithFixedEffects:
 
     id_col = mut.get_id_col_parameter()
 
-    (dependent_variable, independent_variables) = mut.get_dependent_and_independent_variables()
+    (dependent_variable, independent_variables) = (
+        mut.get_dependent_and_independent_variables()
+    )
 
     advanced_settings = AdvancedLagErrorSetting()
 
@@ -583,7 +587,9 @@ class GeographicallyWeightedRegression:
 
     geo_col = knut.geo_col_parameter()
 
-    (dependent_variable, independent_variables) = mut.get_dependent_and_independent_variables()
+    (dependent_variable, independent_variables) = (
+        mut.get_dependent_and_independent_variables()
+    )
 
     fixed = knext.BoolParameter(
         "Fixed bandwidth",
@@ -863,7 +869,9 @@ class MultiscaleGeographicallyWeightedRegression:
 
     geo_col = knut.geo_col_parameter()
 
-    (dependent_variable, independent_variables) = mut.get_dependent_and_independent_variables()
+    (dependent_variable, independent_variables) = (
+        mut.get_dependent_and_independent_variables()
+    )
 
     fixed = knext.BoolParameter(
         "Fixed bandwidth",
@@ -1053,7 +1061,9 @@ class SpatialOLS:
 
     id_col = mut.get_id_col_parameter()
 
-    (dependent_variable, independent_variables) = mut.get_dependent_and_independent_variables()
+    (dependent_variable, independent_variables) = (
+        mut.get_dependent_and_independent_variables()
+    )
 
     Spatial_Diagnostics = knext.BoolParameter(
         "Spatial Diagnostics",
@@ -1237,7 +1247,9 @@ class SpatialML_Lag:
 
     id_col = mut.get_id_col_parameter()
 
-    (dependent_variable, independent_variables) = mut.get_dependent_and_independent_variables()
+    (dependent_variable, independent_variables) = (
+        mut.get_dependent_and_independent_variables()
+    )
 
     advanced_settings = AdvancedLagErrorSetting()
 
@@ -1374,7 +1386,9 @@ class SpatialML_Error:
 
     id_col = mut.get_id_col_parameter()
 
-    (dependent_variable, independent_variables) = mut.get_dependent_and_independent_variables()
+    (dependent_variable, independent_variables) = (
+        mut.get_dependent_and_independent_variables()
+    )
 
     advanced_settings = AdvancedLagErrorSetting()
 
@@ -1520,7 +1534,10 @@ class SpatialGM_Error:
 
     id_col = mut.get_id_col_parameter()
 
-    (dependent_variable, independent_variables) = mut.get_dependent_and_independent_variables()
+    (dependent_variable, independent_variables) = (
+        mut.get_dependent_and_independent_variables()
+    )
+
     def configure(self, configure_context, input_schema, input_schema_2):
         self.geo_col = knut.column_exists_or_preset(
             configure_context, self.geo_col, input_schema, knut.is_geo
@@ -1634,7 +1651,9 @@ class SpatialGM_Error_Het:
 
     id_col = mut.get_id_col_parameter()
 
-    (dependent_variable, independent_variables) = mut.get_dependent_and_independent_variables()
+    (dependent_variable, independent_variables) = (
+        mut.get_dependent_and_independent_variables()
+    )
 
     def configure(self, configure_context, input_schema, input_schema_2):
         self.geo_col = knut.column_exists_or_preset(
@@ -1751,7 +1770,9 @@ class SpatialGM_Error_Hom:
 
     id_col = mut.get_id_col_parameter()
 
-    (dependent_variable, independent_variables) = mut.get_dependent_and_independent_variables()
+    (dependent_variable, independent_variables) = (
+        mut.get_dependent_and_independent_variables()
+    )
 
     def configure(self, configure_context, input_schema, input_schema_2):
         self.geo_col = knut.column_exists_or_preset(
@@ -1867,7 +1888,9 @@ class SpatialGM_Combo:
 
     id_col = mut.get_id_col_parameter()
 
-    (dependent_variable, independent_variables) = mut.get_dependent_and_independent_variables()
+    (dependent_variable, independent_variables) = (
+        mut.get_dependent_and_independent_variables()
+    )
 
     def configure(self, configure_context, input_schema, input_schema_2):
         self.geo_col = knut.column_exists_or_preset(
@@ -1983,7 +2006,9 @@ class SpatialGM_Combo_Het:
 
     id_col = mut.get_id_col_parameter()
 
-    (dependent_variable, independent_variables) = mut.get_dependent_and_independent_variables()
+    (dependent_variable, independent_variables) = (
+        mut.get_dependent_and_independent_variables()
+    )
 
     def configure(self, configure_context, input_schema, input_schema_2):
         self.geo_col = knut.column_exists_or_preset(
@@ -2098,7 +2123,9 @@ class SpatialGM_Combo_Hom:
 
     id_col = mut.get_id_col_parameter()
 
-    (dependent_variable, independent_variables) = mut.get_dependent_and_independent_variables()
+    (dependent_variable, independent_variables) = (
+        mut.get_dependent_and_independent_variables()
+    )
 
     def configure(self, configure_context, input_schema, input_schema_2):
         self.geo_col = knut.column_exists_or_preset(
@@ -2212,7 +2239,9 @@ class SpatialGM_Endog_Error:
 
     id_col = mut.get_id_col_parameter()
 
-    (dependent_variable, independent_variables) = mut.get_dependent_and_independent_variables()
+    (dependent_variable, independent_variables) = (
+        mut.get_dependent_and_independent_variables()
+    )
 
     yend = knext.ColumnParameter(
         "Endogenous variable",

@@ -23,6 +23,7 @@ def re_order_weight_rows(gdf, adjust_list, id_col):
 
     return adjust_list_ref
 
+
 # get w from adjust list
 def get_w_from_adjust_list(adj_list, gdf, id_col):
     """
@@ -40,6 +41,7 @@ def get_w_from_adjust_list(adj_list, gdf, id_col):
     w = W.from_adjlist(adjust_list)
 
     return w, gdf
+
 
 def get_id_col_parameter(
     label: str = "ID column",
@@ -63,6 +65,7 @@ def get_id_col_parameter(
         column_filter=knut.is_long,
         since_version=since_version,
     )
+
 
 def get_dependent_and_independent_variables():
     """
