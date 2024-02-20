@@ -17,3 +17,22 @@ model_references = {
     "S+78": "Gideon Schwarz and others. Estimating the dimension of a model. The annals of statistics, 6(2):461–464, 1978.",
     "Whi80": "Halbert White. A heteroskedasticity-consistent covariance matrix estimator and a direct test for heteroskedasticity. Econometrica: Journal of the Econometric Society, pages 817–838, 1980.",
 }
+
+# get w from adjust list
+
+def get_w_from_adjust_list(adj_list, gdf, id_col):
+    """
+    Create a W object from an adjacency list.
+    """
+
+    from libpysal.weights import W
+
+    adjust_list = adj_list.to_pandas()
+    if "none" not in str(id_col).lower():
+        gdf.index = range(len(gdf))
+        id_map = dict(zip(gdf[id_col], gdf.index))
+        adjust_list["focal"] = adjust_list["focal"].map(id_map)
+        adjust_list["neighbor"] = adjust_list["neighbor"].map(id_map)
+    w = W.from_adjlist(adjust_list)
+
+    return w, gdf

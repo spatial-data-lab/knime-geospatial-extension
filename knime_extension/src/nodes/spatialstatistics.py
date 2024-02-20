@@ -1071,9 +1071,6 @@ class LocalGetisOrd:
 
 # new added nodes: 2023-11-27
 
-# Root path for all node icons in this file
-__NODE_ICON_PATH_2 = "icons/icon/Geolab/"
-
 
 ############################################
 # Bivariate Global Moran’s I node
@@ -1084,7 +1081,7 @@ __NODE_ICON_PATH_2 = "icons/icon/Geolab/"
     node_type=knext.NodeType.LEARNER,
     # node_type=knext.NodeType.MANIPULATOR,
     category=__category,
-    icon_path=__NODE_ICON_PATH_2 + "BivariateGlobal.png",
+    icon_path=__NODE_ICON_PATH + "BivariateGlobal.png",
 )
 @knext.input_table(
     name="Input Table",
@@ -1196,7 +1193,7 @@ class BivariateGlobalMoran:
     node_type=knext.NodeType.LEARNER,
     # node_type=knext.NodeType.MANIPULATOR,
     category=__category,
-    icon_path=__NODE_ICON_PATH_2 + "BivariateLocal.png",
+    icon_path=__NODE_ICON_PATH + "BivariateLocal.png",
 )
 @knext.input_table(
     name="Input Table",
