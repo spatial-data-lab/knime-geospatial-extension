@@ -464,8 +464,8 @@ class NearestJoinNode2:
     exclusive_equal = knext.BoolParameter(
         label="Exclude the nearest geometries that are equal to the input geometry ",
         description="""If checked, the nearest geometries that are equal to the input geometry will not be returned.""",
-        default_value=lambda v: True if v < knext.Version(1, 1, 0) else False,
-        since_version="1.1.0",
+        default_value=False,
+        since_version="1.3.0",
     )
 
     def configure(self, configure_context, left_input_schema, right_input_schema):
