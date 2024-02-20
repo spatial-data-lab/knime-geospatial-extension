@@ -34,5 +34,6 @@ dependencies:
   - pip=23.2.1
   - pygeoda=0.0.8
   - pointpats=2.3.0
+  - h3-py=3.7.6
   - pip:
     - ipinfo==4.4.3
