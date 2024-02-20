@@ -24,7 +24,7 @@ def get_id_col_parameter(
     The IDs must match with the values of the 
     [Spatial Weights node](https://hub.knime.com/center%20for%20geographic%20analysis%20at%20harvard%20university/extensions/sdl.harvard.features.geospatial/latest/org.knime.python3.nodes.extension.ExtensionNodeSetFactory$DynamicExtensionNodeFactory:4d710eae/)
     ID column.
-    If 'none' is selected, the IDs will be automatically generated from 0 to the number of rows flowing the order of 
+    If 'none' is selected, the IDs will be automatically generated from 0 to the number of rows following the order of 
     the first input table.
     """,
 ):
