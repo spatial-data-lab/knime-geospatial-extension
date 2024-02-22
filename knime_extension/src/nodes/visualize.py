@@ -356,6 +356,18 @@ class BaseMapSettings:
         ],
     )
 
+    # base_map_behavior = knext.StringParameter(
+    #     "Base map behavior",
+    #     """Select the behavior of the base map.
+    #     If choose 'no wrap', the base map will not be wrapped.
+    #     If choose 'world wrap jump', the base map will be wrapped and the marker will magically reappear when moved outside the map domain.
+    #     If choose 'world wrap', the base map will be wrapped and the marker disappear when moved outside the map domain.
+    #     """,
+    #     default_value="world wrap",
+    #     enum=["no wrap", "world wrap jump", "world wrap"],
+    #     since_version="1.3.0",
+    # )
+
 
 @knext.node(
     name="Geospatial View",
@@ -448,7 +460,17 @@ class ViewNode:
         if self.basemap_setting.base_map == "Don't show base map":
             base_map = None
         else:
+            import folium
+
             base_map = self.basemap_setting.base_map
+            base_map = folium.TileLayer(base_map, no_wrap=True)
+        # elif self.basemap_setting.base_map_behavior == "no wrap":
+        #     import folium
+        #     base_map = folium.TileLayer(base_map,no_wrap=True)
+        #     # see more at https://python-visualization.github.io/folium/latest/advanced_guide/world_copy.html
+
+        # else:
+        #     base_map = self.basemap_setting.base_map
         kws = {
             # "column":self.color_col,
             # "cmap":self.color_map,
@@ -464,6 +486,9 @@ class ViewNode:
                 "colorbar": True,
             },
         }
+
+        # if self.basemap_setting.base_map_behavior == "world wrap jump":
+        #     kws["map_kwds"] = {"world_copy_jump":True}
 
         if "none" not in str(self.color_settings.color_col).lower():
             kws["column"] = self.color_settings.color_col
