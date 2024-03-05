@@ -700,11 +700,26 @@ class OSMGeoBoundaryNode:
 )
 @knext.output_table(
     name="Socrata dataset list",
-    description="Socrata dataset based on search keywords",
+    description="Socrata dataset list from  a wealth of open data resources from governments, non-profits, and NGOs around the world based on the query term. ",
 )
 class SocrataSearchNode:
-    """Retrive the open data category via Socrata API.
+    """Access open datasets from various well-known data resources and organizations effortlessly  using the SODA interface. 
+    
+    US Centers for Disease Control and Prevention (CDC): CDC data includes information on infectious diseases, chronic conditions, environmental health hazards, 
+    injury prevention, maternal and child health, immunization coverage, and much more. These datasets are collected through surveillance systems, population surveys, 
+    epidemiological studies, and collaborative research efforts conducted by the CDC and its partners.
 
+    Data.gov: The official open data platform of the United States government, offering datasets from various U.S. government agencies covering fields such as education, 
+    healthcare, transportation, and the environment.
+
+    Chicago Data Portal: The open data platform provided by the City of Chicago, offering datasets related to the city, including crime data, transportation data, demographic statistics, and more.
+    
+    NYC Open Data: The open data platform provided by the City of New York, offering datasets covering urban planning, public transportation, health, and various other aspects of the city.
+    
+    UK Government Data Service: The open data platform provided by the UK government, offering datasets from various governmental bodies covering economics, social issues, the environment, and more.
+    
+    World Bank Data: The open data platform provided by the World Bank, offering a wide range of economic, social, and environmental datasets from around the world for research and analysis of global development trends.
+       
     The Socrata Open Data API (SODA) is a powerful tool designed for programmatically accessing a vast array of open data resources from various organizations around the world, including governments, non-profits,and NGOs..
     This node uses the [SODA Consumer API](https://dev.socrata.com/consumers/getting-started.html) to get the dataset list.
     """
@@ -725,10 +740,12 @@ class SocrataSearchNode:
         import pandas as pd
         import json
         from pandas import json_normalize
+        from urllib.parse import quote
 
         query_item = self.queryitem
+        encoded_query_item = quote(query_item)
         request = Request(
-            f"http://api.us.socrata.com/api/catalog/v1?q={query_item}&only=datasets&limit=10000"
+            f"http://api.us.socrata.com/api/catalog/v1?q={encoded_query_item}&only=datasets&limit=10000"
         )
 
         response = urlopen(request)
@@ -742,9 +759,11 @@ class SocrataSearchNode:
 
         # Create a DataFrame from the dataset information, and flatten the nested dictionaries
         df = json_normalize(dataset_info)
-        df = df.drop(
-            columns=["classification.domain_tags", "classification.domain_metadata"]
-        )
+        # Check if columns exist before dropping them
+        columns_to_drop = ["classification.domain_tags", "classification.domain_metadata"]
+        columns_to_drop = [col for col in columns_to_drop if col in df.columns]
+        df = df.drop(columns=columns_to_drop)
+
 
         # Find List
         list_columns = [
@@ -794,8 +813,23 @@ class SocrataSearchNode:
     description="Socrata dataset based on search keywords",
 )
 class SocrataDataNode:
-    """Retrive the open data category via Socrata API.
+    """Retrieve the open data category via Socrata API.
 
+    US Centers for Disease Control and Prevention (CDC): CDC data includes information on infectious diseases, chronic conditions, environmental health hazards, 
+    injury prevention, maternal and child health, immunization coverage, and much more. These datasets are collected through surveillance systems, population surveys, 
+    epidemiological studies, and collaborative research efforts conducted by the CDC and its partners.
+
+    Data.gov: The official open data platform of the United States government, offering datasets from various U.S. government agencies covering fields such as education, 
+    healthcare, transportation, and the environment.
+
+    Chicago Data Portal: The open data platform provided by the City of Chicago, offering datasets related to the city, including crime data, transportation data, demographic statistics, and more.
+    
+    NYC Open Data: The open data platform provided by the City of New York, offering datasets covering urban planning, public transportation, health, and various other aspects of the city.
+    
+    UK Government Data Service: The open data platform provided by the UK government, offering datasets from various governmental bodies covering economics, social issues, the environment, and more.
+    
+    World Bank Data: The open data platform provided by the World Bank, offering a wide range of economic, social, and environmental datasets from around the world for research and analysis of global development trends.   
+  
     The Socrata Open Data API (SODA) is a powerful tool designed for programmatically accessing a vast array of open data resources from various organizations around the world, including governments, non-profits,and NGOs..
     This node uses the [SODA Consumer API](https://dev.socrata.com/consumers/getting-started.html) to get the dataset from a dataset list generated by Socrata Search Node.
 
@@ -828,7 +862,15 @@ class SocrataDataNode:
         # Unauthenticated client only works with public data sets. Note 'None'
         # in place of application token, and no username or password:
         client = Socrata(self.metadata_domain, None)
-
+        limit = 100000 
+        offset = 0
+        all_results = []
+        while True:
+            results = client.get(self.resource_id, limit=limit, offset=offset)
+            if not results:
+                break
+            all_results.extend(results)
+            offset += limit
         # Example authenticated client (needed for non-public datasets):
         # client = Socrata(data.cdc.gov,
         #                  MyAppToken,
@@ -837,9 +879,7 @@ class SocrataDataNode:
 
         # First 2000 results, returned as JSON from API / converted to Python list of
         # dictionaries by sodapy.
-        results = client.get(self.resource_id, limit=100000)
-
         # Convert to pandas DataFrame
-        results_df = pd.DataFrame.from_records(results)
+        results_df = pd.DataFrame.from_records(all_results)
 
         return knext.Table.from_pandas(results_df)
