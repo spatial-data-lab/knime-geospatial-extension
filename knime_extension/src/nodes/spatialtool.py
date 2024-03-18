@@ -461,6 +461,13 @@ class NearestJoinNode2:
 
     column_selection = ColumnSelection()
 
+    exclusive_equal = knext.BoolParameter(
+        label="Exclude the nearest geometries that are equal to the input geometry ",
+        description="""If checked, the nearest geometries that are equal to the input geometry will not be returned.""",
+        default_value=False,
+        since_version="1.3.0",
+    )
+
     def configure(self, configure_context, left_input_schema, right_input_schema):
         self.left_geo_column = knut.column_exists_or_preset(
             configure_context, self.left_geo_column, left_input_schema, knut.is_geo
@@ -512,6 +519,7 @@ class NearestJoinNode2:
             distance_col=distance_col_name,
             lsuffix=left_suffix,
             rsuffix=right_suffix,
+            exclusive=self.exclusive_equal,
         )
 
         # convert returned distance to selected distance unit
@@ -730,7 +738,8 @@ class OverlayNode:
         label="Return only geometries of the same geometry type",
         description="""If selected, the node returns only geometries of the same geometry type as the geometry column 
         from the left (top) input table, otherwise it returns all resulting geometries.""",
-        default_value=lambda v: True if v < knext.Version(1, 1, 0) else False,
+        # default_value=lambda v: True if v < knext.Version(1, 1, 0) else False,
+        default_value=False,
         since_version="1.1.0",
     )
 
