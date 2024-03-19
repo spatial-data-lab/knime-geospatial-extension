@@ -173,6 +173,29 @@ class _GoogleTravelMode(knext.EnumParameterOptions):
         return cls.DRIVING
 
 
+class _GoogleTrafficModel(knext.EnumParameterOptions):
+    BEST_GUESS = (
+        "Best guess",
+        """Indicates that the returned duration in traffic should be the best estimate of travel time given what is 
+        known about both historical traffic conditions and live traffic. Live traffic becomes more important the closer
+        the departure time is to now.""",
+    )
+    PESSIMISTIC = (
+        "Pessimistic",
+        """Indicates that the returned duration in traffic should be longer than the actual travel time on most days, 
+        though occasional days with particularly bad traffic conditions may exceed this value.""",
+    )
+    OPTIMISTIC = (
+        "Optimistic",
+        """Indicates that the returned duration in traffic should be shorter than the actual travel time on most days, 
+        though occasional days with particularly good traffic conditions may be faster than this value.""",
+    )
+
+    @classmethod
+    def get_default(cls):
+        return cls.BEST_GUESS
+
+
 @knext.node(
     name="Google Distance Matrix",
     node_type=knext.NodeType.MANIPULATOR,
@@ -247,6 +270,7 @@ class GoogleDistanceMatrix:
         description="""Click [here](https://developers.google.com/maps/documentation/distance-matrix/get-api-key) for details on
         how to obtain and use a Google API key for the Distance Matrix API.""",
         default_value="",
+        # TODO: Check that API key is present
     )
 
     travel_mode = knext.EnumParameter(
@@ -257,6 +281,38 @@ class GoogleDistanceMatrix:
         default_value=_GoogleTravelMode.get_default().name,
         enum=_GoogleTravelMode,
     )
+
+    consider_traffic = knext.BoolParameter(
+        label="Consider traffic",
+        description="""If checked, the travel time and distance will be computed considering the traffic conditions.
+        If unchecked, the travel time and distance will be computed without considering the traffic conditions.""",
+        default_value=False,
+        since_version="1.2.0",
+    )
+    # add traffic models
+    traffic_model = knext.EnumParameter(
+        "Traffic model",
+        """The [traffic model](https://developers.google.com/maps/documentation/distance-matrix/distance-matrix#traffic_model)
+        specifies the assumptions to use when calculating time in traffic.
+        """,
+        default_value=_GoogleTrafficModel.get_default().name,
+        since_version="1.2.0",
+        enum=_GoogleTrafficModel,
+    ).rule(knext.OneOf(consider_traffic, [True]), knext.Effect.SHOW)
+
+    departure_time = knext.DateTimeParameter(
+        label="Departure time",
+        description="""The departure time may be specified in two cases:
+                - For requests where the travel mode is transit: You can optionally specify departure_time or arrival_time. If None the departure_time defaults to now (that is, the departure time defaults to the current time).
+                - For requests where the travel mode is driving: You can specify the departure_time to receive a route and trip duration (response field: duration_in_traffic) that take traffic conditions into account. The departure_time must be set to the current time or some time in the future. It cannot be in the past.
+                
+                Note: If departure time is not specified, choice of route and duration are based on road network and average time-independent traffic conditions. Results for a given request may vary over time due to changes in the road network, updated average traffic conditions, and the distributed nature of the service. Results may also vary between nearly-equivalent routes at any time or frequency.
+                """,
+        default_value=None,
+        since_version="1.2.0",
+        show_time=True,
+        show_seconds=True,
+    ).rule(knext.OneOf(consider_traffic, [True]), knext.Effect.SHOW)
     # Constant for distance matrix
     _BASE_URL = "https://maps.googleapis.com/maps/api/distancematrix/json?language=en&units=imperial&origins={0}&destinations={1}&key={2}&mode={3}"
 
@@ -289,6 +345,7 @@ class GoogleDistanceMatrix:
             nt_duration = 0
             nt_distance = 0
             try:
+                # TODO: Add advanced timeout parameter
                 req = urllib2.urlopen(download_link)
                 jsonout = json.loads(req.read())
                 nt_duration = jsonout["rows"][0]["elements"][0]["duration"][
@@ -344,6 +401,13 @@ class GoogleDistanceMatrix:
                 self.api_key,
                 self.travel_mode.lower(),
             )
+            if self.consider_traffic:
+                google_request_link = (
+                    google_request_link
+                    + "&traffic_model="
+                    + "_".join(self.traffic_model.lower().split(" "))
+                    + "&departure_time={}".format(int(self.departure_time.timestamp()))
+                )
             google_travel_cost = fetch_google_od(google_request_link)
             # add duration result in minutes
             distance_matrix.iat[i, 2] = google_travel_cost[0]
