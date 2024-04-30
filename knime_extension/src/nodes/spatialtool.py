@@ -1315,6 +1315,9 @@ class CreateH3Grid:
 class PointToH3:
     """Point to H3 node.
     This node returns the H3 Cell Indices and hexagons (optional) for each point in the input table.
+    The output table will always keep the same order as the input table. 
+    You can choose to append the hexagons to the output table.
+    You can also choose to keep the original table.
     """
 
     geo_col = knut.geo_col_parameter()
@@ -1333,20 +1336,27 @@ class PointToH3:
         max_value=15,
     )
 
-    _COL_ID = "H3 Cell Index"
-    _COL_GEOMETRY = "geometry"
+    if_append_hexagons = knext.BoolParameter(
+        "Append hexagons",
+        "If selected, the node will append the hexagons to the output table. By default, the hexagons are appended.",
+        default_value=True,
+    )
+
+    if_keep_original_table = knext.BoolParameter(
+        "Keep original table",
+        "If selected, the node will keep the original table. By default, the original table is removed. Notice that the output table will always keep the same order as the input table. You can also use this to link the output table to the original table by your self.",
+        default_value=False,
+    )
+
+    # _COL_ID = "H3 Cell Index"
+    # _COL_GEOMETRY = "geometry"
 
     def configure(self, configure_context, input_schema):
         self.geo_col = knut.column_exists_or_preset(
             configure_context, self.geo_col, input_schema, knut.is_geo_point
         )
 
-        return knext.Schema.from_columns(
-            [
-                knext.Column(knext.string(), self._COL_ID),
-                knext.Column(input_schema[self.geo_col].ktype, self._COL_GEOMETRY),
-            ]
-        )
+        return None
 
     def execute(self, exec_context: knext.ExecutionContext, input_table):
         import h3
@@ -1355,6 +1365,12 @@ class PointToH3:
         from shapely.geometry import Polygon
 
         gdf = knut.load_geo_data_frame(input_table, self.geo_col, exec_context)
+
+        _COL_ID = "H3 Cell Index"
+        _COL_GEOMETRY = "geometry"
+        # keep the column unqiue
+        _COL_ID = knut.get_unique_column_name(_COL_ID, input_table.schema)
+        _COL_GEOMETRY = knut.get_unique_column_name(_COL_GEOMETRY, input_table.schema)
 
         knut.check_canceled(exec_context)
         exec_context.set_progress(0.1, "Projecting input point...")
@@ -1368,15 +1384,25 @@ class PointToH3:
 
         knut.check_canceled(exec_context)
         exec_context.set_progress(0.9, "Generating output table...")
-        grid = gpd.GeoDataFrame(
-            pd.DataFrame(h3_hexes, columns=[self._COL_ID]),
-            geometry=[
-                Polygon(h3.h3_to_geo_boundary(h3_hex, geo_json=True))
-                for h3_hex in h3_hexes
-            ],
-            crs=gdf.crs,
-        )
+        if self.if_append_hexagons:
+      
+            grid = gpd.GeoDataFrame(
+                pd.DataFrame(h3_hexes, columns=[_COL_ID]),
+                geometry=[
+                    Polygon(h3.h3_to_geo_boundary(h3_hex, geo_json=True))
+                    for h3_hex in h3_hexes
+                ],
+                crs=gdf.crs,
+            )
 
+            # rename the geometry column
+            grid.rename_geometry(_COL_GEOMETRY, inplace=True)
+        else:
+            grid = pd.DataFrame(h3_hexes, columns=[_COL_ID]),
+
+        if self.if_keep_original_table:
+            grid = pd.concat([gdf, grid], axis=1)
+            
         return knut.to_table(grid, exec_context)
 
 
