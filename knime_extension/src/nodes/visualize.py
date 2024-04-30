@@ -463,7 +463,8 @@ class ViewNode:
             import folium
 
             base_map = self.basemap_setting.base_map
-            base_map = folium.TileLayer(base_map, no_wrap=True)
+            # base_map = folium.TileLayer(base_map, no_wrap=True)
+            base_map = folium.TileLayer(base_map)
         # elif self.basemap_setting.base_map_behavior == "no wrap":
         #     import folium
         #     base_map = folium.TileLayer(base_map,no_wrap=True)
@@ -485,6 +486,7 @@ class ViewNode:
                 "max_labels": 3,
                 "colorbar": True,
             },
+            "map_kwds": {"world_copy_jump": True},
         }
 
         # if self.basemap_setting.base_map_behavior == "world wrap jump":
