@@ -1315,7 +1315,7 @@ class CreateH3Grid:
 class PointToH3:
     """Point to H3 node.
     This node returns the H3 Cell Indices and hexagons (optional) for each point in the input table.
-    The output table will always keep the same order as the input table. 
+    The output table will always keep the same order as the input table.
     You can choose to append the hexagons to the output table.
     You can also choose to keep the original table.
     """
@@ -1385,7 +1385,6 @@ class PointToH3:
         knut.check_canceled(exec_context)
         exec_context.set_progress(0.9, "Generating output table...")
         if self.if_append_hexagons:
-      
             grid = gpd.GeoDataFrame(
                 pd.DataFrame(h3_hexes, columns=[_COL_ID]),
                 geometry=[
@@ -1398,11 +1397,11 @@ class PointToH3:
             # rename the geometry column
             grid.rename_geometry(_COL_GEOMETRY, inplace=True)
         else:
-            grid = pd.DataFrame(h3_hexes, columns=[_COL_ID]),
+            grid = (pd.DataFrame(h3_hexes, columns=[_COL_ID]),)
 
         if self.if_keep_original_table:
             grid = pd.concat([gdf, grid], axis=1)
-            
+
         return knut.to_table(grid, exec_context)
 
 
