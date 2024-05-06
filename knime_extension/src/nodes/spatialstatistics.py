@@ -352,7 +352,7 @@ class VariableSetting:
     Select the variable you want to use for the analysis.
     """
 
-    Field_col = knext.ColumnParameter(
+    field_col = knext.ColumnParameter(
         "Variable column",
         "The variable column you want to use for the analysis.",
         column_filter=knut.is_numeric,
@@ -368,7 +368,7 @@ class IDSetting:
     The selected column must contain unique IDs for each observation in the input data of type integer.
     """
 
-    Field_col = knext.ColumnParameter(
+    field_col = knext.ColumnParameter(
         "ID column",
         """The selected column should contain unique IDs for each observation in the input data and should be of 
         type integer. The values need to match the values from the ID column selected in the
@@ -466,8 +466,8 @@ class GlobalMoransI:
         self.geo_col = knut.column_exists_or_preset(
             configure_context, self.geo_col, input_schema_1, knut.is_geo
         )
-        self.variable_setting.Field_col = _var_col_exists_or_preset(
-            configure_context, self.variable_setting.Field_col, input_schema_1
+        self.variable_setting.field_col = _var_col_exists_or_preset(
+            configure_context, self.variable_setting.field_col, input_schema_1
         )
         return None
 
@@ -475,9 +475,9 @@ class GlobalMoransI:
         gdf = gp.GeoDataFrame(input_1.to_pandas(), geometry=self.geo_col)
         adjust_list = input_2.to_pandas()
 
-        if "none" not in str(self.id_col_setting.Field_col).lower():
+        if "none" not in str(self.id_col_setting.field_col).lower():
             gdf.index = range(len(gdf))
-            id_map = dict(zip(gdf[self.id_col_setting.Field_col], gdf.index))
+            id_map = dict(zip(gdf[self.id_col_setting.field_col], gdf.index))
             adjust_list["focal"] = adjust_list["focal"].map(id_map)
             adjust_list["neighbor"] = adjust_list["neighbor"].map(id_map)
 
@@ -485,7 +485,7 @@ class GlobalMoransI:
 
         w = W.from_adjlist(adjust_list)
 
-        y = gdf[self.variable_setting.Field_col]
+        y = gdf[self.variable_setting.field_col]
 
         import numpy as np
 
@@ -630,8 +630,8 @@ class LocalMoransI:
         self.geo_col = knut.column_exists_or_preset(
             configure_context, self.geo_col, input_schema_1, knut.is_geo
         )
-        self.variable_setting.Field_col = _var_col_exists_or_preset(
-            configure_context, self.variable_setting.Field_col, input_schema_1
+        self.variable_setting.field_col = _var_col_exists_or_preset(
+            configure_context, self.variable_setting.field_col, input_schema_1
         )
         return None
 
@@ -639,9 +639,9 @@ class LocalMoransI:
         gdf = gp.GeoDataFrame(input_1.to_pandas(), geometry=self.geo_col)
         adjust_list = input_2.to_pandas()
 
-        if "none" not in str(self.id_col_setting.Field_col).lower():
+        if "none" not in str(self.id_col_setting.field_col).lower():
             gdf.index = range(len(gdf))
-            id_map = dict(zip(gdf[self.id_col_setting.Field_col], gdf.index))
+            id_map = dict(zip(gdf[self.id_col_setting.field_col], gdf.index))
             adjust_list["focal"] = adjust_list["focal"].map(id_map)
             adjust_list["neighbor"] = adjust_list["neighbor"].map(id_map)
 
@@ -649,7 +649,7 @@ class LocalMoransI:
 
         w = W.from_adjlist(adjust_list)
 
-        y = gdf[self.variable_setting.Field_col]
+        y = gdf[self.variable_setting.field_col]
 
         import numpy as np
 
@@ -683,8 +683,8 @@ class LocalMoransI:
 
         import pysal.lib as lps
 
-        lag_index = lps.weights.lag_spatial(w, gdf[self.variable_setting.Field_col])
-        index_v = gdf[self.variable_setting.Field_col]
+        lag_index = lps.weights.lag_spatial(w, gdf[self.variable_setting.field_col])
+        index_v = gdf[self.variable_setting.field_col]
 
         import numpy as np
         import matplotlib.pyplot as plt
@@ -702,8 +702,8 @@ class LocalMoransI:
         # red line of best fit using global I as slope
         plt.plot(index_v, a + b * index_v, "r")
         plt.title("Moran Scatterplot")
-        plt.ylabel("Spatial Lag of %s" % self.variable_setting.Field_col)
-        plt.xlabel("%s" % self.variable_setting.Field_col)
+        plt.ylabel("Spatial Lag of %s" % self.variable_setting.field_col)
+        plt.xlabel("%s" % self.variable_setting.field_col)
 
         # enforce int as output column type
         gdf["spots"] = gdf["spots"].astype(np.int32)
@@ -766,8 +766,8 @@ class GlobalGearysC:
         self.geo_col = knut.column_exists_or_preset(
             configure_context, self.geo_col, input_schema_1, knut.is_geo
         )
-        self.variable_setting.Field_col = _var_col_exists_or_preset(
-            configure_context, self.variable_setting.Field_col, input_schema_1
+        self.variable_setting.field_col = _var_col_exists_or_preset(
+            configure_context, self.variable_setting.field_col, input_schema_1
         )
         return None
 
@@ -775,9 +775,9 @@ class GlobalGearysC:
         gdf = gp.GeoDataFrame(input_1.to_pandas(), geometry=self.geo_col)
         adjust_list = input_2.to_pandas()
 
-        if "none" not in str(self.id_col_setting.Field_col).lower():
+        if "none" not in str(self.id_col_setting.field_col).lower():
             gdf.index = range(len(gdf))
-            id_map = dict(zip(gdf[self.id_col_setting.Field_col], gdf.index))
+            id_map = dict(zip(gdf[self.id_col_setting.field_col], gdf.index))
             adjust_list["focal"] = adjust_list["focal"].map(id_map)
             adjust_list["neighbor"] = adjust_list["neighbor"].map(id_map)
 
@@ -785,7 +785,7 @@ class GlobalGearysC:
 
         w = W.from_adjlist(adjust_list)
 
-        y = gdf[self.variable_setting.Field_col]
+        y = gdf[self.variable_setting.field_col]
 
         import numpy as np
 
@@ -880,8 +880,8 @@ class GlobalGetisOrd:
         self.geo_col = knut.column_exists_or_preset(
             configure_context, self.geo_col, input_schema_1, knut.is_geo
         )
-        self.variable_setting.Field_col = _var_col_exists_or_preset(
-            configure_context, self.variable_setting.Field_col, input_schema_1
+        self.variable_setting.field_col = _var_col_exists_or_preset(
+            configure_context, self.variable_setting.field_col, input_schema_1
         )
         return None
 
@@ -889,9 +889,9 @@ class GlobalGetisOrd:
         gdf = gp.GeoDataFrame(input_1.to_pandas(), geometry=self.geo_col)
         adjust_list = input_2.to_pandas()
 
-        if "none" not in str(self.id_col_setting.Field_col).lower():
+        if "none" not in str(self.id_col_setting.field_col).lower():
             gdf.index = range(len(gdf))
-            id_map = dict(zip(gdf[self.id_col_setting.Field_col], gdf.index))
+            id_map = dict(zip(gdf[self.id_col_setting.field_col], gdf.index))
             adjust_list["focal"] = adjust_list["focal"].map(id_map)
             adjust_list["neighbor"] = adjust_list["neighbor"].map(id_map)
 
@@ -899,7 +899,7 @@ class GlobalGetisOrd:
 
         w = W.from_adjlist(adjust_list)
 
-        y = gdf[self.variable_setting.Field_col]
+        y = gdf[self.variable_setting.field_col]
 
         import numpy as np
 
@@ -997,8 +997,8 @@ class LocalGetisOrd:
         self.geo_col = knut.column_exists_or_preset(
             configure_context, self.geo_col, input_schema_1, knut.is_geo
         )
-        self.variable_setting.Field_col = _var_col_exists_or_preset(
-            configure_context, self.variable_setting.Field_col, input_schema_1
+        self.variable_setting.field_col = _var_col_exists_or_preset(
+            configure_context, self.variable_setting.field_col, input_schema_1
         )
         return None
 
@@ -1006,9 +1006,9 @@ class LocalGetisOrd:
         gdf = gp.GeoDataFrame(input_1.to_pandas(), geometry=self.geo_col)
         adjust_list = input_2.to_pandas()
 
-        if "none" not in str(self.id_col_setting.Field_col).lower():
+        if "none" not in str(self.id_col_setting.field_col).lower():
             gdf.index = range(len(gdf))
-            id_map = dict(zip(gdf[self.id_col_setting.Field_col], gdf.index))
+            id_map = dict(zip(gdf[self.id_col_setting.field_col], gdf.index))
             adjust_list["focal"] = adjust_list["focal"].map(id_map)
             adjust_list["neighbor"] = adjust_list["neighbor"].map(id_map)
 
@@ -1016,7 +1016,7 @@ class LocalGetisOrd:
 
         w = W.from_adjlist(adjust_list)
 
-        y = gdf[self.variable_setting.Field_col]
+        y = gdf[self.variable_setting.field_col]
 
         import numpy as np
 
@@ -1049,8 +1049,8 @@ class LocalGetisOrd:
 
         import pysal.lib as lps
 
-        lag_index = lps.weights.lag_spatial(w, gdf[self.variable_setting.Field_col])
-        index_v = gdf[self.variable_setting.Field_col]
+        lag_index = lps.weights.lag_spatial(w, gdf[self.variable_setting.field_col])
+        index_v = gdf[self.variable_setting.field_col]
         b, a = np.polyfit(index_v, lag_index, 1)
 
         import matplotlib.pyplot as plt
@@ -1062,8 +1062,8 @@ class LocalGetisOrd:
         plt.hlines(lag_index.mean(), index_v.min(), index_v.max(), linestyle="--")
 
         plt.plot(index_v, a + b * index_v, "r")
-        plt.xlabel(self.variable_setting.Field_col)
-        plt.ylabel("Spatial Lag of " + self.variable_setting.Field_col)
+        plt.xlabel(self.variable_setting.field_col)
+        plt.ylabel("Spatial Lag of " + self.variable_setting.field_col)
         plt.title("Local Getis-Ord G Scatterplot")
 
         return knext.Table.from_pandas(gdf), knext.view_matplotlib(f)
@@ -1122,14 +1122,14 @@ class BivariateGlobalMoran:
 
     id_col = get_id_col_parameter()
 
-    Field_col1 = knext.ColumnParameter(
+    field_col1 = knext.ColumnParameter(
         "Variable column 1",
         "The column containing the variable to use for the calculation of Bivariate Global Moran’s I.",
         column_filter=knut.is_numeric,
         include_none_column=False,
     )
 
-    Field_col2 = knext.ColumnParameter(
+    field_col2 = knext.ColumnParameter(
         "Variable column 2",
         "The column containing the variable to use for the calculation of Bivariate Global Moran’s I.",
         column_filter=knut.is_numeric,
@@ -1158,8 +1158,8 @@ class BivariateGlobalMoran:
 
         w = W.from_adjlist(adjust_list)
 
-        x = gdf[self.Field_col1]
-        y = gdf[self.Field_col2]
+        x = gdf[self.field_col1]
+        y = gdf[self.field_col2]
         np.random.seed(12345)
         import esda
 
@@ -1234,14 +1234,14 @@ class BivariateLocalMoran:
 
     id_col = get_id_col_parameter()
 
-    Field_col1 = knext.ColumnParameter(
+    field_col1 = knext.ColumnParameter(
         "Variable column 1",
         "The column containing the variable to use for the calculation of Bivariate Local Moran Statistics.",
         column_filter=knut.is_numeric,
         include_none_column=False,
     )
 
-    Field_col2 = knext.ColumnParameter(
+    field_col2 = knext.ColumnParameter(
         "Variable column 2",
         "The column containing the variable to use for the calculation of Bivariate Local Moran Statistics.",
         column_filter=knut.is_numeric,
@@ -1272,8 +1272,8 @@ class BivariateLocalMoran:
 
         w = W.from_adjlist(adjust_list)
 
-        x = gdf[self.Field_col1]
-        y = gdf[self.Field_col2]
+        x = gdf[self.field_col1]
+        y = gdf[self.field_col2]
         np.random.seed(12345)
         bi = esda.moran.Moran_Local_BV(x, y, w)
 
@@ -1289,8 +1289,8 @@ class BivariateLocalMoran:
         gdf.loc[gdf["p-value"] > 0.05, "spots_type"] = "Not Significant"
         gdf.loc[gdf["p-value"] > 0.05, "spots"] = 0
 
-        lag_index = lps.weights.lag_spatial(w, gdf[self.Field_col1])
-        index_v = gdf[self.Field_col1]
+        lag_index = lps.weights.lag_spatial(w, gdf[self.field_col1])
+        index_v = gdf[self.field_col1]
         b, a = np.polyfit(index_v, lag_index, 1)
         f, ax = plt.subplots(1, figsize=(9, 9))
 
@@ -1300,7 +1300,7 @@ class BivariateLocalMoran:
 
         plt.plot(index_v, a + b * index_v, "r")
         plt.title("Moran Scatterplot")
-        plt.ylabel("Spatial Lag of %s" % self.Field_col1)
-        plt.xlabel("%s" % self.Field_col1)
+        plt.ylabel("Spatial Lag of %s" % self.field_col1)
+        plt.xlabel("%s" % self.field_col1)
 
         return knext.Table.from_pandas(gdf), knext.view_matplotlib(f)
