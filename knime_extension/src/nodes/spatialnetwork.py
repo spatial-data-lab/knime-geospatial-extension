@@ -336,31 +336,47 @@ class GoogleDistanceMatrix:
 
     def execute(self, exec_context: knext.ExecutionContext, left_input, right_input):
         # define function to derive travel time and distance from Google Maps API
-        import urllib.request as urllib2  # for Google Drive
-        import json  # for OSRM
+
+        import requests
+        from pandas import json_normalize
+        import numpy as np
 
         knut.check_canceled(exec_context)
 
-        def fetch_google_od(download_link):
-            nt_duration = 0
-            nt_distance = 0
-            try:
-                # TODO: Add advanced timeout parameter
-                req = urllib2.urlopen(download_link)
-                jsonout = json.loads(req.read())
-                nt_duration = jsonout["rows"][0]["elements"][0]["duration"][
-                    "value"
-                ]  # meters
-                nt_distance = jsonout["rows"][0]["elements"][0]["distance"][
-                    "value"
-                ]  # seconds
+        def extract_coords(point):
+            return point.y, point.x
 
-                # transform seconds to minutes
-                nt_duration = round(nt_duration / 60, 2)
-                nt_distance = round(nt_distance, 2)
-            except Exception as err:
-                knut.LOGGER.warning(f"Exception while calling Google Matrix API: {err}")
-            return [nt_duration, nt_distance]
+        def update_distance_matrix(origins, destinations, start_index):
+            origin_batch = "|".join([f"{lat},{lng}" for lat, lng in origins])
+            destination_batch = "|".join([f"{lat},{lng}" for lat, lng in destinations])
+            google_request_link = self._BASE_URL.format(
+                origin_batch,
+                destination_batch,
+                self.api_key,
+                self.travel_mode.lower(),
+            )
+            if self.consider_traffic:
+                google_request_link = (
+                    google_request_link
+                    + "&traffic_model="
+                    + "_".join(self.traffic_model.lower().split(" "))
+                    + "&departure_time={}".format(int(self.departure_time.timestamp()))
+                )
+            response = requests.get(google_request_link)
+            data = response.json()
+            if data["status"] == "OK":
+                elements = json_normalize(data["rows"], record_path=["elements"])
+                end_index = start_index + len(elements) - 1
+                distance_matrix.loc[start_index:end_index, _COL_DURATION] = np.array(
+                    elements["duration.value"] / 60
+                )
+                distance_matrix.loc[start_index:end_index, _COL_DISTANCE] = np.array(
+                    elements["distance.value"]
+                )
+            else:
+                print(
+                    f"Error fetching data: {data.get('error_message', 'No error message provided')}"
+                )
 
         o_gdf = knut.load_geo_data_frame(left_input, self.o_geo_col, exec_context)
         d_gdf = knut.load_geo_data_frame(right_input, self.d_geo_col, exec_context)
@@ -377,42 +393,48 @@ class GoogleDistanceMatrix:
             columns={self.d_geo_col: "geometry", self.d_id_col: _COL_D_ID}
         )
 
+        # Create Coordinates
+        o_gdf["origin_coords"] = o_gdf["geometry"].apply(extract_coords)
+        d_gdf["destination_coords"] = d_gdf["geometry"].apply(extract_coords)
+        # Flatten lists to send as OD pairs in batches
+        origin_coords = list(o_gdf["origin_coords"])
+        destination_coords = list(d_gdf["destination_coords"])
         # Generate origin destination matrix via cross join
         merge_df = o_gdf.merge(d_gdf, how="cross")
-        merge_df_x = gp.GeoDataFrame(geometry=merge_df["geometry_x"])
-        merge_df_y = gp.GeoDataFrame(geometry=merge_df["geometry_y"])
 
         # create the result matrix with the two id columns...
         distance_matrix = merge_df[[_COL_O_ID, _COL_D_ID]]
         # ... and default value 0 for the duration and distance column
         distance_matrix[_COL_DURATION] = 0
         distance_matrix[_COL_DISTANCE] = 0
-        # can process any geometry since it computes the centroid first
-        for i in range(0, len(distance_matrix)):
-            origins_lat_lon = "{},{}".format(
-                merge_df_x.centroid.y[i], merge_df_x.centroid.x[i]
-            )
-            destinations_lat_lon = "{},{}".format(
-                merge_df_y.centroid.y[i], merge_df_y.centroid.x[i]
-            )
-            google_request_link = self._BASE_URL.format(
-                origins_lat_lon,
-                destinations_lat_lon,
-                self.api_key,
-                self.travel_mode.lower(),
-            )
-            if self.consider_traffic:
-                google_request_link = (
-                    google_request_link
-                    + "&traffic_model="
-                    + "_".join(self.traffic_model.lower().split(" "))
-                    + "&departure_time={}".format(int(self.departure_time.timestamp()))
-                )
-            google_travel_cost = fetch_google_od(google_request_link)
-            # add duration result in minutes
-            distance_matrix.iat[i, 2] = google_travel_cost[0]
-            # add distance result in meters
-            distance_matrix.iat[i, 3] = google_travel_cost[1]
+
+        batchsize = 100
+        if len(distance_matrix) <= 100:
+            update_distance_matrix(origin_coords, destination_coords, 0)
+
+        else:
+            for i in range(len(origin_coords)):
+                # Calculate the number of full batches
+                jtime = len(destination_coords) // batchsize
+                # Calculate the number of leftover destinations
+                leftover = len(destination_coords) % batchsize
+                for j in range(jtime):
+                    batch_destinations = destination_coords[
+                        j * batchsize : (j + 1) * batchsize
+                    ]
+                    start_index = i * len(destination_coords) + j * batchsize
+                    batch_origin = origin_coords[i : i + 1]
+                    update_distance_matrix(
+                        batch_origin, batch_destinations, start_index
+                    )
+                if leftover > 0:
+                    left_start = len(destination_coords) - leftover
+                    batch_destinations = destination_coords[left_start:]
+                    start_index = (i + 1) * len(destination_coords) - leftover
+                    update_distance_matrix(
+                        batch_origin, batch_destinations, start_index
+                    )
+
         return knut.to_table(distance_matrix)
 
 
