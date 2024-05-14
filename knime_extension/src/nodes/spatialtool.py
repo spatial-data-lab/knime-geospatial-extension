@@ -1250,7 +1250,7 @@ class CreateH3Grid:
     )
 
     _COL_ID = "H3 Cell Index"
-    _COL_GEOMETRY = "geometry"
+    _COL_GEOMETRY = knut.DEF_GEO_COL_NAME
 
     def configure(self, configure_context, input_schema):
         self.geo_col = knut.column_exists_or_preset(
@@ -1297,6 +1297,118 @@ class CreateH3Grid:
             ],
             crs=gdf_boundary.crs,
         )
+
+        return knut.to_table(grid, exec_context)
+
+
+############################################
+# Point to H3 Node
+############################################
+
+
+@knext.node(
+    name="Point to H3",
+    node_type=knext.NodeType.MANIPULATOR,
+    icon_path=__NODE_ICON_PATH + "PointToH3.png",
+    category=__category,
+    after="",
+)
+@knext.input_table(
+    name="Input Table",
+    description="Input table with the geometry",
+)
+@knext.output_table(
+    name="Output Table",
+    description="Output table with the H3 Cell Indices and hexagons column (optional).",
+)
+class PointToH3:
+    """Point to H3 node.
+    This node returns the H3 Cell Indices and hexagons (optional) for each point in the input table.
+    The output table will always keep the same order as the input table.
+    You can choose to append the hexagons to the output table.
+    You can also choose to keep the original table.
+    """
+
+    geo_col = knut.geo_col_parameter()
+
+    zoom = knext.IntParameter(
+        "Zoom level",
+        """The zoom level of the grid from 0 to 15 (default value is 8). The bigger the zoom level, the smaller the 
+        hexagon. If the zoom level is too small, the hexagon might be too big to fit in the input polygon which will
+        result in an error. A very small zoom level might result in a very large output table even for smaller 
+        input polygons. 
+        For more details about the zoom levels  refer to 
+        [Tables of Cell Statistics Across Resolutions.](https://h3geo.org/docs/core-library/restable/)
+        """,
+        default_value=8,
+        min_value=0,
+        max_value=15,
+    )
+
+    append_hexagons = knext.BoolParameter(
+        "Append hexagons",
+        "If selected, the node will append the hexagons to the output table.",
+        default_value=True,
+    )
+
+    keep_original_table = knext.BoolParameter(
+        "Keep original table",
+        "If selected, the node will keep the original table. Notice that the output table will always keep the same order as the input table. You can also use this to link the output table to the original table by your self.",
+        default_value=True,
+    )
+
+    # _COL_ID = "H3 Cell Index"
+    # _COL_GEOMETRY = "geometry"
+
+    def configure(self, configure_context, input_schema):
+        self.geo_col = knut.column_exists_or_preset(
+            configure_context, self.geo_col, input_schema, knut.is_geo_point
+        )
+
+        return None
+
+    def execute(self, exec_context: knext.ExecutionContext, input_table):
+        import h3
+        import geopandas as gpd
+        import pandas as pd
+        from shapely.geometry import Polygon
+
+        gdf = knut.load_geo_data_frame(input_table, self.geo_col, exec_context)
+
+        _COL_ID = "H3 Cell Index"
+        _COL_GEOMETRY = knut.DEF_GEO_COL_NAME
+        # keep the column unqiue
+        if self.keep_original_table:
+            _COL_ID = knut.get_unique_column_name(_COL_ID, input_table.schema)
+            _COL_GEOMETRY = knut.get_unique_column_name(_COL_GEOMETRY, input_table.schema)
+
+        knut.check_canceled(exec_context)
+        exec_context.set_progress(0.1, "Projecting input point...")
+        gdf.to_crs(4326, inplace=True)
+
+        knut.check_canceled(exec_context)
+        exec_context.set_progress(0.5, "Computing H3 hexagons...")
+        h3_hexes = gdf.apply(
+            lambda x: h3.geo_to_h3(x[self.geo_col].y, x[self.geo_col].x, self.zoom), axis=1
+        )
+
+        knut.check_canceled(exec_context)
+        exec_context.set_progress(0.9, "Generating output table...")
+        grid = pd.DataFrame(h3_hexes, columns=[_COL_ID])
+        if self.append_hexagons:
+            grid = gpd.GeoDataFrame(
+                grid,
+                geometry=[
+                    Polygon(h3.h3_to_geo_boundary(h3_hex, geo_json=True))
+                    for h3_hex in h3_hexes
+                ],
+                crs=gdf.crs,
+            )
+            # rename the geometry column
+            grid.rename_geometry(_COL_GEOMETRY, inplace=True)
+
+        if self.keep_original_table:
+            grid = pd.concat([gdf, grid], axis=1)
 
         return knut.to_table(grid, exec_context)
 
