@@ -1389,7 +1389,7 @@ class PointToH3:
         knut.check_canceled(exec_context)
         exec_context.set_progress(0.5, "Computing H3 hexagons...")
         h3_hexes = gdf.apply(
-            lambda x: h3.geo_to_h3(x.geometry.y, x.geometry.x, self.zoom), axis=1
+            lambda x: h3.geo_to_h3(x[self.geo_col].y, x[self.geo_col].x, self.zoom), axis=1
         )
 
         knut.check_canceled(exec_context)
@@ -1405,8 +1405,7 @@ class PointToH3:
                 crs=gdf.crs,
             )
             # rename the geometry column
-            if _COL_GEOMETRY.lower() != "geometry":
-                grid.rename_geometry(_COL_GEOMETRY, inplace=True)
+            grid.rename_geometry(_COL_GEOMETRY, inplace=True)
 
         if self.keep_original_table:
             grid = pd.concat([gdf, grid], axis=1)
