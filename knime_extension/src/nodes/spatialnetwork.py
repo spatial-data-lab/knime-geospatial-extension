@@ -344,7 +344,7 @@ class GoogleDistanceMatrix:
         knut.check_canceled(exec_context)
 
         def extract_coords(point):
-            return point.y, point.x
+            return point.centroid.y, point.centroid.x
 
         def update_distance_matrix(origins, destinations, start_index):
             origin_batch = "|".join([f"{lat},{lng}" for lat, lng in origins])
@@ -356,11 +356,23 @@ class GoogleDistanceMatrix:
                 self.travel_mode.lower(),
             )
             if self.consider_traffic:
+                # handle departure time
+                from datetime import datetime, timedelta
+
+                departure_time_timestamp = int(self.departure_time.timestamp())
+                departure_time = datetime.fromtimestamp(departure_time_timestamp)
+                current_time = datetime.now()
+                if departure_time < current_time + timedelta(minutes=10):
+                    knut.LOGGER.warning(
+                        "Departure time is in the past. Adjusting to the same time tomorrow."
+                    )
+                    departure_time = departure_time + timedelta(days=1)
+                departure_time_timestamp = int(departure_time.timestamp())
                 google_request_link = (
                     google_request_link
                     + "&traffic_model="
                     + "_".join(self.traffic_model.lower().split(" "))
-                    + "&departure_time={}".format(int(self.departure_time.timestamp()))
+                    + "&departure_time={}".format(departure_time_timestamp)
                 )
             response = requests.get(google_request_link)
             data = response.json()
@@ -408,12 +420,17 @@ class GoogleDistanceMatrix:
         distance_matrix[_COL_DURATION] = 0
         distance_matrix[_COL_DISTANCE] = 0
 
-        batchsize = 100
-        if len(distance_matrix) <= 100:
+        batchsize = 25
+        if len(distance_matrix) <= 25:
             update_distance_matrix(origin_coords, destination_coords, 0)
 
         else:
             for i in range(len(origin_coords)):
+                process_counter = i + 1
+                exec_context.set_progress(
+                    0.9 * process_counter / len(origin_coords),
+                    f"Batch {process_counter} of {len(origin_coords)} processed",
+                )
                 # Calculate the number of full batches
                 jtime = len(destination_coords) // batchsize
                 # Calculate the number of leftover destinations
@@ -431,6 +448,7 @@ class GoogleDistanceMatrix:
                     left_start = len(destination_coords) - leftover
                     batch_destinations = destination_coords[left_start:]
                     start_index = (i + 1) * len(destination_coords) - leftover
+                    batch_origin = origin_coords[i : i + 1]
                     update_distance_matrix(
                         batch_origin, batch_destinations, start_index
                     )
