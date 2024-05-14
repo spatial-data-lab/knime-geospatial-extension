@@ -1336,16 +1336,16 @@ class PointToH3:
         max_value=15,
     )
 
-    if_append_hexagons = knext.BoolParameter(
+    append_hexagons = knext.BoolParameter(
         "Append hexagons",
-        "If selected, the node will append the hexagons to the output table. By default, the hexagons are appended.",
+        "If selected, the node will append the hexagons to the output table.",
         default_value=True,
     )
 
-    if_keep_original_table = knext.BoolParameter(
+    keep_original_table = knext.BoolParameter(
         "Keep original table",
-        "If selected, the node will keep the original table. By default, the original table is removed. Notice that the output table will always keep the same order as the input table. You can also use this to link the output table to the original table by your self.",
-        default_value=False,
+        "If selected, the node will keep the original table. Notice that the output table will always keep the same order as the input table. You can also use this to link the output table to the original table by your self.",
+        default_value=True,
     )
 
     # _COL_ID = "H3 Cell Index"
@@ -1369,8 +1369,9 @@ class PointToH3:
         _COL_ID = "H3 Cell Index"
         _COL_GEOMETRY = "geometry"
         # keep the column unqiue
-        _COL_ID = knut.get_unique_column_name(_COL_ID, input_table.schema)
-        _COL_GEOMETRY = knut.get_unique_column_name(_COL_GEOMETRY, input_table.schema)
+        if self.keep_original_table:
+            _COL_ID = knut.get_unique_column_name(_COL_ID, input_table.schema)
+            _COL_GEOMETRY = knut.get_unique_column_name(_COL_GEOMETRY, input_table.schema)
 
         knut.check_canceled(exec_context)
         exec_context.set_progress(0.1, "Projecting input point...")
@@ -1384,22 +1385,21 @@ class PointToH3:
 
         knut.check_canceled(exec_context)
         exec_context.set_progress(0.9, "Generating output table...")
-        if self.if_append_hexagons:
+        grid = pd.DataFrame(h3_hexes, columns=[_COL_ID])
+        if self.append_hexagons:
             grid = gpd.GeoDataFrame(
-                pd.DataFrame(h3_hexes, columns=[_COL_ID]),
+                grid,
                 geometry=[
                     Polygon(h3.h3_to_geo_boundary(h3_hex, geo_json=True))
                     for h3_hex in h3_hexes
                 ],
                 crs=gdf.crs,
             )
-
             # rename the geometry column
-            grid.rename_geometry(_COL_GEOMETRY, inplace=True)
-        else:
-            grid = (pd.DataFrame(h3_hexes, columns=[_COL_ID]),)
+            if _COL_GEOMETRY != "geometry":
+                grid.rename_geometry(_COL_GEOMETRY, inplace=True)
 
-        if self.if_keep_original_table:
+        if self.keep_original_table:
             grid = pd.concat([gdf, grid], axis=1)
 
         return knut.to_table(grid, exec_context)
