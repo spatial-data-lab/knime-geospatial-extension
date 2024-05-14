@@ -390,6 +390,35 @@ class GoogleDistanceMatrix:
                     f"Error fetching data: {data.get('error_message', 'No error message provided')}"
                 )
 
+        def calculate_od_batch(loop_coords, batch_coords, switch_od=False):
+            for i in range(len(loop_coords)):
+                process_counter = i + 1
+                exec_context.set_progress(
+                    0.9 * process_counter / len(loop_coords),
+                    f"Batch {process_counter} of {len(loop_coords)} processed",
+                )
+                # Calculate the number of full batches
+                jtime = len(batch_coords) // batchsize
+                # Calculate the number of leftover destinations
+                leftover = len(batch_coords) % batchsize
+                for j in range(jtime):
+                    batch_points = batch_coords[j * batchsize : (j + 1) * batchsize]
+                    start_index = i * len(batch_coords) + j * batchsize
+                    loop_points = loop_coords[i : i + 1]
+                    if switch_od:
+                        update_distance_matrix(loop_points, batch_points, start_index)
+                    else:
+                        update_distance_matrix(batch_points, loop_points, start_index)
+                if leftover > 0:
+                    left_start = len(batch_coords) - leftover
+                    batch_points = batch_coords[left_start:]
+                    start_index = (i + 1) * len(batch_coords) - leftover
+                    loop_points = loop_coords[i : i + 1]
+                    if switch_od:
+                        update_distance_matrix(loop_points, batch_points, start_index)
+                    else:
+                        update_distance_matrix(batch_points, loop_points, start_index)
+
         o_gdf = knut.load_geo_data_frame(left_input, self.o_geo_col, exec_context)
         d_gdf = knut.load_geo_data_frame(right_input, self.d_geo_col, exec_context)
 
@@ -412,7 +441,14 @@ class GoogleDistanceMatrix:
         origin_coords = list(o_gdf["origin_coords"])
         destination_coords = list(d_gdf["destination_coords"])
         # Generate origin destination matrix via cross join
-        merge_df = o_gdf.merge(d_gdf, how="cross")
+        switch_od = (
+            len(origin_coords) > 2 * len(destination_coords)
+            and len(origin_coords) >= 25
+        )
+        if switch_od == False:
+            merge_df = o_gdf.merge(d_gdf, how="cross")
+        else:
+            merge_df = d_gdf.merge(o_gdf, how="cross")
 
         # create the result matrix with the two id columns...
         distance_matrix = merge_df[[_COL_O_ID, _COL_D_ID]]
@@ -423,35 +459,15 @@ class GoogleDistanceMatrix:
         batchsize = 25
         if len(distance_matrix) <= 25:
             update_distance_matrix(origin_coords, destination_coords, 0)
-
         else:
-            for i in range(len(origin_coords)):
-                process_counter = i + 1
-                exec_context.set_progress(
-                    0.9 * process_counter / len(origin_coords),
-                    f"Batch {process_counter} of {len(origin_coords)} processed",
+            if switch_od:
+                calculate_od_batch(
+                    destination_coords, origin_coords, switch_od=switch_od
                 )
-                # Calculate the number of full batches
-                jtime = len(destination_coords) // batchsize
-                # Calculate the number of leftover destinations
-                leftover = len(destination_coords) % batchsize
-                for j in range(jtime):
-                    batch_destinations = destination_coords[
-                        j * batchsize : (j + 1) * batchsize
-                    ]
-                    start_index = i * len(destination_coords) + j * batchsize
-                    batch_origin = origin_coords[i : i + 1]
-                    update_distance_matrix(
-                        batch_origin, batch_destinations, start_index
-                    )
-                if leftover > 0:
-                    left_start = len(destination_coords) - leftover
-                    batch_destinations = destination_coords[left_start:]
-                    start_index = (i + 1) * len(destination_coords) - leftover
-                    batch_origin = origin_coords[i : i + 1]
-                    update_distance_matrix(
-                        batch_origin, batch_destinations, start_index
-                    )
+            else:
+                calculate_od_batch(
+                    origin_coords, destination_coords, switch_od=switch_od
+                )
 
         return knut.to_table(distance_matrix)
 
