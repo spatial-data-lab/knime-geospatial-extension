@@ -1250,7 +1250,7 @@ class CreateH3Grid:
     )
 
     _COL_ID = "H3 Cell Index"
-    _COL_GEOMETRY = "geometry"
+    _COL_GEOMETRY = knut.DEF_GEO_COL_NAME
 
     def configure(self, configure_context, input_schema):
         self.geo_col = knut.column_exists_or_preset(
@@ -1376,7 +1376,7 @@ class PointToH3:
         gdf = knut.load_geo_data_frame(input_table, self.geo_col, exec_context)
 
         _COL_ID = "H3 Cell Index"
-        _COL_GEOMETRY = "geometry"
+        _COL_GEOMETRY = knut.DEF_GEO_COL_NAME
         # keep the column unqiue
         if self.keep_original_table:
             _COL_ID = knut.get_unique_column_name(_COL_ID, input_table.schema)
@@ -1405,7 +1405,7 @@ class PointToH3:
                 crs=gdf.crs,
             )
             # rename the geometry column
-            if _COL_GEOMETRY != "geometry":
+            if _COL_GEOMETRY.lower() != "geometry":
                 grid.rename_geometry(_COL_GEOMETRY, inplace=True)
 
         if self.keep_original_table:
