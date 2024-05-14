@@ -846,4 +846,3 @@ class OpenSkyNetworkDataNode:
             crs="EPSG:4326",
         )
         return knext.Table.from_pandas(gdf)
-
