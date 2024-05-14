@@ -713,6 +713,8 @@ class GDELTGKGNode:
     organizations, locations, themes, emotions, counts, quotes, images and events across the planet
     dating back to January 1, 1979 and updated every 15 minutes.
     Please refer to [GDELT Document](https://blog.gdeltproject.org/announcing-our-first-api-gkg-geojson/) for more details.
+
+    Data copyright by [GDELT Project](https://www.gdeltproject.org/).
     """
 
     key_word = knext.StringParameter(
