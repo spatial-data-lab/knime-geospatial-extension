@@ -1,6 +1,6 @@
 # Setup Custom Executor Docker Image with the Geospatial Extension for KNIME Business Hub
 
-Running a workflow on KNIME Business Hub requires an Execution Context (EC). Inside that EC runs one or multiple pods - that hold Docker containers - which run Docker images. In general, one can simply use the official Docker images from the public [KNIME Artifact Registry](https://registry.hub.knime.com/) to create an EC.
+Running a workflow on KNIME Business Hub requires an Execution Context (EC). An EC runs one or multiple pods. A pod holds Docker containers in turn, which run Docker images in the end. In general, one can simply use the official Docker images from the public [KNIME Artifact Registry](https://registry.hub.knime.com/) to create an EC.
 
 However, the official Docker images hold KNIME Extensions only; no Community (trusted or experimental) or Partner Extensions included. Since the "Geospatial Analytics Extension for KNIME" is a Trusted Community Extension, it needs to be integrated into the Docker image, which requires to enhance the official image and build your own custom Docker image.
 
@@ -19,11 +19,11 @@ Make sure to save that file with the name ```Dockerfile``` and add no file exten
 
 Within the Dockerfile, we define two variables at the bottom that are important while installing the extension(s):
 
-```KNIME_UPDATE_SITES``` the URL to the necessary Update Site(s)
+```KNIME_UPDATE_SITES``` - the URL to the necessary Update Site(s)
 
 ```KNIME_FEATURES``` - the Feature ID of the extension to be installed
 
-Check out [this video](https://www.youtube.com/watch?v=-dO79Id3VAo&t=143s) from the KNIMETV channel that helps you to find the right update site URL and the feature ID.
+Check out [this video](https://www.youtube.com/watch?v=-dO79Id3VAo&t=143s) from the KNIMETV channel that helps you to find the right update site URL and the Feature ID.
 
     # Define the base image
     FROM registry.hub.knime.com/knime/knime-full:r-5.2.1-369
@@ -53,21 +53,23 @@ Check out [this video](https://www.youtube.com/watch?v=-dO79Id3VAo&t=143s) from 
     RUN ./install-extensions.sh
 
 ## Build and push the Docker image
-Now, the Docker image can be build from the Dockerfile and made available to the KNIME Business Hub with the following commands.
+Now, the Docker image can be built from the Dockerfile and made available to the KNIME Business Hub with the following commands. Please make sure to adapt the following lines accordingly, when running them in the CLI of your laptop. 
 
-    # Build the Docker image
+    # 1) Build the Docker image
     docker build . -f .\Dockerfile -t knime-full-geo:5.2.1 --no-cache
 
-    # Retag the image to make it readable for KNIME Business Hub
-    docker tag knime-full-geo:5.2.1 registry.<hub-url>/knime-full-geo:5.2.1
+    # 2) Retag the image to make it readable for KNIME Business Hub
+    docker tag knime-full-geo:5.2.1 registry.<base-url>/knime-full-geo:5.2.1
 
-    # Login to the embedded registry of the KNIME Business Hub (if configured)
-    docker login --username <username> registry.<hub-url>
+    # 3) Login to the embedded registry of the KNIME Business Hub (if configured)
+    # Authenticate with the registry:
+    # You will need to provide a password. In case you do not have one you can manage this from the KOTS Admin Console > Config > Embedded Registry.
+    docker login --username <username> registry.<base-url>
 
-    # Push the image to registry
-    docker push registry.<hub-url>/knime-full-geo:5.2.1
+    # 4) Push the image to registry
+    docker push registry.<base-url>/knime-full-geo:5.2.1
 
-In case, you are not using the embedded registry but an external one, you can configure your KNIME Business Hub to use that within the KOTS Admin Console.
+In case, you are not using the embedded registry but an external one, you can configure your KNIME Business Hub to use that within the KOTS Admin Console. Using an external docker registry, requires adapting the steps above accordingly.
 
 ![registry-settings](./imgs/registry-settings.png)
 
