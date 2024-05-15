@@ -15,11 +15,16 @@ The extension is mainly based on the [GeoPandas](https://geopandas.org/) library
 
 ## Installation
 
+### KNIME Analytics Platform
+
 The extension can be installed via the [KNIME Hub](https://hub.knime.com/spatialdatalab/extensions/sdl.harvard.features.geospatial/latest) by dragging and doping or installed like any other KNIME extension via the KNIME Extension Manager.
 
 
-
 If you want to test the latest version you can follow the instructions in the Setup section of the [Contribution guide](https://github.com/spatial-data-lab/knime-geospatial-extension/blob/main/CONTRIBUTING.md#setup).
+
+### KNIME Business Hub
+To setup a KNIME Executor with the Geospatial Extension follow this [guide.](https://github.com/spatial-data-lab/knime-geospatial-extension/blob/main/docs/geospatial-install.md)
+In order to use the Geospatial Views in your DataApps you have to adapt the security policies as described [here.](https://github.com/spatial-data-lab/knime-geospatial-extension/blob/main/docs/geospatialViewsWebPortal.md)
 
 ## Usage
 
