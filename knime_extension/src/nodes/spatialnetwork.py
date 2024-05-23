@@ -1423,3 +1423,245 @@ class RoadNetworkIsochroneMap:
         gd_fx.rename(columns={"geometry": self._COL_GEOMETRY}, inplace=True)
         gd_fx.reset_index(drop=True, inplace=True)
         return knut.to_table(gd_fx)
+
+
+
+############################################
+# TomTom Isochrone Map Node
+############################################
+class _TomTomRouteType(knext.EnumParameterOptions):
+    FASTEST = ("Fastest", "Focuses on reducing travel time.")
+    SHORTEST = ("Shortest", "Prioritizes the shortest physical distance.")
+    ECO = ("Eco", "Optimizes for fuel efficiency.")
+
+    @classmethod
+    def get_default(cls):
+        return cls.FASTEST
+
+
+class _TomTomTravelMode(knext.EnumParameterOptions):
+    CAR = ("Car", "Car as vehicle type.")
+    TRUCK = ("Truck", "Truck as vehicle type.")
+    TAXI = ("Taxi", "Taxi as vehicle type.")
+    BUS = ("Bus", "Bus as vehicle type.")
+    VAN = ("Van", "Van as vehicle type.")
+    MOTORCYCLE = ("Motorcycle", "Motorcycle as vehicle type.")
+
+    @classmethod
+    def get_default(cls):
+        return cls.CAR
+
+
+@knext.node(
+    name="""TomTom Isochrone Map""",
+    node_type=knext.NodeType.MANIPULATOR,
+    category=__category,
+    icon_path=__NODE_ICON_PATH + "TomTomIsochrone.png",
+)
+@knext.input_table(
+    name="Input Table with the origin points.",
+    description="Input table with point geometry representing the origin points.",
+)
+@knext.output_table(
+    name="Output Table",
+    description="Output table with isochrone geometry.",
+)
+class TomTomIsochroneMap:
+    """This node calculates the isochrone map (reachable range) for a given geometric point using the
+    Calculate Reachable Range service provided by TomTom.
+
+    This node calculates the isochrone map (reachable range) for a list of given geometric points using the
+    [Calculate Reachable Range service](https://developer.tomtom.com/routing-api/documentation/routing/calculate-reachable-range)
+    of the [Routing service](https://www.tomtom.com/products/routing/)
+    provided by [TomTom](https://www.tomtom.com/). It takes a geometry as origin and generates an isochrone map as output for each given geometry, illustrating
+    areas reachable within a given time budget list. If the input geometry is not a point feature, the centroid will be used.
+
+    Please note that this node requires a
+    [TomTom API key](https://developer.tomtom.com/knowledgebase/platform/articles/how-to-get-an-tomtom-api-key/)
+    that can be acquired for free by [registering here.](https://developer.tomtom.com/user/register)
+    For more details about the number of free request and pricing go to the
+    [TomTom pricing page.](https://developer.tomtom.com/store/maps-api)
+    """
+
+    # input parameters
+    c_geo_col = knext.ColumnParameter(
+        "Origin geometry column",
+        """This parameter selects the geometry column from the input table that represents the origin point for 
+        the isochrone calculation.""",
+        # Allow only Geo compatible columns
+        port_index=0,
+        column_filter=knut.is_geo,
+        include_row_key=False,
+        include_none_column=False,
+    )
+
+    id_col = knext.ColumnParameter(
+        "Origin ID column",
+        """This parameter selects the column which contains for each origin a unique ID. The selected column will be
+        returned in the result table and can be used to link back to the original data.""",
+        port_index=0,
+        column_filter=knut.is_numeric_or_string,
+        include_row_key=False,
+        include_none_column=False,
+    )
+
+    iso_time_budget_list = knext.StringParameter(
+        "Isochrone time budget list",
+        """Input an interval list in minutes separated by comma e.g. 5,10,15,20,25,30""",
+        default_value="5,10,15,20,25,30",
+    )
+
+    depart_at = knext.DateTimeParameter(
+        "Departure time",
+        """The departure time for the isochrone calculation. This parameter can affect the isochrone map due to 
+        varying traffic conditions at different times.""",
+        default_value=None,
+        show_time=True,
+    )
+
+    traffic = knext.BoolParameter(
+        "Consider current traffic",
+        """If selected the current traffic conditions is considered in the isochrone calculation. 
+        Note that information on historic road speeds is always used.""",
+        default_value=True,
+    )
+
+    route_type = knext.EnumParameter(
+        "Route type",
+        """Determines the type of route used for the isochrone calculation. 
+        Different route types can result in different isochrones.""",
+        default_value=_TomTomRouteType.get_default().name,
+        enum=_TomTomRouteType,
+        style=knext.EnumParameter.Style.DROPDOWN,
+    )
+
+    travel_mode = knext.EnumParameter(
+        "Travel mode",
+        """Specifies the mode of travel for the isochrone calculation, which can 
+        significantly impact the shape and extent of the isochrone.""",
+        default_value=_TomTomTravelMode.get_default().name,
+        enum=_TomTomTravelMode,
+    )
+
+    tomtom_api_key = knext.StringParameter(
+        "TomTom API Key",
+        """The 
+        [TomTom API key](https://developer.tomtom.com/knowledgebase/platform/articles/how-to-get-an-tomtom-api-key/)
+        is required to authenticate requests to the 
+        [Calculate Reachable Range service](https://developer.tomtom.com/routing-api/documentation/routing/calculate-reachable-range)
+        which is part of the [Routing API](https://developer.tomtom.com/routing-api/documentation/routing/routing-service)
+        provided by TomTom. 
+        To get an API key, click
+        [here.](https://developer.tomtom.com/knowledgebase/platform/articles/how-to-get-an-tomtom-api-key/)
+        For details about the pricing go to the [TomTom pricing page.](https://developer.tomtom.com/store/maps-api)""",
+        default_value="your api key here",
+        validator=knut.api_key_validator,
+    )
+
+    timeout = knext.IntParameter(
+        "Request timeout in seconds",
+        "The maximum time in seconds to wait for the request to the TomTom API to succeed.",
+        120,
+        min_value=1,
+        is_advanced=True,
+    )
+
+    _COL_GEOMETRY = knut.DEF_GEO_COL_NAME
+    _COL_ISOCHRONE = "Time budget (Mins)"
+
+    def configure(self, configure_context, input_schema_1):
+        self.c_geo_col = knut.column_exists_or_preset(
+            configure_context, self.c_geo_col, input_schema_1, knut.is_geo
+        )
+        self.id_col = knut.column_exists_or_preset(
+            configure_context, self.id_col, input_schema_1, knut.is_numeric_or_string
+        )
+
+        return knext.Schema(
+            [
+                input_schema_1[self.id_col].ktype,
+                knext.int64(),
+                # input_schema_1[self.c_geo_col].ktype,
+                knut.TYPE_POLYGON,
+            ],
+            [
+                self.id_col,
+                self._COL_ISOCHRONE,
+                self._COL_GEOMETRY,
+            ],
+        )
+
+    def execute(self, exec_context: knext.ExecutionContext, input1):
+
+        tomtom_base_url = "https://api.tomtom.com/routing/1/calculateReachableRange/"
+        import requests
+        import json
+        from shapely.geometry import Polygon
+
+        c_gdf = knut.load_geo_data_frame(input1, self.c_geo_col, exec_context)
+        iso_map_list = []
+        loop_i = 1
+        total_loops = len(c_gdf) * len(self.iso_time_budget_list.split(","))
+        if self.tomtom_api_key == "your api key here" or self.tomtom_api_key == "":
+            knut.LOGGER.error(
+                "Please enter your TomTom API key. If you don't have one, you can get one [here](https://developer.tomtom.com/knowledgebase/platform/articles/how-to-get-an-tomtom-api-key/)."
+            )
+            raise ValueError(
+                "Please enter your TomTom API key. If you don't have one, you can get one [here](https://developer.tomtom.com/knowledgebase/platform/articles/how-to-get-an-tomtom-api-key/)."
+            )
+        from datetime import datetime, timedelta
+
+        current_time = datetime.now()
+        depart_at_datetime = datetime.fromtimestamp(int(self.depart_at.timestamp()))
+        if depart_at_datetime < current_time + timedelta(minutes=1):
+            knut.LOGGER.warning(
+                "Departure time is in the past. Adjusting to the same time tomorrow."
+            )
+            depart_at_datetime += timedelta(days=1)
+
+        for k, row in c_gdf.iterrows():
+            id_ = row[self.id_col]
+            x = str(row[self.c_geo_col].centroid.x)
+            y = str(row[self.c_geo_col].centroid.y)
+            time_budgets = list(map(int, self.iso_time_budget_list.split(",")))
+
+            for time_budget in time_budgets:
+                URL = (
+                    "%s%s,%s/json?timeBudgetInSec=%s&travelMode=%s&traffic=%s&key=%s&routeType=%s&departAt=%s"
+                    % (
+                        tomtom_base_url,
+                        y,
+                        x,
+                        str(time_budget * 60),
+                        self.travel_mode.lower(),
+                        str(self.traffic).lower(),
+                        self.tomtom_api_key,
+                        self.route_type.lower(),
+                        depart_at_datetime.isoformat()[0:19],
+                    )
+                )
+
+                req = requests.get(URL, timeout=self.timeout)
+                response_code = req.status_code
+                if response_code != 200:
+                    knut.LOGGER.error(f"Error! TomTom response code: {response_code} ")
+                    raise ValueError(f"Error! TomTom response code: {response_code} ")
+                data = json.loads(req.text)
+                bounds = data["reachableRange"]["boundary"]
+                bounds_polygon = Polygon(
+                    [(x["longitude"], x["latitude"]) for x in bounds]
+                )
+                exec_context.set_progress(
+                    0.9 * loop_i / float(total_loops),
+                    f"Isochrone {loop_i} of {total_loops} computed",
+                )
+                knut.check_canceled(exec_context)
+                loop_i += 1
+                iso_map_list.append([id_, time_budget, bounds_polygon])
+        gdf = gp.GeoDataFrame(
+            iso_map_list, columns=[self.id_col, self._COL_ISOCHRONE, self._COL_GEOMETRY]
+        )
+        gdf.set_geometry(self._COL_GEOMETRY, inplace=True)
+        gdf.crs = c_gdf.crs
+
+        return knut.to_table(gdf)

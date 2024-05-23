@@ -55,6 +55,7 @@ __CELL_TYPE_MULTI_POLYGON = "GeoMultiPolygonCell"
 WEB_REQUEST_HEADER = {"User-Agent": "KNIME-Geospatial/1.1"}
 DEF_GEO_COL_NAME = "Geometry"
 
+
 def geo_point_col_parameter(
     label: str = __DEF_GEO_COL_LABEL,
     description: str = __DEF_GEO_COL_DESC,
@@ -749,23 +750,11 @@ def get_env_path():
     return env_path
 
 
-# def re_order_weight_rows(gdf, adjust_list, id_col):
-#     """
-#     Reorder the spatial weight according to the id_col.
-#     """
-#     # Reorder the rows based on the weight column
-#     import libpysal
+def api_key_validator(api_key: str) -> str:
+    """
+    Checks if the given API key is valid.
+    """
 
-#     gdf.index = range(len(gdf))
-#     w_ref = libpysal.weights.Rook.from_dataframe(gdf)
-#     id_map = gdf[id_col].to_dict()
-#     w_ref.transform = "r"
-#     adjust_list_ref = w_ref.to_adjlist()
-#     for k, row in adjust_list_ref.iterrows():
-#         focal = id_map[row["focal"]]
-#         neighbor = id_map[row["neighbor"]]
-#         row["weight"] = adjust_list[
-#             (adjust_list["focal"] == focal) & (adjust_list["neighbor"] == neighbor)
-#         ]["weight"]
-
-#     return adjust_list_ref
+    if api_key is None or len(api_key) == 0:
+        raise knext.InvalidParametersError("API key must not be empty")
+    return str(api_key)
