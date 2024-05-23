@@ -282,7 +282,6 @@ class GoogleDistanceMatrix:
         enum=_GoogleTravelMode,
     )
 
-<<<<<<< Upstream, based on origin/main
     consider_traffic = knext.BoolParameter(
         label="Consider traffic",
         description="""If checked, the travel time and distance will be computed considering the traffic conditions.
@@ -314,44 +313,6 @@ class GoogleDistanceMatrix:
         show_time=True,
         show_seconds=True,
     ).rule(knext.OneOf(consider_traffic, [True]), knext.Effect.SHOW)
-=======
-    # add traffic models
-    traffic_model = knext.StringParameter(
-        "Traffic model",
-        """The following
-        [traffic models](https://developers.google.com/maps/documentation/distance-matrix/distance-matrix?hl=zh-cn#traffic_model)
-        are supported: 
-        - `best_guess` (default) indicates that the returned duration_in_traffic should be the best estimate of travel time given what is known about both historical traffic conditions and live traffic. Live traffic becomes more important the closer the departure_time is to now.
-        - `pessimistic` indicates that the returned duration_in_traffic should be longer than the actual travel time on most days, though occasional days with particularly bad traffic conditions may exceed this value.
-        - `optimistic` indicates that the returned duration_in_traffic should be shorter than the actual travel time on most days, though occasional days with particularly good traffic conditions may be faster than this value.
-        """,
-        default_value="Best guess",
-        since_version="1.2.0",
-        enum=["Best guess", "Pessimistic", "Optimistic"],
-    )
-
-    use_departure_time = knext.BoolParameter(
-        label="Use departure time",
-        description="""If checked, the departure time will be used to compute the travel time and distance.
-        If unchecked, the travel time and distance will be computed without considering the departure time.""",
-        default_value=False,
-        since_version="1.2.0",
-    )
-
-    departure_time = knext.DateTimeParameter(
-        label="Departure time",
-        description="""The departure time may be specified in two cases:
-                - For requests where the travel mode is transit: You can optionally specify departure_time or arrival_time. If None the departure_time defaults to now (that is, the departure time defaults to the current time).
-                - For requests where the travel mode is driving: You can specify the departure_time to receive a route and trip duration (response field: duration_in_traffic) that take traffic conditions into account. The departure_time must be set to the current time or some time in the future. It cannot be in the past.
-                
-                Note: If departure time is not specified, choice of route and duration are based on road network and average time-independent traffic conditions. Results for a given request may vary over time due to changes in the road network, updated average traffic conditions, and the distributed nature of the service. Results may also vary between nearly-equivalent routes at any time or frequency.
-                """,
-        default_value=None,
-        since_version="1.2.0",
-        show_time=True,
-        show_seconds=True,
-    ).rule(knext.OneOf(use_departure_time, [True]), knext.Effect.SHOW)
->>>>>>> b5dca61 Update spatialnetwork.py
     # Constant for distance matrix
     _BASE_URL = "https://maps.googleapis.com/maps/api/distancematrix/json?language=en&units=imperial&origins={0}&destinations={1}&key={2}&mode={3}&traffic_model={4}"
 
@@ -494,7 +455,6 @@ class GoogleDistanceMatrix:
         # ... and default value 0 for the duration and distance column
         distance_matrix[_COL_DURATION] = 0
         distance_matrix[_COL_DISTANCE] = 0
-<<<<<<< Upstream, based on origin/main
 
         batchsize = 25
         if len(distance_matrix) <= 25:
@@ -509,32 +469,6 @@ class GoogleDistanceMatrix:
                     origin_coords, destination_coords, switch_od=switch_od
                 )
 
-=======
-        # can process any geometry since it computes the centroid first
-        for i in range(0, len(distance_matrix)):
-            origins_lat_lon = "{},{}".format(
-                merge_df_x.centroid.y[i], merge_df_x.centroid.x[i]
-            )
-            destinations_lat_lon = "{},{}".format(
-                merge_df_y.centroid.y[i], merge_df_y.centroid.x[i]
-            )
-            google_request_link = self._BASE_URL.format(
-                origins_lat_lon,
-                destinations_lat_lon,
-                self.api_key,
-                self.travel_mode.lower(),
-                "_".join(self.traffic_model.lower().split("_")),
-            )
-            if self.use_departure_time:
-                google_request_link = google_request_link + "&departure_time={}".format(
-                    self.departure_time.strftime("%s")
-                )
-            google_travel_cost = fetch_google_od(google_request_link)
-            # add duration result in minutes
-            distance_matrix.iat[i, 2] = google_travel_cost[0]
-            # add distance result in meters
-            distance_matrix.iat[i, 3] = google_travel_cost[1]
->>>>>>> b5dca61 Update spatialnetwork.py
         return knut.to_table(distance_matrix)
 
 
@@ -1609,7 +1543,6 @@ class RoadNetworkIsochroneMap:
         gd_fx.rename(columns={"geometry": self._COL_GEOMETRY}, inplace=True)
         gd_fx.reset_index(drop=True, inplace=True)
         return knut.to_table(gd_fx)
-
 
 
 ############################################
