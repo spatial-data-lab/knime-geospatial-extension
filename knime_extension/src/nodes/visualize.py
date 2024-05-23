@@ -448,7 +448,11 @@ class ViewNode:
         if self.basemap_setting.base_map == "Don't show base map":
             base_map = None
         else:
+            import folium
+
             base_map = self.basemap_setting.base_map
+            base_map = folium.TileLayer(base_map)
+
         kws = {
             # "column":self.color_col,
             # "cmap":self.color_map,
@@ -463,6 +467,7 @@ class ViewNode:
                 "max_labels": 3,
                 "colorbar": True,
             },
+            "map_kwds": {"world_copy_jump": True},
         }
 
         if "none" not in str(self.color_settings.color_col).lower():
