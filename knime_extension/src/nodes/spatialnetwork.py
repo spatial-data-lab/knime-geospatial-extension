@@ -1433,6 +1433,7 @@ class _TomTomRouteType(knext.EnumParameterOptions):
     FASTEST = ("Fastest", "Focuses on reducing travel time.")
     SHORTEST = ("Shortest", "Prioritizes the shortest physical distance.")
     ECO = ("Eco", "Optimizes for fuel efficiency.")
+
     @classmethod
     def get_default(cls):
         return cls.FASTEST
@@ -1609,12 +1610,15 @@ class TomTomIsochroneMap:
                 "Please enter your TomTom API key. If you don't have one, you can get one [here](https://developer.tomtom.com/knowledgebase/platform/articles/how-to-get-an-tomtom-api-key/)."
             )
         from datetime import datetime, timedelta
+
         current_time = datetime.now()
         depart_at_datetime = datetime.fromtimestamp(int(self.depart_at.timestamp()))
         if depart_at_datetime < current_time + timedelta(minutes=1):
-            knut.LOGGER.warning("Departure time is in the past. Adjusting to the same time tomorrow.")
+            knut.LOGGER.warning(
+                "Departure time is in the past. Adjusting to the same time tomorrow."
+            )
             depart_at_datetime += timedelta(days=1)
-        
+
         for k, row in c_gdf.iterrows():
             id_ = row[self.id_col]
             x = str(row[self.c_geo_col].centroid.x)
