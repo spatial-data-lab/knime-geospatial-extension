@@ -2,9 +2,7 @@ name: geospatial_env
 channels:
   - knime
   - conda-forge
-  - esri
 dependencies:
-  - arcgis=2.2.0.1
   - packaging
   - python=3.9
   - curl=8.1.2 #required by libgdal which includes an older version with vulnerabilities
