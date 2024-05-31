@@ -1,6 +1,7 @@
 import geopandas as gp
 import knime_extension as knext
 import util.knime_utils as knut
+import datetime as dt
 
 __category = knext.category(
     path="/community/geo",
@@ -19,6 +20,7 @@ __NODE_ICON_PATH = "icons/icon/Spatialnetwork/"
 _COL_O_ID = "Origin ID"
 _COL_D_ID = "Destination ID"
 _COL_DURATION = "Duration"
+_COL_DURATION_TRAFFIC = "Duration in Traffic"
 _COL_DISTANCE = "Distance"
 
 
@@ -269,8 +271,8 @@ class GoogleDistanceMatrix:
         label="Google API key",
         description="""Click [here](https://developers.google.com/maps/documentation/distance-matrix/get-api-key) for details on
         how to obtain and use a Google API key for the Distance Matrix API.""",
-        default_value="",
-        # TODO: Check that API key is present
+        default_value="your api key here",
+        validator=knut.api_key_validator,
     )
 
     travel_mode = knext.EnumParameter(
@@ -287,7 +289,7 @@ class GoogleDistanceMatrix:
         description="""If checked, the travel time and distance will be computed considering the traffic conditions.
         If unchecked, the travel time and distance will be computed without considering the traffic conditions.""",
         default_value=False,
-        since_version="1.2.0",
+        since_version="1.3.0",
     )
     # add traffic models
     traffic_model = knext.EnumParameter(
@@ -296,7 +298,7 @@ class GoogleDistanceMatrix:
         specifies the assumptions to use when calculating time in traffic.
         """,
         default_value=_GoogleTrafficModel.get_default().name,
-        since_version="1.2.0",
+        since_version="1.3.0",
         enum=_GoogleTrafficModel,
     ).rule(knext.OneOf(consider_traffic, [True]), knext.Effect.SHOW)
 
@@ -308,13 +310,13 @@ class GoogleDistanceMatrix:
                 
                 Note: If departure time is not specified, choice of route and duration are based on road network and average time-independent traffic conditions. Results for a given request may vary over time due to changes in the road network, updated average traffic conditions, and the distributed nature of the service. Results may also vary between nearly-equivalent routes at any time or frequency.
                 """,
-        default_value=None,
-        since_version="1.2.0",
+        default_value=dt.datetime.now() + dt.timedelta(days=1),
+        since_version="1.3.0",
         show_time=True,
-        show_seconds=True,
+        show_seconds=False,
     ).rule(knext.OneOf(consider_traffic, [True]), knext.Effect.SHOW)
     # Constant for distance matrix
-    _BASE_URL = "https://maps.googleapis.com/maps/api/distancematrix/json?language=en&units=imperial&origins={0}&destinations={1}&key={2}&mode={3}&traffic_model={4}"
+    _BASE_URL = "https://maps.googleapis.com/maps/api/distancematrix/json?language=en&units=imperial&origins={0}&destinations={1}&key={2}&mode={3}"
 
     def configure(self, configure_context, o_schema, d_schema):
         self.o_geo_col = knut.column_exists_or_preset(
@@ -329,10 +331,25 @@ class GoogleDistanceMatrix:
         knut.column_exists(self.d_id_col, d_schema)
         d_id_type = d_schema[self.d_id_col].ktype
 
-        return knext.Schema(
-            [o_id_type, d_id_type, knext.double(), knext.int64()],
-            [_COL_O_ID, _COL_D_ID, _COL_DURATION, _COL_DISTANCE],
-        )
+        if self.api_key == "your api key here":
+            configure_context.set_warning("Please provide a valid API key")
+
+        if self.consider_traffic:
+            return knext.Schema(
+                [o_id_type, d_id_type, knext.double(), knext.double(), knext.int64()],
+                [
+                    _COL_O_ID,
+                    _COL_D_ID,
+                    _COL_DURATION_TRAFFIC,
+                    _COL_DURATION,
+                    _COL_DISTANCE,
+                ],
+            )
+        else:
+            return knext.Schema(
+                [o_id_type, d_id_type, knext.double(), knext.int64()],
+                [_COL_O_ID, _COL_D_ID, _COL_DURATION, _COL_DISTANCE],
+            )
 
     def execute(self, exec_context: knext.ExecutionContext, left_input, right_input):
         # define function to derive travel time and distance from Google Maps API
@@ -342,6 +359,8 @@ class GoogleDistanceMatrix:
         import numpy as np
 
         knut.check_canceled(exec_context)
+        if self.api_key == "your api key here":
+            raise ("Please provide a valid API key")
 
         def extract_coords(point):
             return point.centroid.y, point.centroid.x
@@ -377,16 +396,24 @@ class GoogleDistanceMatrix:
             response = requests.get(google_request_link)
             data = response.json()
             if data["status"] == "OK":
+
                 elements = json_normalize(data["rows"], record_path=["elements"])
                 end_index = start_index + len(elements) - 1
+                if self.consider_traffic:
+                    duration_traffic_val = elements["duration_in_traffic.value"]
+                    distance_matrix.loc[
+                        start_index:end_index, _COL_DURATION_TRAFFIC
+                    ] = np.array(duration_traffic_val / 60)
+                duration_val = elements["duration.value"]
                 distance_matrix.loc[start_index:end_index, _COL_DURATION] = np.array(
-                    elements["duration.value"] / 60
+                    duration_val / 60
                 )
+
                 distance_matrix.loc[start_index:end_index, _COL_DISTANCE] = np.array(
                     elements["distance.value"]
                 )
             else:
-                print(
+                knut.LOGGER.error(
                     f"Error fetching data: {data.get('error_message', 'No error message provided')}"
                 )
 
@@ -453,6 +480,8 @@ class GoogleDistanceMatrix:
         # create the result matrix with the two id columns...
         distance_matrix = merge_df[[_COL_O_ID, _COL_D_ID]]
         # ... and default value 0 for the duration and distance column
+        if self.consider_traffic:
+            distance_matrix[_COL_DURATION_TRAFFIC] = 0
         distance_matrix[_COL_DURATION] = 0
         distance_matrix[_COL_DISTANCE] = 0
 
