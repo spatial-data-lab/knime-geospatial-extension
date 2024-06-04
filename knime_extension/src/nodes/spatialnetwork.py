@@ -1,6 +1,7 @@
 import geopandas as gp
 import knime_extension as knext
 import util.knime_utils as knut
+import datetime as dt
 
 __category = knext.category(
     path="/community/geo",
@@ -19,6 +20,7 @@ __NODE_ICON_PATH = "icons/icon/Spatialnetwork/"
 _COL_O_ID = "Origin ID"
 _COL_D_ID = "Destination ID"
 _COL_DURATION = "Duration"
+_COL_DURATION_TRAFFIC = "Duration in Traffic"
 _COL_DISTANCE = "Distance"
 
 
@@ -173,6 +175,29 @@ class _GoogleTravelMode(knext.EnumParameterOptions):
         return cls.DRIVING
 
 
+class _GoogleTrafficModel(knext.EnumParameterOptions):
+    BEST_GUESS = (
+        "Best guess",
+        """Indicates that the returned duration in traffic should be the best estimate of travel time given what is 
+        known about both historical traffic conditions and live traffic. Live traffic becomes more important the closer
+        the departure time is to now.""",
+    )
+    PESSIMISTIC = (
+        "Pessimistic",
+        """Indicates that the returned duration in traffic should be longer than the actual travel time on most days, 
+        though occasional days with particularly bad traffic conditions may exceed this value.""",
+    )
+    OPTIMISTIC = (
+        "Optimistic",
+        """Indicates that the returned duration in traffic should be shorter than the actual travel time on most days, 
+        though occasional days with particularly good traffic conditions may be faster than this value.""",
+    )
+
+    @classmethod
+    def get_default(cls):
+        return cls.BEST_GUESS
+
+
 @knext.node(
     name="Google Distance Matrix",
     node_type=knext.NodeType.MANIPULATOR,
@@ -246,7 +271,8 @@ class GoogleDistanceMatrix:
         label="Google API key",
         description="""Click [here](https://developers.google.com/maps/documentation/distance-matrix/get-api-key) for details on
         how to obtain and use a Google API key for the Distance Matrix API.""",
-        default_value="",
+        default_value="your api key here",
+        validator=knut.api_key_validator,
     )
 
     travel_mode = knext.EnumParameter(
@@ -257,6 +283,38 @@ class GoogleDistanceMatrix:
         default_value=_GoogleTravelMode.get_default().name,
         enum=_GoogleTravelMode,
     )
+
+    consider_traffic = knext.BoolParameter(
+        label="Consider traffic",
+        description="""If checked, the travel time and distance will be computed considering the traffic conditions.
+        If unchecked, the travel time and distance will be computed without considering the traffic conditions.""",
+        default_value=False,
+        since_version="1.3.0",
+    )
+    # add traffic models
+    traffic_model = knext.EnumParameter(
+        "Traffic model",
+        """The [traffic model](https://developers.google.com/maps/documentation/distance-matrix/distance-matrix#traffic_model)
+        specifies the assumptions to use when calculating time in traffic.
+        """,
+        default_value=_GoogleTrafficModel.get_default().name,
+        since_version="1.3.0",
+        enum=_GoogleTrafficModel,
+    ).rule(knext.OneOf(consider_traffic, [True]), knext.Effect.SHOW)
+
+    departure_time = knext.DateTimeParameter(
+        label="Departure time",
+        description="""The departure time may be specified in two cases:
+                - For requests where the travel mode is transit: You can optionally specify departure_time or arrival_time. If None the departure_time defaults to now (that is, the departure time defaults to the current time).
+                - For requests where the travel mode is driving: You can specify the departure_time to receive a route and trip duration (response field: duration_in_traffic) that take traffic conditions into account. The departure_time must be set to the current time or some time in the future. It cannot be in the past.
+                
+                Note: If departure time is not specified, choice of route and duration are based on road network and average time-independent traffic conditions. Results for a given request may vary over time due to changes in the road network, updated average traffic conditions, and the distributed nature of the service. Results may also vary between nearly-equivalent routes at any time or frequency.
+                """,
+        default_value=dt.datetime.now() + dt.timedelta(days=1),
+        since_version="1.3.0",
+        show_time=True,
+        show_seconds=False,
+    ).rule(knext.OneOf(consider_traffic, [True]), knext.Effect.SHOW)
     # Constant for distance matrix
     _BASE_URL = "https://maps.googleapis.com/maps/api/distancematrix/json?language=en&units=imperial&origins={0}&destinations={1}&key={2}&mode={3}"
 
@@ -273,37 +331,120 @@ class GoogleDistanceMatrix:
         knut.column_exists(self.d_id_col, d_schema)
         d_id_type = d_schema[self.d_id_col].ktype
 
-        return knext.Schema(
-            [o_id_type, d_id_type, knext.double(), knext.int64()],
-            [_COL_O_ID, _COL_D_ID, _COL_DURATION, _COL_DISTANCE],
-        )
+        if self.api_key == "your api key here":
+            configure_context.set_warning("Please provide a valid API key")
+
+        if self.consider_traffic:
+            return knext.Schema(
+                [o_id_type, d_id_type, knext.double(), knext.double(), knext.int64()],
+                [
+                    _COL_O_ID,
+                    _COL_D_ID,
+                    _COL_DURATION_TRAFFIC,
+                    _COL_DURATION,
+                    _COL_DISTANCE,
+                ],
+            )
+        else:
+            return knext.Schema(
+                [o_id_type, d_id_type, knext.double(), knext.int64()],
+                [_COL_O_ID, _COL_D_ID, _COL_DURATION, _COL_DISTANCE],
+            )
 
     def execute(self, exec_context: knext.ExecutionContext, left_input, right_input):
         # define function to derive travel time and distance from Google Maps API
-        import urllib.request as urllib2  # for Google Drive
-        import json  # for OSRM
+
+        import requests
+        from pandas import json_normalize
+        import numpy as np
 
         knut.check_canceled(exec_context)
+        if self.api_key == "your api key here":
+            raise ("Please provide a valid API key")
 
-        def fetch_google_od(download_link):
-            nt_duration = 0
-            nt_distance = 0
-            try:
-                req = urllib2.urlopen(download_link)
-                jsonout = json.loads(req.read())
-                nt_duration = jsonout["rows"][0]["elements"][0]["duration"][
-                    "value"
-                ]  # meters
-                nt_distance = jsonout["rows"][0]["elements"][0]["distance"][
-                    "value"
-                ]  # seconds
+        def extract_coords(point):
+            return point.centroid.y, point.centroid.x
 
-                # transform seconds to minutes
-                nt_duration = round(nt_duration / 60, 2)
-                nt_distance = round(nt_distance, 2)
-            except Exception as err:
-                knut.LOGGER.warning(f"Exception while calling Google Matrix API: {err}")
-            return [nt_duration, nt_distance]
+        def update_distance_matrix(origins, destinations, start_index):
+            origin_batch = "|".join([f"{lat},{lng}" for lat, lng in origins])
+            destination_batch = "|".join([f"{lat},{lng}" for lat, lng in destinations])
+            google_request_link = self._BASE_URL.format(
+                origin_batch,
+                destination_batch,
+                self.api_key,
+                self.travel_mode.lower(),
+            )
+            if self.consider_traffic:
+                # handle departure time
+                from datetime import datetime, timedelta
+
+                departure_time_timestamp = int(self.departure_time.timestamp())
+                departure_time = datetime.fromtimestamp(departure_time_timestamp)
+                current_time = datetime.now()
+                if departure_time < current_time + timedelta(minutes=10):
+                    knut.LOGGER.warning(
+                        "Departure time is in the past. Adjusting to the same time tomorrow."
+                    )
+                    departure_time = departure_time + timedelta(days=1)
+                departure_time_timestamp = int(departure_time.timestamp())
+                google_request_link = (
+                    google_request_link
+                    + "&traffic_model="
+                    + "_".join(self.traffic_model.lower().split(" "))
+                    + "&departure_time={}".format(departure_time_timestamp)
+                )
+            response = requests.get(google_request_link)
+            data = response.json()
+            if data["status"] == "OK":
+
+                elements = json_normalize(data["rows"], record_path=["elements"])
+                end_index = start_index + len(elements) - 1
+                if self.consider_traffic:
+                    duration_traffic_val = elements["duration_in_traffic.value"]
+                    distance_matrix.loc[
+                        start_index:end_index, _COL_DURATION_TRAFFIC
+                    ] = np.array(duration_traffic_val / 60)
+                duration_val = elements["duration.value"]
+                distance_matrix.loc[start_index:end_index, _COL_DURATION] = np.array(
+                    duration_val / 60
+                )
+
+                distance_matrix.loc[start_index:end_index, _COL_DISTANCE] = np.array(
+                    elements["distance.value"]
+                )
+            else:
+                knut.LOGGER.error(
+                    f"Error fetching data: {data.get('error_message', 'No error message provided')}"
+                )
+
+        def calculate_od_batch(loop_coords, batch_coords, switch_od=False):
+            for i in range(len(loop_coords)):
+                process_counter = i + 1
+                exec_context.set_progress(
+                    0.9 * process_counter / len(loop_coords),
+                    f"Batch {process_counter} of {len(loop_coords)} processed",
+                )
+                # Calculate the number of full batches
+                jtime = len(batch_coords) // batchsize
+                # Calculate the number of leftover destinations
+                leftover = len(batch_coords) % batchsize
+                for j in range(jtime):
+                    batch_points = batch_coords[j * batchsize : (j + 1) * batchsize]
+                    start_index = i * len(batch_coords) + j * batchsize
+                    loop_points = loop_coords[i : i + 1]
+                    if switch_od:
+                        update_distance_matrix(loop_points, batch_points, start_index)
+                    else:
+                        update_distance_matrix(batch_points, loop_points, start_index)
+                if leftover > 0:
+                    left_start = len(batch_coords) - leftover
+                    batch_points = batch_coords[left_start:]
+                    start_index = (i + 1) * len(batch_coords) - leftover
+                    loop_points = loop_coords[i : i + 1]
+                    if switch_od:
+                        update_distance_matrix(loop_points, batch_points, start_index)
+                    else:
+                        update_distance_matrix(batch_points, loop_points, start_index)
 
         o_gdf = knut.load_geo_data_frame(left_input, self.o_geo_col, exec_context)
         d_gdf = knut.load_geo_data_frame(right_input, self.d_geo_col, exec_context)
@@ -320,35 +461,43 @@ class GoogleDistanceMatrix:
             columns={self.d_geo_col: "geometry", self.d_id_col: _COL_D_ID}
         )
 
+        # Create Coordinates
+        o_gdf["origin_coords"] = o_gdf["geometry"].apply(extract_coords)
+        d_gdf["destination_coords"] = d_gdf["geometry"].apply(extract_coords)
+        # Flatten lists to send as OD pairs in batches
+        origin_coords = list(o_gdf["origin_coords"])
+        destination_coords = list(d_gdf["destination_coords"])
         # Generate origin destination matrix via cross join
-        merge_df = o_gdf.merge(d_gdf, how="cross")
-        merge_df_x = gp.GeoDataFrame(geometry=merge_df["geometry_x"])
-        merge_df_y = gp.GeoDataFrame(geometry=merge_df["geometry_y"])
+        switch_od = (
+            len(origin_coords) > 2 * len(destination_coords)
+            and len(origin_coords) >= 25
+        )
+        if switch_od == False:
+            merge_df = o_gdf.merge(d_gdf, how="cross")
+        else:
+            merge_df = d_gdf.merge(o_gdf, how="cross")
 
         # create the result matrix with the two id columns...
         distance_matrix = merge_df[[_COL_O_ID, _COL_D_ID]]
         # ... and default value 0 for the duration and distance column
+        if self.consider_traffic:
+            distance_matrix[_COL_DURATION_TRAFFIC] = 0
         distance_matrix[_COL_DURATION] = 0
         distance_matrix[_COL_DISTANCE] = 0
-        # can process any geometry since it computes the centroid first
-        for i in range(0, len(distance_matrix)):
-            origins_lat_lon = "{},{}".format(
-                merge_df_x.centroid.y[i], merge_df_x.centroid.x[i]
-            )
-            destinations_lat_lon = "{},{}".format(
-                merge_df_y.centroid.y[i], merge_df_y.centroid.x[i]
-            )
-            google_request_link = self._BASE_URL.format(
-                origins_lat_lon,
-                destinations_lat_lon,
-                self.api_key,
-                self.travel_mode.lower(),
-            )
-            google_travel_cost = fetch_google_od(google_request_link)
-            # add duration result in minutes
-            distance_matrix.iat[i, 2] = google_travel_cost[0]
-            # add distance result in meters
-            distance_matrix.iat[i, 3] = google_travel_cost[1]
+
+        batchsize = 25
+        if len(distance_matrix) <= 25:
+            update_distance_matrix(origin_coords, destination_coords, 0)
+        else:
+            if switch_od:
+                calculate_od_batch(
+                    destination_coords, origin_coords, switch_od=switch_od
+                )
+            else:
+                calculate_od_batch(
+                    origin_coords, destination_coords, switch_od=switch_od
+                )
+
         return knut.to_table(distance_matrix)
 
 
@@ -1423,7 +1572,6 @@ class RoadNetworkIsochroneMap:
         gd_fx.rename(columns={"geometry": self._COL_GEOMETRY}, inplace=True)
         gd_fx.reset_index(drop=True, inplace=True)
         return knut.to_table(gd_fx)
-
 
 
 ############################################
