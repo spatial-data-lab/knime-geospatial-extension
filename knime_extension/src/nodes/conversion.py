@@ -522,7 +522,7 @@ class GeoToGeoJSONNode(_FromGeoConverter):
 # Geometry to Lat/Lon
 ############################################
 @knext.node(
-    name="Geometry to Lat/Long",
+    name="Geometry to Lat/Lon",
     node_type=knext.NodeType.MANIPULATOR,
     icon_path=__NODE_ICON_PATH + "GeoToLatLon.png",
     category=__category,

@@ -623,3 +623,139 @@ class RandomPointNode:
             size=gdf[self.num_col], method="uniform", seed=seed
         )
         return knut.to_table(gdf, exec_context)
+
+############################################
+# OD To Curve\Line
+############################################
+
+
+@knext.node(
+    name="OD To Curve\Line",
+    node_type=knext.NodeType.MANIPULATOR,
+    icon_path="icons/icon/GeometryTransformation/ODtoCurve.png",
+    category=category,
+    after="",
+)
+@knext.input_table(
+    name="Geo table",
+    description="Input table containing geometry columns representing origin and destination points.",
+)
+@knext.output_table(
+    name="Table with directed line/curve",
+    description="Output table with geometry columns representing either straight lines or Bézier curves connecting origin and destination points.",
+)
+@knut.geo_node_description(
+    short_description="Generate lines or Bézier curves between origin and destination points.",
+    description="""This node generates a GeoSeries containing geometries representing connections between origin and destination points. 
+    Users can choose between generating straight lines or smooth Bézier curves. The Bézier curves are created based on user-defined parameters,
+    including the number of points, height scaling, and curve angle. This transformation is particularly useful for visualizing flows or movements 
+    in a more intuitive manner compared to straight lines.
+    """,
+    references={
+        "Bézier curve": "https://en.wikipedia.org/wiki/B%C3%A9zier_curve",
+    },
+)
+class ODtoCurveNode:
+    """
+    This node generates geometries representing connections between origin and destination points as either straight lines or Bézier curves..
+    """
+
+    o_geo_col = knut.geo_col_parameter()
+
+    d_geo_col = knut.geo_col_parameter()
+
+    linetype = knext.StringParameter(
+        "Link Type Selection",
+        "Select whether to generate straight lines or Bézier curves.",
+        "curve",
+        enum=["curve", "line"],
+    )
+
+    num_points = knext.IntParameter(
+        "Number of points ",
+        "Specify the number of points to define the Bézier curve.",
+        default_value=100,
+        is_advanced=True,
+    ).rule(knext.OneOf(linetype, ["curve"]), knext.Effect.SHOW)
+
+    height_scale = knext.DoubleParameter(
+        "Hight scale ",
+        "Set the scale factor for the curve's height, controlling the distance of the curve from the straight line.",
+        default_value=0.3,
+        is_advanced=True,
+    ).rule(knext.OneOf(linetype, ["curve"]), knext.Effect.SHOW)
+
+    angle_degrees = knext.IntParameter(
+        "Curve Angle (Degrees) ",
+        "Define the angle that controls the shape and direction of the Bézier curve.",
+        default_value=60,
+        is_advanced=True,
+    ).rule(knext.OneOf(linetype, ["curve"]), knext.Effect.SHOW)
+
+ 
+    def configure(self, configure_context, input_schema):
+        self.o_geo_col = knut.column_exists_or_preset(
+            configure_context, self.o_geo_col, input_schema, knut.is_geo)
+        self.d_geo_col = knut.column_exists_or_preset(
+            configure_context, self.d_geo_col, input_schema, knut.is_geo
+        )
+
+        return input_schema.append(knext.Column(knut.TYPE_LINE, "Line"))
+    
+
+    def execute(self, exec_context: knext.ExecutionContext, input_1):
+        gdf = knut.load_geo_data_frame(input_1, self.o_geo_col, exec_context)
+
+        import numpy as np
+        from shapely.geometry import LineString
+        def create_line_geometry(row):
+            p0 = row[self.o_geo_col].coords[0]
+            p2 = row[self.d_geo_col].coords[0]
+            return LineString([p0, p2])
+
+        def bezier_curve(p0, cp, p2, num_points=100):
+            t_values = np.linspace(0, 1, num_points)
+            curve = np.outer((1 - t_values) ** 2, p0) + \
+                    np.outer(2 * (1 - t_values) * t_values, cp) + \
+                    np.outer(t_values ** 2, p2)
+            return curve
+
+        def calculate_control_point(p0, p2, height_scale=0.3, angle_degrees=60):
+            midpoint = (p0 + p2) / 2
+            distance = np.linalg.norm(p2 - p0)
+            offset_distance = distance * height_scale
+            vec = p2 - p0
+            angle_radians = np.radians(angle_degrees)
+            rotation_matrix = np.array([
+                [np.cos(angle_radians), np.sin(angle_radians)],
+                [-np.sin(angle_radians), np.cos(angle_radians)]
+            ])
+            vec_perpendicular = np.dot(rotation_matrix, vec)
+            vec_perpendicular /= np.linalg.norm(vec_perpendicular)
+            vec_perpendicular *= offset_distance
+            control_point = midpoint + vec_perpendicular
+            return control_point
+
+        def create_bezier_line_geometry(row,height_scale=self.height_scale, angle_degrees=self.angle_degrees, num_points=self.num_points):
+            p0 = np.array(row[self.o_geo_col].coords[0])
+            p2 = np.array(row[self.d_geo_col].coords[0])
+            
+            # Calculate the control point
+            cp = calculate_control_point(p0, p2, height_scale=self.height_scale, angle_degrees=self.angle_degrees)
+            
+            # Calculate the points on the Bezier curve
+            curve_points = bezier_curve(p0, cp, p2, num_points=self.num_points)
+            
+            # Convert the curve points to a LineString geometry
+            line_geom = LineString(curve_points)
+            
+            return line_geom
+
+        if self.linetype == "curve":
+            gdf['Line'] = gdf.apply(create_bezier_line_geometry, axis=1)
+        else:
+            gdf['Line'] = gdf.apply(create_line_geometry, axis=1)
+
+
+        return knut.to_table(gdf)
+    
