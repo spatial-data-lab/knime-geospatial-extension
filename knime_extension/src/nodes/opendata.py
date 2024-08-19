@@ -703,7 +703,8 @@ class OSMGeoBoundaryNode:
 )
 @knext.output_table(
     name="GDELT GKG Data Table",
-    description="Retrieved geodata from GDELT Global Knowledge Graph",
+    description="Retrieved geodata from GDELT Global Knowledge Graph. For details on the result columns see the "
+    + "[GDELT documentation.](https://blog.gdeltproject.org/announcing-our-first-api-gkg-geojson/)",
 )
 class GDELTGKGNode:
     """This node retrieves GDELT Global Knowledge Graph data.
@@ -711,22 +712,33 @@ class GDELTGKGNode:
     The GKG is a massive archive of global news and translated into 65 languages, updated every 15 minutes.
     The GKG is a network diagram of the world's events and news coverage, containing more than 1.5 billion people,
     organizations, locations, themes, emotions, counts, quotes, images and events across the planet
-    dating back to January 1, 1979 and updated every 15 minutes.
-    Please refer to [GDELT Document](https://blog.gdeltproject.org/announcing-our-first-api-gkg-geojson/) for more details.
+    dating back to January 1, 1979, and updated every 15 minutes.
 
-    Data copyright by [GDELT Project](https://www.gdeltproject.org/).
+    The node generates queries in the following form:
+    *https://api.gdeltproject.org/api/v1/gkg_geojson?QUERY=<QUERY>&TIMESPAN=<Last Hours \* 60>*.
+    Please refer to the [GDELT documentation](https://blog.gdeltproject.org/announcing-our-first-api-gkg-geojson/)
+    for more details about the supported input values and output field definitions.
+
+    ##Note
+    Data copyright by [GDELT Project](https://www.gdeltproject.org/) and provided under the following
+    [Terms of Use](https://www.gdeltproject.org/about.html#termsofuse).
     """
 
-    key_word = knext.StringParameter(
-        label="Key Word",
-        description="The key word to search in GDELT GKG.",
+    query = knext.StringParameter(
+        label="Query",
+        description="The query to search in GDELT GKG. This can be a single key word (click "
+        + "[here](http://data.gdeltproject.org/documentation/GKG-MASTER-THEMELIST.TXT) for a complete list) or a "
+        + "more complex query (click [here](https://blog.gdeltproject.org/announcing-our-first-api-gkg-geojson/) "
+        + "for more info and examples).",
         default_value="FOOD_SECURITY",
     )
 
     last_hours = knext.IntParameter(
         label="Last Hours",
         description="The last hours to search in GDELT GKG.",
-        default_value=24,
+        default_value=1,
+        min_value=1,
+        max_value=24,
     )
 
     timeout = knext.IntParameter(
@@ -738,7 +750,6 @@ class GDELTGKGNode:
     )
 
     def configure(self, configure_context):
-        # TODO Create combined schema
         return None
 
     def execute(self, exec_context: knext.ExecutionContext):
@@ -746,7 +757,7 @@ class GDELTGKGNode:
         import requests
 
         url = "https://api.gdeltproject.org/api/v1/gkg_geojson?QUERY=%s&TIMESPAN=%d" % (
-            self.key_word,
+            self.query,
             self.last_hours * 60,
         )
         response = requests.get(url, timeout=self.timeout)
@@ -767,26 +778,45 @@ class GDELTGKGNode:
 )
 @knext.output_table(
     name="Open Sky Network Data Table",
-    description="Retrieved geodata from Open Sky Network Data",
+    description="Retrieved [state vectors](https://openskynetwork.github.io/opensky-api/index.html#state-vectors) "
+    + "with geodata from Open Sky Network Data. For details on the result columns see the "
+    + "[OpenSky documentation.](https://openskynetwork.github.io/opensky-api/rest.html#response)",
 )
 class OpenSkyNetworkDataNode:
     """This node retrieves Open Sky Network Data.
-    The OpenSky Network is a non-profit association based in Switzerland that operates a crowdsourced global
-    database of air traffic control data.
-    The network consists of thousands of sensors connected to the Internet by volunteers, whose main purpose is to
-    measure the radio signals emitted by aircraft to track their position.
-    Please refer to [Open Sky Network Document](https://opensky-network.org/) for more details.
+    It returns live airspace information in the form of
+    [state vectors](https://openskynetwork.github.io/opensky-api/index.html#state-vectors)
+    for __research and non-commercial__ purposes. It does not provide commercial flight data such as airport schedules,
+    delays or similar information that cannot be derived from ADS-B data contents!
+
+    The OpenSky Network is a non-profit association based in Switzerland that operates a crowd sourced global
+    database of air traffic control data. The network consists of thousands of sensors connected to the Internet
+    by volunteers, whose main purpose is to measure the radio signals emitted by aircraft to track their position.
+    Please refer to [Open Sky Network homepage](https://opensky-network.org/) for more details.
+
+    ##Note
+    Data copyright by [The OpenSky Network](https://opensky-network.org/) and provided under the following
+    [Terms of Use](https://opensky-network.org/index.php/about/terms-of-use).
+    The following section is copied from the terms of use:
+
+    *OpenSky Network’s authorization to access the data grants You a limited, non-exclusive, non-transferable,
+    non-assignable, and terminable license to copy, modify, and use the data in accordance with this AGREEMENT
+    __solely for the purpose of non-profit research, non-profit education, or for government purposes__.
+    No license is granted for any other purpose and there are no implied licenses in this AGREEMENT.
+    In particular, any use by a for-profit entity requires written permission by the OpenSky Network.*
     """
 
     user = knext.StringParameter(
-        label="User",
-        description="The user name to access Open Sky Network Data.",
+        label="User (optional)",
+        description="The optional user name to access Open Sky Network Data. "
+        + "If not provided [limitations](https://openskynetwork.github.io/opensky-api/rest.html#limitations) apply.",
         default_value="",
     )
 
     password = knext.StringParameter(
-        label="Password",
-        description="The password to access Open Sky Network Data.",
+        label="Password (optional)",
+        description="The optional password to access Open Sky Network Data."
+        + "If not provided [limitations](https://openskynetwork.github.io/opensky-api/rest.html#limitations) apply.",
         default_value="",
     )
 
@@ -799,7 +829,6 @@ class OpenSkyNetworkDataNode:
     )
 
     def configure(self, configure_context):
-        # TODO Create combined schema
         return None
 
     def execute(self, exec_context: knext.ExecutionContext):
@@ -807,16 +836,14 @@ class OpenSkyNetworkDataNode:
         import pandas as pd
         import requests
 
+        # API documentation https://openskynetwork.github.io/opensky-api/rest.html
+
         url = "https://opensky-network.org/api/states/all"
         kws = {"url": url, "timeout": self.timeout}
         if len(self.user) != 0 and len(self.password) != 0:
             kws["auth"] = (self.user, self.password)
 
         response = requests.get(**kws)
-        # if (self.user is not None or ) and (self.password is not None or len(self.password)!=0):
-        #     response = requests.get(url, timeout=120,auth=(self.user, self.password))
-        # else:
-        #     response = requests.get(url, timeout=120)
         json_data = response.json()
         states = pd.DataFrame(
             json_data["states"],
