@@ -12,6 +12,7 @@ dependencies:
   - folium=0.14.0
   - geopandas=0.14.0
   - geopy=2.4.0
+  - h3-py=3.7.7
   - ipykernel=6.22.0 #required by kepler but not included in its dependencies it seems
   - jmespath=1.0.1
   - keplergl=0.3.2
@@ -21,7 +22,7 @@ dependencies:
   - libpysal=4.7.0
   - mgwr=2.1.2
   - numpy=1.23.5 #required to fix problem with latest version of numpy
-  - osmnx=1.6.0
+  - osmnx=1.7.0
   - polyline 2.0.0
   - pulp=2.7.0
   - pyproj=3.5.0

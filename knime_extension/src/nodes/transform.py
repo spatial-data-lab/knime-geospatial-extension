@@ -86,15 +86,86 @@ class CrsTransformerNode:
         )
 
     def execute(self, exec_context: knext.ExecutionContext, input_table):
-        gdf = knut.load_geo_data_frame(input_table, self.geo_col, exec_context)
-        if self.result_settings.mode == knut.ResultSettingsMode.APPEND.name:
-            result_col = knut.get_unique_column_name(
-                self.result_settings.new_column_name, input_table.schema
+        # check whether multiple crs exist
+        try:
+            gdf = knut.load_geo_data_frame(input_table, self.geo_col, exec_context)
+            if self.result_settings.mode == knut.ResultSettingsMode.APPEND.name:
+                result_col = knut.get_unique_column_name(
+                    self.result_settings.new_column_name, input_table.schema
+                )
+                gdf[result_col] = gdf[self.geo_col]
+                gdf.set_geometry(result_col, inplace=True)
+            gdf.to_crs(self.new_crs, inplace=True)
+            return knut.to_table(gdf, exec_context)
+        except:
+            import pyarrow as pa
+            import shapely
+            import pyproj
+            from shapely.ops import transform
+
+            exec_context.set_progress(0.1, "Different input CRS detected")
+
+            t1 = input_table.to_pyarrow()
+
+            # extract the geometry column to project
+            t_dict = t1.select([self.geo_col]).to_pydict()
+            geometry_col = t_dict[self.geo_col]
+
+            # The function that performs the projection
+            def transform_geometry(geom, original_crs, target_crs):
+                project = pyproj.Transformer.from_crs(
+                    original_crs, target_crs, always_xy=True
+                ).transform
+                return transform(project, geom)
+
+            transformed_geometries = []
+            round_count = 0
+            n_loop = len(geometry_col)
+            for geo_value in geometry_col:
+                round_count += 1
+                exec_context.set_progress(
+                    0.8 * round_count / n_loop,
+                    f"Row {round_count} of {n_loop} processed",
+                )
+                knut.check_canceled(exec_context)
+
+                if geo_value is None or not geo_value.wkb:
+                    transformed_geometries.append(None)
+                else:
+                    # get WKB from GeoValue, transform to shapely objects
+                    shapely_geom = shapely.wkb.loads(bytes(geo_value.wkb))
+                    original_crs = geo_value.crs  # CRS
+                    transformed_geom = transform_geometry(
+                        shapely_geom, original_crs, self.new_crs
+                    )
+                    # save as WKT
+                    transformed_geometries.append(transformed_geom.wkt)
+
+            # Create geospatial column from the projected WKTs
+            projected_geo = gp.GeoSeries.from_wkt(
+                transformed_geometries, crs=self.new_crs
             )
-            gdf[result_col] = gdf[self.geo_col]
-            gdf.set_geometry(result_col, inplace=True)
-        gdf.to_crs(self.new_crs, inplace=True)
-        return knut.to_table(gdf, exec_context)
+
+            # Create a KNIME table with the projected geospatial column
+            result_table = knext.Table.from_pandas(
+                projected_geo.to_frame(name="projected")
+            )
+            # Convert the KNIME table to PyArrow and get the projected column
+            projected_column = result_table.to_pyarrow().column("projected")
+
+            if self.result_settings.mode == knut.ResultSettingsMode.APPEND.name:
+                result_col = knut.get_unique_column_name(
+                    self.result_settings.new_column_name, input_table.schema
+                )
+                t2 = t1.append_column(result_col, projected_column)
+            else:
+                # get the selected geometry  column index
+                geo_col_idx = t1.column_names.index(self.geo_col)
+                # and replace it with the projected column
+                t2 = t1.set_column(geo_col_idx, self.geo_col, projected_column)
+            exec_context.set_progress(1, "Projection finished")
+
+            return knext.Table.from_pyarrow(t2)
 
 
 ############################################
