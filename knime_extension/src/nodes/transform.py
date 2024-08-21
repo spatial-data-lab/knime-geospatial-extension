@@ -626,12 +626,12 @@ class RandomPointNode:
 
 
 ############################################
-# OD To Curve\Line
+# Directed Bezier Curve
 ############################################
 
 
 @knext.node(
-    name="OD To Curve\Line",
+    name="Directed Bezier Curve",
     node_type=knext.NodeType.MANIPULATOR,
     icon_path="icons/icon/GeometryTransformation/ODtoCurve.png",
     category=category,
@@ -642,15 +642,14 @@ class RandomPointNode:
     description="Input table containing geometry columns representing origin and destination points.",
 )
 @knext.output_table(
-    name="Table with directed line/curve",
-    description="Output table with geometry columns representing either straight lines or Bézier curves connecting origin and destination points.",
+    name="Table with directed Bézier curve",
+    description="Output table with geometry columns representing Bézier curves connecting origin and destination points.",
 )
 @knut.geo_node_description(
-    short_description="Generate lines or Bézier curves between origin and destination points.",
-    description="""This node generates a GeoSeries containing geometries representing connections between origin and destination points. 
-    Users can choose between generating straight lines or smooth Bézier curves. The Bézier curves are created based on user-defined parameters,
-    including the number of points, height scaling, and curve angle. This transformation is particularly useful for visualizing flows or movements 
-    in a more intuitive manner compared to straight lines.
+    short_description="Generate Bézier curves between origin and destination points.",
+    description="""This node generates a GeoSeries containing geometries representing smooth Bézier curves between origin and destination points. 
+    The Bézier curves are created based on user-defined parameters,including the number of points, height scaling, and curve angle.
+    This transformation is particularly useful for visualizing flows or movements in a more intuitive manner compared to straight lines.    
     """,
     references={
         "Bézier curve": "https://en.wikipedia.org/wiki/B%C3%A9zier_curve",
@@ -658,18 +657,29 @@ class RandomPointNode:
 )
 class ODtoCurveNode:
     """
-    This node generates geometries representing connections between origin and destination points as either straight lines or Bézier curves..
+    This node generates geometries representing connections between origin and destination points as Bézier curves.
     """
 
-    o_geo_col = knut.geo_col_parameter()
+    o_geo_col = knext.ColumnParameter(
+        "Origin geopoint column",
+        "Select the geometry column that describes the origins.",
+        port_index=0,
+        column_filter=knut.is_geo_point,
+        include_row_key=False,
+        include_none_column=False,
+    )
 
-    d_geo_col = knut.geo_col_parameter()
-
-    linetype = knext.StringParameter(
-        "Link Type Selection",
-        "Select whether to generate straight lines or Bézier curves.",
-        "curve",
-        enum=["curve", "line"],
+    d_geo_col = knext.ColumnParameter(
+        "Destination geopoint column",
+        "Select the geometry column that describes the destination.",
+        port_index=0,
+        column_filter=knut.is_geo_point,
+        include_row_key=False,
+        include_none_column=False,
+    )
+    result_settings = knut.ResultSettings(
+        mode=knut.ResultSettingsMode.APPEND.name,
+        new_name="Curve",
     )
 
     num_points = knext.IntParameter(
@@ -677,21 +687,21 @@ class ODtoCurveNode:
         "Specify the number of points to define the Bézier curve.",
         default_value=100,
         is_advanced=True,
-    ).rule(knext.OneOf(linetype, ["curve"]), knext.Effect.SHOW)
+    )
 
     height_scale = knext.DoubleParameter(
         "Hight scale ",
         "Set the scale factor for the curve's height, controlling the distance of the curve from the straight line.",
         default_value=0.3,
         is_advanced=True,
-    ).rule(knext.OneOf(linetype, ["curve"]), knext.Effect.SHOW)
+    )
 
     angle_degrees = knext.IntParameter(
-        "Curve Angle (Degrees) ",
+        "Curve angle (degrees) ",
         "Define the angle that controls the shape and direction of the Bézier curve.",
         default_value=60,
         is_advanced=True,
-    ).rule(knext.OneOf(linetype, ["curve"]), knext.Effect.SHOW)
+    )
 
     def configure(self, configure_context, input_schema):
         self.o_geo_col = knut.column_exists_or_preset(
@@ -701,7 +711,12 @@ class ODtoCurveNode:
             configure_context, self.d_geo_col, input_schema, knut.is_geo
         )
 
-        return input_schema.append(knext.Column(knut.TYPE_LINE, "Line"))
+        return self.result_settings.get_result_schema(
+            configure_context,
+            input_schema,
+            "Curve",
+            knut.TYPE_LINE,
+        )
 
     def execute(self, exec_context: knext.ExecutionContext, input_1):
         gdf = knut.load_geo_data_frame(input_1, self.o_geo_col, exec_context)
@@ -763,9 +778,13 @@ class ODtoCurveNode:
 
             return line_geom
 
-        if self.linetype == "curve":
-            gdf["Line"] = gdf.apply(create_bezier_line_geometry, axis=1)
+        if self.result_settings.mode == knut.ResultSettingsMode.APPEND.name:
+            result_col = knut.get_unique_column_name(
+                self.result_settings.new_column_name, input_1.schema
+            )
         else:
-            gdf["Line"] = gdf.apply(create_line_geometry, axis=1)
+            result_col = "Curve"
+
+        gdf[result_col] = gdf.apply(create_bezier_line_geometry, axis=1)
 
         return knut.to_table(gdf)
