@@ -677,9 +677,11 @@ class ODtoCurveNode:
         include_row_key=False,
         include_none_column=False,
     )
-    result_settings = knut.ResultSettings(
-        mode=knut.ResultSettingsMode.APPEND.name,
-        new_name="Curve",
+
+    col_name = knext.StringParameter(
+        "Column name for result geometry",
+        "Specify the column name to define the Bézier curve.",
+        "Curve",
     )
 
     num_points = knext.IntParameter(
@@ -690,9 +692,11 @@ class ODtoCurveNode:
     )
 
     height_scale = knext.DoubleParameter(
-        "Hight scale ",
+        "Height scale ",
         "Set the scale factor for the curve's height, controlling the distance of the curve from the straight line.",
         default_value=0.3,
+        min_value=0,
+        max_value=1,
         is_advanced=True,
     )
 
@@ -700,6 +704,8 @@ class ODtoCurveNode:
         "Curve angle (degrees) ",
         "Define the angle that controls the shape and direction of the Bézier curve.",
         default_value=60,
+        min_value=0,
+        max_value=360,
         is_advanced=True,
     )
 
@@ -710,12 +716,12 @@ class ODtoCurveNode:
         self.d_geo_col = knut.column_exists_or_preset(
             configure_context, self.d_geo_col, input_schema, knut.is_geo
         )
-
-        return self.result_settings.get_result_schema(
-            configure_context,
-            input_schema,
-            "Curve",
-            knut.TYPE_LINE,
+        result_col = knut.get_unique_column_name(self.col_name, input_schema)
+        return input_schema.append(
+            knext.Column(
+                knut.TYPE_LINE,
+                result_col,
+            )
         )
 
     def execute(self, exec_context: knext.ExecutionContext, input_1):
@@ -778,12 +784,7 @@ class ODtoCurveNode:
 
             return line_geom
 
-        if self.result_settings.mode == knut.ResultSettingsMode.APPEND.name:
-            result_col = knut.get_unique_column_name(
-                self.result_settings.new_column_name, input_1.schema
-            )
-        else:
-            result_col = "Curve"
+        result_col = knut.get_unique_column_name(self.col_name, input_1.schema)
 
         gdf[result_col] = gdf.apply(create_bezier_line_geometry, axis=1)
 
