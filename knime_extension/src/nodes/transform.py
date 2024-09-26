@@ -647,9 +647,10 @@ class RandomPointNode:
 )
 @knut.geo_node_description(
     short_description="Generate Bézier curves between origin and destination points.",
-    description="""This node generates a GeoSeries containing geometries representing smooth Bézier curves between origin and destination points. 
-    The Bézier curves are created based on user-defined parameters,including the number of points, height scaling, and curve angle.
-    This transformation is particularly useful for visualizing flows or movements in a more intuitive manner compared to straight lines.    
+    description="""This node generates a GeoSeries containing geometries representing smooth Bézier curves between 
+    origin and destination points. The Bézier curves are created based on user-defined parameters, including the number
+    of points, height scaling, and curve angle. This transformation is particularly useful for visualizing flows or 
+    movements in a more intuitive manner compared to straight lines.    
     """,
     references={
         "Bézier curve": "https://en.wikipedia.org/wiki/B%C3%A9zier_curve",
@@ -687,6 +688,7 @@ class ODtoCurveNode:
     num_points = knext.IntParameter(
         "Number of points ",
         "Specify the number of points to define the Bézier curve.",
+        min_value=2,
         default_value=100,
         is_advanced=True,
     )
@@ -729,11 +731,6 @@ class ODtoCurveNode:
 
         import numpy as np
         from shapely.geometry import LineString
-
-        def create_line_geometry(row):
-            p0 = row[self.o_geo_col].coords[0]
-            p2 = row[self.d_geo_col].coords[0]
-            return LineString([p0, p2])
 
         def bezier_curve(p0, cp, p2, num_points=100):
             t_values = np.linspace(0, 1, num_points)
