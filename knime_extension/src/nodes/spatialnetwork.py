@@ -790,7 +790,7 @@ class OSRMDistanceMatrix:
                     else:
                         df.loc[ns:ne, self._COL_GEOMETRY] = temp_route
             else:
-                knut.LOGGER.warning(f"No route found from:{ns} to :{ne}")
+                raise RuntimeError("OSRM server not available")
         except Exception as err:
             knut.LOGGER.warning(f"Error finding route from:{ns} to :{ne}. Error: {err}")
 
