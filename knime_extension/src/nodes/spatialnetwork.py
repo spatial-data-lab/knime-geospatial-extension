@@ -790,9 +790,9 @@ class OSRMDistanceMatrix:
                     else:
                         df.loc[ns:ne, self._COL_GEOMETRY] = temp_route
             else:
-                raise RuntimeError("OSRM server not available")
+                knut.LOGGER.warning(f"No route found from:{ns} to :{ne}")
         except Exception as err:
-            knut.LOGGER.warning(f"Error finding route from:{ns} to :{ne}. Error: {err}")
+            knut.LOGGER.warning(f"OSRM server not available. Error: {err}")
 
     def execute(self, exec_context: knext.ExecutionContext, left_input, right_input):
         from shapely.geometry import LineString
