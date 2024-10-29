@@ -206,7 +206,7 @@ def is_binary(column: knext.Column) -> bool:
     Checks if column is binary
     @return: True if Column is binary
     """
-    return column.ktype == knext.blob
+    return column.ktype == knext.blob()
 
 
 def is_date(column: knext.Column) -> bool:
