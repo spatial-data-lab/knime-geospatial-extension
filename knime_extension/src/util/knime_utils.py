@@ -493,7 +493,6 @@ def column_exists_or_preset(
     if column is None:
         for c in schema:
             if func(c):
-                context.set_warning(f"Preset column to: {c.name}")
                 return c.name
         raise knext.InvalidParametersError(none_msg)
     __check_col_and_type(column, schema, func)
