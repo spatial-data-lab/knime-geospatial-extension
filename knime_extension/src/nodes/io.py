@@ -64,8 +64,9 @@ class ExistingFile(knext.EnumParameterOptions):
     short_description="Read single layer GeoFile.",
     description="""This node reads a single geospatial file from the provided local file path or URL. 
     The supported file formats are the popular data types such as [Shapefile (.shp),](https://en.wikipedia.org/wiki/Shapefile)
-zipped Shapefiles(.zip) with a single Shapefile, single-layer [Geopackage (.gpkg),](https://www.geopackage.org/), 
-[GeoJSON (.geojson)](https://geojson.org/), or [GeoParquet](https://github.com/opengeospatial/geoparquet) files. 
+zipped Shapefiles(.zip) with a single Shapefile, single-layer [Geopackage (.gpkg),](https://www.geopackage.org/) 
+[GeoJSON (.geojson),](https://geojson.org/) [GeoParquet,](https://github.com/opengeospatial/geoparquet)
+or [MapInfo (.tab)](https://gdal.org/en/latest/drivers/vector/mitab.html) files. 
 In addition the node partially supports 
 [Keyhole Markup Language (.kml)](https://en.wikipedia.org/wiki/Keyhole_Markup_Language) files or single
 entry zipped [.kmz](https://developers.google.com/kml/documentation/kmzarchives) files. 
@@ -189,9 +190,11 @@ automatically depending on the selected file format if not specified.""",
     existing_file = knext.EnumParameter(
         "If exists:",
         "Specify the behavior of the node in case the output file already exists.",
-        lambda v: ExistingFile.OVERWRITE.name
-        if v < knext.Version(1, 2, 0)
-        else ExistingFile.FAIL.name,
+        lambda v: (
+            ExistingFile.OVERWRITE.name
+            if v < knext.Version(1, 2, 0)
+            else ExistingFile.FAIL.name
+        ),
         enum=ExistingFile,
         since_version="1.2.0",
     )
