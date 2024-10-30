@@ -498,17 +498,22 @@ def get_osmnx():
 )
 @knut.osm_node_description(
     short_description="Get Points of Interests(POIs) from the Open Street Map.",
-    description="""This node downloads geospatial entities’ geometries and attributes from [OpenStreetMap.](https://www.openstreetmap.org/about)
-Results returned are the union, not intersection of each individual tag. Each result matches at least one given tag. 
-The place tags should be OSM tags, (e.g., building, landuse, highway, etc) and the value tags should be either True 
-to retrieve all items with the given tag, or a single value to retrieve a single tag-value combination, or a 
-comma separated list of values to get multiple values for the given tag. For example, 
-place tag=building, tag value=True would return all building footprints in the area.
-Place tag=landuse, tag value=retail, commercial would return all retail and commercial landuses.
+    description="""This node downloads geospatial entities’ geometries and attributes from 
+[OpenStreetMap.](https://www.openstreetmap.org/about) Results returned are the union, not intersection of each 
+individual tag. Each result matches at least one given tag. The place tags should be OSM tags, 
+(e.g., building, landuse, highway, etc) and the value tags should be either *True* to retrieve all items with the given 
+tag, or a single value to retrieve a single tag-value combination, or a comma separated list of values to get multiple 
+values for the given tag. For example, *place tag=building, tag value=True* would return all building footprints in the 
+area. *Place tag=landuse, tag value=retail, commercial* would return all retail and commercial landuses. For more 
+details about a tag and how to find valid tags, please refer to the [OpenStreet TagFinder.](https://tagfinder.osm.ch/)
+
+Please be aware that tags can change over time. For more details about changes in tags, please refer to the
+[Changelog.](https://wiki.openstreetmap.org/wiki/Changelog)
 """,
     references={
         "OpenStreet TagFinder": "https://tagfinder.osm.ch/",
         "OpenStreetMap Taginfo": "https://taginfo.openstreetmap.org/",
+        "OSM Map Features": "https://wiki.openstreetmap.org/wiki/Map_features",
         "OSMnx": "https://github.com/gboeing/osmnx",
         "osmnx.geometries_from_place": "https://osmnx.readthedocs.io/en/stable/osmnx.html#module-osmnx.geometries",
     },
