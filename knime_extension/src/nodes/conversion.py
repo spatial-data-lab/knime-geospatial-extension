@@ -471,6 +471,23 @@ class GeoToWKTNode(_FromGeoConverter):
 ############################################
 # Geometry to GeoJSON
 ############################################
+
+
+class _GeoJSONReturnTypes(knext.EnumParameterOptions):
+    STRING = (
+        "String",
+        "Returns the GeoJSON as a String data cell.",
+    )
+    JSON = (
+        "JSON",
+        "Returns the GeoJSON as a JSON data cell.",
+    )
+
+    @classmethod
+    def get_default(cls):
+        return cls.JSON
+
+
 @knext.node(
     name="Geometry to GeoJSON",
     node_type=knext.NodeType.MANIPULATOR,
@@ -492,15 +509,35 @@ class GeoToGeoJSONNode(_FromGeoConverter):
         description="Geometry column to convert to [GeoJSON](https://en.wikipedia.org/wiki/GeoJSON)"
     )
 
+    geojson_return_type = knext.EnumParameter(
+        "Travel mode",
+        """The following 
+        [travel modes](https://developers.google.com/maps/documentation/distance-matrix/distance-matrix#mode) 
+        are supported: """,
+        default_value=lambda v: (
+            _GeoJSONReturnTypes.JSON
+            if v < knext.Version(1, 3, 0)
+            else _GeoJSONReturnTypes.STRING
+        ),
+        enum=_GeoJSONReturnTypes,
+        is_advanced=True,
+        since_version="1.3.0",
+    )
+
     def __init__(self):
         super().__init__(
             "GeoJSON",
-            # TODO: JSON
-            knext.string(),
+            (
+                knext.logical(type({"JSON": "type"}))
+                if self.geojson_return_type == _GeoJSONReturnTypes.JSON
+                else knext.string()
+            ),
             lambda gs: gs.to_json(),
         )
 
     def execute(self, exec_context, input_table):
+        import json
+
         # create GeoDataFrame with the selected column as active geometry column
         gdf = knut.load_geo_data_frame(input_table, self.geo_column, exec_context)
         # execute the function and append the result
@@ -508,9 +545,14 @@ class GeoToGeoJSONNode(_FromGeoConverter):
             self.column_name, input_table.schema
         )
         try:
-            gdf[result_col_name] = gdf[self.geo_column].apply(
-                lambda e: gp.GeoSeries(e).to_json()
-            )
+            if self.geojson_return_type == _GeoJSONReturnTypes.JSON:
+                gdf[result_col_name] = gdf[self.geo_column].apply(
+                    lambda e: json.loads(gp.GeoSeries(e).to_json())
+                )
+            else:
+                gdf[result_col_name] = gdf[self.geo_column].apply(
+                    lambda e: gp.GeoSeries(e).to_json()
+                )
         except Exception as error:
             raise knext.InvalidParametersError(
                 f"Error converting to {result_col_name}: {str(error)}"
