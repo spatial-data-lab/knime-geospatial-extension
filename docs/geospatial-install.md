@@ -1,31 +1,54 @@
 # Setup Custom Executor Docker Image with the Geospatial Extension for KNIME Business Hub
 
+
+## TL;DR
+
+To run workflows with Geospatial Analytics extension nodes on KNIME Business Hub, you'll need, 
+1. a Docker image that includes this extension. You can either use our prebuilt Docker image or create your own—automatically using the Executor Image Builder or manually building it yourself.
+2. create an execution context 
+
+
 ## Introduction
-Running a workflow on KNIME Business Hub requires an Execution Context (EC). Inside that EC runs one or multiple pods - that hold Docker containers - which run Docker images. In general, one can simply use the official Docker images from the public [KNIME Artifact Registry](https://registry.hub.knime.com/) to create an EC. A list of all available default KNIME docker images can be found [here](https://docs.knime.com/latest/business_hub_admin_guide/index.html#docker-executor-images).
+
+Running a workflow on KNIME Business Hub requires an Execution Context (EC). Inside that EC runs one or multiple pods - that hold Docker containers - which run Docker images. In general, one can simply use the official Docker images from the public [KNIME Artifact Registry](https://registry.hub.knime.com/) or [Docker Hub](https://hub.docker.com/r/knime/knime-full) to create an EC. A list of all available default KNIME docker images can be found [here](https://docs.knime.com/latest/business_hub_admin_guide/index.html#docker-executor-images).
 
 However, the official Docker images hold KNIME Extensions only; no Community (trusted or experimental) or Partner Extensions included. Since the "Geospatial Analytics Extension for KNIME" is a Trusted Community Extension, it needs to be integrated into the Docker image, which requires to enhance the official image and build your own custom Docker image.
 
 ### Options
-This can be achieved in two ways.
-1. **Automatic**
+This can be achieved in three ways.
+
+1. **Prebuilt**
+
+    - One can use prebuilt docker image with geospatial extension installed from [Docker Hub here](https://hub.docker.com/repository/docker/happybeetles/knime-execution/general). The docker file used for building these Docker image is from [here](https://github.com/spatial-data-lab/knime_docker).
+
+
+2. **Automatic**
     - One can use the [_"Executor Image Builder"_](https://hub.knime.com/knime/spaces/KNIME%20Business%20Hub%20Admin%20Workflows/Executor%20Image%20Builder~V8b8qdFAdrBOziiD/current-state) Data App that is part of the Administrator Workflows for KNIME Business Hub can be found [here](https://hub.knime.com/knime/spaces/KNIME%20Business%20Hub%20Admin%20Workflows/~6vfL9nZbxwU3yNbU/).
     - This currently only works for online installations. For airgap installations, please refer to the manual steps.
     - See below, for more details.
-2. **Manual**
+3. **Manual**
     - One can use the default KNIME docker images (mentioned above), and build on top of it. This requires to create a Dockerfile that pulls the default image and adds the extension while building the custom image.
     - See below, for more details.
 
 ### Docker Image Registry
-In either way, one needs to configure a docker V2 registry to be able to provide the custom image to the KNIME Businss Hub. Here, one can either use the [embedded registry](https://docs.knime.com/latest/business_hub_installation_guide/index.html#embedded-docker-registry-configuration) of the KNIME Business Hub itself, or use an [external registry](https://docs.docker.com/get-started/docker-concepts/the-basics/what-is-a-registry/) (like ECR, ACR, etc.). The latter link also explains what a docker image registry is in general.
 
-In case, you are not using the embedded registry but an external one, you can configure your KNIME Business Hub to use that within the KOTS Admin Console.
+If you are using the first way, you don't have to setup the image registry in the KOTS Admin Console. 
+
+In other two ways, one needs to configure a docker V2 registry to be able to provide the custom image to the KNIME Businss Hub. Here, one can either use the [embedded registry](https://docs.knime.com/latest/business_hub_installation_guide/index.html#embedded-docker-registry-configuration) of the KNIME Business Hub itself, or use an [external registry](https://docs.docker.com/get-started/docker-concepts/the-basics/what-is-a-registry/) (like ECR, ACR, etc.). The latter link also explains what a docker image registry is in general.
+
+In case, you are not using the embedded registry but an external one, you can configure your KNIME Business Hub to use that within the KOTS Admin Console unless you use public-access images from Docker Hub.
 
 ![registry-settings](./imgs/registry-settings.png)
 
 Please also refer to the official documentation on [Connecting to an External Registry](https://docs.replicated.com/vendor/packaging-private-images).
 
+## Prebuilt Image
+
+If you choose this option, no action is required to create the image; it is automatically built and published by GitHub Actions.
+
 ## Automatic Image Creation
-This is the easiest and most automatic way to provide a docker image that includes the Geospatial Extension to the KNIME Business Hub. This will allow you to
+
+This is the most automatic way to provide a docker image that includes the Geospatial Extension to the KNIME Business Hub. This will allow you to
 - create the Dockerfile, 
 - build an executor docker image, 
 - push it to a registry, and eventually
@@ -70,7 +93,7 @@ Within the Dockerfile, we define two variables at the bottom that are important 
 Check out [this video](https://www.youtube.com/watch?v=-dO79Id3VAo&t=143s) from the KNIMETV channel that helps you to find the right update site URL and the feature ID.
 
     # Define the base image
-    FROM registry.hub.knime.com/knime/knime-full:r-5.2.1-369
+    FROM knime/knime-full:r-5.3.2-564
 
     # Change to root user to be able to install system packages
     USER root
