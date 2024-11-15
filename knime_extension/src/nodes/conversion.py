@@ -133,8 +133,8 @@ class _ToGeoConverter:
 )
 @knut.geo_node_description(
     short_description="Converts the input Well-known-text (WKT) column to a geometry column.",
-    description="""This node converts the selected 
-    [Well-known-text (WKT)](https://en.wikipedia.org/wiki/Well-known_text_representation_of_geometry) input column to 
+    description="""This node converts the selected
+    [Well-known-text (WKT)](https://en.wikipedia.org/wiki/Well-known_text_representation_of_geometry) input column to
     a geometry column in the units of the provided CRS.
     """,
     references={
@@ -209,7 +209,7 @@ class WKTtoGeoNode(_ToGeoConverter):
 )
 @knut.geo_node_description(
     short_description="Converts the input GeoJSON column to a geometry column.",
-    description="""This node converts the selected [GeoJSON](https://en.wikipedia.org/wiki/GeoJSON) input column to 
+    description="""This node converts the selected [GeoJSON](https://en.wikipedia.org/wiki/GeoJSON) input column to
     a geometry column in the units of the provided CRS.
     """,
     references={
@@ -480,7 +480,7 @@ class GeoToWKTNode(_FromGeoConverter):
 )
 @knut.geo_node_description(
     short_description="Converts the input geometry column to a Well-known-binary (WKB) column.",
-    description="""This node converts the selected geometry column into a 
+    description="""This node converts the selected geometry column into a
     [GeoJSON](https://en.wikipedia.org/wiki/GeoJSON) column.
     """,
     references={
@@ -647,7 +647,7 @@ class GeocodingServiceSettings:
 
     api_key = knext.StringParameter(
         "API key",
-        """Enter the API key for the service provider. 
+        """Enter the API key for the service provider.
         You can leave this field empty if the service provider (such as `nominatim` and `arcgis`) doesn't require an API key.""",
         default_value="",
     )
@@ -693,9 +693,9 @@ class GeocodingServiceSettings:
     The node uses the [Nominatim](https://nominatim.org/) service by default.
     You can change the service provider and API key in the node settings.
     See the [geopy documentation](https://geopy.readthedocs.io/en/stable/#module-geopy.geocoders) for more information.
-    Notice that the service provider and API key are only required for some service providers. 
-    For example, you do not have to enter them forNomintim or ArcGIS.
-    The addresses can be like `1600 Amphitheatre Parkway, Mountain View, CA` 
+    Notice that the service provider and API key are only required for some service providers.
+    For example, you do not have to enter them for Nomintim or ArcGIS.
+    The addresses can be like `1600 Amphitheatre Parkway, Mountain View, CA`
     or `1600 Amphitheatre Parkway, Mountain View, CA, United States`.
     """,
     references={
@@ -759,21 +759,36 @@ class GeoGeocodingNode:
             min_delay_seconds=self.geocoding_service_settings.min_delay_seconds,
         )
 
-        tmp_col = knut.get_unique_column_name("__location__", input_table.schema)
-        tmp_lat = knut.get_unique_column_name("__latitude__", input_table.schema)
-        tmp_long = knut.get_unique_column_name("__longitude__", input_table.schema)
-        df[tmp_col] = df[self.address_col].apply(lambda x: geocode(x))
-        df[tmp_lat] = df[tmp_col].apply(lambda x: x.latitude)
-        df[tmp_long] = df[tmp_col].apply(lambda x: x.longitude)
-
+        process_counter = 1
+        n_loop = len(df)
         result_col_name = knut.get_unique_column_name(self.name, input_table.schema)
+        df[result_col_name] = None
+        for index, row in df.iterrows():
+            try:
+                result = geocode(row[self.address_col])
+                if result is None:
+                    knut.LOGGER.warning(
+                        f"Got none result at index {index}, address: {row[self.address_col]}"
+                    )
+                else:
+                    from shapely.geometry import Point
 
-        df[result_col_name] = gp.points_from_xy(df[tmp_long], df[tmp_lat])
+                    df.at[index, result_col_name] = Point(
+                        result.longitude, result.latitude
+                    )
+            except Exception as e:
+                knut.LOGGER.warning(
+                    f"Error at index {index}, address: {row[self.address_col]}, error: {e}"
+                )
+
+            exec_context.set_progress(
+                0.9 * process_counter / n_loop,
+                "Batch %d of %d processed" % (process_counter, n_loop),
+            )
+            knut.check_canceled(exec_context)
+            process_counter += 1
 
         gdf = gp.GeoDataFrame(df, geometry=result_col_name, crs=kproj.DEFAULT_CRS)
-
-        gdf.drop(columns=[tmp_col, tmp_lat, tmp_long], inplace=True)
-
         return knut.to_table(gdf)
 
 
@@ -805,7 +820,7 @@ class GeoGeocodingNode:
     The node uses the [Nominatim](https://nominatim.org/) service by default.
     You can change the service provider and API key in the node settings.
     See the [geopy documentation](https://geopy.readthedocs.io/en/stable/#module-geopy.geocoders) for more information.
-    Notice that the service provider and API key are only required for some service providers. 
+    Notice that the service provider and API key are only required for some service providers.
     For example, you do not have to enter them for Nominatim or ArcGIS.
     """,
     references={
@@ -829,7 +844,7 @@ class GeoReverseGeocodingNode:
 
     append_raw_json = knext.BoolParameter(
         "Append raw json",
-        """If selected, the provider dependent raw json string of the result will be appended to a new column. 
+        """If selected, the provider dependent raw json string of the result will be appended to a new column.
         It is useful for extracting specific information such as the city.""",
         default_value=False,
     )
@@ -1246,13 +1261,13 @@ class MetadataNode:
     )
     extract_type = knext.BoolParameter(
         label="Extract type",
-        description="""Extract the [geometry type](https://shapely.readthedocs.io/en/stable/manual.html#object.geom_type) 
+        description="""Extract the [geometry type](https://shapely.readthedocs.io/en/stable/manual.html#object.geom_type)
         into a column""",
         default_value=False,
     )
     extract_z = knext.BoolParameter(
         label="Extract z coordinate flag",
-        description="""Extract a flag that indicates if the geometry has a 
+        description="""Extract a flag that indicates if the geometry has a
         [z coordinate]([CRS](https://en.wikipedia.org/wiki/Spatial_reference_system))""",
         default_value=False,
     )
