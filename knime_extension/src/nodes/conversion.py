@@ -694,7 +694,7 @@ class GeocodingServiceSettings:
     You can change the service provider and API key in the node settings.
     See the [geopy documentation](https://geopy.readthedocs.io/en/stable/#module-geopy.geocoders) for more information.
     Notice that the service provider and API key are only required for some service providers.
-    For example, you do not have to enter them for Nomintim or ArcGIS.
+    For example, you do not have to enter them for Nominatim or ArcGIS.
     The addresses can be like `1600 Amphitheatre Parkway, Mountain View, CA`
     or `1600 Amphitheatre Parkway, Mountain View, CA, United States`.
     """,
@@ -711,6 +711,15 @@ class GeoGeocodingNode:
         column_filter=knut.is_string,
         include_row_key=False,
         include_none_column=False,
+    )
+
+    fail_on_error = knext.BoolParameter(
+        label="Fail on error",
+        description="""If selected the node will fail if an error occurs during the geocoding process otherwise it
+        will add a missing value for each failing address.""",
+        default_value=lambda v: True if v < knext.Version(1, 3, 0) else False,
+        since_version="1.3.0",
+        is_advanced=True,
     )
     name = "geometry"
 
@@ -767,9 +776,13 @@ class GeoGeocodingNode:
             try:
                 result = geocode(row[self.address_col])
                 if result is None:
-                    knut.LOGGER.warning(
-                        f"Got none result at index {index}, address: {row[self.address_col]}"
-                    )
+                    msg = "No address returned by the geocoding service"
+                    if self.fail_on_error:
+                        raise RuntimeError(msg)
+                    else:
+                        knut.LOGGER.warning(
+                            f"{msg} at index {index}, address: {row[self.address_col]}"
+                        )
                 else:
                     from shapely.geometry import Point
 
@@ -777,9 +790,11 @@ class GeoGeocodingNode:
                         result.longitude, result.latitude
                     )
             except Exception as e:
-                knut.LOGGER.warning(
-                    f"Error at index {index}, address: {row[self.address_col]}, error: {e}"
-                )
+                if self.fail_on_error:
+                    msg = f"Error at index {index}, address: {row[self.address_col]}, error: {e}"
+                    raise RuntimeError(msg)
+                else:
+                    knut.LOGGER.warning(msg)
 
             exec_context.set_progress(
                 0.9 * process_counter / n_loop,
