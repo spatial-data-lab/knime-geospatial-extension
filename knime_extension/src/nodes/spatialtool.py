@@ -1260,13 +1260,14 @@ class CreateH3Grid:
         return knext.Schema.from_columns(
             [
                 knext.Column(knext.string(), self._COL_ID),
-                knext.Column(input_schema[self.geo_col].ktype, self._COL_GEOMETRY),
+                knext.Column(knut.TYPE_POLYGON, self._COL_GEOMETRY),
             ]
         )
 
     def execute(self, exec_context: knext.ExecutionContext, input_table):
         import h3
-        from shapely.geometry import Polygon
+        from shapely.geometry import Polygon, mapping
+        from shapely.ops import unary_union
         import geopandas as gpd
         import pandas as pd
 
@@ -1274,17 +1275,23 @@ class CreateH3Grid:
 
         knut.check_canceled(exec_context)
         exec_context.set_progress(0.1, "Projecting input polygon...")
-        gdf_boundary.to_crs(4326, inplace=True)
+        USE_CRS = 4326
+        gdf_boundary.to_crs(USE_CRS, inplace=True)
 
         knut.check_canceled(exec_context)
         exec_context.set_progress(0.3, "Combining input polygon...")
-        gdf_boundary["geometry"] = gdf_boundary.unary_union
+        gdf_boundary = unary_union(gdf_boundary[self.geo_col])
+        gdf_boundary = gpd.GeoDataFrame(geometry=[gdf_boundary], crs=USE_CRS)
+
+        knut.check_canceled(exec_context)
+        exec_context.set_progress(0.4, "Exploding input polygon...")
+        gdf_boundary = gdf_boundary.explode(index_parts=True)
+        gdf_boundary.reset_index(drop=True, inplace=True)
 
         knut.check_canceled(exec_context)
         exec_context.set_progress(0.5, "Computing H3 hexagons...")
-        h3_hexes = h3.polyfill_geojson(
-            gdf_boundary.geometry.__geo_interface__["features"][0]["geometry"],
-            self.zoom,
+        h3_hexes = set().union(
+            *[h3.polyfill_geojson(mapping(p), self.zoom) for p in gdf_boundary.geometry]
         )
 
         knut.check_canceled(exec_context)
@@ -1295,9 +1302,10 @@ class CreateH3Grid:
                 Polygon(h3.h3_to_geo_boundary(h3_hex, geo_json=True))
                 for h3_hex in h3_hexes
             ],
-            crs=gdf_boundary.crs,
+            crs=USE_CRS,
         )
-        grid.rename_geometry(self._COL_GEOMETRY, True)
+        # rename the geometry column
+        knut.rename_geometry(grid, self._COL_GEOMETRY)
 
         return knut.to_table(grid, exec_context)
 
@@ -1409,7 +1417,7 @@ class PointToH3:
                 crs=gdf.crs,
             )
             # rename the geometry column
-            grid.rename_geometry(_COL_GEOMETRY, inplace=True)
+            knut.rename_geometry(grid, _COL_GEOMETRY)
 
         if self.keep_original_table:
             grid = pd.concat([gdf, grid], axis=1)
