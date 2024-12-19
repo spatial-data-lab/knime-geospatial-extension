@@ -472,6 +472,16 @@ def to_table(
     return knext.Table.from_pandas(gdf)
 
 
+def rename_geometry(
+    gdf: gp.GeoDataFrame, new_name: str = DEF_GEO_COL_NAME
+) -> gp.GeoDataFrame:
+    """Renames the active geometry column of the given GeoDataFrame if new_name is different."""
+    if gdf.geometry.name != new_name:
+        # rename only if the name is different
+        gdf.rename_geometry(new_name, inplace=True)
+    return gdf
+
+
 ############################################
 # General helper
 ############################################
