@@ -367,6 +367,11 @@ class BaseMapSettings:
 @knext.input_table(
     name="Geospatial Table to Visualize",
     description="Table with geospatial data to visualize",
+    # optional=True,
+)
+@knext.input_table_group(
+    name="Geospatial Table to Visualize",
+    description="Table with geospatial data to visualize",
 )
 @knext.output_view(
     name="Geospatial View",
