@@ -36,3 +36,4 @@ dependencies:
   - pip:
     - ipinfo==4.4.3
     - pulp==2.7.0
+    - sodapy==2.2.0
