@@ -1151,9 +1151,9 @@ class CreateGrid:
         default_value=100.0,
     )
 
-    unit = kproj.Distance.get_unit_parameter(since_version="1.3.0")
+    unit = kproj.Distance.get_unit_parameter(since_version="1.4.0")
 
-    keep_input_crs = kproj.Distance.get_keep_input_crs_parameter()
+    keep_input_crs = kproj.Distance.get_keep_input_crs_parameter(since_version="1.4.0")
 
     _COL_ID = "Grid ID"
     _COL_GEOMETRY = "geometry"
