@@ -125,6 +125,7 @@ class Distance:
         description: str = "If checked the CRS of the input table is retained even if a re-projection was necessary "
         + "for the selected distance unit.",
         default_value: bool = False,
+        since_version="1.1.0",
     ):
         "Boolean parameter that indicates if the input CRS should be retained. Usually named 'keep_input_crs'."
         return knext.BoolParameter(
