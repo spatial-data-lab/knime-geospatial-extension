@@ -1145,11 +1145,15 @@ class CreateGrid:
 
     geo_col = knut.geo_col_parameter()
 
-    grid_length = knext.IntParameter(
-        "Grid Length",
-        "The length in meters of the grid. ",
-        default_value=100,
+    grid_length = kproj.Distance.get_distance_parameter(
+        label="Grid Length",
+        description="The length in meters of the grid. ",
+        default_value=100.0,
     )
+
+    unit = kproj.Distance.get_unit_parameter(since_version="1.3.0")
+
+    keep_input_crs = kproj.Distance.get_keep_input_crs_parameter()
 
     _COL_ID = "Grid ID"
     _COL_GEOMETRY = "geometry"
@@ -1165,9 +1169,13 @@ class CreateGrid:
     def execute(self, exec_context: knext.ExecutionContext, input_table):
         gdf = knut.load_geo_data_frame(input_table, self.geo_col, exec_context)
 
-        xmin, ymin, xmax, ymax = gdf.total_bounds
-        width = self.grid_length
-        height = self.grid_length
+        helper = kproj.Distance(self.unit, self.keep_input_crs)
+        projected_gdf = helper.pre_processing(exec_context, gdf, False)
+        new_grid_length = helper.convert_input_distance(self.grid_length)
+        knut.check_canceled(exec_context)
+        xmin, ymin, xmax, ymax = projected_gdf.total_bounds
+        width = new_grid_length
+        height = new_grid_length
         import numpy as np
 
         rows = int(np.ceil((ymax - ymin) / height))
@@ -1199,8 +1207,10 @@ class CreateGrid:
             XleftOrigin = XleftOrigin + width
             XrightOrigin = XrightOrigin + width
 
-        grid = gp.GeoDataFrame({self._COL_GEOMETRY: polygons}, crs=gdf.crs)
+        grid = gp.GeoDataFrame({self._COL_GEOMETRY: polygons}, crs=projected_gdf.crs)
         grid[self._COL_ID] = list(range(1, grid.shape[0] + 1))
+        grid = helper.post_processing(exec_context, grid)
+
         return knut.to_table(grid, exec_context)
 
 
