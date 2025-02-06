@@ -956,7 +956,7 @@ class GlobalGetisOrd:
     + """
 `spots` are the values that indicate quadrant location 0 Not Significant, 1 HH (High-High or Hot Spot), 3 LL (Low-Low or Cold Spot),
 `spots_type` has the values of HH (High-High or Hot Spot), LL (Low-Low or Cold Spot), Not Significant (the p-value is greater than the significance level).
-"""
+""",
 )
 # @knext.output_binary(
 #     name="output model",

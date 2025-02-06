@@ -2,6 +2,7 @@ import geopandas as gp
 import knime_extension as knext
 import util.knime_utils as knut
 import util.modeling_utils as mut
+
 # import util.model_references as mrs
 
 
@@ -1539,17 +1540,28 @@ SHOULD_NOT_CONTAIN_MISSING_VALUES = """
     name="Model summary view",
     description="Model summary view of the spatial GM Error model.",
 )
+@knut.geo_node_description(
+    short_description="Spatial GM Error Model.",
+    description=f"""GMM method for a spatial error model, with results and diagnostics, based on Kelejian and Prucha (1998, 1999).
+    The spreg.GM_Error(y, x, w[, vm, name_y, …]) function in the spreg module implements a Generalized Method of Moments
+    (GMM) estimation for the Spatial Error Model (SEM). This model accounts for spatial dependence in the error terms, 
+    following the methodology proposed by Kelejian and Prucha (1998, 1999). In a spatial error model, the dependent variable y is 
+    explained by a set of independent variables X, y=Xβ+u,but the error term exhibits spatial autocorrelation. The error structure follows 
+    u=λWu+ϵ, where W is the spatial weights matrix, 𝜆 is the spatial error coefficient, and ϵ represents the independent disturbances. 
+    The GMM approach estimates 𝜆 and other parameters efficiently, making it particularly useful when standard regression techniques 
+    fail due to spatially correlated residuals. This method is essential in geographic and economic modeling where spatial dependencies 
+    affect model accuracy.   
+
+    {SHOULD_NOT_CONTAIN_MISSING_VALUES}
+
+    """,
+    package="spreg",
+    package_url="https://spreg.readthedocs.io/en/latest/api.html",
+    references={
+        "spreg.GM_Error": "https://spreg.readthedocs.io/en/latest/generated/spreg.GM_Error.html",
+    },
+)
 class SpatialGM_Error:
-    (
-        """
-    Spatial GM Error Model.
-    GMM method for a spatial error model, with results and diagnostics; based on Kelejian and Prucha (1998, 1999) [KP98] [KP99]. More information can be found at [here](https://spreg.readthedocs.io/en/latest/generated/spreg.GM_Error.html#spreg.GM_Error). Please refer the following papers for more details.
-    - %s
-    - %s
-    """
-        % (model_references["KP98"], model_references["KP99"])
-        + SHOULD_NOT_CONTAIN_MISSING_VALUES
-    )
 
     geo_col = knut.geo_col_parameter()
 
@@ -1657,16 +1669,27 @@ class SpatialGM_Error:
     name="Model summary view",
     description="Model summary view of the spatial GM Error Het model.",
 )
+@knut.geo_node_description(
+    short_description="Spatial GM Error Model with Heteroskedasticity.",
+    description=f"""GMM method for a spatial error model that accounts for heteroskedasticity in the error terms, following Anselin (2011) 
+    and ADKP (2010). The spreg.GM_Error_Het(y, x, w[, max_iter, …]) function in the spreg module extends the spatial error model 
+    by incorporating non-constant variance in the residuals, ensuring robustness in estimation. The structural equation follows:
+    y = Xβ + u, where u = λWu + ϵ.
+    In this model, the variance of ϵ is not constant across observations, requiring a heteroskedasticity-robust weighting matrix 
+    for efficient GMM estimation. By addressing both spatial dependence and heteroskedasticity, this method provides more reliable 
+    parameter estimates in cases where traditional assumptions of constant error variance do not hold. It is particularly useful in 
+    economic and geographic analyses where variability in residuals is expected across different regions.
+
+    {SHOULD_NOT_CONTAIN_MISSING_VALUES}
+
+    """,
+    package="spreg",
+    package_url="https://spreg.readthedocs.io/en/latest/api.html",
+    references={
+        "spreg.GM_Error_Het": "https://spreg.readthedocs.io/en/latest/generated/spreg.GM_Error_Het.html",
+    },
+)
 class SpatialGM_Error_Het:
-    (
-        """
-    Spatial GM Error Het.
-    GMM method for a spatial error model with heteroskedasticity, with results and diagnostics; based on Kelejian and Prucha (1998). More information can be found at [here](https://spreg.readthedocs.io/en/latest/generated/spreg.GM_Error_Het.html#spreg.GM_Error_Het). Please refer the following papers for more details.
-    - Irani Arraiz, David M. Drukker, Harry H. Kelejian, and Ingmar R. Prucha. A spatial Cliff-Ord-type model with heteroskedastic innovations: Small and large sample results. Journal of Regional Science, 50(2):592–614, 2010. doi:10.1111/j.1467-9787.2009.00618.x
-    - Luc Anselin. GMM estimation of spatial error autocorrelation with and without heteroskedasticity. Technical Report, GeoDa Center for Geospatial Analysis and Computation, 2011.
-    """
-        + SHOULD_NOT_CONTAIN_MISSING_VALUES
-    )
 
     geo_col = knut.geo_col_parameter()
 
@@ -1775,17 +1798,26 @@ class SpatialGM_Error_Het:
     name="Model summary view",
     description="Model summary view of the spatial GM Error Hom model.",
 )
-class SpatialGM_Error_Hom:
-    (
-        """
-    Spatial GM Error Hom Model.
-    GMM method for a spatial error model with homoskedasticity, with results and diagnostics; based on Drukker et al. (2013),  following Anselin (2011). More information can be found at [here](https://spreg.readthedocs.io/en/latest/generated/spreg.GM_Error_Hom.html#spreg.GM_Error_Hom). Please refer the following papers for more details.
+@knut.geo_node_description(
+    short_description="Spatial GM Error Model with Homoskedasticity.",
+    description=f"""GMM method for a spatial error model under the assumption of homoskedasticity, based on Drukker et al. (2013), following Anselin (2011). 
+    The spreg.GM_Error_Hom(y, x, w[, max_iter, …]) function in the spreg module estimates a spatial error model while assuming 
+    a constant variance in residuals. The model follows the equation:
+    y = Xβ + u, where u = λWu + ϵ, and ϵ ∼ N(0, σ²I).
+    Unlike the heteroskedastic version, this model assumes a uniform variance structure, which simplifies estimation while 
+    maintaining efficiency in cases where the homoskedasticity assumption is valid. This method is useful in controlled 
+    spatial analysis environments where residual variance remains stable across observations.
 
-    - David M Drukker, Peter Egger, and Ingmar R Prucha. On two-step estimation of a spatial autoregressive model with autoregressive disturbances and endogenous regressors. Econometric Reviews, 32(5-6):686–733, 2013.
-    - Luc Anselin. GMM estimation of spatial error autocorrelation with and without heteroskedasticity. Technical Report, GeoDa Center for Geospatial Analysis and Computation, 2011.
-    """
-        + SHOULD_NOT_CONTAIN_MISSING_VALUES
-    )
+    {SHOULD_NOT_CONTAIN_MISSING_VALUES}
+
+    """,
+    package="spreg",
+    package_url="https://spreg.readthedocs.io/en/latest/api.html",
+    references={
+        "spreg.GM_Error_Hom": "https://spreg.readthedocs.io/en/latest/generated/spreg.GM_Error_Hom.html",
+    },
+)
+class SpatialGM_Error_Hom:
 
     geo_col = knut.geo_col_parameter()
 
@@ -1893,17 +1925,26 @@ class SpatialGM_Error_Hom:
     name="Model summary view",
     description="Model summary view of the spatial GM Combo model.",
 )
-class SpatialGM_Combo:
-    (
-        """
-    Spatial GM Combo Model.
-    GMM method for a spatial lag and error model with endogenous variables, with results and diagnostics; based on Kelejian and Prucha (1998, 1999). More information can be found at [here](https://spreg.readthedocs.io/en/latest/generated/spreg.GM_Combo.html#spreg.GM_Combo). Please refer the following papers for more details.
+@knut.geo_node_description(
+    short_description="Spatial GM Combination Model.",
+    description=f"""GMM method for a spatial lag and spatial error model, based on Kelejian and Prucha (1998, 1999). 
+    The spreg.GM_Combo(y, x[, yend, q, w, w_lags, …]) function in the spreg module estimates a combined spatial lag and spatial 
+    error model, capturing both endogenous spatial interactions and spatially correlated errors. The structural equations are:
+    y = ρWy + Xβ + u, where u = λWu + ϵ.
+    In this model, ρ measures the influence of neighboring observations on y, while λ captures spatial dependence in the error term. 
+    This combination is particularly relevant for economic and geographic applications where both direct spatial interactions 
+    and unobserved spatial heterogeneity impact the dependent variable.
 
-    - Harry H Kelejian and Ingmar R Prucha. A generalized spatial two-stage least squares procedure for estimating a spatial autoregressive model with autoregressive disturbances. J. Real Estate Fin. Econ., 17(1):99–121, 1998.
-    - H H Kelejian and I R Prucha. A generalized moments estimator for the autoregressive parameter in a spatial model. Int. Econ. Rev., 40:509–534, 1999.
-    """
-        + SHOULD_NOT_CONTAIN_MISSING_VALUES
-    )
+    {SHOULD_NOT_CONTAIN_MISSING_VALUES}
+
+    """,
+    package="spreg",
+    package_url="https://spreg.readthedocs.io/en/latest/api.html",
+    references={
+        "spreg.GM_Combo": "https://spreg.readthedocs.io/en/latest/generated/spreg.GM_Combo.html",
+    },
+)
+class SpatialGM_Combo:
 
     geo_col = knut.geo_col_parameter()
 
@@ -2011,17 +2052,27 @@ class SpatialGM_Combo:
     name="Model summary view",
     description="Model summary view of the spatial GM Combo Het model.",
 )
-class SpatialGM_Combo_Het:
-    (
-        """
-    Spatial GM Combo Het Model.
-    GMM method for a spatial lag and error model with heteroskedasticity and endogenous variables, with results and diagnostics; More information can be found at [here](https://spreg.readthedocs.io/en/latest/generated/spreg.GM_Combo_Het.html#spreg.GM_Combo_Het). Please refer the following papers for more details.
+@knut.geo_node_description(
+    short_description="Spatial GM Combination Model with Heteroskedasticity.",
+    description=f""" Spatial GM Combination Model with Heteroskedasticity.
+    GMM method for a spatial lag and spatial error model that allows for heteroskedasticity, based on ADKP (2010) and Anselin (2011). 
+    The spreg.GM_Combo_Het(y, x[, yend, q, w, …]) function extends the spatial combination model by allowing the variance of ϵ to 
+    change across observations. The model follows:
+    y = ρWy + Xβ + u, where u = λWu + ϵ.
+    This model applies a heteroskedasticity-robust weighting matrix to improve efficiency when residual variance is non-uniform. 
+    It is particularly suited for complex spatial relationships where both endogenous interactions and heteroskedasticity exist, 
+    such as in regional development and real estate markets.
 
-    - Irani Arraiz, David M. Drukker, Harry H. Kelejian, and Ingmar R. Prucha. A spatial Cliff-Ord-type model with heteroskedastic innovations: Small and large sample results. Journal of Regional Science, 50(2):592–614, 2010. doi:10.1111/j.1467-9787.2009.00618.x.
-    - Luc Anselin. GMM estimation of spatial error autocorrelation with and without heteroskedasticity. Technical Report, GeoDa Center for Geospatial Analysis and Computation, 2011.
-    """
-        + SHOULD_NOT_CONTAIN_MISSING_VALUES
-    )
+    {SHOULD_NOT_CONTAIN_MISSING_VALUES}
+
+    """,
+    package="spreg",
+    package_url="https://spreg.readthedocs.io/en/latest/api.html",
+    references={
+        "spreg.GM_Combo_Het": "https://spreg.readthedocs.io/en/latest/generated/spreg.GM_Combo_Het.html",
+    },
+)
+class SpatialGM_Combo_Het:
 
     geo_col = knut.geo_col_parameter()
 
@@ -2129,16 +2180,28 @@ class SpatialGM_Combo_Het:
     name="Model summary view",
     description="Model summary view of the spatial GM Combo Hom model.",
 )
+@knut.geo_node_description(
+    short_description="Spatial GM Combination Model with Homoskedasticity.",
+    description=f"""GMM method for a spatial lag and spatial error model under the assumption of homoskedasticity, based on Drukker et al. 
+    The spreg.GM_Combo_Hom(y, x[, yend, q, w, …]) function in the spreg module estimates a spatial econometric model that captures 
+    both endogenous spatial interactions and spatially correlated errors while assuming constant error variance across observations. 
+    The model follows:
+    y = ρWy + Xβ + u, where u = λWu + ϵ, and ϵ ∼ N(0, σ²I).
+    Here, ρ measures the impact of neighboring observations on the dependent variable y, while λ accounts for spatial dependence in the 
+    error term. By assuming homoskedasticity, this method simplifies estimation and improves efficiency when the constant variance 
+    assumption holds. It is widely applied in spatial economic research where both spatial spillovers and spatial error autocorrelation 
+    are present but variance heterogeneity is not a major concern.
+
+    {SHOULD_NOT_CONTAIN_MISSING_VALUES}
+
+    """,
+    package="spreg",
+    package_url="https://spreg.readthedocs.io/en/latest/api.html",
+    references={
+        "spreg.GM_Combo_Hom": "https://spreg.readthedocs.io/en/latest/generated/spreg.GM_Combo_Hom.html",
+    },
+)
 class SpatialGM_Combo_Hom:
-    (
-        """
-    Spatial GM Combo Hom Model.
-    GMM method for a spatial lag and error model with homoskedasticity and endogenous variables, with results and diagnostics; based on Drukker et al. (2013) [DEP13], following Anselin (2011) [Ans11]. More information can be found at [here](https://spreg.readthedocs.io/en/latest/generated/spreg.GM_Combo_Hom.html#spreg.GM_Combo_Hom). Please refer the following papers for more details.
-    - David M Drukker, Peter Egger, and Ingmar R Prucha. On two-step estimation of a spatial autoregressive model with autoregressive disturbances and endogenous regressors. Econometric Reviews, 32(5-6):686–733, 2013.
-    - Luc Anselin. GMM estimation of spatial error autocorrelation with and without heteroskedasticity. Technical Report, GeoDa Center for Geospatial Analysis and Computation, 2011.
-    """
-        + SHOULD_NOT_CONTAIN_MISSING_VALUES
-    )
 
     geo_col = knut.geo_col_parameter()
 
@@ -2244,17 +2307,27 @@ class SpatialGM_Combo_Hom:
     name="Model summary view",
     description="Model summary view of the spatial GM Endog Error model.",
 )
-class SpatialGM_Endog_Error:
-    (
-        """
-    Spatial GM Endog Error Model.
-    GMM method for a spatial error model with endogenous variables, with results and diagnostics; based on Kelejian and Prucha (1998, 1999) [KP98] [KP99]. More information can be found at [here](https://spreg.readthedocs.io/en/latest/generated/spreg.GM_Endog_Error.html#spreg.GM_Endog_Error). Please refer the following papers for more details.
+@knut.geo_node_description(
+    short_description="Spatial GM Endogenous Error Model.",
+    description=f"""GMM method for a spatial error model with endogenous regressors, based on Kelejian and Prucha (1998, 1999). 
+    The spreg.GM_Endog_Error(y, x, yend, q, w[, vm, …]) function in the spreg module extends the spatial error model by addressing 
+    endogeneity in explanatory variables through instrumental variables (IVs). The model is formulated as:
+    y = Xβ + u, where u = λWu + ϵ.
+    In this model, certain regressors in X are endogenous, meaning they are correlated with the error term. To correct for this, 
+    instrumental variables q are introduced to provide consistent parameter estimates. The GMM approach ensures unbiased estimation 
+    by leveraging external instruments, making this model essential in spatial econometrics where simultaneity, omitted variable bias, 
+    or policy interventions introduce endogeneity.
 
-    - Harry H Kelejian and Ingmar R Prucha. A generalized spatial two-stage least squares procedure for estimating a spatial autoregressive model with autoregressive disturbances. J. Real Estate Fin. Econ., 17(1):99–121, 1998.
-    - H H Kelejian and I R Prucha. A generalized moments estimator for the autoregressive parameter in a spatial model. Int. Econ. Rev., 40:509–534, 1999.
-    """
-        + SHOULD_NOT_CONTAIN_MISSING_VALUES
-    )
+    {SHOULD_NOT_CONTAIN_MISSING_VALUES}
+
+    """,
+    package="spreg",
+    package_url="https://spreg.readthedocs.io/en/latest/api.html",
+    references={
+        "spreg.GM_Endog_Error": "https://spreg.readthedocs.io/en/latest/generated/spreg.GM_Endog_Error.html",
+    },
+)
+class SpatialGM_Endog_Error:
 
     geo_col = knut.geo_col_parameter()
 
@@ -2344,11 +2417,13 @@ class SpatialGM_Endog_Error:
             knext.view_html(html),
         )
 
+
 # The following two models are rarely used and complex, so I comment them out.
 
 ############################################
 # spatial GM_Endog_Error_Het node
 ############################################
+
 
 @knext.node(
     name="Spatial GM Endog Error Het",
@@ -2376,18 +2451,26 @@ class SpatialGM_Endog_Error:
     name="Model summary view",
     description="Model summary view of the spatial GM Endog Error Het model.",
 )
+@knut.geo_node_description(
+    short_description="Spatial GM Endogenous Error Model with Heteroskedasticity.",
+    description=f"""GMM method for a spatial error model that accounts for both endogeneity and heteroskedasticity, following Anselin (2011) and ADKP (2010). 
+    The spreg.GM_Endog_Error_Het(y, x, yend, q, w[, …]) function in the spreg module extends the spatial error model by incorporating 
+    a heteroskedasticity-robust weighting matrix while addressing endogeneity in the independent variables. The model structure is:
+    y = Xβ + u, where u = λWu + ϵ.
+    In this case, the variance of ϵ is not constant across observations, leading to inefficiencies in standard GMM estimation. 
+    By applying a heteroskedasticity-consistent weighting matrix, this method improves efficiency and inference reliability, making 
+    it particularly useful in spatial economic models where variability in residuals is expected due to regional differences.
+
+    {SHOULD_NOT_CONTAIN_MISSING_VALUES}
+
+    """,
+    package="spreg",
+    package_url="https://spreg.readthedocs.io/en/latest/api.html",
+    references={
+        "spreg.GM_Endog_Error_Het": "https://spreg.readthedocs.io/en/latest/generated/spreg.GM_Endog_Error_Het.html",
+    },
+)
 class SpatialGM_Endog_Error_Het:
-    (
-        """
-    Spatial GM Endog Error Het Model.
-    GMM method for a spatial error model with heteroskedasticity and endogenous variables, with results and diagnostics; based on [ADKP10], following [Ans11]. More information can be found at [here](https://spreg.readthedocs.io/en/latest/generated/spreg.GM_Endog_Error_Het.html#spreg.GM_Endog_Error_Het). Please refer the following papers for more details.
-
-    - Irani Arraiz, David M. Drukker, Harry H. Kelejian, and Ingmar R. Prucha. A spatial Cliff-Ord-type model with heteroskedastic innovations: Small and large sample results. Journal of Regional Science, 50(2):592–614, 2010. doi:10.1111/j.1467-9787.2009.00618.x.
-    - Luc Anselin. GMM estimation of spatial error autocorrelation with and without heteroskedasticity. Technical Report, GeoDa Center for Geospatial Analysis and Computation, 2011.
-    """
-        + SHOULD_NOT_CONTAIN_MISSING_VALUES
-    )
-
     geo_col = knut.geo_col_parameter()
 
     id_col = mut.get_id_col_parameter()
@@ -2526,18 +2609,28 @@ class SpatialGM_Endog_Error_Het:
     name="Model summary view",
     description="Model summary view of the spatial GM Endog Error_Hom model.",
 )
-class SpatialGM_Endog_Error_Hom:
-    (
-        """
-    Spatial GM Endog Error Hom Model.
-    GMM method for a spatial error model with homoskedasticity and endogenous variables, with results and diagnostics; based on Drukker et al. (2013) [DEP13], following Anselin (2011) [Ans11]. More information can be found at [here](https://spreg.readthedocs.io/en/latest/generated/spreg.GM_Endog_Error_Hom.html#spreg.GM_Endog_Error_Hom). Please refer the following papers for more details.
+@knut.geo_node_description(
+    short_description="Spatial GM Endogenous Error Model with Homoskedasticity.",
+    description=f""" Spatial GM Endogenous Error Model with Homoskedasticity.
+    GMM method for a spatial error model with endogenous regressors under the assumption of homoskedasticity, based on Drukker et al. 
+    The spreg.GM_Endog_Error_Hom(y, x, yend, q, w[, …]) function in the spreg module estimates a spatial error model while assuming 
+    that the residuals have constant variance across observations. The model follows:
+    y = Xβ + u, where u = λWu + ϵ, and ϵ ∼ N(0, σ²I).
+    This model corrects for endogeneity using instrumental variables but assumes that residual variance remains constant across all 
+    observations. By maintaining homoskedasticity, the estimation process is simplified, potentially leading to more precise parameter 
+    estimates when the assumption is valid. It is particularly suited for spatial econometric applications where both spatial error 
+    dependence and endogeneity exist, but variance heterogeneity is not a significant concern.
 
-    - %s
-    - %s
-    """
-        % (model_references["DEP13"], model_references["Ans11"])
-        + SHOULD_NOT_CONTAIN_MISSING_VALUES
-    )
+    {SHOULD_NOT_CONTAIN_MISSING_VALUES}
+
+    """,
+    package="spreg",
+    package_url="https://spreg.readthedocs.io/en/latest/api.html",
+    references={
+        "spreg.GM_Endog_Error_Hom": "https://spreg.readthedocs.io/en/latest/generated/spreg.GM_Endog_Error_Hom.html",
+    },
+)
+class SpatialGM_Endog_Error_Hom:
 
     geo_col = knext.ColumnParameter(
         "Geometry Column",
