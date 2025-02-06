@@ -92,7 +92,7 @@ def get_id_col_parameter(
 @knext.input_table(name="Geo table", description="Table with geometry column.")
 @knext.output_table(name="Spatial Weights", description="Spatial Weights.")
 class spatialWeights:
-    """This node constructs a contiguity spatial weights matrix from the input data.
+    """Constructs a contiguity spatial weights matrix from the input data.
     This node constructs a contiguity spatial weights matrix from the input data.
     """
 
@@ -1106,6 +1106,24 @@ class LocalGetisOrd:
     description="Output view of Bivariate Global Moran’s I"
     + __global_statistics_interactive_view_description,
 )
+@knut.geo_node_description(
+    short_description="Bivariate Global Moran’s I",
+    description=f"""The esda.moran.Moran_BV(y1, y2, w) function computes the Bivariate Moran’s I statistic, 
+    which measures the spatial correlation between two different variables in a given spatial context. 
+    Unlike the traditional Moran’s I, which captures the spatial autocorrelation of a single variable, 
+    the bivariate version examines the relationship between one variable and the spatially lagged values 
+    of another variable. 
+    A positive Moran’s I indicates that high values of y1 are associated with high values of y2 in neighboring locations, 
+    while a negative Moran’s I suggests an inverse spatial relationship. This method is widely used in spatial econometrics, 
+    geography, and environmental studies to assess spatial dependencies between different phenomena.
+
+    """,
+    package="esda",
+    package_url="https://pysal.org/esda/",
+    references={
+        "esda.moran.Moran_BV": "https://pysal.org/esda/generated/esda.Moran_BV.html",
+    },
+)
 class BivariateGlobalMoran:
     """
     Bivariate Global Moran’s I.
@@ -1189,7 +1207,7 @@ class BivariateGlobalMoran:
 ############################################
 # FIXME: add test workflow
 @knext.node(
-    name="Bivariate Local Moran Statistics",
+    name="Bivariate Local Moran's I",
     node_type=knext.NodeType.LEARNER,
     # node_type=knext.NodeType.MANIPULATOR,
     category=__category,
@@ -1214,15 +1232,29 @@ class BivariateGlobalMoran:
 #     description="Output model of Bivariate Local Moran Statistics",
 #     id="pysal.esda.moran.Moran_Local",
 # )
+@knut.geo_node_description(
+    short_description="Local Bivariate Moran’s I.",
+    description=f"""The esda.moran.Moran_Local_BV(y1, y2, w) function computes the Local Bivariate Moran’s I statistic, 
+    which measures the local spatial association between two variables, identifying spatial clusters 
+    or outliers where the relationships are particularly strong. Unlike the global Bivariate Moran’s I, 
+    this statistic is calculated for each spatial unit, revealing localized patterns of spatial correlation. 
+    Positive values indicate local clustering where high values of y1 are surrounded by high values of y2, 
+    while negative values suggest local spatial mismatches. The significance of each local statistic can be assessed using permutation tests, 
+    allowing for hypothesis testing of local spatial dependence. This method is particularly useful in urban studies, epidemiology, 
+    and environmental research to identify spatial hotspots and local anomalies.
+
+    """,
+    package="esda",
+    package_url="https://pysal.org/esda/",
+    references={
+        "esda.moran.Moran_Local_BV": "https://pysal.org/esda/generated/esda.Moran_Local_BV.html",
+    },
+)
 @knext.output_view(
     name="output view",
     description="Output view of Bivariate Local Moran Statistics",
 )
 class BivariateLocalMoran:
-    """
-    Bivariate Local Moran Statistics
-    """
-
     # input parameters
     geo_col = knext.ColumnParameter(
         "Geometry column",
