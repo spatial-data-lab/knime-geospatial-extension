@@ -498,17 +498,22 @@ def get_osmnx():
 )
 @knut.osm_node_description(
     short_description="Get Points of Interests(POIs) from the Open Street Map.",
-    description="""This node downloads geospatial entities’ geometries and attributes from [OpenStreetMap.](https://www.openstreetmap.org/about)
-Results returned are the union, not intersection of each individual tag. Each result matches at least one given tag. 
-The place tags should be OSM tags, (e.g., building, landuse, highway, etc) and the value tags should be either True 
-to retrieve all items with the given tag, or a single value to retrieve a single tag-value combination, or a 
-comma separated list of values to get multiple values for the given tag. For example, 
-place tag=building, tag value=True would return all building footprints in the area.
-Place tag=landuse, tag value=retail, commercial would return all retail and commercial landuses.
+    description="""This node downloads geospatial entities’ geometries and attributes from 
+[OpenStreetMap.](https://www.openstreetmap.org/about) Results returned are the union, not intersection of each 
+individual tag. Each result matches at least one given tag. The place tags should be OSM tags, 
+(e.g., building, landuse, highway, etc) and the value tags should be either *True* to retrieve all items with the given 
+tag, or a single value to retrieve a single tag-value combination, or a comma separated list of values to get multiple 
+values for the given tag. For example, *place tag=building, tag value=True* would return all building footprints in the 
+area. *Place tag=landuse, tag value=retail, commercial* would return all retail and commercial landuses. For more 
+details about a tag and how to find valid tags, please refer to the [OpenStreet TagFinder.](https://tagfinder.osm.ch/)
+
+Please be aware that tags can change over time. For more details about changes in tags, please refer to the
+[Changelog.](https://wiki.openstreetmap.org/wiki/Changelog)
 """,
     references={
         "OpenStreet TagFinder": "https://tagfinder.osm.ch/",
         "OpenStreetMap Taginfo": "https://taginfo.openstreetmap.org/",
+        "OSM Map Features": "https://wiki.openstreetmap.org/wiki/Map_features",
         "OSMnx": "https://github.com/gboeing/osmnx",
         "osmnx.geometries_from_place": "https://osmnx.readthedocs.io/en/stable/osmnx.html#module-osmnx.geometries",
     },
@@ -688,6 +693,193 @@ class OSMGeoBoundaryNode:
         return knext.Table.from_pandas(gdf)
 
 
+# moved from spatialdata extension
+
+
+############################################
+# GDELT nodes
+############################################
+@knext.node(
+    name="GDELT Global Knowledge Graph",
+    node_type=knext.NodeType.SOURCE,
+    icon_path=__NODE_ICON_PATH + "GDELT.png",
+    category=__category,
+    after="",
+)
+@knext.output_table(
+    name="GDELT GKG Data Table",
+    description="Retrieved geodata from GDELT Global Knowledge Graph. For details on the result columns see the "
+    + "[GDELT documentation.](https://blog.gdeltproject.org/announcing-our-first-api-gkg-geojson/)",
+)
+class GDELTGKGNode:
+    """This node retrieves GDELT Global Knowledge Graph data.
+    The GDELT Global Knowledge Graph (GKG) is a real-time knowledge graph of global human society for open research.
+    The GKG is a massive archive of global news and translated into 65 languages, updated every 15 minutes.
+    The GKG is a network diagram of the world's events and news coverage, containing more than 1.5 billion people,
+    organizations, locations, themes, emotions, counts, quotes, images and events across the planet
+    dating back to January 1, 1979, and updated every 15 minutes.
+
+    The node generates queries in the following form:
+    *https://api.gdeltproject.org/api/v1/gkg_geojson?QUERY=<QUERY>&TIMESPAN=<Last Hours \* 60>*.
+    Please refer to the [GDELT documentation](https://blog.gdeltproject.org/announcing-our-first-api-gkg-geojson/)
+    for more details about the supported input values and output field definitions.
+
+    ##Note
+    Data copyright by [GDELT Project](https://www.gdeltproject.org/) and provided under the following
+    [Terms of Use](https://www.gdeltproject.org/about.html#termsofuse).
+    """
+
+    query = knext.StringParameter(
+        label="Query",
+        description="The query to search in GDELT GKG. This can be a single key word (click "
+        + "[here](http://data.gdeltproject.org/documentation/GKG-MASTER-THEMELIST.TXT) for a complete list) or a "
+        + "more complex query (click [here](https://blog.gdeltproject.org/announcing-our-first-api-gkg-geojson/) "
+        + "for more info and examples).",
+        default_value="FOOD_SECURITY",
+    )
+
+    last_hours = knext.IntParameter(
+        label="Last Hours",
+        description="The last hours to search in GDELT GKG.",
+        default_value=1,
+        min_value=1,
+        max_value=24,
+    )
+
+    timeout = knext.IntParameter(
+        label="Request timeout in seconds",
+        description="The timeout in seconds for the request for GDELT GKG.",
+        default_value=120,
+        min_value=1,
+        is_advanced=True,
+    )
+
+    def configure(self, configure_context):
+        return None
+
+    def execute(self, exec_context: knext.ExecutionContext):
+        import geopandas as gp
+        import requests
+
+        url = "https://api.gdeltproject.org/api/v1/gkg_geojson?QUERY=%s&TIMESPAN=%d" % (
+            self.query,
+            self.last_hours * 60,
+        )
+        response = requests.get(url, timeout=self.timeout)
+        data = response.json()
+        gdf = gp.GeoDataFrame.from_features(data, crs="EPSG:4326")
+        return knext.Table.from_pandas(gdf)
+
+
+############################################
+# Open Sky Network Data Node
+############################################
+@knext.node(
+    name="Open Sky Network Data",
+    node_type=knext.NodeType.SOURCE,
+    icon_path=__NODE_ICON_PATH + "OpenSkyNetwork.png",
+    category=__category,
+    after="",
+)
+@knext.output_table(
+    name="Open Sky Network Data Table",
+    description="Retrieved [state vectors](https://openskynetwork.github.io/opensky-api/index.html#state-vectors) "
+    + "with geodata from Open Sky Network Data. For details on the result columns see the "
+    + "[OpenSky documentation.](https://openskynetwork.github.io/opensky-api/rest.html#response)",
+)
+class OpenSkyNetworkDataNode:
+    """This node retrieves Open Sky Network Data.
+    It returns live airspace information in the form of
+    [state vectors](https://openskynetwork.github.io/opensky-api/index.html#state-vectors)
+    for __research and non-commercial__ purposes. It does not provide commercial flight data such as airport schedules,
+    delays or similar information that cannot be derived from ADS-B data contents!
+
+    The OpenSky Network is a non-profit association based in Switzerland that operates a crowd sourced global
+    database of air traffic control data. The network consists of thousands of sensors connected to the Internet
+    by volunteers, whose main purpose is to measure the radio signals emitted by aircraft to track their position.
+    Please refer to [Open Sky Network homepage](https://opensky-network.org/) for more details.
+
+    ##Note
+    Data copyright by [The OpenSky Network](https://opensky-network.org/) and provided under the following
+    [Terms of Use](https://opensky-network.org/index.php/about/terms-of-use).
+    The following section is copied from the terms of use:
+
+    *OpenSky Network’s authorization to access the data grants You a limited, non-exclusive, non-transferable,
+    non-assignable, and terminable license to copy, modify, and use the data in accordance with this AGREEMENT
+    __solely for the purpose of non-profit research, non-profit education, or for government purposes__.
+    No license is granted for any other purpose and there are no implied licenses in this AGREEMENT.
+    In particular, any use by a for-profit entity requires written permission by the OpenSky Network.*
+    """
+
+    user = knext.StringParameter(
+        label="User (optional)",
+        description="The optional user name to access Open Sky Network Data. "
+        + "If not provided [limitations](https://openskynetwork.github.io/opensky-api/rest.html#limitations) apply.",
+        default_value="",
+    )
+
+    password = knext.StringParameter(
+        label="Password (optional)",
+        description="The optional password to access Open Sky Network Data."
+        + "If not provided [limitations](https://openskynetwork.github.io/opensky-api/rest.html#limitations) apply.",
+        default_value="",
+    )
+
+    timeout = knext.IntParameter(
+        label="Request timeout in seconds",
+        description="The timeout in seconds for the request for GDELT GKG.",
+        default_value=120,
+        min_value=1,
+        is_advanced=True,
+    )
+
+    def configure(self, configure_context):
+        return None
+
+    def execute(self, exec_context: knext.ExecutionContext):
+        import geopandas as gp
+        import pandas as pd
+        import requests
+
+        # API documentation https://openskynetwork.github.io/opensky-api/rest.html
+
+        url = "https://opensky-network.org/api/states/all"
+        kws = {"url": url, "timeout": self.timeout}
+        if len(self.user) != 0 and len(self.password) != 0:
+            kws["auth"] = (self.user, self.password)
+
+        response = requests.get(**kws)
+        json_data = response.json()
+        states = pd.DataFrame(
+            json_data["states"],
+            columns=[
+                "icao24",
+                "callsign",
+                "origin_country",
+                "time_position",
+                "last_contact",
+                "longitude",
+                "latitude",
+                "baro_altitude",
+                "on_ground",
+                "velocity",
+                "true_track",
+                "vertical_rate",
+                "sensors",
+                "geo_altitude",
+                "squawk",
+                "spi",
+                "position_source",
+            ],
+        )
+        gdf = gp.GeoDataFrame(
+            states,
+            geometry=gp.points_from_xy(states.longitude, states.latitude),
+            crs="EPSG:4326",
+        )
+        return knext.Table.from_pandas(gdf)
+
+
 ############################################
 # Socrata Search
 ############################################
@@ -703,23 +895,23 @@ class OSMGeoBoundaryNode:
     description="Socrata dataset list from  a wealth of open data resources from governments, non-profits, and NGOs around the world based on the query term. ",
 )
 class SocrataSearchNode:
-    """Access open datasets from various well-known data resources and organizations effortlessly  using the SODA interface. 
-    
-    US Centers for Disease Control and Prevention (CDC): CDC data includes information on infectious diseases, chronic conditions, environmental health hazards, 
-    injury prevention, maternal and child health, immunization coverage, and much more. These datasets are collected through surveillance systems, population surveys, 
+    """Access open datasets from various well-known data resources and organizations effortlessly  using the SODA interface.
+
+    US Centers for Disease Control and Prevention (CDC): CDC data includes information on infectious diseases, chronic conditions, environmental health hazards,
+    injury prevention, maternal and child health, immunization coverage, and much more. These datasets are collected through surveillance systems, population surveys,
     epidemiological studies, and collaborative research efforts conducted by the CDC and its partners.
 
-    Data.gov: The official open data platform of the United States government, offering datasets from various U.S. government agencies covering fields such as education, 
+    Data.gov: The official open data platform of the United States government, offering datasets from various U.S. government agencies covering fields such as education,
     healthcare, transportation, and the environment.
 
     Chicago Data Portal: The open data platform provided by the City of Chicago, offering datasets related to the city, including crime data, transportation data, demographic statistics, and more.
-    
+
     NYC Open Data: The open data platform provided by the City of New York, offering datasets covering urban planning, public transportation, health, and various other aspects of the city.
-    
+
     UK Government Data Service: The open data platform provided by the UK government, offering datasets from various governmental bodies covering economics, social issues, the environment, and more.
-    
+
     World Bank Data: The open data platform provided by the World Bank, offering a wide range of economic, social, and environmental datasets from around the world for research and analysis of global development trends.
-       
+
     The Socrata Open Data API (SODA) is a powerful tool designed for programmatically accessing a vast array of open data resources from various organizations around the world, including governments, non-profits,and NGOs..
     This node uses the [SODA Consumer API](https://dev.socrata.com/consumers/getting-started.html) to get the dataset list.
     """
@@ -760,10 +952,12 @@ class SocrataSearchNode:
         # Create a DataFrame from the dataset information, and flatten the nested dictionaries
         df = json_normalize(dataset_info)
         # Check if columns exist before dropping them
-        columns_to_drop = ["classification.domain_tags", "classification.domain_metadata"]
+        columns_to_drop = [
+            "classification.domain_tags",
+            "classification.domain_metadata",
+        ]
         columns_to_drop = [col for col in columns_to_drop if col in df.columns]
         df = df.drop(columns=columns_to_drop)
-
 
         # Find List
         list_columns = [
@@ -815,21 +1009,21 @@ class SocrataSearchNode:
 class SocrataDataNode:
     """Retrieve the open data category via Socrata API.
 
-    US Centers for Disease Control and Prevention (CDC): CDC data includes information on infectious diseases, chronic conditions, environmental health hazards, 
-    injury prevention, maternal and child health, immunization coverage, and much more. These datasets are collected through surveillance systems, population surveys, 
+    US Centers for Disease Control and Prevention (CDC): CDC data includes information on infectious diseases, chronic conditions, environmental health hazards,
+    injury prevention, maternal and child health, immunization coverage, and much more. These datasets are collected through surveillance systems, population surveys,
     epidemiological studies, and collaborative research efforts conducted by the CDC and its partners.
 
-    Data.gov: The official open data platform of the United States government, offering datasets from various U.S. government agencies covering fields such as education, 
+    Data.gov: The official open data platform of the United States government, offering datasets from various U.S. government agencies covering fields such as education,
     healthcare, transportation, and the environment.
 
     Chicago Data Portal: The open data platform provided by the City of Chicago, offering datasets related to the city, including crime data, transportation data, demographic statistics, and more.
-    
+
     NYC Open Data: The open data platform provided by the City of New York, offering datasets covering urban planning, public transportation, health, and various other aspects of the city.
-    
+
     UK Government Data Service: The open data platform provided by the UK government, offering datasets from various governmental bodies covering economics, social issues, the environment, and more.
-    
-    World Bank Data: The open data platform provided by the World Bank, offering a wide range of economic, social, and environmental datasets from around the world for research and analysis of global development trends.   
-  
+
+    World Bank Data: The open data platform provided by the World Bank, offering a wide range of economic, social, and environmental datasets from around the world for research and analysis of global development trends.
+
     The Socrata Open Data API (SODA) is a powerful tool designed for programmatically accessing a vast array of open data resources from various organizations around the world, including governments, non-profits,and NGOs..
     This node uses the [SODA Consumer API](https://dev.socrata.com/consumers/getting-started.html) to get the dataset from a dataset list generated by Socrata Search Node.
 
@@ -862,7 +1056,7 @@ class SocrataDataNode:
         # Unauthenticated client only works with public data sets. Note 'None'
         # in place of application token, and no username or password:
         client = Socrata(self.metadata_domain, None)
-        limit = 100000 
+        limit = 100000
         offset = 0
         all_results = []
         while True:

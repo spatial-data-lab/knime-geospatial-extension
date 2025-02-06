@@ -86,15 +86,86 @@ class CrsTransformerNode:
         )
 
     def execute(self, exec_context: knext.ExecutionContext, input_table):
-        gdf = knut.load_geo_data_frame(input_table, self.geo_col, exec_context)
-        if self.result_settings.mode == knut.ResultSettingsMode.APPEND.name:
-            result_col = knut.get_unique_column_name(
-                self.result_settings.new_column_name, input_table.schema
+        # check whether multiple crs exist
+        try:
+            gdf = knut.load_geo_data_frame(input_table, self.geo_col, exec_context)
+            if self.result_settings.mode == knut.ResultSettingsMode.APPEND.name:
+                result_col = knut.get_unique_column_name(
+                    self.result_settings.new_column_name, input_table.schema
+                )
+                gdf[result_col] = gdf[self.geo_col]
+                gdf.set_geometry(result_col, inplace=True)
+            gdf.to_crs(self.new_crs, inplace=True)
+            return knut.to_table(gdf, exec_context)
+        except:
+            import pyarrow as pa
+            import shapely
+            import pyproj
+            from shapely.ops import transform
+
+            exec_context.set_progress(0.1, "Different input CRS detected")
+
+            t1 = input_table.to_pyarrow()
+
+            # extract the geometry column to project
+            t_dict = t1.select([self.geo_col]).to_pydict()
+            geometry_col = t_dict[self.geo_col]
+
+            # The function that performs the projection
+            def transform_geometry(geom, original_crs, target_crs):
+                project = pyproj.Transformer.from_crs(
+                    original_crs, target_crs, always_xy=True
+                ).transform
+                return transform(project, geom)
+
+            transformed_geometries = []
+            round_count = 0
+            n_loop = len(geometry_col)
+            for geo_value in geometry_col:
+                round_count += 1
+                exec_context.set_progress(
+                    0.8 * round_count / n_loop,
+                    f"Row {round_count} of {n_loop} processed",
+                )
+                knut.check_canceled(exec_context)
+
+                if geo_value is None or not geo_value.wkb:
+                    transformed_geometries.append(None)
+                else:
+                    # get WKB from GeoValue, transform to shapely objects
+                    shapely_geom = shapely.wkb.loads(bytes(geo_value.wkb))
+                    original_crs = geo_value.crs  # CRS
+                    transformed_geom = transform_geometry(
+                        shapely_geom, original_crs, self.new_crs
+                    )
+                    # save as WKT
+                    transformed_geometries.append(transformed_geom.wkt)
+
+            # Create geospatial column from the projected WKTs
+            projected_geo = gp.GeoSeries.from_wkt(
+                transformed_geometries, crs=self.new_crs
             )
-            gdf[result_col] = gdf[self.geo_col]
-            gdf.set_geometry(result_col, inplace=True)
-        gdf.to_crs(self.new_crs, inplace=True)
-        return knut.to_table(gdf, exec_context)
+
+            # Create a KNIME table with the projected geospatial column
+            result_table = knext.Table.from_pandas(
+                projected_geo.to_frame(name="projected")
+            )
+            # Convert the KNIME table to PyArrow and get the projected column
+            projected_column = result_table.to_pyarrow().column("projected")
+
+            if self.result_settings.mode == knut.ResultSettingsMode.APPEND.name:
+                result_col = knut.get_unique_column_name(
+                    self.result_settings.new_column_name, input_table.schema
+                )
+                t2 = t1.append_column(result_col, projected_column)
+            else:
+                # get the selected geometry  column index
+                geo_col_idx = t1.column_names.index(self.geo_col)
+                # and replace it with the projected column
+                t2 = t1.set_column(geo_col_idx, self.geo_col, projected_column)
+            exec_context.set_progress(1, "Projection finished")
+
+            return knext.Table.from_pyarrow(t2)
 
 
 ############################################
@@ -552,3 +623,166 @@ class RandomPointNode:
             size=gdf[self.num_col], method="uniform", seed=seed
         )
         return knut.to_table(gdf, exec_context)
+
+
+############################################
+# Directed Bezier Curve
+############################################
+
+
+@knext.node(
+    name="Directed Bezier Curve",
+    node_type=knext.NodeType.MANIPULATOR,
+    icon_path="icons/icon/GeometryTransformation/ODtoCurve.png",
+    category=category,
+    after="",
+)
+@knext.input_table(
+    name="Geo table",
+    description="Input table containing geometry columns representing origin and destination points.",
+)
+@knext.output_table(
+    name="Table with directed Bézier curve",
+    description="Output table with geometry columns representing Bézier curves connecting origin and destination points.",
+)
+@knut.geo_node_description(
+    short_description="Generate Bézier curves between origin and destination points.",
+    description="""This node generates a GeoSeries containing geometries representing smooth Bézier curves between 
+    origin and destination points. The Bézier curves are created based on user-defined parameters, including the number
+    of points, height scaling, and curve angle. This transformation is particularly useful for visualizing flows or 
+    movements in a more intuitive manner compared to straight lines.    
+    """,
+    references={
+        "Bézier curve": "https://en.wikipedia.org/wiki/B%C3%A9zier_curve",
+    },
+)
+class ODtoCurveNode:
+    """
+    This node generates geometries representing connections between origin and destination points as Bézier curves.
+    """
+
+    o_geo_col = knext.ColumnParameter(
+        "Origin geopoint column",
+        "Select the geometry column that describes the origins.",
+        port_index=0,
+        column_filter=knut.is_geo_point,
+        include_row_key=False,
+        include_none_column=False,
+    )
+
+    d_geo_col = knext.ColumnParameter(
+        "Destination geopoint column",
+        "Select the geometry column that describes the destination.",
+        port_index=0,
+        column_filter=knut.is_geo_point,
+        include_row_key=False,
+        include_none_column=False,
+    )
+
+    col_name = knext.StringParameter(
+        "Column name for result geometry",
+        "Specify the column name to define the Bézier curve.",
+        "Curve",
+    )
+
+    num_points = knext.IntParameter(
+        "Number of points ",
+        "Specify the number of points to define the Bézier curve.",
+        min_value=2,
+        default_value=100,
+        is_advanced=True,
+    )
+
+    height_scale = knext.DoubleParameter(
+        "Height scale ",
+        "Set the scale factor for the curve's height, controlling the distance of the curve from the straight line.",
+        default_value=0.3,
+        min_value=0,
+        max_value=1,
+        is_advanced=True,
+    )
+
+    angle_degrees = knext.IntParameter(
+        "Curve angle (degrees) ",
+        "Define the angle that controls the shape and direction of the Bézier curve.",
+        default_value=60,
+        min_value=0,
+        max_value=360,
+        is_advanced=True,
+    )
+
+    def configure(self, configure_context, input_schema):
+        self.o_geo_col = knut.column_exists_or_preset(
+            configure_context, self.o_geo_col, input_schema, knut.is_geo
+        )
+        self.d_geo_col = knut.column_exists_or_preset(
+            configure_context, self.d_geo_col, input_schema, knut.is_geo
+        )
+        result_col = knut.get_unique_column_name(self.col_name, input_schema)
+        return input_schema.append(
+            knext.Column(
+                knut.TYPE_LINE,
+                result_col,
+            )
+        )
+
+    def execute(self, exec_context: knext.ExecutionContext, input_1):
+        gdf = knut.load_geo_data_frame(input_1, self.o_geo_col, exec_context)
+
+        import numpy as np
+        from shapely.geometry import LineString
+
+        def bezier_curve(p0, cp, p2, num_points=100):
+            t_values = np.linspace(0, 1, num_points)
+            curve = (
+                np.outer((1 - t_values) ** 2, p0)
+                + np.outer(2 * (1 - t_values) * t_values, cp)
+                + np.outer(t_values**2, p2)
+            )
+            return curve
+
+        def calculate_control_point(p0, p2, height_scale=0.3, angle_degrees=60):
+            midpoint = (p0 + p2) / 2
+            distance = np.linalg.norm(p2 - p0)
+            offset_distance = distance * height_scale
+            vec = p2 - p0
+            angle_radians = np.radians(angle_degrees)
+            rotation_matrix = np.array(
+                [
+                    [np.cos(angle_radians), np.sin(angle_radians)],
+                    [-np.sin(angle_radians), np.cos(angle_radians)],
+                ]
+            )
+            vec_perpendicular = np.dot(rotation_matrix, vec)
+            vec_perpendicular /= np.linalg.norm(vec_perpendicular)
+            vec_perpendicular *= offset_distance
+            control_point = midpoint + vec_perpendicular
+            return control_point
+
+        def create_bezier_line_geometry(
+            row,
+            height_scale=self.height_scale,
+            angle_degrees=self.angle_degrees,
+            num_points=self.num_points,
+        ):
+            p0 = np.array(row[self.o_geo_col].coords[0])
+            p2 = np.array(row[self.d_geo_col].coords[0])
+
+            # Calculate the control point
+            cp = calculate_control_point(
+                p0, p2, height_scale=self.height_scale, angle_degrees=self.angle_degrees
+            )
+
+            # Calculate the points on the Bezier curve
+            curve_points = bezier_curve(p0, cp, p2, num_points=self.num_points)
+
+            # Convert the curve points to a LineString geometry
+            line_geom = LineString(curve_points)
+
+            return line_geom
+
+        result_col = knut.get_unique_column_name(self.col_name, input_1.schema)
+
+        gdf[result_col] = gdf.apply(create_bezier_line_geometry, axis=1)
+
+        return knut.to_table(gdf)

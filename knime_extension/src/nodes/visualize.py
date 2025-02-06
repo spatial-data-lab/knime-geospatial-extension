@@ -306,7 +306,7 @@ class BaseMapSettings:
             "CartoDB VoyagerLabelsUnder",
             "CartoDB VoyagerNoLabels",
             "CartoDB VoyagerOnlyLabels",
-            "Esri DeLorme",
+            # "Esri DeLorme",
             "Esri NatGeoWorldMap",
             "Esri OceanBasemap",
             "Esri WorldGrayCanvas",
@@ -319,7 +319,7 @@ class BaseMapSettings:
             "Gaode Normal",
             "Gaode Satellite",
             "NASAGIBS ASTER_GDEM_Greyscale_Shaded_Relief",
-            "NASAGIBS BlueMarble",
+            # "NASAGIBS BlueMarble",
             "NASAGIBS BlueMarble3031",
             "NASAGIBS BlueMarble3413",
             "NASAGIBS ModisAquaBands721CR",
@@ -335,17 +335,17 @@ class BaseMapSettings:
             "NASAGIBS ViirsTrueColorCR",
             "OpenRailwayMap",
             "OpenStreetMap",
-            "Stamen Terrain",
-            "Stamen TerrainBackground",
-            "Stamen TerrainLabels",
-            "Stamen Toner",
-            "Stamen TonerBackground",
-            "Stamen TonerHybrid",
-            "Stamen TonerLabels",
-            "Stamen TonerLines",
-            "Stamen TonerLite",
-            "Stamen TopOSMFeatures",
-            "Stamen TopOSMRelief",
+            # "Stamen Terrain",
+            # "Stamen TerrainBackground",
+            # "Stamen TerrainLabels",
+            # "Stamen Toner",
+            # "Stamen TonerBackground",
+            # "Stamen TonerHybrid",
+            # "Stamen TonerLabels",
+            # "Stamen TonerLines",
+            # "Stamen TonerLite",
+            # "Stamen TopOSMFeatures",
+            # "Stamen TopOSMRelief",
             "Stamen Watercolor",
             "Strava All",
             "Strava Ride",
@@ -447,8 +447,26 @@ class ViewNode:
                 gdf[c.name] = gdf[c.name].apply(str)
         if self.basemap_setting.base_map == "Don't show base map":
             base_map = None
+        elif self.basemap_setting.base_map == "Stamen Watercolor":
+            import folium
+
+            base_map = folium.TileLayer(
+                "https://watercolormaps.collection.cooperhewitt.org/tile/watercolor/{z}/{x}/{y}.jpg",
+                attr="Map tiles by Stamen Design, under CC BY 3.0. Data by OpenStreetMap, under CC BY SA.",
+            )
+        elif self.basemap_setting.base_map == "OpenStreetMap":
+            base_map = "OpenStreetMap"
         else:
-            base_map = self.basemap_setting.base_map
+            import xyzservices.providers as xyz
+
+            tile_strs = self.basemap_setting.base_map.split(" ")
+            if len(tile_strs) == 2:
+                base_map = xyz[tile_strs[0]][tile_strs[1]]
+            elif len(tile_strs) == 1:
+                base_map = xyz[tile_strs[0]]
+            else:
+                base_map = self.basemap_setting.base_map
+
         kws = {
             # "column":self.color_col,
             # "cmap":self.color_map,
@@ -463,6 +481,7 @@ class ViewNode:
                 "max_labels": 3,
                 "colorbar": True,
             },
+            "map_kwds": {"world_copy_jump": True},
         }
 
         if "none" not in str(self.color_settings.color_col).lower():
