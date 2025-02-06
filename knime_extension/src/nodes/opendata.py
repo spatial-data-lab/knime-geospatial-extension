@@ -923,6 +923,14 @@ class SocrataSearchNode:
         default_value="Massachusetts",
     )
 
+    timeout = knext.IntParameter(
+        label="Request timeout in seconds",
+        description="The timeout in seconds for the request API.",
+        default_value=120,
+        min_value=1,
+        is_advanced=True,
+    )
+
     def configure(self, configure_context):
         # TODO Create combined schema
         return None
@@ -940,7 +948,7 @@ class SocrataSearchNode:
             f"http://api.us.socrata.com/api/catalog/v1?q={encoded_query_item}&only=datasets&limit=10000"
         )
 
-        response = urlopen(request)
+        response = urlopen(request, timeout=self.timeout)
         response_body = response.read()
 
         # Load the JSON response into a Python dictionary
@@ -1043,7 +1051,15 @@ class SocrataDataNode:
         default_value="",
     )
 
-    def configure(self, configure_context):
+    timeout = knext.IntParameter(
+        label="Request timeout in seconds",
+        description="The timeout in seconds for the request API.",
+        default_value=120,
+        min_value=1,
+        is_advanced=True,
+    )
+
+    def configure(self, configure_context, input_schema_1):
         # TODO Create combined schema
         return None
 
@@ -1056,6 +1072,7 @@ class SocrataDataNode:
         # Unauthenticated client only works with public data sets. Note 'None'
         # in place of application token, and no username or password:
         client = Socrata(self.metadata_domain, None)
+        client.timeout = self.timeout
         limit = 100000
         offset = 0
         all_results = []
