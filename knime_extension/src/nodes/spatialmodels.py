@@ -2354,7 +2354,7 @@ class SpatialGM_Endog_Error:
     name="Spatial GM Endog Error Het",
     node_type=knext.NodeType.LEARNER,
     category=__category,
-    icon_path=__NODE_ICON_PATH_2 + "GMendogErrHet.png",
+    icon_path=__NODE_ICON_PATH + "GMendogErrHet.png",
 )
 @knext.input_table(
     name="Input Table",
@@ -2390,7 +2390,7 @@ class SpatialGM_Endog_Error_Het:
 
     geo_col = knut.geo_col_parameter()
 
-    id_col = get_id_col_parameter()
+    id_col = mut.get_id_col_parameter()
 
     dependent_variable = knext.ColumnParameter(
         "Dependent variable",
@@ -2504,7 +2504,7 @@ class SpatialGM_Endog_Error_Het:
     name="Spatial GM Endog Error_Hom",
     node_type=knext.NodeType.LEARNER,
     category=__category,
-    icon_path=__NODE_ICON_PATH_2 + "GMendogErrHom.png",
+    icon_path=__NODE_ICON_PATH + "GMendogErrHom.png",
 )
 @knext.input_table(
     name="Input Table",
@@ -2535,7 +2535,7 @@ class SpatialGM_Endog_Error_Hom:
     - %s
     - %s
     """
-        % (mrs.model_references["DEP13"], mrs.model_references["Ans11"])
+        % (model_references["DEP13"], model_references["Ans11"])
         + SHOULD_NOT_CONTAIN_MISSING_VALUES
     )
 

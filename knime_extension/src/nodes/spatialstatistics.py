@@ -1,7 +1,7 @@
 import geopandas as gp
 import knime_extension as knext
 import util.knime_utils as knut
-
+import util.modeling_utils as mut
 
 __category = knext.category(
     path="/community/geo",
@@ -1120,7 +1120,7 @@ class BivariateGlobalMoran:
         include_none_column=False,
     )
 
-    id_col = get_id_col_parameter()
+    id_col = mut.get_id_col_parameter()
 
     field_col1 = knext.ColumnParameter(
         "Variable column 1",
@@ -1232,7 +1232,7 @@ class BivariateLocalMoran:
         include_none_column=False,
     )
 
-    id_col = get_id_col_parameter()
+    id_col = mut.get_id_col_parameter()
 
     field_col1 = knext.ColumnParameter(
         "Variable column 1",
