@@ -895,23 +895,23 @@ class OpenSkyNetworkDataNode:
     description="Socrata dataset list from  a wealth of open data resources from governments, non-profits, and NGOs around the world based on the query term. ",
 )
 class SocrataSearchNode:
-    """Access open datasets from various well-known data resources and organizations effortlessly  using the SODA interface. 
-    
-    US Centers for Disease Control and Prevention (CDC): CDC data includes information on infectious diseases, chronic conditions, environmental health hazards, 
-    injury prevention, maternal and child health, immunization coverage, and much more. These datasets are collected through surveillance systems, population surveys, 
+    """Access open datasets from various well-known data resources and organizations effortlessly  using the SODA interface.
+
+    US Centers for Disease Control and Prevention (CDC): CDC data includes information on infectious diseases, chronic conditions, environmental health hazards,
+    injury prevention, maternal and child health, immunization coverage, and much more. These datasets are collected through surveillance systems, population surveys,
     epidemiological studies, and collaborative research efforts conducted by the CDC and its partners.
 
-    Data.gov: The official open data platform of the United States government, offering datasets from various U.S. government agencies covering fields such as education, 
+    Data.gov: The official open data platform of the United States government, offering datasets from various U.S. government agencies covering fields such as education,
     healthcare, transportation, and the environment.
 
     Chicago Data Portal: The open data platform provided by the City of Chicago, offering datasets related to the city, including crime data, transportation data, demographic statistics, and more.
-    
+
     NYC Open Data: The open data platform provided by the City of New York, offering datasets covering urban planning, public transportation, health, and various other aspects of the city.
-    
+
     UK Government Data Service: The open data platform provided by the UK government, offering datasets from various governmental bodies covering economics, social issues, the environment, and more.
-    
+
     World Bank Data: The open data platform provided by the World Bank, offering a wide range of economic, social, and environmental datasets from around the world for research and analysis of global development trends.
-       
+
     The Socrata Open Data API (SODA) is a powerful tool designed for programmatically accessing a vast array of open data resources from various organizations around the world, including governments, non-profits,and NGOs..
     This node uses the [SODA Consumer API](https://dev.socrata.com/consumers/getting-started.html) to get the dataset list.
     """
@@ -921,6 +921,14 @@ class SocrataSearchNode:
         description="""Enter search keywords or dataset names to find relevant datasets in the Socrata database. 
                    This search is not case-sensitive and can include multiple words separated by spaces. """,
         default_value="Massachusetts",
+    )
+
+    timeout = knext.IntParameter(
+        label="Request timeout in seconds",
+        description="The timeout in seconds for the request API.",
+        default_value=120,
+        min_value=1,
+        is_advanced=True,
     )
 
     def configure(self, configure_context):
@@ -940,7 +948,7 @@ class SocrataSearchNode:
             f"http://api.us.socrata.com/api/catalog/v1?q={encoded_query_item}&only=datasets&limit=10000"
         )
 
-        response = urlopen(request)
+        response = urlopen(request, timeout=self.timeout)
         response_body = response.read()
 
         # Load the JSON response into a Python dictionary
@@ -952,10 +960,12 @@ class SocrataSearchNode:
         # Create a DataFrame from the dataset information, and flatten the nested dictionaries
         df = json_normalize(dataset_info)
         # Check if columns exist before dropping them
-        columns_to_drop = ["classification.domain_tags", "classification.domain_metadata"]
+        columns_to_drop = [
+            "classification.domain_tags",
+            "classification.domain_metadata",
+        ]
         columns_to_drop = [col for col in columns_to_drop if col in df.columns]
         df = df.drop(columns=columns_to_drop)
-
 
         # Find List
         list_columns = [
@@ -1007,21 +1017,21 @@ class SocrataSearchNode:
 class SocrataDataNode:
     """Retrieve the open data category via Socrata API.
 
-    US Centers for Disease Control and Prevention (CDC): CDC data includes information on infectious diseases, chronic conditions, environmental health hazards, 
-    injury prevention, maternal and child health, immunization coverage, and much more. These datasets are collected through surveillance systems, population surveys, 
+    US Centers for Disease Control and Prevention (CDC): CDC data includes information on infectious diseases, chronic conditions, environmental health hazards,
+    injury prevention, maternal and child health, immunization coverage, and much more. These datasets are collected through surveillance systems, population surveys,
     epidemiological studies, and collaborative research efforts conducted by the CDC and its partners.
 
-    Data.gov: The official open data platform of the United States government, offering datasets from various U.S. government agencies covering fields such as education, 
+    Data.gov: The official open data platform of the United States government, offering datasets from various U.S. government agencies covering fields such as education,
     healthcare, transportation, and the environment.
 
     Chicago Data Portal: The open data platform provided by the City of Chicago, offering datasets related to the city, including crime data, transportation data, demographic statistics, and more.
-    
+
     NYC Open Data: The open data platform provided by the City of New York, offering datasets covering urban planning, public transportation, health, and various other aspects of the city.
-    
+
     UK Government Data Service: The open data platform provided by the UK government, offering datasets from various governmental bodies covering economics, social issues, the environment, and more.
-    
-    World Bank Data: The open data platform provided by the World Bank, offering a wide range of economic, social, and environmental datasets from around the world for research and analysis of global development trends.   
-  
+
+    World Bank Data: The open data platform provided by the World Bank, offering a wide range of economic, social, and environmental datasets from around the world for research and analysis of global development trends.
+
     The Socrata Open Data API (SODA) is a powerful tool designed for programmatically accessing a vast array of open data resources from various organizations around the world, including governments, non-profits,and NGOs..
     This node uses the [SODA Consumer API](https://dev.socrata.com/consumers/getting-started.html) to get the dataset from a dataset list generated by Socrata Search Node.
 
@@ -1041,7 +1051,15 @@ class SocrataDataNode:
         default_value="",
     )
 
-    def configure(self, configure_context):
+    timeout = knext.IntParameter(
+        label="Request timeout in seconds",
+        description="The timeout in seconds for the request API.",
+        default_value=120,
+        min_value=1,
+        is_advanced=True,
+    )
+
+    def configure(self, configure_context, input_schema_1):
         # TODO Create combined schema
         return None
 
@@ -1054,7 +1072,8 @@ class SocrataDataNode:
         # Unauthenticated client only works with public data sets. Note 'None'
         # in place of application token, and no username or password:
         client = Socrata(self.metadata_domain, None)
-        limit = 100000 
+        client.timeout = self.timeout
+        limit = 100000
         offset = 0
         all_results = []
         while True:
