@@ -298,7 +298,13 @@ def __is_type_x(column: knext.Column, type: str) -> bool:
 ############################################
 # GeoPandas node class decorator
 ############################################
-def geo_node_description(short_description: str, description: str, references: dict):
+def geo_node_description(
+    short_description: str,
+    description: str,
+    references: dict,
+    package: str = "GeoPandas",
+    package_url: str = "https://geopandas.org/",
+):
     """This decorator takes the provided information and generates a standardized node description
     for nodes that are based on GeoPandas functionality."""
 
@@ -306,7 +312,13 @@ def geo_node_description(short_description: str, description: str, references: d
         s = f"{short_description}\n"
         s += f"{description}\n\n"
         # s += "___\n\n"  # separator line between description and general part
-        s += "The node is based on the [GeoPandas](https://geopandas.org/) project and uses the following related information and function"
+        s += (
+            "The node is based on the ["
+            + package
+            + "]("
+            + package_url
+            + ") project and uses the following related information and function"
+        )
         if references is not None:
             if len(references) > 1:
                 s += "s"
