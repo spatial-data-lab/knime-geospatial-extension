@@ -2584,7 +2584,7 @@ class SpatialGM_Endog_Error_Het:
 ############################################
 # FIXME: add another two parameters
 @knext.node(
-    name="Spatial GM Endog Error_Hom",
+    name="Spatial GM Endog Error Hom",
     node_type=knext.NodeType.LEARNER,
     category=__category,
     icon_path=__NODE_ICON_PATH + "GMendogErrHom.png",
