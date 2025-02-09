@@ -108,7 +108,7 @@ class Distance:
         label: str = "Distance unit",
         description: str = "Choose the distance unit to use.",
         default_value: str = "INPUT",
-        since_version="1.1.0"
+        since_version="1.1.0",
     ):
         "Distance unit parameter. Usually named 'unit'"
         return knext.EnumParameter(
