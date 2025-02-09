@@ -108,6 +108,7 @@ class Distance:
         label: str = "Distance unit",
         description: str = "Choose the distance unit to use.",
         default_value: str = "INPUT",
+        since_version="1.1.0",
     ):
         "Distance unit parameter. Usually named 'unit'"
         return knext.EnumParameter(
@@ -124,6 +125,7 @@ class Distance:
         description: str = "If checked the CRS of the input table is retained even if a re-projection was necessary "
         + "for the selected distance unit.",
         default_value: bool = False,
+        since_version="1.1.0",
     ):
         "Boolean parameter that indicates if the input CRS should be retained. Usually named 'keep_input_crs'."
         return knext.BoolParameter(
