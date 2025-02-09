@@ -1180,6 +1180,9 @@ class CreateGrid:
 
         rows = int(np.ceil((ymax - ymin) / height))
         cols = int(np.ceil((xmax - xmin) / width))
+
+        exec_context.set_progress(0.1, f"Creating grid ({rows}x{cols})...")
+
         XleftOrigin = xmin
         XrightOrigin = xmin + width
         YtopOrigin = ymax
@@ -1188,9 +1191,15 @@ class CreateGrid:
 
         from shapely.geometry import Polygon  # For Grid
 
+        # init j to use it in progress computation
+        j = 0
         for i in range(cols):
             Ytop = YtopOrigin
             Ybottom = YbottomOrigin
+            knut.check_canceled(exec_context)
+            exec_context.set_progress(
+                (i * j) / (rows * cols), f"Creating grid of size {rows}x{cols}..."
+            )
             for j in range(rows):
                 polygons.append(
                     Polygon(
