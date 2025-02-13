@@ -892,3 +892,102 @@ class OpenSkyNetworkDataNode:
             crs="EPSG:4326",
         )
         return knext.Table.from_pandas(gdf)
+
+
+############################################
+# OSM Geocode Boundary Table
+############################################
+
+
+def process_place(place_name):
+    import pandas as pd
+
+    """Helper function to process a single place name"""
+    if pd.isna(place_name):
+        return None
+    try:
+        ox = get_osmnx()
+        gdf = ox.geocoder.geocode_to_gdf(place_name)
+        if not gdf.empty:
+            gdf["input_place_name"] = place_name
+            return gdf
+    except Exception as e:
+        knut.LOGGER.warning(f"Failed to process place name '{place_name}': {str(e)}")
+    return None
+
+
+@knext.node(
+    name="OSM Boundary Map Table",
+    node_type=knext.NodeType.MANIPULATOR,
+    icon_path=__NODE_ICON_PATH + "OSMboundary.png",
+    category=__category,
+    after="",
+)
+@knext.input_table(
+    name="Input table",
+    description="Table with place names to get boundaries for.",
+)
+@knext.output_table(
+    name="OSM GeoBoundary data",
+    description="Boundary of places from the Open Street Map",
+)
+@knut.osm_node_description(
+    short_description="Get Boundary from OpenStreetMap with Geocoding.",
+    description="""This node gets place boundaries from [OpenStreetMap](https://www.openstreetmap.org/about) by 
+   geocoding place names from the input table. The queries must be resolvable to places in the
+   [Nominatim database.](https://nominatim.org/) The resulting GeoDataFrame's geometry column contains place
+   boundaries if they exist in OpenStreetMap.""",
+    references={
+        "OSMnx": "https://github.com/gboeing/osmnx",
+        "osmnx.geocoder.geocode_to_gdf": "https://osmnx.readthedocs.io/en/stable/osmnx.html?highlight=geocode_to_gdf#module-osmnx.geocoder",
+    },
+)
+class OSMGeoBoundaryTableNode:
+    place_col = knext.ColumnParameter(
+        "Place name column",
+        "Select the column containing place names to geocode. "
+        "Names should be hierarchical from specific to general, e.g. 'Cambridge, MA, USA'",
+        column_filter=knut.is_string,
+        include_row_key=False,
+        include_none_column=False,
+    )
+
+    def configure(self, configure_context, input_schema):
+        return None
+
+    def execute(self, exec_context: knext.ExecutionContext, input_table):
+        import pandas as pd
+
+        df = input_table.to_pandas()
+        ox = get_osmnx()
+
+        result_gdfs = []
+        total = len(df)
+
+        for idx, place_name in enumerate(df[self.place_col]):
+            if pd.isna(place_name):
+                continue
+
+            try:
+                gdf = ox.geocoder.geocode_to_gdf(place_name)
+                if not gdf.empty:
+                    gdf["input_place_name"] = place_name
+                    result_gdfs.append(gdf)
+            except Exception as e:
+                knut.LOGGER.warning(
+                    f"Failed to process place name '{place_name}': {str(e)}"
+                )
+
+            exec_context.set_progress(
+                0.9 * (idx + 1) / total, f"Processing {idx + 1} of {total}"
+            )
+            knut.check_canceled(exec_context)
+
+        if not result_gdfs:
+            raise RuntimeError(
+                "No valid boundaries found for any of the input place names"
+            )
+
+        final_gdf = pd.concat(result_gdfs, ignore_index=True)
+
+        return knext.Table.from_pandas(final_gdf)
