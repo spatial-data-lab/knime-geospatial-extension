@@ -696,15 +696,40 @@ class OSMGeoBoundaryNode:
         Cambridge, MA, USA.  """,
         default_value="Cambridge, MA, USA",
     )
+    ignore_error = knext.BoolParameter(
+        "Ignore error",
+        "If selected, it will return None for unknown places. "
+        "If not selected, the node will fail when an unknown place is encountered.",
+        default_value=False,
+        since_version="1.4.0",
+    )
 
     def configure(self, configure_context):
         # TODO Create combined schema
         return None
 
     def execute(self, exec_context: knext.ExecutionContext):
-        gdf = get_osmnx().geocoder.geocode_to_gdf(self.placename)
-        gdf = gdf.reset_index(drop=True)
-        return knext.Table.from_pandas(gdf)
+        import geopandas as gp
+
+        try:
+            gdf = get_osmnx().geocoder.geocode_to_gdf(self.placename)
+        except Exception as e:
+            if not self.ignore_error:
+                raise RuntimeError(
+                    f"Failed to process place name '{self.placename}': {str(e)}"
+                )
+            return knext.Table.from_pandas(
+                gp.GeoDataFrame(geometry=[], crs="EPSG:4326")
+            )
+
+        if not gdf.empty:
+            gdf = gdf.reset_index(drop=True)
+            gdf = gp.GeoDataFrame(gdf, geometry="geometry", crs="EPSG:4326")
+            return knext.Table.from_pandas(gdf)
+
+        if not self.ignore_error:
+            raise RuntimeError(f"No boundary found for place: {self.placename}")
+        return knext.Table.from_pandas(gp.GeoDataFrame(geometry=[], crs="EPSG:4326"))
 
 
 # moved from spatialdata extension
