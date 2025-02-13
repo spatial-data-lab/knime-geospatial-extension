@@ -185,6 +185,7 @@ class GeoFileReaderNode:
             or self.data_url.lower().endswith(".parquet.snappy")
         ):
             gdf = gp.read_parquet(self.data_url)
+
         else:
             if self.encoding == _EncodingOptions.AUTO.name:
                 gdf = gp.read_file(self.data_url)
@@ -263,7 +264,7 @@ class GeoFileWriterNode:
         "Output file format",
         "The file format to use.",
         "Shapefile",
-        enum=["Shapefile", "GeoJSON", "GeoParquet"],
+        enum=["Shapefile", "GeoJSON", "GeoParquet", "GML"],
     )
 
     parquet_compression = knext.EnumParameter(
@@ -329,13 +330,20 @@ class GeoFileWriterNode:
             fileurl = knut.ensure_file_extension(self.data_url, file_extension)
             self.__check_overwrite(fileurl)
             gdf.to_parquet(fileurl, compression=compression)
-        else:
+        elif self.dataformat == "GeoJSON":
             fileurl = knut.ensure_file_extension(self.data_url, ".geojson")
             self.__check_overwrite(fileurl)
             if self.encoding == _EncodingOptions.AUTO.name:
                 gdf.to_file(fileurl)
             else:
                 gdf.to_file(fileurl, driver="GeoJSON", encoding=self.encoding)
+        else:
+            fileurl = knut.ensure_file_extension(self.data_url, ".gml")
+            self.__check_overwrite(fileurl)
+            if self.encoding == _EncodingOptions.AUTO.name:
+                gdf.to_file(fileurl)
+            else:
+                gdf.to_file(fileurl, driver="GML", encoding=self.encoding)
         return None
 
     def __check_overwrite(self, fileurl):
@@ -542,8 +550,10 @@ class GeoPackageWriterNode:
         if "<RowID>" in gdf.columns:
             gdf = gdf.drop(columns="<RowID>")
         if self.encoding == _EncodingOptions.AUTO.name:
-                gdf.to_file(file_name, layer=self.data_layer, driver="GPKG")
-            else:
-                gdf.to_file(file_name, layer=self.data_layer, driver="GPKG", encoding=self.encoding)
+            gdf.to_file(file_name, layer=self.data_layer, driver="GPKG")
+        else:
+            gdf.to_file(
+                file_name, layer=self.data_layer, driver="GPKG", encoding=self.encoding
+            )
 
         return None
