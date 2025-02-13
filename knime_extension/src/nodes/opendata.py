@@ -952,42 +952,83 @@ class OSMGeoBoundaryTableNode:
         include_none_column=False,
     )
 
+    ignore_error = knext.BoolParameter(
+        "Ignore error",
+        "If selected, it will return None for unknown places. "
+        "If not selected, the node will fail when an unknown place is encountered.",
+        default_value=True,
+        # since_version="1.4.0",
+    )
+
     def configure(self, configure_context, input_schema):
+        self.place_col = knut.column_exists_or_preset(
+            configure_context, self.place_col, input_schema, knut.is_string
+        )
         return None
 
     def execute(self, exec_context: knext.ExecutionContext, input_table):
-        import pandas as pd
 
-        df = input_table.to_pandas()
+        import pandas as pd
+        import geopandas as gp
+
+        # Get original data
+        input_df = input_table.to_pandas()
         ox = get_osmnx()
 
-        result_gdfs = []
-        total = len(df)
+        # Create new DataFrame to store OSM results
+        osm_results = []
+        total = len(input_df)
 
-        for idx, place_name in enumerate(df[self.place_col]):
+        for idx, place_name in enumerate(input_df[self.place_col]):
             if pd.isna(place_name):
+                osm_results.append(pd.Series())
                 continue
 
             try:
                 gdf = ox.geocoder.geocode_to_gdf(place_name)
                 if not gdf.empty:
-                    gdf["input_place_name"] = place_name
-                    result_gdfs.append(gdf)
+                    osm_results.append(gdf.iloc[0])
+                else:
+                    osm_results.append(pd.Series())
+                    if not self.ignore_error:
+                        raise RuntimeError(f"No boundary found for place: {place_name}")
+
             except Exception as e:
-                knut.LOGGER.warning(
-                    f"Failed to process place name '{place_name}': {str(e)}"
-                )
+                osm_results.append(pd.Series())
+                if not self.ignore_error:
+                    raise RuntimeError(
+                        f"Failed to process place name '{place_name}': {str(e)}"
+                    )
+                else:
+                    knut.LOGGER.warning(
+                        f"Failed to process place name '{place_name}': {str(e)}"
+                    )
 
             exec_context.set_progress(
                 0.9 * (idx + 1) / total, f"Processing {idx + 1} of {total}"
             )
             knut.check_canceled(exec_context)
 
-        if not result_gdfs:
+        # Convert OSM results to DataFrame
+        osm_df = pd.DataFrame(osm_results)
+
+        # Reset index to ensure proper alignment
+        input_df = input_df.reset_index(drop=True)
+        osm_df = osm_df.reset_index(drop=True)
+
+        # Combine original data with OSM results
+        result_df = pd.concat([input_df, osm_df], axis=1)
+
+        # Convert to GeoDataFrame
+        result_gdf = gp.GeoDataFrame(result_df, geometry="geometry", crs="EPSG:4326")
+
+        # Filter if ignore_error is True
+        if self.ignore_error:
+            result_gdf = result_gdf.dropna(subset=["geometry"])
+
+        if len(result_gdf) == 0:
             raise RuntimeError(
                 "No valid boundaries found for any of the input place names"
             )
 
-        final_gdf = pd.concat(result_gdfs, ignore_index=True)
-
-        return knext.Table.from_pandas(final_gdf)
+        return knext.Table.from_pandas(result_gdf)
