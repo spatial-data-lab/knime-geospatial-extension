@@ -188,9 +188,14 @@ class GeoFileReaderNode:
 
         else:
             if self.encoding == _EncodingOptions.AUTO.name:
-                gdf = gp.read_file(self.data_url)
+                gdf = gp.read_file(self.data_url, engine="pyogrio", on_invalid="ignore")
             else:
-                gdf = gp.read_file(self.data_url, encoding=self.encoding)
+                gdf = gp.read_file(
+                    self.data_url,
+                    encoding=self.encoding,
+                    engine="pyogrio",
+                    on_invalid="ignore",
+                )
 
         if "<Row Key>" in gdf.columns:
             gdf = gdf.drop(columns="<Row Key>")
@@ -429,17 +434,18 @@ class GeoPackageReaderNode:
         layerlist = fiona.listlayers(self.data_url)
         layer = self._get_layer(layerlist)
 
-        open_params = {"path": self.data_url, "layer": layer}
-        if self.encoding != _EncodingOptions.AUTO.name:
-            open_params["encoding"] = self.encoding
-
-        src = fiona.open(**open_params)
-        gdf = gp.GeoDataFrame.from_features(src)
-
-        try:
-            gdf.crs = src.crs
-        except:
-            print("Invalid CRS")
+        if self.encoding == _EncodingOptions.AUTO.name:
+            gdf = gp.read_file(
+                self.data_url, layer=layer, engine="pyogrio", on_invalid="ignore"
+            )
+        else:
+            gdf = gp.read_file(
+                self.data_url,
+                layer=layer,
+                engine="pyogrio",
+                on_invalid="ignore",
+                encoding=self.encoding,
+            )
 
         gdf = self._clean_dataframe(gdf)
 
