@@ -51,6 +51,18 @@ def validate_path(path: str) -> None:
     pass
 
 
+def clean_dataframe(df):
+    df = df.reset_index(drop=True)
+    columns_to_drop = ["<Row Key>", "<RowID>"]
+    return df.drop(columns=[col for col in columns_to_drop if col in df.columns])
+
+
+def check_overwrite(fileurl, existing_file):
+    if existing_file == ExistingFile.FAIL.name:
+        if os.path.exists(fileurl):
+            raise knext.InvalidParametersError()
+
+
 class _EncodingOptions(knext.EnumParameterOptions):
     AUTO = (
         "Auto",
@@ -197,10 +209,7 @@ class GeoFileReaderNode:
                     on_invalid="ignore",
                 )
 
-        if "<Row Key>" in gdf.columns:
-            gdf = gdf.drop(columns="<Row Key>")
-        if "<RowID>" in gdf.columns:
-            gdf = gdf.drop(columns="<RowID>")
+        gdf = clean_dataframe(gdf)
         return knext.Table.from_pandas(gdf)
 
 
@@ -313,7 +322,7 @@ class GeoFileWriterNode:
             gdf = gdf.drop(columns="<RowID>")
         if self.dataformat == "Shapefile":
             fileurl = knut.ensure_file_extension(self.data_url, ".shp")
-            self.__check_overwrite(fileurl)
+            check_overwrite(fileurl, self.existing_file)
             if self.encoding == _EncodingOptions.AUTO.name:
                 gdf.to_file(fileurl)
             else:
@@ -333,32 +342,23 @@ class GeoFileWriterNode:
                 file_extension = ".parquet.snappy"
                 compression = "snappy"
             fileurl = knut.ensure_file_extension(self.data_url, file_extension)
-            self.__check_overwrite(fileurl)
+            check_overwrite(fileurl, self.existing_file)
             gdf.to_parquet(fileurl, compression=compression)
         elif self.dataformat == "GeoJSON":
             fileurl = knut.ensure_file_extension(self.data_url, ".geojson")
-            self.__check_overwrite(fileurl)
+            check_overwrite(fileurl, self.existing_file)
             if self.encoding == _EncodingOptions.AUTO.name:
                 gdf.to_file(fileurl)
             else:
                 gdf.to_file(fileurl, driver="GeoJSON", encoding=self.encoding)
         else:
             fileurl = knut.ensure_file_extension(self.data_url, ".gml")
-            self.__check_overwrite(fileurl)
+            check_overwrite(fileurl, self.existing_file)
             if self.encoding == _EncodingOptions.AUTO.name:
                 gdf.to_file(fileurl)
             else:
                 gdf.to_file(fileurl, driver="GML", encoding=self.encoding)
         return None
-
-    def __check_overwrite(self, fileurl):
-        if self.existing_file == ExistingFile.FAIL.name:
-            import os.path
-
-            if os.path.exists(fileurl):
-                raise knext.InvalidParametersError(
-                    "File already exists and should not be overwritten."
-                )
 
 
 ############################################
@@ -447,7 +447,7 @@ class GeoPackageReaderNode:
                 encoding=self.encoding,
             )
 
-        gdf = self._clean_dataframe(gdf)
+        gdf = clean_dataframe(gdf)
 
         listtable = pd.DataFrame({"layerlist": layerlist})
         return knext.Table.from_pandas(gdf), knext.Table.from_pandas(listtable)
@@ -458,11 +458,6 @@ class GeoPackageReaderNode:
         elif self.data_layer.isdigit() and 0 <= int(self.data_layer) < 100:
             return int(self.data_layer)
         return 0
-
-    def _clean_dataframe(self, df):
-        df = df.reset_index(drop=True)
-        columns_to_drop = ["<Row Key>", "<RowID>"]
-        return df.drop(columns=[col for col in columns_to_drop if col in df.columns])
 
 
 ############################################
@@ -525,6 +520,18 @@ class GeoPackageWriterNode:
         is_advanced=True,
     )
 
+    existing_file = knext.EnumParameter(
+        "If exists:",
+        "Specify the behavior of the node in case the output file already exists.",
+        lambda v: (
+            ExistingFile.OVERWRITE.name
+            if v < knext.Version(1, 3, 0)
+            else ExistingFile.FAIL.name
+        ),
+        enum=ExistingFile,
+        since_version="1.3.0",
+    )
+
     def configure(self, configure_context, input_schema):
         self.geo_col = knut.column_exists_or_preset(
             configure_context, self.geo_col, input_schema, knut.is_geo
@@ -537,6 +544,7 @@ class GeoPackageWriterNode:
         )
         import os
 
+        check_overwrite(self.data_url, self.existing_file)
         output_dir = os.path.dirname(self.data_url)
         if output_dir and not os.path.exists(output_dir):
             os.makedirs(output_dir, exist_ok=True)
@@ -551,10 +559,9 @@ class GeoPackageWriterNode:
         ).columns
         if len(time_columns) > 0:
             gdf[time_columns] = gdf[time_columns].astype(str)
-        if "<Row Key>" in gdf.columns:
-            gdf = gdf.drop(columns="<Row Key>")
-        if "<RowID>" in gdf.columns:
-            gdf = gdf.drop(columns="<RowID>")
+
+        gdf = clean_dataframe(gdf)
+
         if self.encoding == _EncodingOptions.AUTO.name:
             gdf.to_file(file_name, layer=self.data_layer, driver="GPKG")
         else:
