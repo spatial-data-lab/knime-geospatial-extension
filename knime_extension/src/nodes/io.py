@@ -58,9 +58,11 @@ def clean_dataframe(df):
 
 
 def check_overwrite(fileurl, existing_file):
+    import os
+
     if existing_file == ExistingFile.FAIL.name:
         if os.path.exists(fileurl):
-            raise knext.InvalidParametersError()
+            raise knext.InvalidParametersError("File already exists.")
 
 
 class _EncodingOptions(knext.EnumParameterOptions):
