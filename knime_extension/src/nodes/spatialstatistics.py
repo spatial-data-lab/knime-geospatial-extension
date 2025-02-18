@@ -233,6 +233,7 @@ class spatialWeights:
         exec_context.set_progress(0.3, "Geo data frame loaded. Starting projection...")
 
         import libpysal
+        # from libpysal.weights import Rook, Queen, DistanceBand, KNN, Kernel, WSP, lat2W, higher_order
 
         if self.category == "Rook":
             w = libpysal.weights.Rook.from_dataframe(gdf)
