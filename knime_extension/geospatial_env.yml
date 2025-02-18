@@ -7,7 +7,7 @@ dependencies:
   - knime-extension
   - knime-python-base
   - packaging
-  - curl=8.1.2 #required by libgdal which includes an older version with vulnerabilities
+  - curl
   - cvxopt
   - esda
   - fiona
@@ -19,7 +19,7 @@ dependencies:
   - libgdal
   - libpysal
   - mgwr
-  - numpy=1.23.5 #required to fix problem with latest version of numpy
+  - numpy
   - osmnx
   - polyline
   - pyproj
@@ -32,6 +32,6 @@ dependencies:
   - pygeoda
   - pointpats
   - pip:
-    - ipinfo
-    - pulp
-    - keplergl
+      - ipinfo
+      - pulp
+      - keplergl
