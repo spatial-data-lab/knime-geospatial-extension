@@ -1575,25 +1575,33 @@ class RoadNetworkIsochroneMap:
 
 
 ############################################
-# TomTom Isochrone Map Node
+# TomTom Distance Matrix Node
 ############################################
-class _TomTomRouteType(knext.EnumParameterOptions):
+
+
+class _TomTomMatrixDepartTimeType(knext.EnumParameterOptions):
+    ANY = ("Any", "Use the default departure time.")
+    NOW = ("Now", "Use the current time as departure time.")
+    DATETIME = ("Custom datetime", "Specify a custom departure time.")
+
+    @classmethod
+    def get_default(cls):
+        return cls.ANY
+
+
+class _TomTomMatrixRouteType(knext.EnumParameterOptions):
     FASTEST = ("Fastest", "Focuses on reducing travel time.")
     SHORTEST = ("Shortest", "Prioritizes the shortest physical distance.")
-    ECO = ("Eco", "Optimizes for fuel efficiency.")
 
     @classmethod
     def get_default(cls):
         return cls.FASTEST
 
 
-class _TomTomTravelMode(knext.EnumParameterOptions):
+class _TomTomMatrixTravelMode(knext.EnumParameterOptions):
     CAR = ("Car", "Car as vehicle type.")
     TRUCK = ("Truck", "Truck as vehicle type.")
-    TAXI = ("Taxi", "Taxi as vehicle type.")
-    BUS = ("Bus", "Bus as vehicle type.")
-    VAN = ("Van", "Van as vehicle type.")
-    MOTORCYCLE = ("Motorcycle", "Motorcycle as vehicle type.")
+    PEDESTRIAN = ("Pedestrian", "Walking as travel mode.")
 
     @classmethod
     def get_default(cls):
@@ -1601,111 +1609,143 @@ class _TomTomTravelMode(knext.EnumParameterOptions):
 
 
 @knext.node(
-    name="""TomTom Isochrone Map""",
+    name="""TomTom Distance Matrix""",
     node_type=knext.NodeType.MANIPULATOR,
     category=__category,
-    icon_path=__NODE_ICON_PATH + "TomTomIsochrone.png",
+    icon_path=__NODE_ICON_PATH + "TomTomDistMatrix.png",
 )
 @knext.input_table(
-    name="Input Table with the origin points.",
-    description="Input table with point geometry representing the origin points.",
+    name="Input table with origins",
+    description="Input table with origin geometry and ID column.",
+)
+@knext.input_table(
+    name="Input table with destinations",
+    description="Input table with destination geometry and ID column.",
 )
 @knext.output_table(
-    name="Output Table",
-    description="Output table with isochrone geometry.",
+    name="Output table",
+    description="""Output table with the selected origin and destination ID columns and the corresponding travel costs
+    in minutes and meters.""",
 )
-class TomTomIsochroneMap:
-    """This node calculates the isochrone map (reachable range) for a given geometric point using the
-    Calculate Reachable Range service provided by TomTom.
+class TomTomDistanceMatrix:
+    """This node calculates a distance matrix between origins and destinations using the
+    TomTom Matrix Routing API.
 
-    This node calculates the isochrone map (reachable range) for a list of given geometric points using the
-    [Calculate Reachable Range service](https://developer.tomtom.com/routing-api/documentation/routing/calculate-reachable-range)
-    of the [Routing service](https://www.tomtom.com/products/routing/)
-    provided by [TomTom](https://www.tomtom.com/). It takes a geometry as origin and generates an isochrone map as output for each given geometry, illustrating
-    areas reachable within a given time budget list. If the input geometry is not a point feature, the centroid will be used.
+    This node calculates a distance matrix between the provided origins and destinations using the
+    [TomTom Matrix Routing API V2](https://developer.tomtom.com/matrix-routing-v2-api/documentation).
+    The matrix is created by pairing each input origin with each input destination and will contain
+    the travel distance and duration for each pair. The distance unit is meters and the duration is
+    returned in minutes.
+
+    If the input geometry is not a point geometry, the centroids will be automatically computed and used.
 
     Please note that this node requires a
-    [TomTom API key](https://developer.tomtom.com/knowledgebase/platform/articles/how-to-get-an-tomtom-api-key/)
-    that can be acquired for free by [registering here.](https://developer.tomtom.com/user/register)
-    For more details about the number of free request and pricing go to the
-    [TomTom pricing page.](https://developer.tomtom.com/store/maps-api)
+    [TomTom API key](https://developer.tomtom.com/user/register)
+    that can be acquired for free by registering. For more details about the number of free requests
+    and pricing go to the [TomTom pricing page](https://developer.tomtom.com/matrix-routing-v2-api/documentation/pricing).
     """
 
-    # input parameters
-    c_geo_col = knext.ColumnParameter(
+    # Origin parameters
+    o_geo_col = knext.ColumnParameter(
         "Origin geometry column",
-        """This parameter selects the geometry column from the input table that represents the origin point for 
-        the isochrone calculation.""",
-        # Allow only Geo compatible columns
+        "Select the geometry column that describes the origins.",
+        # Allow only GeoValue compatible columns
         port_index=0,
         column_filter=knut.is_geo,
         include_row_key=False,
         include_none_column=False,
     )
-
-    id_col = knext.ColumnParameter(
+    o_id_col = knext.ColumnParameter(
         "Origin ID column",
-        """This parameter selects the column which contains for each origin a unique ID. The selected column will be
-        returned in the result table and can be used to link back to the original data.""",
+        """Select the column which contains for each origin a unique ID. The selected column will be returned
+        in the result table and can be used to link back to the original data.""",
         port_index=0,
         column_filter=knut.is_numeric_or_string,
         include_row_key=False,
         include_none_column=False,
     )
 
-    iso_time_budget_list = knext.StringParameter(
-        "Isochrone time budget list",
-        """Input an interval list in minutes separated by comma e.g. 5,10,15,20,25,30""",
-        default_value="5,10,15,20,25,30",
+    # Destination parameters
+    d_geo_col = knext.ColumnParameter(
+        "Destination geometry column",
+        "Select the geometry column that describes the destinations.",
+        # Allow only GeoValue compatible columns
+        port_index=1,
+        column_filter=knut.is_geo,
+        include_row_key=False,
+        include_none_column=False,
+    )
+    d_id_col = knext.ColumnParameter(
+        "Destination ID column",
+        """Select the column which contains for each destination a unique ID. The selected column will be returned
+        in the result table and can be used to link back to the original data.""",
+        port_index=1,
+        column_filter=knut.is_numeric_or_string,
+        include_row_key=False,
+        include_none_column=False,
     )
 
-    depart_at = knext.DateTimeParameter(
-        "Departure time",
-        """The departure time for the isochrone calculation. This parameter can affect the isochrone map due to 
-        varying traffic conditions at different times.""",
-        default_value=None,
-        show_time=True,
+    # API key parameter
+    tomtom_api_key = knext.StringParameter(
+        "TomTom API Key",
+        """The 
+        [TomTom API key](https://developer.tomtom.com/user/register)
+        is required to authenticate requests to the 
+        [Matrix Routing API V2](https://developer.tomtom.com/matrix-routing-v2-api/documentation)
+        provided by TomTom. 
+        To get an API key, click
+        [here.](https://developer.tomtom.com/user/register)
+        For details about the pricing go to the [TomTom pricing page.](https://developer.tomtom.com/matrix-routing-v2-api/documentation/pricing)""",
+        default_value="your api key here",
+        validator=knut.api_key_validator,
     )
 
-    traffic = knext.BoolParameter(
-        "Consider current traffic",
-        """If selected the current traffic conditions is considered in the isochrone calculation. 
-        Note that information on historic road speeds is always used.""",
-        default_value=True,
-    )
-
+    # Routing parameters
     route_type = knext.EnumParameter(
         "Route type",
-        """Determines the type of route used for the isochrone calculation. 
-        Different route types can result in different isochrones.""",
-        default_value=_TomTomRouteType.get_default().name,
-        enum=_TomTomRouteType,
+        """Determines the type of route used for the distance calculation. 
+        Different route types can result in different route choices.""",
+        default_value=_TomTomMatrixRouteType.get_default().name,
+        enum=_TomTomMatrixRouteType,
         style=knext.EnumParameter.Style.DROPDOWN,
     )
 
     travel_mode = knext.EnumParameter(
         "Travel mode",
-        """Specifies the mode of travel for the isochrone calculation, which can 
-        significantly impact the shape and extent of the isochrone.""",
-        default_value=_TomTomTravelMode.get_default().name,
-        enum=_TomTomTravelMode,
+        """Specifies the mode of travel for the distance calculation, which can 
+        significantly impact the route choice, distance and travel time.""",
+        default_value=_TomTomMatrixTravelMode.get_default().name,
+        enum=_TomTomMatrixTravelMode,
     )
 
-    tomtom_api_key = knext.StringParameter(
-        "TomTom API Key",
-        """The 
-        [TomTom API key](https://developer.tomtom.com/knowledgebase/platform/articles/how-to-get-an-tomtom-api-key/)
-        is required to authenticate requests to the 
-        [Calculate Reachable Range service](https://developer.tomtom.com/routing-api/documentation/routing/calculate-reachable-range)
-        which is part of the [Routing API](https://developer.tomtom.com/routing-api/documentation/routing/routing-service)
-        provided by TomTom. 
-        To get an API key, click
-        [here.](https://developer.tomtom.com/knowledgebase/platform/articles/how-to-get-an-tomtom-api-key/)
-        For details about the pricing go to the [TomTom pricing page.](https://developer.tomtom.com/store/maps-api)""",
-        default_value="your api key here",
-        validator=knut.api_key_validator,
-    )
+    consider_traffic = knext.BoolParameter(
+        "Consider current traffic",
+        """If selected, the current traffic conditions are considered in the distance and duration calculations. 
+        Note that information on historic road speeds is always used.
+        This option is only available for CAR and TRUCK travel modes.""",
+        default_value=True,
+    ).rule(knext.OneOf(travel_mode, ["CAR", "TRUCK"]), knext.Effect.SHOW)
 
+    depart_time_type = knext.EnumParameter(
+        "Departure time type",
+        """Specify how to set the departure time:
+        - Any: Use the default departure time
+        - Now: Use the current time as departure time
+        - Custom datetime: Specify a custom departure time""",
+        default_value=_TomTomMatrixDepartTimeType.get_default().name,
+        enum=_TomTomMatrixDepartTimeType,
+    ).rule(knext.OneOf(travel_mode, ["CAR", "TRUCK"]), knext.Effect.SHOW)
+
+    depart_at = knext.DateTimeParameter(
+        "Custom departure time",
+        """Specify a custom departure time for the distance calculation.
+        This time must be in the future.""",
+        default_value=dt.datetime.now() + dt.timedelta(days=1),
+        show_time=True,
+        show_seconds=False,
+    ).rule(knext.OneOf(depart_time_type, ["DATETIME"]), knext.Effect.SHOW)
+
+    # Advanced parameters
     timeout = knext.IntParameter(
         "Request timeout in seconds",
         "The maximum time in seconds to wait for the request to the TomTom API to succeed.",
@@ -1714,102 +1754,221 @@ class TomTomIsochroneMap:
         is_advanced=True,
     )
 
-    _COL_GEOMETRY = knut.DEF_GEO_COL_NAME
-    _COL_ISOCHRONE = "Time budget (Mins)"
-
-    def configure(self, configure_context, input_schema_1):
-        self.c_geo_col = knut.column_exists_or_preset(
-            configure_context, self.c_geo_col, input_schema_1, knut.is_geo
+    def configure(self, configure_context, o_schema, d_schema):
+        self.o_geo_col = knut.column_exists_or_preset(
+            configure_context, self.o_geo_col, o_schema, knut.is_geo
         )
-        self.id_col = knut.column_exists_or_preset(
-            configure_context, self.id_col, input_schema_1, knut.is_numeric_or_string
-        )
+        knut.column_exists(self.o_id_col, o_schema)
+        o_id_type = o_schema[self.o_id_col].ktype
 
+        self.d_geo_col = knut.column_exists_or_preset(
+            configure_context, self.d_geo_col, d_schema, knut.is_geo
+        )
+        knut.column_exists(self.d_id_col, d_schema)
+        d_id_type = d_schema[self.d_id_col].ktype
+
+        if self.tomtom_api_key == "your api key here":
+            configure_context.set_warning("Please provide a valid TomTom API key")
+
+        # Simplified schema with only duration and distance
         return knext.Schema(
-            [
-                input_schema_1[self.id_col].ktype,
-                knext.int64(),
-                # input_schema_1[self.c_geo_col].ktype,
-                knut.TYPE_POLYGON,
-            ],
-            [
-                self.id_col,
-                self._COL_ISOCHRONE,
-                self._COL_GEOMETRY,
-            ],
+            [o_id_type, d_id_type, knext.double(), knext.int64()],
+            [_COL_O_ID, _COL_D_ID, _COL_DURATION, _COL_DISTANCE],
         )
 
-    def execute(self, exec_context: knext.ExecutionContext, input1):
-
-        tomtom_base_url = "https://api.tomtom.com/routing/1/calculateReachableRange/"
+    def execute(self, exec_context: knext.ExecutionContext, left_input, right_input):
         import requests
         import json
-        from shapely.geometry import Polygon
-
-        c_gdf = knut.load_geo_data_frame(input1, self.c_geo_col, exec_context)
-        iso_map_list = []
-        loop_i = 1
-        total_loops = len(c_gdf) * len(self.iso_time_budget_list.split(","))
-        if self.tomtom_api_key == "your api key here" or self.tomtom_api_key == "":
-            knut.LOGGER.error(
-                "Please enter your TomTom API key. If you don't have one, you can get one [here](https://developer.tomtom.com/knowledgebase/platform/articles/how-to-get-an-tomtom-api-key/)."
-            )
-            raise ValueError(
-                "Please enter your TomTom API key. If you don't have one, you can get one [here](https://developer.tomtom.com/knowledgebase/platform/articles/how-to-get-an-tomtom-api-key/)."
-            )
+        import pandas as pd
+        import datetime as dt
         from datetime import datetime, timedelta
 
-        current_time = datetime.now()
-        depart_at_datetime = datetime.fromtimestamp(int(self.depart_at.timestamp()))
-        if depart_at_datetime < current_time + timedelta(minutes=1):
-            knut.LOGGER.warning(
-                "Departure time is in the past. Adjusting to the same time tomorrow."
+        # Check if API key is provided
+        if self.tomtom_api_key == "your api key here" or self.tomtom_api_key == "":
+            knut.LOGGER.error(
+                "Please enter your TomTom API key. If you don't have one, you can register [here](https://developer.tomtom.com/user/register)."
             )
-            depart_at_datetime += timedelta(days=1)
+            raise ValueError(
+                "Please enter your TomTom API key. If you don't have one, you can register [here](https://developer.tomtom.com/user/register)."
+            )
 
-        for k, row in c_gdf.iterrows():
-            id_ = row[self.id_col]
-            x = str(row[self.c_geo_col].centroid.x)
-            y = str(row[self.c_geo_col].centroid.y)
-            time_budgets = list(map(int, self.iso_time_budget_list.split(",")))
+        knut.check_canceled(exec_context)
 
-            for time_budget in time_budgets:
-                URL = (
-                    "%s%s,%s/json?timeBudgetInSec=%s&travelMode=%s&traffic=%s&key=%s&routeType=%s&departAt=%s"
-                    % (
-                        tomtom_base_url,
-                        y,
-                        x,
-                        str(time_budget * 60),
-                        self.travel_mode.lower(),
-                        str(self.traffic).lower(),
-                        self.tomtom_api_key,
-                        self.route_type.lower(),
-                        depart_at_datetime.isoformat()[0:19],
-                    )
-                )
+        # Load GeoDataFrames for origins and destinations
+        o_gdf = knut.load_geo_data_frame(left_input, self.o_geo_col, exec_context)
+        d_gdf = knut.load_geo_data_frame(right_input, self.d_geo_col, exec_context)
 
-                req = requests.get(URL, timeout=self.timeout)
-                response_code = req.status_code
-                if response_code != 200:
-                    knut.LOGGER.error(f"Error! TomTom response code: {response_code} ")
-                    raise ValueError(f"Error! TomTom response code: {response_code} ")
-                data = json.loads(req.text)
-                bounds = data["reachableRange"]["boundary"]
-                bounds_polygon = Polygon(
-                    [(x["longitude"], x["latitude"]) for x in bounds]
-                )
-                exec_context.set_progress(
-                    0.9 * loop_i / float(total_loops),
-                    f"Isochrone {loop_i} of {total_loops} computed",
-                )
-                knut.check_canceled(exec_context)
-                loop_i += 1
-                iso_map_list.append([id_, time_budget, bounds_polygon])
-        gdf = gp.GeoDataFrame(
-            iso_map_list, columns=[self.id_col, self._COL_ISOCHRONE, self._COL_GEOMETRY]
+        # Set a lat/lon CRS before extracting coordinates
+        o_gdf = o_gdf.to_crs(4326)
+        d_gdf = d_gdf.to_crs(4326)
+
+        # Filter to only needed columns and rename
+        o_gdf = o_gdf.filter(items=[self.o_geo_col, self.o_id_col]).rename(
+            columns={self.o_geo_col: "geometry", self.o_id_col: _COL_O_ID}
         )
-        gdf.set_geometry(self._COL_GEOMETRY, inplace=True)
-        gdf.crs = c_gdf.crs
+        d_gdf = d_gdf.filter(items=[self.d_geo_col, self.d_id_col]).rename(
+            columns={self.d_geo_col: "geometry", self.d_id_col: _COL_D_ID}
+        )
 
-        return knut.to_table(gdf)
+        # Extract centroids and coordinates
+        # Format coordinates correctly for TomTom API V2
+        o_gdf["origin_points"] = o_gdf["geometry"].apply(
+            lambda point: {
+                "point": {
+                    "latitude": float(point.centroid.y),
+                    "longitude": float(point.centroid.x),
+                }
+            }
+        )
+        d_gdf["destination_points"] = d_gdf["geometry"].apply(
+            lambda point: {
+                "point": {
+                    "latitude": float(point.centroid.y),
+                    "longitude": float(point.centroid.x),
+                }
+            }
+        )
+
+        # Prepare origins and destinations lists for the API request
+        origins = o_gdf["origin_points"].tolist()
+        destinations = d_gdf["destination_points"].tolist()
+
+        # Prepare the cross join result dataframe for the distance matrix
+        merge_df = o_gdf[[_COL_O_ID]].merge(d_gdf[[_COL_D_ID]], how="cross")
+
+        # Create the empty distance matrix with default values
+        distance_matrix = merge_df.copy()
+        distance_matrix[_COL_DURATION] = 0
+        distance_matrix[_COL_DISTANCE] = 0
+
+        # Prepare departure time if specified and traffic is considered
+        departure_time = None
+        if self.consider_traffic and self.travel_mode in ["CAR", "TRUCK"]:
+            if self.depart_time_type == "DATETIME":
+                current_time = datetime.now()
+                depart_at_datetime = datetime.fromtimestamp(
+                    int(self.depart_at.timestamp())
+                )
+                if depart_at_datetime < current_time + timedelta(minutes=1):
+                    knut.LOGGER.warning(
+                        "Departure time is in the past. Adjusting to the same time tomorrow."
+                    )
+                    depart_at_datetime += timedelta(days=1)
+                departure_time = depart_at_datetime.isoformat()[0:19]
+            elif self.depart_time_type == "NOW":
+                departure_time = "now"
+            # For ANY, we leave departure_time as None
+
+        # Prepare the API request
+        tomtom_base_url = "https://api.tomtom.com/routing/matrix/2"
+
+        # Prepare the request body according to the Matrix Routing API V2 documentation
+        request_body = {
+            "origins": origins,
+            "destinations": destinations,
+            "options": {
+                "routeType": self.route_type.lower(),
+                "travelMode": self.travel_mode.lower(),
+            },
+        }
+
+        # Add traffic options if applicable
+        if self.travel_mode in ["CAR", "TRUCK"]:
+            if self.consider_traffic:
+                request_body["options"]["traffic"] = "live"
+                # When traffic is live, departAt must be specified
+                if self.depart_time_type == "DATETIME" and departure_time:
+                    request_body["options"]["departAt"] = departure_time
+                else:
+                    # Default to "now" if not specified or if ANY is selected
+                    request_body["options"]["departAt"] = "now"
+            else:
+                request_body["options"]["traffic"] = "historical"
+        else:
+            # For PEDESTRIAN, traffic is not applicable
+            if "traffic" in request_body["options"]:
+                del request_body["options"]["traffic"]
+            if "departAt" in request_body["options"]:
+                del request_body["options"]["departAt"]
+
+        # Set progress
+        exec_context.set_progress(
+            0.2, "Making API request to TomTom Matrix Routing API"
+        )
+
+        # Make the API request
+        url = f"{tomtom_base_url}?key={self.tomtom_api_key}"
+        headers = {"Content-Type": "application/json"}
+
+        # Log the request for debugging
+        knut.LOGGER.info(f"Making request to {url}")
+        knut.LOGGER.info(f"Request body: {json.dumps(request_body)[:500]}...")
+
+        try:
+            response = requests.post(
+                url,
+                data=json.dumps(request_body),
+                headers=headers,
+                timeout=self.timeout,
+            )
+
+            # Check if the request was successful
+            if response.status_code == 200:
+                data = response.json()
+
+                # Log the response for debugging
+                knut.LOGGER.info(f"TomTom API Response: {json.dumps(data)[:500]}...")
+
+                # Set progress
+                exec_context.set_progress(
+                    0.7, "Processing response from TomTom Matrix Routing API"
+                )
+
+                # Process the response based on actual V2 API format
+                # Extract data from the 'data' array which contains the matrix results
+                matrix_data = data.get("data", [])
+
+                # Process each origin-destination pair
+                for route_data in matrix_data:
+                    origin_index = route_data.get("originIndex", 0)
+                    destination_index = route_data.get("destinationIndex", 0)
+
+                    # Calculate the row index in our distance matrix
+                    row_index = origin_index * len(destinations) + destination_index
+
+                    # Get route summary
+                    route_summary = route_data.get("routeSummary", {})
+
+                    # Extract lengthInMeters and travelTimeInSeconds
+                    distance_meters = route_summary.get("lengthInMeters", 0)
+                    duration_seconds = route_summary.get("travelTimeInSeconds", 0)
+
+                    # Store values in the distance matrix (convert seconds to minutes)
+                    distance_matrix.loc[row_index, _COL_DISTANCE] = distance_meters
+                    distance_matrix.loc[row_index, _COL_DURATION] = (
+                        duration_seconds / 60
+                    )
+
+                # Set progress
+                exec_context.set_progress(0.9, "Distance matrix calculation completed")
+
+                return knut.to_table(distance_matrix)
+            else:
+                error_message = f"TomTom API Error: Status code {response.status_code}"
+                try:
+                    error_json = response.json()
+                    error_message += f" - Full response: {json.dumps(error_json)}"
+                except:
+                    error_message += f" - Response text: {response.text}"
+
+                knut.LOGGER.error(error_message)
+                raise ValueError(error_message)
+
+        except requests.exceptions.Timeout:
+            error_msg = f"Request to TomTom API timed out after {self.timeout} seconds"
+            knut.LOGGER.error(error_msg)
+            raise ValueError(error_msg)
+        except Exception as e:
+            error_msg = f"Error: {str(e)}"
+            knut.LOGGER.error(error_msg)
+            raise ValueError(error_msg)
