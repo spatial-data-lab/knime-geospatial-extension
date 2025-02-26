@@ -1853,7 +1853,7 @@ class _TomTomMatrixTravelMode(knext.EnumParameterOptions):
     name="""TomTom Distance Matrix""",
     node_type=knext.NodeType.MANIPULATOR,
     category=__category,
-    icon_path=__NODE_ICON_PATH + "TomTomIsochrone.png",
+    icon_path=__NODE_ICON_PATH + "TomTomDistanceMatrix.png",
 )
 @knext.input_table(
     name="Input table with origins",
