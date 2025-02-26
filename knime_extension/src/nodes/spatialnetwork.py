@@ -1849,6 +1849,22 @@ class _TomTomMatrixTravelMode(knext.EnumParameterOptions):
         return cls.CAR
 
 
+class _TomTomMatrixBatchSize(knext.EnumParameterOptions):
+    N100 = ("100", "No limitations.")
+    N200 = (
+        "200",
+        "All origins and destinations should be contained in an axis-aligned 400 km x 400 km bounding box. Otherwise, some matrix cells will be resolved as OUT_OF_REGION.",
+    )
+    N2500 = (
+        "2500",
+        "Route type will be FASTEST, traffic will be HISTORICAL, travel mode must be CAR or TRUCK, and departure time type will be ANY.",
+    )
+
+    @classmethod
+    def get_default(cls):
+        return cls.N100
+
+
 @knext.node(
     name="""TomTom Distance Matrix""",
     node_type=knext.NodeType.MANIPULATOR,
@@ -1987,16 +2003,14 @@ class TomTomDistanceMatrix:
     ).rule(knext.OneOf(depart_time_type, ["DATETIME"]), knext.Effect.SHOW)
 
     # Batch processing parameters
-    batch_size = knext.IntParameter(
+    batch_size = knext.EnumParameter(
         "Maximum batch size",
         """The maximum number of cells (origin-destination pairs) to include in a single API request.
         Recommended values: 100 for unrestricted requests, up to 200 for geographical restrictions.
-        For values > 200, parameters will be automatically adjusted to comply with API restrictions.
-        Note: When batch size > 200, route type will be 'Fastest', traffic will be 'historical', 
-        travel mode must be 'Car' or 'Truck', and departure time type will be 'Any'.""",
-        default_value=100,
-        min_value=1,
-        max_value=2500,
+        For values as 2500, parameters will be automatically adjusted to comply with API restrictions.
+        """,
+        default_value=_TomTomMatrixBatchSize.get_default().name,
+        enum=_TomTomMatrixBatchSize,
         is_advanced=True,
     )
 
@@ -2026,7 +2040,7 @@ class TomTomDistanceMatrix:
             configure_context.set_warning("Please provide a valid TomTom API key")
 
         # Check for batch size restrictions
-        if self.batch_size > 200:
+        if int(self.batch_size[1:]) > 200:
             configure_context.set_warning(
                 "For batch size > 200, some parameters will be automatically adjusted: "
                 + "route type = 'Fastest', traffic = 'historical', travel mode = 'Car/Truck', departure time = 'Any'"
@@ -2130,7 +2144,7 @@ class TomTomDistanceMatrix:
         effective_depart_time_type = self.depart_time_type
 
         # For large batch sizes, automatically adjust parameters if needed
-        actual_batch_size = self.batch_size
+        actual_batch_size = int(self.batch_size[1:])
         if actual_batch_size > 200:
             knut.LOGGER.info(
                 "Using batch size > 200, automatically adjusting request parameters to comply with API restrictions"
@@ -2208,7 +2222,7 @@ class TomTomDistanceMatrix:
         )
 
         # Determine appropriate batch size based on parameters and API limits
-        actual_batch_size = self.batch_size
+        actual_batch_size = int(self.batch_size[1:])
         if (
             len(origins) <= 1000
             and len(destinations) <= 1000
