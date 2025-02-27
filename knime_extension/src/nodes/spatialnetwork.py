@@ -2004,10 +2004,12 @@ class TomTomDistanceMatrix:
 
     # Batch processing parameters
     batch_size = knext.EnumParameter(
-        "Maximum batch size",
+        "Maximum Matrix size",
         """The maximum number of cells (origin-destination pairs) to include in a single API request.
         Recommended values: 100 for unrestricted requests, up to 200 for geographical restrictions.
         For values as 2500, parameters will be automatically adjusted to comply with API restrictions.
+        As billable requests are calcualted as max(origins, destinations) × 5, the querying batch size 
+        for origin and destination points uses the square root of the Maximum Matrix size, e.g.,10, 14, 50.
         """,
         default_value=_TomTomMatrixBatchSize.get_default().name,
         enum=_TomTomMatrixBatchSize,
@@ -2223,45 +2225,10 @@ class TomTomDistanceMatrix:
 
         # Determine appropriate batch size based on parameters and API limits
         actual_batch_size = int(self.batch_size[1:])
-        if (
-            len(origins) <= 1000
-            and len(destinations) <= 1000
-            and total_cells <= actual_batch_size
-        ):
-            # Small enough to process in one request
-            origins_per_batch = len(origins)
-            dests_per_batch = len(destinations)
-        else:
-            # Need to split into batches
-            # Ensure neither dimension exceeds 1000 (API limit)
-            origins_per_batch = min(len(origins), 1000)
-            dests_per_batch = min(len(destinations), 1000)
 
-            # Further adjust if needed to meet batch size limit
-            if origins_per_batch * dests_per_batch > actual_batch_size:
-                # Try to make batch sizes somewhat balanced
-                origins_per_batch = min(
-                    origins_per_batch, int(math.sqrt(actual_batch_size))
-                )
-                dests_per_batch = min(
-                    dests_per_batch, actual_batch_size // origins_per_batch
-                )
-
-                # Final adjustments to ensure we don't exceed batch size
-                while (
-                    origins_per_batch * dests_per_batch > actual_batch_size
-                    and origins_per_batch > 1
-                ):
-                    origins_per_batch -= 1
-                while (
-                    origins_per_batch * dests_per_batch > actual_batch_size
-                    and dests_per_batch > 1
-                ):
-                    dests_per_batch -= 1
-
-        knut.LOGGER.info(
-            f"Batch size: {origins_per_batch} origins × {dests_per_batch} destinations"
-        )
+        # Ensure neither dimension exceeds 1000 (API limit)
+        origins_per_batch = int(math.sqrt(actual_batch_size))
+        dests_per_batch = int(math.sqrt(actual_batch_size))
 
         # Calculate total number of batches
         num_o_batches = math.ceil(len(origins) / origins_per_batch)
