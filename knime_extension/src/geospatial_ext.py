@@ -1,4 +1,18 @@
 # The root category of all Geospatial categories
+import nodes.deprecated
+import nodes.spatialnetwork
+import nodes.visualize
+import nodes.transform
+import nodes.spatialtool
+import nodes.spatialstatistics
+import nodes.spatialmodels
+import nodes.spatialclustering
+import nodes.opendata
+import nodes.locationanalysis
+import nodes.io
+import nodes.conversion
+import nodes.calculation
+import util.knime_utils as knut
 import knime_extension as knext
 import sys
 
@@ -9,9 +23,6 @@ import sys
 import os
 
 os.environ["USE_PYGEOS"] = "0"
-
-
-import util.knime_utils as knut
 
 
 # this section is used for things that need to be executed prior any of the nodes is used e.g. global setups such as
@@ -51,21 +62,8 @@ category = knext.category(
 
 
 # The different node files
-import nodes.calculation
-import nodes.conversion
-import nodes.io
-import nodes.locationanalysis
-import nodes.opendata
-import nodes.spatialclustering
-import nodes.spatialmodels
-import nodes.spatialstatistics
-import nodes.spatialtool
-import nodes.transform
-import nodes.visualize
-import nodes.spatialnetwork
 
 # collection of deprecated nodes
-import nodes.deprecated
 
 
 # import nodes.geolab
