@@ -1469,7 +1469,7 @@ class RoadNetworkIsochroneMap:
         edges = edges.rename(columns={"node_start": "u", "node_end": "v"})
         edges["k"] = list(range(1, (edges.shape[0] + 1)))
         edges = edges.set_index(["u", "v", "k"])
-        G = ox.utils_graph.graph_from_gdfs(nodes, edges)
+        G = ox.convert.graph_from_gdfs(nodes, edges)
         return G
 
     def configure(
