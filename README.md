@@ -32,6 +32,19 @@ In order to use the Geospatial Views in your DataApps you have to adapt the secu
 
 If you want to use the Geospatial Views in a KNIME Data App please have a look at this [guide](https://github.com/spatial-data-lab/knime-geospatial-extension/blob/main/docs/geospatialViewsWebPortal.md).
 
+## Citation Reference
+
+Liu, L.; Fu, X.; Kötter, T.; Sturm, K.; Haubold, C.; Guan, W. W.; Bao, S. & Wang, F. (2024). Geospatial Analytics Extension for KNIME. *SoftwareX, 25*, 101627. [https://doi.org/10.1016/j.softx.2023.101627](https://doi.org/10.1016/j.softx.2023.101627)
+
+## Publications
+
+- Liu, L., Guan, W. W., Wang, F., & Bao, S. (2025). Visual programming-based Geospatial Cyberinfrastructure for open-source GIS education 3.0. *Cartography and Geographic Information Science*, 1-13. [https://doi.org/10.1080/15230406.2025.2462342](https://doi.org/10.1080/15230406.2025.2462342)
+
+- Fu, X., Liu, L., Guan, W. W., Kalra, Y., Bao, S., Kötter, T., & Sturm, K. (2025). Advancing replicable and reproducible GIScience: an approach with KNIME. *Cartography and Geographic Information Science*, 1-21. [https://doi.org/10.1080/15230406.2024.2446556](https://doi.org/10.1080/15230406.2024.2446556)
+
+- Liu, L.; Wang, F., Fu, X., Kötter, T., Sturm, K., Guan, W. W., & Bao, S. (2024). Elevating the RRE Framework for Geospatial Analysis with Visual Programming Platforms: An Exploration with Geospatial Analytics Extension for KNIME. *International Journal of Applied Earth Observation and Geoinformation, 130*, 103948. [https://doi.org/10.1016/j.jag.2024.103948](https://doi.org/10.1016/j.jag.2024.103948)
+
+
 ## How to Contribute
 
 ### Package Organization
