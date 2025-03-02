@@ -34,22 +34,83 @@ __NODE_ICON_PATH = "icons/icon/OpenDataset/"
 @knut.census_node_description(
     short_description="Retrieve geospatial data from US Census TIGER/Line",
     description="""This node retrieves the specific geospatial boundaries for one specific state of the United States.
-        The popular TIGER/Line levels are Block group, Roads, Blocks, Tracts.
-        When the same State FIPS (2-digits) or * is used for County FIPS(3-digits), the geodata of all counties in the state will be retrieved,
-        county10/20 and state10/20 can only be applicable in this case. 
+        (1) Supports US-level data extraction: Users can select "US" to retrieve nationwide county or state boundaries; 
+        (2) Flexible State Selection: The state can be selected using its abbreviation (e.g., "MA" for Massachusetts) 
+        or a flow variable with the corresponding State FIPS code; 
+        (3) State level data: The node can retrieve the geospatial data of all counties in the state by setting the County 
+        FIPS code to * or blank. county10/20 and state10/20 can only be applicable in this case; 
+        (4)The popular TIGER/Line levels include Block groups, Roads, Blocks, and Tracts. 
         This node can help user to get the FIPS codes of target study area. Linking it to Geospatial View node will be more helpful. """,
     references={
         "TIGER/Line Shapefiles": "https://www.census.gov/geographies/mapping-files/time-series/geo/tiger-line-file.2020.html",
+        "FTP Archive": "https://www2.census.gov/geo/tiger/TIGER2020/",
         "FTP Archive by State": "https://www2.census.gov/geo/tiger/TIGER2020PL/STATE/",
         "FTP Archive by Layer": "https://www2.census.gov/geo/tiger/TIGER2020PL/LAYER/",
         "FIPS code list": "https://transition.fcc.gov/oet/info/maps/census/fips/fips.txt",
     },
 )
 class US2020TIGERNode:
+    state_dict = {
+        "US": {"statefips": "00", "state_filename": "UNITED_STATES"},
+        "AL": {"statefips": "01", "state_filename": "ALABAMA"},
+        "AK": {"statefips": "02", "state_filename": "ALASKA"},
+        "AZ": {"statefips": "04", "state_filename": "ARIZONA"},
+        "AR": {"statefips": "05", "state_filename": "ARKANSAS"},
+        "CA": {"statefips": "06", "state_filename": "CALIFORNIA"},
+        "CO": {"statefips": "08", "state_filename": "COLORADO"},
+        "CT": {"statefips": "09", "state_filename": "CONNECTICUT"},
+        "DE": {"statefips": "10", "state_filename": "DELAWARE"},
+        "DC": {"statefips": "11", "state_filename": "DISTRICT_OF_COLUMBIA"},
+        "FL": {"statefips": "12", "state_filename": "FLORIDA"},
+        "GA": {"statefips": "13", "state_filename": "GEORGIA"},
+        "HI": {"statefips": "15", "state_filename": "HAWAII"},
+        "ID": {"statefips": "16", "state_filename": "IDAHO"},
+        "IL": {"statefips": "17", "state_filename": "ILLINOIS"},
+        "IN": {"statefips": "18", "state_filename": "INDIANA"},
+        "IA": {"statefips": "19", "state_filename": "IOWA"},
+        "KS": {"statefips": "20", "state_filename": "KANSAS"},
+        "KY": {"statefips": "21", "state_filename": "KENTUCKY"},
+        "LA": {"statefips": "22", "state_filename": "LOUISIANA"},
+        "ME": {"statefips": "23", "state_filename": "MAINE"},
+        "MD": {"statefips": "24", "state_filename": "MARYLAND"},
+        "MA": {"statefips": "25", "state_filename": "MASSACHUSETTS"},
+        "MI": {"statefips": "26", "state_filename": "MICHIGAN"},
+        "MN": {"statefips": "27", "state_filename": "MINNESOTA"},
+        "MS": {"statefips": "28", "state_filename": "MISSISSIPPI"},
+        "MO": {"statefips": "29", "state_filename": "MISSOURI"},
+        "MT": {"statefips": "30", "state_filename": "MONTANA"},
+        "NE": {"statefips": "31", "state_filename": "NEBRASKA"},
+        "NV": {"statefips": "32", "state_filename": "NEVADA"},
+        "NH": {"statefips": "33", "state_filename": "NEW_HAMPSHIRE"},
+        "NJ": {"statefips": "34", "state_filename": "NEW_JERSEY"},
+        "NM": {"statefips": "35", "state_filename": "NEW_MEXICO"},
+        "NY": {"statefips": "36", "state_filename": "NEW_YORK"},
+        "NC": {"statefips": "37", "state_filename": "NORTH_CAROLINA"},
+        "ND": {"statefips": "38", "state_filename": "NORTH_DAKOTA"},
+        "OH": {"statefips": "39", "state_filename": "OHIO"},
+        "OK": {"statefips": "40", "state_filename": "OKLAHOMA"},
+        "OR": {"statefips": "41", "state_filename": "OREGON"},
+        "PA": {"statefips": "42", "state_filename": "PENNSYLVANIA"},
+        "RI": {"statefips": "44", "state_filename": "RHODE_ISLAND"},
+        "SC": {"statefips": "45", "state_filename": "SOUTH_CAROLINA"},
+        "SD": {"statefips": "46", "state_filename": "SOUTH_DAKOTA"},
+        "TN": {"statefips": "47", "state_filename": "TENNESSEE"},
+        "TX": {"statefips": "48", "state_filename": "TEXAS"},
+        "UT": {"statefips": "49", "state_filename": "UTAH"},
+        "VT": {"statefips": "50", "state_filename": "VERMONT"},
+        "VA": {"statefips": "51", "state_filename": "VIRGINIA"},
+        "WA": {"statefips": "53", "state_filename": "WASHINGTON"},
+        "WV": {"statefips": "54", "state_filename": "WEST_VIRGINIA"},
+        "WI": {"statefips": "55", "state_filename": "WISCONSIN"},
+        "WY": {"statefips": "56", "state_filename": "WYOMING"},
+        "PR": {"statefips": "72", "state_filename": "PUERTO_RICO"},
+    }
+
     StateFips = knext.StringParameter(
-        label="State FIPS (2-digits)",
-        description="The State to use [FIPS.](https://transition.fcc.gov/oet/info/maps/census/fips/fips.txt)",
-        default_value="",
+        label="State Abbreviation",
+        description="Select the state by abbreviation or enter [FIPS.](https://transition.fcc.gov/oet/info/maps/census/fips/fips.txt) by flow variable.",
+        default_value="MA",
+        enum=list(state_dict.keys()),
     )
 
     County3Fips = knext.StringParameter(
@@ -89,138 +150,67 @@ class US2020TIGERNode:
         return None
 
     def execute(self, exec_context: knext.ExecutionContext):
-        import pandas as pd
+        state_input = self.StateFips
+        state_abb = None
+        StateFips = None
 
-        USdict = pd.DataFrame.from_dict(
-            {
-                "state": [
-                    "01",
-                    "02",
-                    "04",
-                    "05",
-                    "06",
-                    "08",
-                    "09",
-                    "10",
-                    "11",
-                    "12",
-                    "13",
-                    "15",
-                    "16",
-                    "17",
-                    "18",
-                    "19",
-                    "20",
-                    "21",
-                    "22",
-                    "23",
-                    "24",
-                    "25",
-                    "26",
-                    "27",
-                    "28",
-                    "29",
-                    "30",
-                    "31",
-                    "32",
-                    "33",
-                    "34",
-                    "35",
-                    "36",
-                    "37",
-                    "38",
-                    "39",
-                    "40",
-                    "41",
-                    "42",
-                    "44",
-                    "45",
-                    "46",
-                    "47",
-                    "48",
-                    "49",
-                    "50",
-                    "51",
-                    "53",
-                    "54",
-                    "55",
-                    "56",
-                    "72",
-                ],
-                "stateName": [
-                    "ALABAMA",
-                    "ALASKA",
-                    "ARIZONA",
-                    "ARKANSAS",
-                    "CALIFORNIA",
-                    "COLORADO",
-                    "CONNECTICUT",
-                    "DELAWARE",
-                    "DISTRICT_OF_COLUMBIA",
-                    "FLORIDA",
-                    "GEORGIA",
-                    "HAWAII",
-                    "IDAHO",
-                    "ILLINOIS",
-                    "INDIANA",
-                    "IOWA",
-                    "KANSAS",
-                    "KENTUCKY",
-                    "LOUISIANA",
-                    "MAINE",
-                    "MARYLAND",
-                    "MASSACHUSETTS",
-                    "MICHIGAN",
-                    "MINNESOTA",
-                    "MISSISSIPPI",
-                    "MISSOURI",
-                    "MONTANA",
-                    "NEBRASKA",
-                    "NEVADA",
-                    "NEW_HAMPSHIRE",
-                    "NEW_JERSEY",
-                    "NEW_MEXICO",
-                    "NEW_YORK",
-                    "NORTH_CAROLINA",
-                    "NORTH_DAKOTA",
-                    "OHIO",
-                    "OKLAHOMA",
-                    "OREGON",
-                    "PENNSYLVANIA",
-                    "RHODE_ISLAND",
-                    "SOUTH_CAROLINA",
-                    "SOUTH_DAKOTA",
-                    "TENNESSEE",
-                    "TEXAS",
-                    "UTAH",
-                    "VERMONT",
-                    "VIRGINIA",
-                    "WASHINGTON",
-                    "WEST_VIRGINIA",
-                    "WISCONSIN",
-                    "WYOMING",
-                    "PUERTO_RICO",
-                ],
-            }
-        )
-
-        USdict["path"] = USdict.state + "_" + USdict.stateName
-
-        Statepath = USdict[USdict.state == self.StateFips].iloc[0, 2]
-
-        County5Fips = self.StateFips + self.County3Fips
-
-        base_url = "https://www2.census.gov/geo/tiger/TIGER2020PL/STATE/"
-
-        if self.StateFips != self.County3Fips and self.County3Fips != "*":
-            data_url = f"{base_url}{Statepath}/{County5Fips}/tl_2020_{County5Fips}_{self.geofile}.zip"
+        if state_input in {v["statefips"] for v in self.state_dict.values()}:
+            StateFips = state_input
+            state_abb = next(
+                k for k, v in self.state_dict.items() if v["statefips"] == state_input
+            )
+        elif state_input in self.state_dict:
+            StateFips = self.state_dict[state_input]["statefips"]
+            state_abb = state_input
         else:
-            County5Fips = self.StateFips
-            if self.geofile == "roads":
-                self.geofile = "prisecroads"
-            data_url = f"{base_url}{Statepath}/{County5Fips}/tl_2020_{County5Fips}_{self.geofile}.zip"
-        gdf = gp.read_file(data_url)
+            raise ValueError(
+                f"Unrecognizable state abbreviation or FIPS code: {state_input}"
+            )
+
+        if state_input == "US":
+            if self.geofile in ["county10", "county20"]:
+                data_url = "https://www2.census.gov/geo/tiger/TIGER2020/COUNTY/tl_2020_us_county.zip"
+            elif self.geofile in ["state10", "state20"]:
+                data_url = "https://www2.census.gov/geo/tiger/TIGER2020/STATE/tl_2020_us_state.zip"
+            else:
+                knut.LOGGER.warning(
+                    f"Geofile '{self.geofile}' is not county/state. Defaulting to state10 for US-level data."
+                )
+                data_url = "https://www2.census.gov/geo/tiger/TIGER2020/STATE/tl_2020_us_state.zip"
+            knut.LOGGER.warning(f"url: {data_url}")
+
+        else:
+            base_url = "https://www2.census.gov/geo/tiger/TIGER2020PL/STATE/"
+            Statepath = f"{StateFips}_{self.state_dict[state_abb]['state_filename']}"
+
+            use_state_fips = False
+
+            if self.geofile in ["county10", "county20", "state10", "state20"]:
+                County5Fips = StateFips
+                use_state_fips = True
+            else:
+                if self.County3Fips not in ["*", ""]:
+                    County5Fips = StateFips + self.County3Fips
+                else:
+                    County5Fips = StateFips
+                    use_state_fips = True
+
+            geofile_name = (
+                "prisecroads"
+                if use_state_fips and self.geofile == "roads"
+                else self.geofile
+            )
+
+            data_url = f"{base_url}{Statepath}/{County5Fips}/tl_2020_{County5Fips}_{geofile_name}.zip"
+            knut.LOGGER.warning(f"url: {data_url}")
+
+        try:
+            gdf = gp.read_file(data_url)
+        except Exception as e:
+            raise ValueError(f"Failed to retrieve geodata from {data_url}. Error: {e}")
+
         gdf.reset_index(drop=True, inplace=True)
+
         return knext.Table.from_pandas(gdf)
 
 
