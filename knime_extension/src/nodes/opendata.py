@@ -1576,6 +1576,7 @@ class DataverseFileDownloaderNode:
     """Downloads a file from a Dataverse repository.
 
     This node downloads a file from a Dataverse repository based on the provided File ID.
+
     The user must specify: Dataverse server URL (e.g., "https://dataverse.harvard.edu");
     File ID (a numerical identifier from Dataverse); Save location (local file path to save the downloaded file)
     The node retrieves the file and stores it at the user-defined folder.
@@ -1673,13 +1674,15 @@ class DataverseFileDownloaderNode:
 class DataverseSearchNode:
     """Search for datasets and files in Dataverse repositories.
 
-    This node allows you to search Dataverse using various parameters.
+    This node allows you to search [Dataverse](https://dataverse.org/) using various parameters.
+    The default search uses [Harvard Dataverse](https://dataverse.harvard.edu/) as the server.
 
     Query Syntax Examples:
+
     1. Simple keyword search: "climate change"
        - Searches for items containing these terms anywhere
 
-    2. Field-specific search: "title:climate"
+    2. Field-specific search: "title:climate" or "title:climate+temperature"
        - Searches only in the title field
        - Other fields: author, description, keywords
 
@@ -1692,6 +1695,7 @@ class DataverseSearchNode:
        - Use parentheses for complex queries
 
     Search results are returned as a table with all available metadata from the API.
+
     """
 
     server_url = knext.StringParameter(
