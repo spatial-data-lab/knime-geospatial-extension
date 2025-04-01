@@ -21,10 +21,10 @@ __NODE_ICON_PATH = "icons/icon/SpatialModel/"
 def get_id_col_parameter(
     label: str = "ID column",
     description: str = """Select the column which contains for each observation in the input data a unique ID, it should be an integer column.
-    The IDs must match with the values of the 
+    The IDs must match with the values of the
     [Spatial Weights node](https://hub.knime.com/center%20for%20geographic%20analysis%20at%20harvard%20university/extensions/sdl.harvard.features.geospatial/latest/org.knime.python3.nodes.extension.ExtensionNodeSetFactory$DynamicExtensionNodeFactory:4d710eae/)
     ID column.
-    If 'none' is selected, the IDs will be automatically generated from 0 to the number of rows flowing the order of 
+    If 'none' is selected, the IDs will be automatically generated from 0 to the number of rows flowing the order of
     the first input table.
     """,
 ):
@@ -136,7 +136,7 @@ class Spatial2SLSModel:
 
     Orders_of_W = knext.IntParameter(
         "Orders of W",
-        """Orders of W to include as instruments for the spatially lagged dependent variable. For example, w_lags=1, 
+        """Orders of W to include as instruments for the spatially lagged dependent variable. For example, w_lags=1,
         then instruments are WX; if w_lags=2, then WX, WWX; and so on.""",
         default_value=1,
     )
@@ -149,7 +149,7 @@ class Spatial2SLSModel:
 
     robust = knext.StringParameter(
         "Robust",
-        """If ‘white’, then a White consistent estimator of the variance-covariance matrix is given. If ‘hac’, 
+        """If ‘white’, then a White consistent estimator of the variance-covariance matrix is given. If ‘hac’,
         then a HAC consistent estimator of the variance-covariance matrix is given. Set to None for default.""",
         enum=["white", "hac", "none"],
         default_value="none",
@@ -608,7 +608,7 @@ class AdvancedGWRSetting:
 
     sigma2_v1 = knext.BoolParameter(
         "Sigma2 v1",
-        """specify form of corrected denominator of sigma squared to use for model diagnostics; 
+        """specify form of corrected denominator of sigma squared to use for model diagnostics;
         Acceptable options are:
         ‘True’: n-tr(S) (default) ‘False’: n-2(tr(S)+tr(S’S))""",
         default_value=True,
@@ -840,11 +840,11 @@ class GeographicallyWeightedRegression:
 
         intervals = np.asarray(intervals)
         if gwr_bw.shape == ():
-            gdf.loc[:1, "bw"] = gwr_bw
-            gdf.loc[:1, ["bw_lower", "bw_upper"]] = intervals
+            gdf.loc[gdf.index[:2], "bw"] = gwr_bw
+            gdf.loc[gdf.index[:2], ["bw_lower", "bw_upper"]] = intervals
         else:
-            gdf.loc[: (gwr_bw.shape[0]), "bw"] = gwr_bw
-            gdf.loc[: (intervals.shape[0]), ["bw_lower", "bw_upper"]] = intervals
+            gdf.loc[gdf.index[:gwr_bw.shape[0]], "bw"] = gwr_bw
+            gdf.loc[gdf.index[:intervals.shape[0]], ["bw_lower", "bw_upper"]] = intervals
         # gdf.loc[:,"localR2"] = results.localR2
         # gdf.drop(columns=["<Row Key>"], inplace=True, axis=1)
         gdf.reset_index(drop=True, inplace=True)
@@ -1004,9 +1004,9 @@ class MultiscaleGeographicallyWeightedRegression:
 
     search_method = knext.StringParameter(
         "Search method",
-        """Bw search method: ‘golden’, ‘interval’. Golden Search— Determines either the number of neighbors or distance band for each 
-        explanatory variable using the Golden Search algorithm. This method searches multiple combinations 
-        of values for each explanatory variable between a specified minimum and maximum value. Intervals— Determines the number of neighbors or distance band for each 
+        """Bw search method: ‘golden’, ‘interval’. Golden Search— Determines either the number of neighbors or distance band for each
+        explanatory variable using the Golden Search algorithm. This method searches multiple combinations
+        of values for each explanatory variable between a specified minimum and maximum value. Intervals— Determines the number of neighbors or distance band for each
         explanatory variable by incrementing the number of neighbors or distance band from a minimum value.""",
         default_value="golden",
         enum=["golden", "interval"],
@@ -1102,11 +1102,13 @@ class MultiscaleGeographicallyWeightedRegression:
 
         intervals = np.asarray(intervals)
         if mgwr_bw.shape == ():
-            gdf.loc[:1, "bw"] = mgwr_bw
-            gdf.loc[:1, ["bw_lower", "bw_upper"]] = intervals
+            gdf.loc[gdf.index[:2], "bw"] = mgwr_bw
+            gdf.loc[gdf.index[:2], ["bw_lower", "bw_upper"]] = intervals
         else:
-            gdf.loc[: (mgwr_bw.shape[0]), "bw"] = mgwr_bw.reshape(-1, 1)
-            gdf.loc[: (intervals.shape[0]), ["bw_lower", "bw_upper"]] = intervals
+            gdf.loc[gdf.index[:mgwr_bw.shape[0]], "bw"] = mgwr_bw.reshape(-1, 1)
+
+            gdf.loc[gdf.index[:intervals.shape[0]], ["bw_lower", "bw_upper"]] = intervals
+
         # gdf.loc[:,"localR2"] = results.localR2
         # gdf.drop(columns=["<Row Key>"], inplace=True, axis=1)
         gdf.reset_index(drop=True, inplace=True)
@@ -1264,7 +1266,7 @@ class SpatialOLS:
 
     robust = knext.StringParameter(
         "Robust",
-        """If ‘white’, then a White consistent estimator of the variance-covariance matrix is given. If ‘hac’, 
+        """If ‘white’, then a White consistent estimator of the variance-covariance matrix is given. If ‘hac’,
         then a HAC consistent estimator of the variance-covariance matrix is given. Set to None for default.""",
         enum=["white", "hac", "none"],
         default_value="none",
@@ -1464,7 +1466,7 @@ class SpatialML_Lag:
 
     method = knext.StringParameter(
         "Method",
-        """if ‘full’, brute force calculation (full matrix expressions) if ‘ord’, 
+        """if ‘full’, brute force calculation (full matrix expressions) if ‘ord’,
         Ord eigenvalue method if ‘LU’, LU sparse matrix decomposition""",
         default_value="ord",
         enum=["full", "ord", "LU"],
@@ -1622,7 +1624,7 @@ class SpatialML_Error:
 
     method = knext.StringParameter(
         "Method",
-        """if ‘full’, brute force calculation (full matrix expressions) if ‘ord’, 
+        """if ‘full’, brute force calculation (full matrix expressions) if ‘ord’,
         Ord eigenvalue method if ‘LU’, LU sparse matrix decomposition""",
         default_value="ord",
         enum=["full", "ord", "LU"],
