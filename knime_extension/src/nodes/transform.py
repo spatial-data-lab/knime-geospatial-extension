@@ -786,3 +786,125 @@ class ODtoCurveNode:
         gdf[result_col] = gdf.apply(create_bezier_line_geometry, axis=1)
 
         return knut.to_table(gdf)
+
+
+############################################
+# Line To Polygon
+############################################
+
+
+@knext.node(
+    name="Line To Polygon",
+    node_type=knext.NodeType.MANIPULATOR,
+    icon_path="icons/icon/GeometryTransformation/LineToPolygon.png",
+    category=category,
+    after="",
+)
+@knext.input_table(
+    name="Geo table",
+    description="Table with geometry column containing lines.",
+)
+@knext.output_table(
+    name="Transformed geo table",
+    description="Table with transformed polygon geometry column.",
+)
+@knut.geo_node_description(
+    short_description="Converts lines to polygons.",
+    description="""This node converts LineString geometries to Polygon geometries.
+    It handles both simple lines and complex multi-line cases by: Merging connected lines; 
+    Ensuring the resulting geometry is closed; Creating valid polygons.
+    For complex geometries containing MultiLineString, the recommended workflow is to
+    use Multipart to Singlepart node first.
+
+    """,
+    references={
+        "Shapely Geometries": "https://shapely.readthedocs.io/en/stable/manual.html",
+    },
+)
+class LineToPolygonNode:
+
+    geo_col = knext.ColumnParameter(
+        "Geometry column",
+        "Select the geometry column containing lines to transform.",
+        # Allow only line geometry columns
+        column_filter=knut.is_geo_line,
+        include_row_key=False,
+        include_none_column=False,
+    )
+
+    result_settings = knut.ResultSettings(
+        mode=knut.ResultSettingsMode.REPLACE.name,
+        new_name="Polygon",
+    )
+
+    def configure(self, configure_context, input_schema):
+        self.geo_col = knut.column_exists_or_preset(
+            configure_context, self.geo_col, input_schema, knut.is_geo_line
+        )
+        return self.result_settings.get_result_schema(
+            configure_context,
+            input_schema,
+            self.geo_col,
+            knut.TYPE_POLYGON,
+        )
+
+    def execute(self, exec_context, input_1):
+
+        # Load the GeoDataFrame
+        gdf = knut.load_geo_data_frame(input_1, self.geo_col, exec_context)
+        from shapely.geometry import LineString, MultiLineString, Polygon
+
+        # Define the conversion function
+        def lines_to_polygon(geometry):
+            if geometry is None:
+                return None
+
+            try:
+                # Handle both LineString and MultiLineString
+                if isinstance(geometry, (LineString, MultiLineString)):
+                    # Get all coordinates
+                    if isinstance(geometry, LineString):
+                        coords = list(geometry.coords)
+                    else:  # MultiLineString
+                        coords = []
+                        for line in geometry.geoms:
+                            coords.extend(list(line.coords))
+
+                    # Remove duplicates while preserving order
+                    unique_coords = list(dict.fromkeys(map(tuple, coords)))
+
+                    # Ensure the polygon is closed
+                    if unique_coords[0] != unique_coords[-1]:
+                        unique_coords.append(unique_coords[0])
+
+                    # Create polygon
+                    return Polygon(unique_coords)
+            except Exception as e:
+                exec_context.logger.warning(f"Failed to convert geometry: {e}")
+                return None
+
+            return geometry
+
+        # Process the geometry column
+        if self.result_settings.mode == knut.ResultSettingsMode.APPEND.name:
+            result_col = knut.get_unique_column_name(
+                self.result_settings.new_column_name, input_1.schema
+            )
+        else:
+            result_col = self.geo_col
+
+        # Convert to polygons
+        gdf[result_col] = gdf[self.geo_col].apply(lines_to_polygon)
+
+        # Check both for null values and valid geometry
+        valid_mask = (gdf[result_col].notnull()) & (gdf[result_col].is_valid)
+        gdf = gdf.loc[valid_mask]
+
+        # Log information about removed geometries
+        removed_count = (~valid_mask).sum()
+        if removed_count > 0:
+            exec_context.logger.warning(
+                f"Removed {removed_count} invalid or null geometries"
+            )
+
+        return knut.to_table(gdf, exec_context)

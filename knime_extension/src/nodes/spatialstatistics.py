@@ -1,7 +1,7 @@
 import geopandas as gp
 import knime_extension as knext
 import util.knime_utils as knut
-
+import util.modeling_utils as mut
 
 __category = knext.category(
     path="/community/geo",
@@ -56,6 +56,29 @@ def _var_col_exists_or_preset(
     )
 
 
+def get_id_col_parameter(
+    label: str = "ID column",
+    description: str = """Select the column which contains for each observation in the input data a unique ID, it should be an integer column.
+    The IDs must match with the values of the 
+    [Spatial Weights node](https://hub.knime.com/center%20for%20geographic%20analysis%20at%20harvard%20university/extensions/sdl.harvard.features.geospatial/latest/org.knime.python3.nodes.extension.ExtensionNodeSetFactory$DynamicExtensionNodeFactory:4d710eae/)
+    ID column.
+    If 'none' is selected, the IDs will be automatically generated from 0 to the number of rows flowing the order of 
+    the first input table.
+    """,
+):
+    """
+    Returns the unique ID column. It should always keep the same as the ID column in the spatial weights matrix node.
+    The selected column should contain unique IDs for each observation in the input data.
+    """
+    return knext.ColumnParameter(
+        label=label,
+        description=description,
+        include_none_column=True,
+        column_filter=knut.is_long,
+        since_version="1.1.0",
+    )
+
+
 ############################################
 # Spatial Weights
 ############################################
@@ -69,7 +92,7 @@ def _var_col_exists_or_preset(
 @knext.input_table(name="Geo table", description="Table with geometry column.")
 @knext.output_table(name="Spatial Weights", description="Spatial Weights.")
 class spatialWeights:
-    """This node constructs a contiguity spatial weights matrix from the input data.
+    """Constructs a contiguity spatial weights matrix from the input data.
     This node constructs a contiguity spatial weights matrix from the input data.
     """
 
@@ -329,7 +352,7 @@ class VariableSetting:
     Select the variable you want to use for the analysis.
     """
 
-    Field_col = knext.ColumnParameter(
+    field_col = knext.ColumnParameter(
         "Variable column",
         "The variable column you want to use for the analysis.",
         column_filter=knut.is_numeric,
@@ -345,7 +368,7 @@ class IDSetting:
     The selected column must contain unique IDs for each observation in the input data of type integer.
     """
 
-    Field_col = knext.ColumnParameter(
+    field_col = knext.ColumnParameter(
         "ID column",
         """The selected column should contain unique IDs for each observation in the input data and should be of 
         type integer. The values need to match the values from the ID column selected in the
@@ -443,8 +466,8 @@ class GlobalMoransI:
         self.geo_col = knut.column_exists_or_preset(
             configure_context, self.geo_col, input_schema_1, knut.is_geo
         )
-        self.variable_setting.Field_col = _var_col_exists_or_preset(
-            configure_context, self.variable_setting.Field_col, input_schema_1
+        self.variable_setting.field_col = _var_col_exists_or_preset(
+            configure_context, self.variable_setting.field_col, input_schema_1
         )
         return None
 
@@ -452,9 +475,9 @@ class GlobalMoransI:
         gdf = gp.GeoDataFrame(input_1.to_pandas(), geometry=self.geo_col)
         adjust_list = input_2.to_pandas()
 
-        if "none" not in str(self.id_col_setting.Field_col).lower():
+        if "none" not in str(self.id_col_setting.field_col).lower():
             gdf.index = range(len(gdf))
-            id_map = dict(zip(gdf[self.id_col_setting.Field_col], gdf.index))
+            id_map = dict(zip(gdf[self.id_col_setting.field_col], gdf.index))
             adjust_list["focal"] = adjust_list["focal"].map(id_map)
             adjust_list["neighbor"] = adjust_list["neighbor"].map(id_map)
 
@@ -462,7 +485,7 @@ class GlobalMoransI:
 
         w = W.from_adjlist(adjust_list)
 
-        y = gdf[self.variable_setting.Field_col]
+        y = gdf[self.variable_setting.field_col]
 
         import numpy as np
 
@@ -607,8 +630,8 @@ class LocalMoransI:
         self.geo_col = knut.column_exists_or_preset(
             configure_context, self.geo_col, input_schema_1, knut.is_geo
         )
-        self.variable_setting.Field_col = _var_col_exists_or_preset(
-            configure_context, self.variable_setting.Field_col, input_schema_1
+        self.variable_setting.field_col = _var_col_exists_or_preset(
+            configure_context, self.variable_setting.field_col, input_schema_1
         )
         return None
 
@@ -616,9 +639,9 @@ class LocalMoransI:
         gdf = gp.GeoDataFrame(input_1.to_pandas(), geometry=self.geo_col)
         adjust_list = input_2.to_pandas()
 
-        if "none" not in str(self.id_col_setting.Field_col).lower():
+        if "none" not in str(self.id_col_setting.field_col).lower():
             gdf.index = range(len(gdf))
-            id_map = dict(zip(gdf[self.id_col_setting.Field_col], gdf.index))
+            id_map = dict(zip(gdf[self.id_col_setting.field_col], gdf.index))
             adjust_list["focal"] = adjust_list["focal"].map(id_map)
             adjust_list["neighbor"] = adjust_list["neighbor"].map(id_map)
 
@@ -626,7 +649,7 @@ class LocalMoransI:
 
         w = W.from_adjlist(adjust_list)
 
-        y = gdf[self.variable_setting.Field_col]
+        y = gdf[self.variable_setting.field_col]
 
         import numpy as np
 
@@ -660,8 +683,8 @@ class LocalMoransI:
 
         import pysal.lib as lps
 
-        lag_index = lps.weights.lag_spatial(w, gdf[self.variable_setting.Field_col])
-        index_v = gdf[self.variable_setting.Field_col]
+        lag_index = lps.weights.lag_spatial(w, gdf[self.variable_setting.field_col])
+        index_v = gdf[self.variable_setting.field_col]
 
         import numpy as np
         import matplotlib.pyplot as plt
@@ -679,8 +702,8 @@ class LocalMoransI:
         # red line of best fit using global I as slope
         plt.plot(index_v, a + b * index_v, "r")
         plt.title("Moran Scatterplot")
-        plt.ylabel("Spatial Lag of %s" % self.variable_setting.Field_col)
-        plt.xlabel("%s" % self.variable_setting.Field_col)
+        plt.ylabel("Spatial Lag of %s" % self.variable_setting.field_col)
+        plt.xlabel("%s" % self.variable_setting.field_col)
 
         # enforce int as output column type
         gdf["spots"] = gdf["spots"].astype(np.int32)
@@ -743,8 +766,8 @@ class GlobalGearysC:
         self.geo_col = knut.column_exists_or_preset(
             configure_context, self.geo_col, input_schema_1, knut.is_geo
         )
-        self.variable_setting.Field_col = _var_col_exists_or_preset(
-            configure_context, self.variable_setting.Field_col, input_schema_1
+        self.variable_setting.field_col = _var_col_exists_or_preset(
+            configure_context, self.variable_setting.field_col, input_schema_1
         )
         return None
 
@@ -752,9 +775,9 @@ class GlobalGearysC:
         gdf = gp.GeoDataFrame(input_1.to_pandas(), geometry=self.geo_col)
         adjust_list = input_2.to_pandas()
 
-        if "none" not in str(self.id_col_setting.Field_col).lower():
+        if "none" not in str(self.id_col_setting.field_col).lower():
             gdf.index = range(len(gdf))
-            id_map = dict(zip(gdf[self.id_col_setting.Field_col], gdf.index))
+            id_map = dict(zip(gdf[self.id_col_setting.field_col], gdf.index))
             adjust_list["focal"] = adjust_list["focal"].map(id_map)
             adjust_list["neighbor"] = adjust_list["neighbor"].map(id_map)
 
@@ -762,7 +785,7 @@ class GlobalGearysC:
 
         w = W.from_adjlist(adjust_list)
 
-        y = gdf[self.variable_setting.Field_col]
+        y = gdf[self.variable_setting.field_col]
 
         import numpy as np
 
@@ -857,8 +880,8 @@ class GlobalGetisOrd:
         self.geo_col = knut.column_exists_or_preset(
             configure_context, self.geo_col, input_schema_1, knut.is_geo
         )
-        self.variable_setting.Field_col = _var_col_exists_or_preset(
-            configure_context, self.variable_setting.Field_col, input_schema_1
+        self.variable_setting.field_col = _var_col_exists_or_preset(
+            configure_context, self.variable_setting.field_col, input_schema_1
         )
         return None
 
@@ -866,9 +889,9 @@ class GlobalGetisOrd:
         gdf = gp.GeoDataFrame(input_1.to_pandas(), geometry=self.geo_col)
         adjust_list = input_2.to_pandas()
 
-        if "none" not in str(self.id_col_setting.Field_col).lower():
+        if "none" not in str(self.id_col_setting.field_col).lower():
             gdf.index = range(len(gdf))
-            id_map = dict(zip(gdf[self.id_col_setting.Field_col], gdf.index))
+            id_map = dict(zip(gdf[self.id_col_setting.field_col], gdf.index))
             adjust_list["focal"] = adjust_list["focal"].map(id_map)
             adjust_list["neighbor"] = adjust_list["neighbor"].map(id_map)
 
@@ -876,7 +899,7 @@ class GlobalGetisOrd:
 
         w = W.from_adjlist(adjust_list)
 
-        y = gdf[self.variable_setting.Field_col]
+        y = gdf[self.variable_setting.field_col]
 
         import numpy as np
 
@@ -933,7 +956,7 @@ class GlobalGetisOrd:
     + """
 `spots` are the values that indicate quadrant location 0 Not Significant, 1 HH (High-High or Hot Spot), 3 LL (Low-Low or Cold Spot),
 `spots_type` has the values of HH (High-High or Hot Spot), LL (Low-Low or Cold Spot), Not Significant (the p-value is greater than the significance level).
-"""
+""",
 )
 # @knext.output_binary(
 #     name="output model",
@@ -974,8 +997,8 @@ class LocalGetisOrd:
         self.geo_col = knut.column_exists_or_preset(
             configure_context, self.geo_col, input_schema_1, knut.is_geo
         )
-        self.variable_setting.Field_col = _var_col_exists_or_preset(
-            configure_context, self.variable_setting.Field_col, input_schema_1
+        self.variable_setting.field_col = _var_col_exists_or_preset(
+            configure_context, self.variable_setting.field_col, input_schema_1
         )
         return None
 
@@ -983,9 +1006,9 @@ class LocalGetisOrd:
         gdf = gp.GeoDataFrame(input_1.to_pandas(), geometry=self.geo_col)
         adjust_list = input_2.to_pandas()
 
-        if "none" not in str(self.id_col_setting.Field_col).lower():
+        if "none" not in str(self.id_col_setting.field_col).lower():
             gdf.index = range(len(gdf))
-            id_map = dict(zip(gdf[self.id_col_setting.Field_col], gdf.index))
+            id_map = dict(zip(gdf[self.id_col_setting.field_col], gdf.index))
             adjust_list["focal"] = adjust_list["focal"].map(id_map)
             adjust_list["neighbor"] = adjust_list["neighbor"].map(id_map)
 
@@ -993,7 +1016,7 @@ class LocalGetisOrd:
 
         w = W.from_adjlist(adjust_list)
 
-        y = gdf[self.variable_setting.Field_col]
+        y = gdf[self.variable_setting.field_col]
 
         import numpy as np
 
@@ -1026,8 +1049,8 @@ class LocalGetisOrd:
 
         import pysal.lib as lps
 
-        lag_index = lps.weights.lag_spatial(w, gdf[self.variable_setting.Field_col])
-        index_v = gdf[self.variable_setting.Field_col]
+        lag_index = lps.weights.lag_spatial(w, gdf[self.variable_setting.field_col])
+        index_v = gdf[self.variable_setting.field_col]
         b, a = np.polyfit(index_v, lag_index, 1)
 
         import matplotlib.pyplot as plt
@@ -1039,8 +1062,277 @@ class LocalGetisOrd:
         plt.hlines(lag_index.mean(), index_v.min(), index_v.max(), linestyle="--")
 
         plt.plot(index_v, a + b * index_v, "r")
-        plt.xlabel(self.variable_setting.Field_col)
-        plt.ylabel("Spatial Lag of " + self.variable_setting.Field_col)
+        plt.xlabel(self.variable_setting.field_col)
+        plt.ylabel("Spatial Lag of " + self.variable_setting.field_col)
         plt.title("Local Getis-Ord G Scatterplot")
+
+        return knext.Table.from_pandas(gdf), knext.view_matplotlib(f)
+
+
+# new added nodes: 2023-11-27
+
+
+############################################
+# Bivariate Global Moran’s I node
+############################################
+# FIXME: add test workflow
+@knext.node(
+    name="Bivariate Global Moran’s I",
+    node_type=knext.NodeType.LEARNER,
+    # node_type=knext.NodeType.MANIPULATOR,
+    category=__category,
+    icon_path=__NODE_ICON_PATH + "BivariateGlobal.png",
+)
+@knext.input_table(
+    name="Input Table",
+    description="Input table for calculation of Bivariate Global Moran’s I",
+)
+@knext.input_table(
+    name="Spatial Weights",
+    description="Spatial Weights table for calculation of Bivariate Global Moran’s I",
+)
+@knext.output_table(
+    name="Output Table",
+    description="Output table results of Bivariate Global Moran’s I"
+    + __global_statistics_output_table_description,
+)
+# @knext.output_binary(
+#     name="output model",
+#     description="Output model of Bivariate Global Moran’s I",
+#     id="pysal.esda.moran.Moran",
+# )
+@knext.output_view(
+    name="output view",
+    description="Output view of Bivariate Global Moran’s I"
+    + __global_statistics_interactive_view_description,
+)
+@knut.geo_node_description(
+    short_description="Bivariate Global Moran’s I",
+    description=f"""The esda.moran.Moran_BV(y1, y2, w) function computes the Bivariate Moran’s I statistic, 
+    which measures the spatial correlation between two different variables in a given spatial context. 
+    Unlike the traditional Moran’s I, which captures the spatial autocorrelation of a single variable, 
+    the bivariate version examines the relationship between one variable and the spatially lagged values 
+    of another variable. 
+    A positive Moran’s I indicates that high values of y1 are associated with high values of y2 in neighboring locations, 
+    while a negative Moran’s I suggests an inverse spatial relationship. This method is widely used in spatial econometrics, 
+    geography, and environmental studies to assess spatial dependencies between different phenomena.
+
+    """,
+    package="esda",
+    package_url="https://pysal.org/esda/",
+    references={
+        "esda.moran.Moran_BV": "https://pysal.org/esda/generated/esda.Moran_BV.html",
+    },
+)
+class BivariateGlobalMoran:
+    """
+    Bivariate Global Moran’s I.
+    """
+
+    # input parameters
+    geo_col = knext.ColumnParameter(
+        "Geometry column",
+        "The column containing the geometry to use for Bivariate Global Moran’s I.",
+        column_filter=knut.is_geo,
+        include_row_key=False,
+        include_none_column=False,
+    )
+
+    id_col = mut.get_id_col_parameter()
+
+    field_col1 = knext.ColumnParameter(
+        "Variable column 1",
+        "The column containing the variable to use for the calculation of Bivariate Global Moran’s I.",
+        column_filter=knut.is_numeric,
+        include_none_column=False,
+    )
+
+    field_col2 = knext.ColumnParameter(
+        "Variable column 2",
+        "The column containing the variable to use for the calculation of Bivariate Global Moran’s I.",
+        column_filter=knut.is_numeric,
+        include_none_column=False,
+    )
+
+    def configure(self, configure_context, input_schema_1, input_schema_2):
+        self.geo_col = knut.column_exists_or_preset(
+            configure_context, self.geo_col, input_schema_1, knut.is_geo
+        )
+        return None
+
+    def execute(self, exec_context: knext.ExecutionContext, input_1, input_2):
+        gdf = gp.GeoDataFrame(input_1.to_pandas(), geometry=self.geo_col)
+        adjust_list = input_2.to_pandas()
+
+        if "none" not in str(self.id_col).lower():
+            gdf.index = range(len(gdf))
+            id_map = dict(zip(gdf[self.id_col], gdf.index))
+            adjust_list["focal"] = adjust_list["focal"].map(id_map)
+            adjust_list["neighbor"] = adjust_list["neighbor"].map(id_map)
+
+        import numpy as np
+        import pandas as pd
+        from libpysal.weights import W
+
+        w = W.from_adjlist(adjust_list)
+
+        x = gdf[self.field_col1]
+        y = gdf[self.field_col2]
+        np.random.seed(12345)
+        import esda
+
+        bi = esda.moran.Moran_BV(x, y, w)
+
+        out = pd.DataFrame(
+            {
+                "Bivariate Moran’s I": [bi.I],
+                "p-value": [bi.p_sim],
+                "z-score": [bi.z_sim],
+            }
+        )
+        out.reset_index(inplace=True)
+        import seaborn as sbn
+        import matplotlib.pyplot as plt
+
+        ax = sbn.kdeplot(bi.sim, shade=True)
+        plt.vlines(bi.I, 0, 1, color="r")
+        # plt.vlines(bi.EI, 0, 1)
+        plt.xlabel("Bivariate Moran’s I")
+
+        return knext.Table.from_pandas(out), knext.view_matplotlib(ax.get_figure())
+
+
+############################################
+# Bivariate Local Moran Statistics
+############################################
+# FIXME: add test workflow
+@knext.node(
+    name="Bivariate Local Moran's I",
+    node_type=knext.NodeType.LEARNER,
+    # node_type=knext.NodeType.MANIPULATOR,
+    category=__category,
+    icon_path=__NODE_ICON_PATH + "BivariateLocal.png",
+)
+@knext.input_table(
+    name="Input Table",
+    description="Input table for calculation of Bivariate Local Moran Statistics",
+)
+@knext.input_table(
+    name="Spatial Weights",
+    description="Spatial Weights table for calculation of Bivariate Local Moran Statistics",
+)
+@knext.output_table(
+    name="Output Table",
+    description="Output table results of Bivariate Local Moran Statistics"
+    + __local_statistics_output_table_description
+    + __spots,
+)
+# @knext.output_binary(
+#     name="output model",
+#     description="Output model of Bivariate Local Moran Statistics",
+#     id="pysal.esda.moran.Moran_Local",
+# )
+@knut.geo_node_description(
+    short_description="Local Bivariate Moran’s I.",
+    description=f"""The esda.moran.Moran_Local_BV(y1, y2, w) function computes the Local Bivariate Moran’s I statistic, 
+    which measures the local spatial association between two variables, identifying spatial clusters 
+    or outliers where the relationships are particularly strong. Unlike the global Bivariate Moran’s I, 
+    this statistic is calculated for each spatial unit, revealing localized patterns of spatial correlation. 
+    Positive values indicate local clustering where high values of y1 are surrounded by high values of y2, 
+    while negative values suggest local spatial mismatches. The significance of each local statistic can be assessed using permutation tests, 
+    allowing for hypothesis testing of local spatial dependence. This method is particularly useful in urban studies, epidemiology, 
+    and environmental research to identify spatial hotspots and local anomalies.
+
+    """,
+    package="esda",
+    package_url="https://pysal.org/esda/",
+    references={
+        "esda.moran.Moran_Local_BV": "https://pysal.org/esda/generated/esda.Moran_Local_BV.html",
+    },
+)
+@knext.output_view(
+    name="output view",
+    description="Output view of Bivariate Local Moran Statistics",
+)
+class BivariateLocalMoran:
+    # input parameters
+    geo_col = knext.ColumnParameter(
+        "Geometry column",
+        "The column containing the geometry to use for Bivariate Local Moran Statistics.",
+        column_filter=knut.is_geo,
+        include_row_key=False,
+        include_none_column=False,
+    )
+
+    id_col = mut.get_id_col_parameter()
+
+    field_col1 = knext.ColumnParameter(
+        "Variable column 1",
+        "The column containing the variable to use for the calculation of Bivariate Local Moran Statistics.",
+        column_filter=knut.is_numeric,
+        include_none_column=False,
+    )
+
+    field_col2 = knext.ColumnParameter(
+        "Variable column 2",
+        "The column containing the variable to use for the calculation of Bivariate Local Moran Statistics.",
+        column_filter=knut.is_numeric,
+        include_none_column=False,
+    )
+
+    def configure(self, configure_context, input_schema_1, input_schema_2):
+        self.geo_col = knut.column_exists_or_preset(
+            configure_context, self.geo_col, input_schema_1, knut.is_geo
+        )
+        return None
+
+    def execute(self, exec_context: knext.ExecutionContext, input_1, input_2):
+        gdf = gp.GeoDataFrame(input_1.to_pandas(), geometry=self.geo_col)
+        adjust_list = input_2.to_pandas()
+
+        if "none" not in str(self.id_col).lower():
+            gdf.index = range(len(gdf))
+            id_map = dict(zip(gdf[self.id_col], gdf.index))
+            adjust_list["focal"] = adjust_list["focal"].map(id_map)
+            adjust_list["neighbor"] = adjust_list["neighbor"].map(id_map)
+
+        import numpy as np
+        from libpysal.weights import W
+        import esda
+        import pysal.lib as lps
+        import matplotlib.pyplot as plt
+
+        w = W.from_adjlist(adjust_list)
+
+        x = gdf[self.field_col1]
+        y = gdf[self.field_col2]
+        np.random.seed(12345)
+        bi = esda.moran.Moran_Local_BV(x, y, w)
+
+        gdf.loc[:, "Bivariate Local Moran’s I"] = bi.Is
+        gdf.loc[:, "p-value"] = bi.p_sim
+        gdf.loc[:, "z-score"] = bi.z_sim
+        gdf.loc[:, "spots"] = bi.q
+
+        gdf.loc[:, "spots_type"] = gdf["spots"].replace(
+            {1: "HH", 2: "LH", 3: "LL", 4: "HL"}
+        )
+
+        gdf.loc[gdf["p-value"] > 0.05, "spots_type"] = "Not Significant"
+        gdf.loc[gdf["p-value"] > 0.05, "spots"] = 0
+
+        lag_index = lps.weights.lag_spatial(w, gdf[self.field_col1])
+        index_v = gdf[self.field_col1]
+        b, a = np.polyfit(index_v, lag_index, 1)
+        f, ax = plt.subplots(1, figsize=(9, 9))
+
+        plt.plot(index_v, lag_index, ".", color="firebrick")
+        plt.vlines(index_v.mean(), lag_index.min(), lag_index.max(), linestyle="--")
+        plt.hlines(lag_index.mean(), index_v.min(), index_v.max(), linestyle="--")
+
+        plt.plot(index_v, a + b * index_v, "r")
+        plt.title("Moran Scatterplot")
+        plt.ylabel("Spatial Lag of %s" % self.field_col1)
+        plt.xlabel("%s" % self.field_col1)
 
         return knext.Table.from_pandas(gdf), knext.view_matplotlib(f)

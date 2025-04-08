@@ -892,10 +892,10 @@ class OpenSkyNetworkDataNode:
 )
 @knext.output_table(
     name="Socrata dataset list",
-    description="Socrata dataset list from  a wealth of open data resources from governments, non-profits, and NGOs around the world based on the query term. ",
+    description="Socrata dataset list from a wealth of open data resources from governments, non-profits, and NGOs around the world based on the query term.",
 )
 class SocrataSearchNode:
-    """Access open datasets from various well-known data resources and organizations effortlessly  using the SODA interface.
+    """Access open datasets from various well-known data resources and organizations effortlessly using the SODA interface.
 
     US Centers for Disease Control and Prevention (CDC): CDC data includes information on infectious diseases, chronic conditions, environmental health hazards,
     injury prevention, maternal and child health, immunization coverage, and much more. These datasets are collected through surveillance systems, population surveys,
@@ -1059,7 +1059,7 @@ class SocrataDataNode:
         is_advanced=True,
     )
 
-    def configure(self, configure_context, input_schema_1):
+    def configure(self, configure_context):
         # TODO Create combined schema
         return None
 
