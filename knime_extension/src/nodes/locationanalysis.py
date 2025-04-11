@@ -508,7 +508,10 @@ class LSCPNode:
                 print(1)
                 j = getIndex(it)
                 tempdict = {"OID": j}
-                area = area.append(tempdict, ignore_index=True)
+                 # Create a temporary DataFrame and concatenate it
+                temp_df = pd.DataFrame([tempdict])
+                area = pd.concat([area, temp_df], ignore_index=True)
+                # area = area.append(tempdict, ignore_index=True)
 
         for it in range(num_trt):
             index = pd.to_numeric(
@@ -712,7 +715,10 @@ class MCLPNode:
             if v.varValue == 1:
                 j = getIndex(it)
                 tempdict = {"OID": j}
-                area = area.append(tempdict, ignore_index=True)
+                # Create a temporary DataFrame and concatenate it
+                temp_df = pd.DataFrame([tempdict])
+                area = pd.concat([area, temp_df], ignore_index=True)
+                # area = area.append(tempdict, ignore_index=True)
 
         for it in range(num_trt):
             index = pd.to_numeric(
