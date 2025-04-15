@@ -206,6 +206,30 @@ class GeoFileReaderNode:
             0.4, "Reading file (This might take a while without progress changes)"
         )
 
+        import geopandas as gpd
+
+        def urlread(url: str) -> gpd.GeoDataFrame:
+            # Read the file directly first; modern GDAL/pyogrio can already stream a
+            # remote .zip shapefile. If that fails on an online zip, fall back to GDAL's
+            # /vsizip/vsicurl/ virtual filesystem, which handles some servers the plain
+            # reader trips over.
+            try:
+                return gpd.read_file(url, engine="pyogrio", on_invalid="ignore")
+            except Exception as direct_error:
+                if url.lower().startswith("http") and url.lower().endswith(".zip"):
+                    try:
+                        return gpd.read_file(
+                            "/vsizip/vsicurl/" + url,
+                            engine="pyogrio",
+                            on_invalid="ignore",
+                        )
+                    except Exception as vsizip_error:
+                        raise RuntimeError(
+                            f"Could not read {url} directly ({direct_error}) "
+                            f"nor via /vsizip/vsicurl/ ({vsizip_error})"
+                        )
+                raise RuntimeError(f"Could not read {url}: {direct_error}")
+
         if self.data_url.lower().endswith(".kml"):
             import fiona
 
@@ -238,7 +262,7 @@ class GeoFileReaderNode:
 
         else:
             if self.encoding == _EncodingOptions.AUTO.name:
-                gdf = gp.read_file(self.data_url, engine="pyogrio", on_invalid="ignore")
+                gdf = urlread(self.data_url)
             else:
                 gdf = gp.read_file(
                     self.data_url,
