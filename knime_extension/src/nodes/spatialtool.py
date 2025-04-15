@@ -376,6 +376,7 @@ class SpatialJoinNode:
         gdf.reset_index(drop=True, inplace=True)
         # drop additional index columns if they exist
         gdf.drop(["index_right", "index_left"], axis=1, errors="ignore", inplace=True)
+        gdf = gdf.loc[:, ~gdf.columns.str.contains(r"<RowID>")]
         return knut.to_table(gdf, exec_context)
 
 
@@ -540,7 +541,7 @@ class NearestJoinNode2:
             errors="ignore",
             inplace=True,
         )
-
+        gdf = gdf.loc[:, ~gdf.columns.str.contains(r"<RowID>")]
         distance_helper.post_processing(exec_context, gdf, True)
         return knut.to_table(gdf, exec_context)
 
@@ -639,6 +640,7 @@ class ClipNode:
         if self.result_settings.mode == knut.ResultSettingsMode.APPEND.name:
             left_gdf[self.result_settings.new_column_name] = gdf_clip[self.left_geo_col]
             gdf_clip = left_gdf
+        gdf_clip.reset_index(drop=True, inplace=True)
         return knut.to_table(gdf_clip, exec_context)
 
 
