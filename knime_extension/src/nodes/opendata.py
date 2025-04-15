@@ -210,7 +210,7 @@ class US2020TIGERNode:
 
         County5Fips = self.StateFips + self.County3Fips
 
-        base_url = "https://www2.census.gov/geo/tiger/TIGER2020PL/STATE/"
+        base_url = "ftp://ftp2.census.gov/geo/tiger/TIGER2020PL/STATE/"
 
         if self.StateFips != self.County3Fips and self.County3Fips != "*":
             data_url = f"{base_url}{Statepath}/{County5Fips}/tl_2020_{County5Fips}_{self.geofile}.zip"
@@ -219,6 +219,7 @@ class US2020TIGERNode:
             if self.geofile == "roads":
                 self.geofile = "prisecroads"
             data_url = f"{base_url}{Statepath}/{County5Fips}/tl_2020_{County5Fips}_{self.geofile}.zip"
+        # data_url = "/vsizip/vsicurl/" + data_url
         gdf = gp.read_file(data_url)
         gdf.reset_index(drop=True, inplace=True)
         return knext.Table.from_pandas(gdf)

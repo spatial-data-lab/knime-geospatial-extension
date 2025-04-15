@@ -102,6 +102,23 @@ class GeoFileReaderNode:
             0.4, "Reading file (This might take a while without progress changes)"
         )
 
+        import geopandas as gpd
+
+        def urlread(url: str) -> gpd.GeoDataFrame:
+            try:
+                gdf = gpd.read_file(url)
+                return gdf
+            except Exception as e1:
+                if url.startswith("http") and url.endswith(".zip"):
+                    try:
+                        vsizip_url = "/vsizip/vsicurl/" + url
+                        gdf = gpd.read_file(vsizip_url)
+                        return gdf
+                    except Exception as e2:
+                        raise RuntimeError(f"Error:{e2}")
+                else:
+                    raise RuntimeError(f"Error:{e1}")
+
         if self.data_url.lower().endswith(".kml"):
             import fiona
 
@@ -132,7 +149,7 @@ class GeoFileReaderNode:
         ):
             gdf = gp.read_parquet(self.data_url)
         else:
-            gdf = gp.read_file(self.data_url)
+            gdf = urlread(self.data_url)
 
         if "<Row Key>" in gdf.columns:
             gdf = gdf.drop(columns="<Row Key>")
