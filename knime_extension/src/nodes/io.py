@@ -157,7 +157,7 @@ class GeoFileReaderNode:
         description="Select the encoding for reading the data file.",
         default_value=_EncodingOptions.get_default().name,
         enum=_EncodingOptions,
-        since_version="1.3.0",
+        since_version="1.4.0",
         is_advanced=True,
     )
 
@@ -296,7 +296,7 @@ class GeoFileWriterNode:
         description="Select the encoding for reading the data file.",
         default_value=_EncodingOptions.get_default().name,
         enum=_EncodingOptions,
-        since_version="1.3.0",
+        since_version="1.4.0",
         is_advanced=True,
     )
 
@@ -418,7 +418,7 @@ class GeoPackageReaderNode:
         description="Select the encoding for reading the data file.",
         default_value=_EncodingOptions.get_default().name,
         enum=_EncodingOptions,
-        since_version="1.3.0",
+        since_version="1.4.0",
         is_advanced=True,
     )
 
@@ -518,7 +518,7 @@ class GeoPackageWriterNode:
         description="Select the encoding for reading the data file.",
         default_value=_EncodingOptions.get_default().name,
         enum=_EncodingOptions,
-        since_version="1.3.0",
+        since_version="1.4.0",
         is_advanced=True,
     )
 
@@ -531,7 +531,7 @@ class GeoPackageWriterNode:
             else ExistingFile.FAIL.name
         ),
         enum=ExistingFile,
-        since_version="1.3.0",
+        since_version="1.4.0",
     )
 
     def configure(self, configure_context, input_schema):
