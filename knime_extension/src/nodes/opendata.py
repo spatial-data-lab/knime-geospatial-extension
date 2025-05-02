@@ -912,7 +912,9 @@ class SocrataSearchNode:
 
     World Bank Data: The open data platform provided by the World Bank, offering a wide range of economic, social, and environmental datasets from around the world for research and analysis of global development trends.
 
-    The Socrata Open Data API (SODA) is a powerful tool designed for programmatically accessing a vast array of open data resources from various organizations around the world, including governments, non-profits,and NGOs..
+    The Socrata Open Data API (SODA) is a powerful tool designed for programmatically accessing a vast array of open data resources from various organizations around the world, including governments, non-profits,and NGOs.
+
+    Note: This node only retrieves publicly available datasets, as no authentication is provided.
     This node uses the [SODA Consumer API](https://dev.socrata.com/consumers/getting-started.html) to get the dataset list.
     """
 
@@ -997,6 +999,22 @@ class SocrataSearchNode:
         df.replace("", pd.NA, inplace=True)
         df.dropna(axis=1, how="all", inplace=True)
         df = df.reset_index(drop=True)
+
+        # Reorder the columns to have "metadata.domain" and "resource.id" at the beginning
+        important_cols = []
+        if "metadata.domain" in df.columns:
+            important_cols.append("metadata.domain")
+        if "resource.id" in df.columns:
+            important_cols.append("resource.id")
+
+        # Create the reordered column list
+        remaining_cols = [col for col in df.columns if col not in important_cols]
+        reordered_cols = important_cols + remaining_cols
+
+        # Reorder the DataFrame columns
+        if important_cols:
+            df = df[reordered_cols]
+
         return knext.Table.from_pandas(df)
 
 
@@ -1051,6 +1069,34 @@ class SocrataDataNode:
         default_value="",
     )
 
+    app_token = knext.StringParameter(
+        label="Application Token",
+        description="""Optional: Provide an application token to increase API request limits. 
+                    You can register for a token at [Application Tokens](https://dev.socrata.com/docs/app-tokens.html)""",
+        default_value="",
+        is_advanced=True,
+    )
+
+    query_filter = knext.StringParameter(
+        label="Query Filter",
+        description="""Provide filtering conditions to narrow down results. Socrata API supports two main filtering mechanisms:
+
+        1. Simple Filters: Use column names directly as parameters. Examples:
+        - source=nn (query for records where source field equals 'nn')
+        - source=pr&region=Virgin Islands region (multiple conditions, combined with AND)
+
+        2. SoQL Query Language: Use $where parameter for more complex queries:
+        - $where=magnitude > 3.0 (numeric comparison)
+        - $where=datetime > '2020-01-01' (date comparison)
+        - $where=state='NY' AND age > 30 (combined conditions)
+        - $where=annual_salary between '40000' and '60000' (range query)
+
+        For more information, see [Simple filter](https://dev.socrata.com/docs/filtering.html) and [SoQL Queries](https://dev.socrata.com/docs/queries/)
+        """,
+        default_value="",
+        is_advanced=True,
+    )
+
     timeout = knext.IntParameter(
         label="Request timeout in seconds",
         description="The timeout in seconds for the request API.",
@@ -1066,31 +1112,183 @@ class SocrataDataNode:
     def execute(self, exec_context: knext.ExecutionContext):
         import pandas as pd
         import json
-        import pandas as pd
         from sodapy import Socrata
+        import requests
 
-        # Unauthenticated client only works with public data sets. Note 'None'
-        # in place of application token, and no username or password:
-        client = Socrata(self.metadata_domain, None)
-        client.timeout = self.timeout
+        # Start with validation phase
+        exec_context.set_progress(0.05, "Validating connection and parameters...")
+
+        # Validate the required parameters
+        if not self.metadata_domain or self.metadata_domain.strip() == "":
+            raise knext.InvalidParametersError("Metadata domain cannot be empty")
+
+        if not self.resource_id or self.resource_id.strip() == "":
+            raise knext.InvalidParametersError("Resource ID cannot be empty")
+
+        # Initialize app token if provided
+        app_token = (
+            None
+            if not self.app_token or self.app_token.strip() == ""
+            else self.app_token
+        )
+
+        # Create Socrata client and validate it works
+        try:
+            client = Socrata(self.metadata_domain, app_token)
+            client.timeout = self.timeout
+
+            # Validate that we can connect to the API with a minimal test query
+            validation_params = {"$limit": 1}
+
+            # First validate the connection and resource ID by attempting a minimal query
+            test_results = client.get(self.resource_id, **validation_params)
+
+            if test_results is None:
+                raise knext.InvalidParametersError(
+                    f"Resource ID '{self.resource_id}' is invalid or not accessible"
+                )
+
+        except Exception as e:
+            # Connection or resource ID validation failed
+            error_message = str(e)
+            raise knext.InvalidParametersError(
+                f"Failed to connect to Socrata API: {error_message}"
+            )
+
+        # Now validate query filter if provided
+        query_params = {}
+        if self.query_filter and self.query_filter.strip() != "":
+            filter_text = self.query_filter.strip()
+
+            try:
+                # Parse the filter based on its format
+                if filter_text.lower().startswith("$where="):
+                    query_params["$where"] = filter_text[7:]
+                elif "=" in filter_text and not filter_text.startswith("$"):
+                    filter_pairs = filter_text.split("&")
+                    for pair in filter_pairs:
+                        if "=" in pair:
+                            key, value = pair.split("=", 1)
+                            query_params[key.strip()] = value.strip()
+                else:
+                    query_params["$where"] = filter_text
+
+                # Validate the filter by making a test query
+                test_filter_params = {**query_params, "$limit": 1}
+                test_filter_results = client.get(self.resource_id, **test_filter_params)
+
+                # If we get here, the filter is valid
+
+            except Exception as e:
+                # Filter validation failed
+                error_message = str(e)
+                raise knext.InvalidParametersError(
+                    f"Invalid SQL Filter: {error_message}"
+                )
+
+        # If all validations pass, proceed to data retrieval phase
+        exec_context.set_progress(
+            0.1, "Connection and parameters validated. Determining dataset size..."
+        )
+
+        # Try to get the total count to calculate progress
+        total_records = 0
+        try:
+            # Add COUNT(*) to our validated query parameters
+            count_params = {**query_params, "$select": "COUNT(*)"}
+            count_results = client.get(self.resource_id, **count_params)
+            total_records = int(count_results[0]["COUNT"]) if count_results else 0
+
+            exec_context.set_progress(
+                0.15, f"Dataset size: {total_records:,} records. Starting download..."
+            )
+        except Exception as e:
+            # Non-critical error: proceed without exact count
+            exec_context.set_progress(
+                0.15,
+                f"Could not determine dataset size: {str(e)}. Proceeding with download...",
+            )
+            total_records = 0
+
+        # Check if there's data to retrieve
+        if total_records == 0:
+            # Try a test query to see if there's any data at all
+            test_data_params = {**query_params, "$limit": 1}
+            test_data_results = client.get(self.resource_id, **test_data_params)
+
+            if not test_data_results:
+                # No data found for this query
+                raise knext.InvalidParametersError("No data found for the given query")
+
+        # Main data retrieval phase
         limit = 100000
         offset = 0
         all_results = []
-        while True:
-            results = client.get(self.resource_id, limit=limit, offset=offset)
-            if not results:
-                break
-            all_results.extend(results)
-            offset += limit
-        # Example authenticated client (needed for non-public datasets):
-        # client = Socrata(data.cdc.gov,
-        #                  MyAppToken,
-        #                  username="user@example.com",
-        #                  password="AFakePassword")
+        rows_retrieved = 0
+        iteration_count = 0
 
-        # First 2000 results, returned as JSON from API / converted to Python list of
-        # dictionaries by sodapy.
+        while True:
+            # Update progress
+            if total_records > 0:
+                progress_percent = min(
+                    0.15 + 0.75 * (rows_retrieved / total_records), 0.9
+                )
+                progress_message = f"Downloaded {rows_retrieved:,} of {total_records:,} records ({(rows_retrieved / total_records * 100):.1f}%)"
+            else:
+                progress_percent = min(0.15 + (iteration_count * 0.05), 0.9)
+                progress_message = (
+                    f"Downloaded {rows_retrieved:,} records so far (offset: {offset:,})"
+                )
+
+            exec_context.set_progress(progress_percent, progress_message)
+            iteration_count += 1
+
+            # Prepare pagination parameters
+            current_params = {**query_params, "$limit": limit, "$offset": offset}
+
+            try:
+                # Get results
+                results = client.get(self.resource_id, **current_params)
+
+                if not results:
+                    # End of pagination
+                    break
+
+                all_results.extend(results)
+                rows_retrieved += len(results)
+                offset += limit
+
+            except requests.exceptions.HTTPError as e:
+                # Handle HTTP errors that might occur during pagination
+                error_message = str(e)
+                if 400 <= e.response.status_code < 500:
+                    raise knext.InvalidParametersError(
+                        f"Query error during pagination: {error_message}"
+                    )
+                else:
+                    raise knext.InvalidParametersError(
+                        f"Server error during data retrieval: {error_message}"
+                    )
+            except Exception as e:
+                # Handle other exceptions
+                error_message = str(e)
+                raise knext.InvalidParametersError(
+                    f"Error during data retrieval: {error_message}"
+                )
+
+        # Final processing phase
+        if not all_results:
+            raise knext.InvalidParametersError(
+                "No data was retrieved. The query may be too restrictive."
+            )
+
+        exec_context.set_progress(0.95, f"Processing {rows_retrieved:,} records...")
+
         # Convert to pandas DataFrame
         results_df = pd.DataFrame.from_records(all_results)
 
+        # Complete
+        exec_context.set_progress(
+            1.0, f"Complete: Retrieved {rows_retrieved:,} records"
+        )
         return knext.Table.from_pandas(results_df)
