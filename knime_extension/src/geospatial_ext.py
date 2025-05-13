@@ -32,10 +32,40 @@ def __initialize_pyproj():
     Attach the bundled pyproj_db
     """
     import pyproj
-    import os.path as os
+    import os
+    import platform
+    import sys
 
-    pyproj_path = os.join(knut.get_env_path(), "Library\share\proj")
-    pyproj.datadir.set_data_dir(pyproj_path)
+    env_path = knut.get_env_path()
+    
+    # Detect OS and build appropriate path
+    if platform.system() == "Windows":
+        pyproj_path = os.path.join(env_path, "Library", "share", "proj")
+    elif platform.system() == "Darwin":  # macOS
+        # Try common macOS paths
+        potential_paths = [
+            os.path.join(env_path, "share", "proj"),
+            os.path.join(env_path, "..", "share", "proj"),
+            "/opt/homebrew/share/proj"
+        ]
+        pyproj_path = None
+        for path in potential_paths:
+            if os.path.exists(path):
+                pyproj_path = path
+                break
+        
+        if pyproj_path is None:
+            print("Warning: Could not find PyProj data directory. CRS operations may fail.", file=sys.stderr)
+            return
+    else:  # Linux and others
+        pyproj_path = os.path.join(env_path, "share", "proj")
+    
+    # Only set the directory if it exists
+    if os.path.exists(pyproj_path):
+        pyproj.datadir.set_data_dir(pyproj_path)
+        print(f"Set PyProj data directory to: {pyproj_path}", file=sys.stderr)
+    else:
+        print(f"Warning: PyProj data directory not found at {pyproj_path}. CRS operations may fail.", file=sys.stderr)
 
 
 __initialize_pyproj()
