@@ -1266,7 +1266,7 @@ class CreateH3Grid:
 
     def execute(self, exec_context: knext.ExecutionContext, input_table):
         import h3
-        from shapely.geometry import Polygon, mapping
+        from shapely.geometry import shape, mapping
         from shapely.ops import unary_union
         import geopandas as gpd
         import pandas as pd
@@ -1291,7 +1291,7 @@ class CreateH3Grid:
         knut.check_canceled(exec_context)
         exec_context.set_progress(0.5, "Computing H3 hexagons...")
         h3_hexes = set().union(
-            *[h3.polyfill_geojson(mapping(p), self.zoom) for p in gdf_boundary.geometry]
+            *[h3.polygon_to_cells(h3.geo_to_h3shape(mapping(p)), self.zoom) for p in gdf_boundary.geometry]
         )
 
         knut.check_canceled(exec_context)
@@ -1299,7 +1299,7 @@ class CreateH3Grid:
         grid = gpd.GeoDataFrame(
             pd.DataFrame(h3_hexes, columns=[self._COL_ID]),
             geometry=[
-                Polygon(h3.h3_to_geo_boundary(h3_hex, geo_json=True))
+                shape(h3.cells_to_geo([h3_hex]))
                 for h3_hex in h3_hexes
             ],
             crs=USE_CRS,
@@ -1380,7 +1380,7 @@ class PointToH3:
         import h3
         import geopandas as gpd
         import pandas as pd
-        from shapely.geometry import Polygon
+        from shapely.geometry import shape
 
         gdf = knut.load_geo_data_frame(input_table, self.geo_col, exec_context)
 
@@ -1400,7 +1400,7 @@ class PointToH3:
         knut.check_canceled(exec_context)
         exec_context.set_progress(0.5, "Computing H3 hexagons...")
         h3_hexes = gdf.apply(
-            lambda x: h3.geo_to_h3(x[self.geo_col].y, x[self.geo_col].x, self.zoom),
+            lambda x: h3.latlng_to_cell(x[self.geo_col].y, x[self.geo_col].x, self.zoom),
             axis=1,
         )
 
@@ -1411,7 +1411,7 @@ class PointToH3:
             grid = gpd.GeoDataFrame(
                 grid,
                 geometry=[
-                    Polygon(h3.h3_to_geo_boundary(h3_hex, geo_json=True))
+                    shape(h3.cells_to_geo([h3_hex]))
                     for h3_hex in h3_hexes
                 ],
                 crs=gdf.crs,

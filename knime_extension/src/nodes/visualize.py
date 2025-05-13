@@ -1666,7 +1666,7 @@ class ViewNodeHeatmap:
 
         gradient_map = defaultdict(dict)
         for i in range(steps):
-            gradient_map[1 / steps * i] = colormap.rgb_hex_str(1 / steps * i)
+            gradient_map[str(1 / steps * i)] = colormap.rgb_hex_str(1 / steps * i)
         if self.legend_settings.plot:
             colormap.add_to(map)  # add color bar at the top of the map
 
