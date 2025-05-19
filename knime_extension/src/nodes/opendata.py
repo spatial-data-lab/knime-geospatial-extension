@@ -247,7 +247,10 @@ P1_001N (Total Population), P1_003N (Population of one race:!!White alone), P1_0
 H1_001N (Total Housing Units), H1_002 (Total Occupied Housing Units). 
 
 Only if county is chosen for geography, then * can be input in State FIPS (2-digits) to retrieve all the 
-county level data of all states. 
+county level data of all states. Each query can include **at most 50 variables**.
+
+You may use this node **without an API key**. However, anonymous access is **limited to 500 requests per day per IP**.  
+To avoid throttling and improve performance (especially for batch queries), it is recommended to register and provide a Census API key.
 
 Before using the node, user need to sign up and get a Census API key first by clicking 
 [here.](https://api.census.gov/data/key_signup.html)
@@ -282,7 +285,10 @@ class USCensus2020Node:
     )
 
     censusapikey = knext.StringParameter(
-        "US Census APIkey", "The Census API key to use.", "Input Your Census APIkey "
+        label="US Census API key (optional)",
+        description="Optional Census API key to increase query limits and reliability.",
+        default_value="",
+        is_advanced=True,
     )
 
     cols = knext.StringParameter(
@@ -354,13 +360,20 @@ For more details about the format and the conversion see
 @knut.census_node_description(
     short_description="Retrieves American Community Survey 5-Year Data (2009-2020) of United States.",
     description="""This node retrieves American Community Survey 5-Year Data (2009-2020).
-        The American Community Survey (ACS) is an ongoing survey that provides data every year -- giving 
-        communities the current information they need to plan investments and services. The ACS covers a broad 
-        range of topics about social, economic, demographic, and housing characteristics of the U.S. population.
-        The 5-year estimates from the ACS are period estimates that represent data collected over a period. 
-        The primary advantage of using multiyear estimates is the increased statistical reliability of the data 
-        for less populated areas and small population subgroups. 
-        The 5-year estimates are available for all geographies down to the block group level.""",
+The American Community Survey (ACS) is an ongoing survey that provides data every year -- giving 
+communities the current information they need to plan investments and services. The ACS covers a broad 
+range of topics about social, economic, demographic, and housing characteristics of the U.S. population.
+The 5-year estimates from the ACS are period estimates that represent data collected over a period. 
+The primary advantage of using multiyear estimates is the increased statistical reliability of the data 
+for less populated areas and small population subgroups. 
+Only if county is chosen for geography, then * can be input in State FIPS (2-digits) to retrieve all the 
+county level data of all states. Each query can include **at most 50 variables**.
+
+You may use this node **without an API key**. However, anonymous access is **limited to 500 requests per day per IP**.  
+To avoid throttling and improve performance (especially for batch queries), it is recommended to register and provide a Census API key.
+
+The 5-year estimates are available for all geographies down to the block group level.
+    """,
     references={
         "Census API Key Sign Up": "https://api.census.gov/data/key_signup.html",
         "American Community Survey 5-Year Data (2009-2020)": "https://www.census.gov/data/developers/data-sets/acs-5year.html",
@@ -390,9 +403,10 @@ class UScensusACSNode:
     )
 
     censusapikey = knext.StringParameter(
-        "US Census APIkey",
-        "The APIkey to use.",
-        "Input Your Census APIkey ",
+        label="US Census API key (optional)",
+        description="Optional Census API key to increase query limits and reliability.",
+        default_value="",
+        is_advanced=True,
     )
 
     cols = knext.StringParameter(
