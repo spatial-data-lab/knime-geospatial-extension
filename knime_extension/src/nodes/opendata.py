@@ -285,8 +285,8 @@ class USCensus2020Node:
     )
 
     censusapikey = knext.StringParameter(
-        label="US Census APIkey(Optional)",
-        description="Optional Census API Key to increase query limits and reliability.",
+        label="US Census API key (optional)",
+        description="Optional Census API key to increase query limits and reliability.",
         default_value="",
         is_advanced=True,
     )
@@ -403,8 +403,8 @@ class UScensusACSNode:
     )
 
     censusapikey = knext.StringParameter(
-        label="US Census APIkey(Optional)",
-        description="Optional Census API Key to increase query limits and reliability.",
+        label="US Census API key (optional)",
+        description="Optional Census API key to increase query limits and reliability.",
         default_value="",
         is_advanced=True,
     )
