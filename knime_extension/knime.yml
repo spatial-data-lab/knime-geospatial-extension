@@ -10,5 +10,5 @@ extension_module: src/geospatial_ext # The .py Python module containing the node
 env_yml_path: geospatial_env.yml # This is necessary for bundling, but not needed during development
 feature_dependencies: 
   - org.knime.features.geospatial 4.7.0
-  - org.knime.features.core 5.2.0 #ensure that this extension can only be used with 5.2 with date time support
+  - org.knime.features.core 5.3.0 #ensure that this extension can only be used with 5.3 with file browsing support
 

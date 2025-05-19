@@ -46,6 +46,101 @@ class ExistingFile(knext.EnumParameterOptions):
     )
 
 
+def validate_path(path: str) -> None:
+    # no path check
+    pass
+
+
+def clean_dataframe(df):
+    """
+    Cleans the given DataFrame by resetting its index and removing specific columns.
+
+    This function resets the index of the DataFrame, dropping the old index,
+    and removes the columns "<Row Key>" and "<RowID>" if they exist in the DataFrame.
+
+    Args:
+        df (pandas.DataFrame): The input DataFrame to be cleaned.
+
+    Returns:
+        pandas.DataFrame: A cleaned DataFrame with the index reset and specified columns removed.
+    """
+    df = df.reset_index(drop=True)
+    columns_to_drop = ["<Row Key>", "<RowID>"]
+    return df.drop(columns=[col for col in columns_to_drop if col in df.columns])
+
+
+def check_overwrite(fileurl, existing_file):
+    """
+    Checks if a file already exists and raises an error if overwriting is not allowed.
+    Args:
+        fileurl (str): The path to the file to check.
+        existing_file (Enum): An enumeration value indicating the overwrite policy.
+            It should have a `FAIL` member to signify that overwriting is not allowed.
+    Raises:
+        knext.InvalidParametersError: If the file exists and the overwrite policy is set to FAIL.
+    """
+    import os
+
+    if existing_file == ExistingFile.FAIL.name and os.path.exists(fileurl):
+        raise knext.InvalidParametersError("File already exists.")
+
+
+def check_outdir(fileurl):
+    """
+    Ensures that the directory for the given file path exists. If the directory
+    does not exist, it is created.
+    Args:
+        fileurl (str): The file path for which the directory should be checked
+                       and created if necessary.
+    Raises:
+        OSError: If the directory cannot be created due to an operating system error.
+    """
+    import os
+
+    output_dir = os.path.dirname(fileurl)
+    if output_dir and not os.path.exists(output_dir):
+        os.makedirs(output_dir, exist_ok=True)
+
+
+class _EncodingOptions(knext.EnumParameterOptions):
+    AUTO = (
+        "Auto",
+        "Automatically detect the encoding from common options",
+    )
+    UTF8 = (
+        "UTF-8",
+        "Unicode Transformation Format - 8 bit. Default encoding suitable for most modern GIS data files.",
+    )
+    GB18030 = (
+        "GB18030",
+        "Chinese National Standard encoding. More comprehensive than GBK.",
+    )
+    GBK = (
+        "GBK",
+        "Chinese internal code specification. Common in Chinese GIS software.",
+    )
+    GB2312 = (
+        "GB2312",
+        "Basic Simplified Chinese character encoding.",
+    )
+    LATIN1 = (
+        "ISO-8859-1",
+        "Latin-1 encoding. Suitable for Western European languages.",
+    )
+    WINDOWS1252 = (
+        "Windows-1252",
+        "Windows Western European encoding. Common in Windows systems.",
+    )
+    ASCII = (
+        "ASCII",
+        "Basic ASCII encoding. Only for standard ASCII characters.",
+    )
+
+    @classmethod
+    def get_default(cls):
+        return cls.AUTO
+
+
 ############################################
 # GeoFile Reader
 ############################################
@@ -73,8 +168,7 @@ entry zipped [.kmz](https://developers.google.com/kml/documentation/kmzarchives)
 For more details on the limitations when reading these files see 
 [here.](https://gdal.org/drivers/vector/kml.html#kml-reading)
 
-Examples of standard local file paths are *C:\\KNIMEworkspace\\test.geojson* for Windows and
-*/KNIMEworkspace/test.shp* for Linux. The node can also load resources directly from a web URL, for example to 
+The node can load resources directly from a web URL, for example to 
 load a GeoJSON file from [geojson.xyz](http://geojson.xyz/) you would enter
 *http://d2ad6b4ur7yvpq.cloudfront.net/naturalearth-3.3.0/ne_110m_land.geojson*.
 
@@ -87,10 +181,20 @@ load a GeoJSON file from [geojson.xyz](http://geojson.xyz/) you would enter
     },
 )
 class GeoFileReaderNode:
-    data_url = knext.StringParameter(
+    data_url = knext.LocalPathParameter(
         "Input file path",
-        "The file path for reading data.",
-        "",
+        "Select the file path or directly enter a remote URL for reading the data.",
+        placeholder_text="Select input file path or enter URL...",
+        validator=validate_path,
+    )
+
+    encoding = knext.EnumParameter(
+        label="Encoding",
+        description="Select the encoding for reading the data file.",
+        default_value=_EncodingOptions.get_default().name,
+        enum=_EncodingOptions,
+        since_version="1.4.0",
+        is_advanced=True,
     )
 
     def configure(self, configure_context):
@@ -131,19 +235,27 @@ class GeoFileReaderNode:
             or self.data_url.lower().endswith(".parquet.snappy")
         ):
             gdf = gp.read_parquet(self.data_url)
-        else:
-            gdf = gp.read_file(self.data_url)
 
-        if "<Row Key>" in gdf.columns:
-            gdf = gdf.drop(columns="<Row Key>")
-        if "<RowID>" in gdf.columns:
-            gdf = gdf.drop(columns="<RowID>")
+        else:
+            if self.encoding == _EncodingOptions.AUTO.name:
+                gdf = gp.read_file(self.data_url, engine="pyogrio", on_invalid="ignore")
+            else:
+                gdf = gp.read_file(
+                    self.data_url,
+                    encoding=self.encoding,
+                    engine="pyogrio",
+                    on_invalid="ignore",
+                )
+
+        gdf = clean_dataframe(gdf)
         return knext.Table.from_pandas(gdf)
 
 
 ############################################
 # GeoFile Writer
 ############################################
+
+
 @knext.node(
     name="GeoFile Writer",
     node_type=knext.NodeType.SINK,
@@ -159,8 +271,6 @@ class GeoFileReaderNode:
     short_description="Write single layer GeoFile.",
     description="""This node writes the data in the format of [Shapefile](https://en.wikipedia.org/wiki/Shapefile), 
     [GeoJSON](https://geojson.org/), or [GeoParquet](https://github.com/opengeospatial/geoparquet).
-Examples of standard local file paths are *C:\\KNIMEworkspace\\test.shp* for Windows and
-*/KNIMEworkspace/test.geojson* for Linux. 
 
 The file extension e.g. *.shp*, *.geojson*,  or *.parquet* is appended automatically
 depending on the selected file format if not specified.""",
@@ -171,6 +281,7 @@ depending on the selected file format if not specified.""",
     },
 )
 class GeoFileWriterNode:
+
     geo_col = knext.ColumnParameter(
         "Geometry column",
         "Select the geometry column for Geodata.",
@@ -180,11 +291,11 @@ class GeoFileWriterNode:
         include_none_column=False,
     )
 
-    data_url = knext.StringParameter(
+    data_url = knext.LocalPathParameter(
         "Output file path",
-        """The file path for writing data. The file extension e.g. *.shp*, *.geojson*,  or *.parquet* is appended 
-automatically depending on the selected file format if not specified.""",
-        "",
+        "Select the file path for saving data.",
+        placeholder_text="Select output file path...",
+        validator=validate_path,
     )
 
     existing_file = knext.EnumParameter(
@@ -203,7 +314,7 @@ automatically depending on the selected file format if not specified.""",
         "Output file format",
         "The file format to use.",
         "Shapefile",
-        enum=["Shapefile", "GeoJSON", "GeoParquet"],
+        enum=["Shapefile", "GeoJSON", "GeoParquet", "GML"],
     )
 
     parquet_compression = knext.EnumParameter(
@@ -213,6 +324,15 @@ automatically depending on the selected file format if not specified.""",
         enum=Compression,
         since_version="1.2.0",
     ).rule(knext.OneOf(dataformat, ["GeoParquet"]), knext.Effect.SHOW)
+
+    encoding = knext.EnumParameter(
+        label="Encoding",
+        description="Select the encoding for saving the data file.",
+        default_value=_EncodingOptions.get_default().name,
+        enum=_EncodingOptions,
+        since_version="1.4.0",
+        is_advanced=True,
+    )
 
     def configure(self, configure_context, input_schema):
         self.geo_col = knut.column_exists_or_preset(
@@ -225,15 +345,18 @@ automatically depending on the selected file format if not specified.""",
             0.4, "Writing file (This might take a while without progress changes)"
         )
 
+        check_outdir(self.data_url)
         gdf = gp.GeoDataFrame(input_1.to_pandas(), geometry=self.geo_col)
-        if "<Row Key>" in gdf.columns:
-            gdf = gdf.drop(columns="<Row Key>")
-        if "<RowID>" in gdf.columns:
-            gdf = gdf.drop(columns="<RowID>")
+        gdf = clean_dataframe(gdf)
+
         if self.dataformat == "Shapefile":
             fileurl = knut.ensure_file_extension(self.data_url, ".shp")
-            self.__check_overwrite(fileurl)
-            gdf.to_file(fileurl)
+            check_overwrite(fileurl, self.existing_file)
+            if self.encoding == _EncodingOptions.AUTO.name:
+                gdf.to_file(fileurl)
+            else:
+                gdf.to_file(fileurl, encoding=self.encoding)
+
         elif self.dataformat == "GeoParquet":
             if self.parquet_compression == Compression.NONE.name:
                 file_extension = ".parquet"
@@ -248,22 +371,23 @@ automatically depending on the selected file format if not specified.""",
                 file_extension = ".parquet.snappy"
                 compression = "snappy"
             fileurl = knut.ensure_file_extension(self.data_url, file_extension)
-            self.__check_overwrite(fileurl)
+            check_overwrite(fileurl, self.existing_file)
             gdf.to_parquet(fileurl, compression=compression)
-        else:
+        elif self.dataformat == "GeoJSON":
             fileurl = knut.ensure_file_extension(self.data_url, ".geojson")
-            self.__check_overwrite(fileurl)
-            gdf.to_file(fileurl, driver="GeoJSON")
+            check_overwrite(fileurl, self.existing_file)
+            if self.encoding == _EncodingOptions.AUTO.name:
+                gdf.to_file(fileurl)
+            else:
+                gdf.to_file(fileurl, driver="GeoJSON", encoding=self.encoding)
+        else:
+            fileurl = knut.ensure_file_extension(self.data_url, ".gml")
+            check_overwrite(fileurl, self.existing_file)
+            if self.encoding == _EncodingOptions.AUTO.name:
+                gdf.to_file(fileurl)
+            else:
+                gdf.to_file(fileurl, driver="GML", encoding=self.encoding)
         return None
-
-    def __check_overwrite(self, fileurl):
-        if self.existing_file == ExistingFile.FAIL.name:
-            import os.path
-
-            if os.path.exists(fileurl):
-                raise knext.InvalidParametersError(
-                    "File already exists and should not be overwritten."
-                )
 
 
 ############################################
@@ -292,8 +416,8 @@ You can specify the layer to read. If the layer is empty or wrong, the node will
 You can also enter the number of the layer to read starting at 0. The node will output the names of all layers as 
 second output table, which can be used to revise the name of the target layer.
 
-Examples of standard local file paths are *C:\\KNIMEworkspace\\test.gpkg* for Windows and
-*/KNIMEworkspace/test.gpkg* for Linux. The node can also load resources directly from a web URL.
+The node can load resources directly from a web URL e.g. 
+*https://github.com/INSPIRE-MIF/gp-geopackage-encodings/raw/refs/heads/main/examples/GE-gpkg-template.gpkg*.
 
 **Note:** For larger files the node progress might not change for a time until the file is successfully read.
     """,
@@ -303,16 +427,26 @@ Examples of standard local file paths are *C:\\KNIMEworkspace\\test.gpkg* for Wi
     },
 )
 class GeoPackageReaderNode:
-    data_url = knext.StringParameter(
+    data_url = knext.LocalPathParameter(
         "Input file path",
-        "The file path for reading data.",
-        "",
+        "Select the file path or directly enter a remote URL for reading the data.",
+        placeholder_text="Select input file path or enter URL...",
+        validator=validate_path,
     )
 
     data_layer = knext.StringParameter(
         "Input layer name or order for reading",
         "The layer name in the multiple-layer data.",
         "",
+    )
+
+    encoding = knext.EnumParameter(
+        label="Encoding",
+        description="Select the encoding for reading the data file.",
+        default_value=_EncodingOptions.get_default().name,
+        enum=_EncodingOptions,
+        since_version="1.4.0",
+        is_advanced=True,
     )
 
     def configure(self, configure_context):
@@ -327,26 +461,32 @@ class GeoPackageReaderNode:
         import pandas as pd
 
         layerlist = fiona.listlayers(self.data_url)
-        pnumber = pd.Series(range(0, 100)).astype(str).to_list()
-        if self.data_layer in layerlist:
-            src = fiona.open(self.data_url, layer=self.data_layer)
-        elif self.data_layer in pnumber:
-            nlayer = int(self.data_layer)
-            src = fiona.open(self.data_url, layer=nlayer)
+        layer = self._get_layer(layerlist)
+
+        if self.encoding == _EncodingOptions.AUTO.name:
+            gdf = gp.read_file(
+                self.data_url, layer=layer, engine="pyogrio", on_invalid="ignore"
+            )
         else:
-            src = fiona.open(self.data_url, layer=0)
-        gdf = gp.GeoDataFrame.from_features(src)
-        try:
-            gdf.crs = src.crs
-        except:
-            print("Invalid CRS")
-        gdf = gdf.reset_index(drop=True)
-        if "<Row Key>" in gdf.columns:
-            gdf = gdf.drop(columns="<Row Key>")
-        if "<RowID>" in gdf.columns:
-            gdf = gdf.drop(columns="<RowID>")
+            gdf = gp.read_file(
+                self.data_url,
+                layer=layer,
+                engine="pyogrio",
+                on_invalid="ignore",
+                encoding=self.encoding,
+            )
+
+        gdf = clean_dataframe(gdf)
+
         listtable = pd.DataFrame({"layerlist": layerlist})
         return knext.Table.from_pandas(gdf), knext.Table.from_pandas(listtable)
+
+    def _get_layer(self, layerlist):
+        if self.data_layer in layerlist:
+            return self.data_layer
+        elif self.data_layer.isdigit() and 0 <= int(self.data_layer) < 100:
+            return int(self.data_layer)
+        return 0
 
 
 ############################################
@@ -367,8 +507,6 @@ class GeoPackageReaderNode:
     short_description="Write GeoPackage layer.",
     description="""This node writes the data as new [Geopackage](https://www.geopackage.org/) file or 
 as layer into an existing file.
-Examples of standard local file paths are *C:\\KNIMEworkspace\\test.gpkg* for Windows and
-*/KNIMEworkspace/test.gpkg* for Linux. 
 
 **Note:** If file and layer already exist, the layer will be overwritten without a warning!
     """,
@@ -387,16 +525,38 @@ class GeoPackageWriterNode:
         include_none_column=False,
     )
 
-    data_url = knext.StringParameter(
+    data_url = knext.LocalPathParameter(
         "Output file path",
-        "The file path for saving data.",
-        "",
+        "Select the file path for saving data.",
+        placeholder_text="Select output file path...",
+        validator=validate_path,
     )
 
     data_layer = knext.StringParameter(
         "Output layer name for writing",
         "The output layer name in the GeoPackage data.",
         "new",
+    )
+
+    encoding = knext.EnumParameter(
+        label="Encoding",
+        description="Select the encoding for saving the data file.",
+        default_value=_EncodingOptions.get_default().name,
+        enum=_EncodingOptions,
+        since_version="1.4.0",
+        is_advanced=True,
+    )
+
+    existing_file = knext.EnumParameter(
+        "If exists:",
+        "Specify the behavior of the node in case the output file already exists.",
+        lambda v: (
+            ExistingFile.OVERWRITE.name
+            if v < knext.Version(1, 3, 0)
+            else ExistingFile.FAIL.name
+        ),
+        enum=ExistingFile,
+        since_version="1.4.0",
     )
 
     def configure(self, configure_context, input_schema):
@@ -409,6 +569,11 @@ class GeoPackageWriterNode:
         exec_context.set_progress(
             0.4, "Writing file (This might take a while without progress changes)"
         )
+
+        check_overwrite(self.data_url, self.existing_file)
+
+        check_outdir(self.data_url)
+
         gdf = gp.GeoDataFrame(input_1.to_pandas(), geometry=self.geo_col)
         gdf = gdf.reset_index(drop=True)
         file_name = knut.ensure_file_extension(self.data_url, ".gpkg")
@@ -419,9 +584,14 @@ class GeoPackageWriterNode:
         ).columns
         if len(time_columns) > 0:
             gdf[time_columns] = gdf[time_columns].astype(str)
-        if "<Row Key>" in gdf.columns:
-            gdf = gdf.drop(columns="<Row Key>")
-        if "<RowID>" in gdf.columns:
-            gdf = gdf.drop(columns="<RowID>")
-        gdf.to_file(file_name, layer=self.data_layer, driver="GPKG")
+
+        gdf = clean_dataframe(gdf)
+
+        if self.encoding == _EncodingOptions.AUTO.name:
+            gdf.to_file(file_name, layer=self.data_layer, driver="GPKG")
+        else:
+            gdf.to_file(
+                file_name, layer=self.data_layer, driver="GPKG", encoding=self.encoding
+            )
+
         return None
