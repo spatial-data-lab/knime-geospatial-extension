@@ -681,7 +681,7 @@ class LocalMoransI:
         gdf.loc[gdf["p-value"] > 0.05, "spots"] = 0
         # out = pd.merge(gdf, out, left_index=True, right_index=True)
 
-        import pysal.lib as lps
+        import libpysal as lps
 
         lag_index = lps.weights.lag_spatial(w, gdf[self.variable_setting.field_col])
         index_v = gdf[self.variable_setting.field_col]
@@ -1047,7 +1047,7 @@ class LocalGetisOrd:
         gdf.loc[gdf["p-value"] > 0.05, "spots_type"] = "Not Significant"
         gdf.loc[gdf["p-value"] > 0.05, "spots"] = 0
 
-        import pysal.lib as lps
+        import libpysal as lps
 
         lag_index = lps.weights.lag_spatial(w, gdf[self.variable_setting.field_col])
         index_v = gdf[self.variable_setting.field_col]
@@ -1299,7 +1299,7 @@ class BivariateLocalMoran:
         import numpy as np
         from libpysal.weights import W
         import esda
-        import pysal.lib as lps
+        import libpysal as lps
         import matplotlib.pyplot as plt
 
         w = W.from_adjlist(adjust_list)
