@@ -1953,7 +1953,6 @@ class TomTomDistanceMatrix:
         To get an API key, click
         [here.](https://developer.tomtom.com/user/register)
         For details about the pricing go to the [TomTom pricing page.](https://developer.tomtom.com/matrix-routing-v2-api/documentation/pricing)""",
-        default_value="your api key here",
         validator=knut.api_key_validator,
     )
 
@@ -2004,12 +2003,12 @@ class TomTomDistanceMatrix:
 
     # Batch processing parameters
     batch_size = knext.EnumParameter(
-        "Maximum Matrix size",
+        "Maximum matrix batch size",
         """The maximum number of cells (origin-destination pairs) to include in a single API request.
         Recommended values: 100 for unrestricted requests, up to 200 for geographical restrictions.
         For values as 2500, parameters will be automatically adjusted to comply with API restrictions.
-        As billable requests are calcualted as max(origins, destinations) × 5, the querying batch size 
-        for origin and destination points uses the square root of the Maximum Matrix size, e.g.,10, 14, 50.
+        As billable requests are calculated as max(origins, destinations) × 5, the querying batch size 
+        for origin and destination points uses the square root of the Maximum matrix size, e.g.,10, 14, 50.
         """,
         default_value=_TomTomMatrixBatchSize.get_default().name,
         enum=_TomTomMatrixBatchSize,
@@ -2038,9 +2037,6 @@ class TomTomDistanceMatrix:
         knut.column_exists(self.d_id_col, d_schema)
         d_id_type = d_schema[self.d_id_col].ktype
 
-        if self.tomtom_api_key == "your api key here":
-            configure_context.set_warning("Please provide a valid TomTom API key")
-
         # Check for batch size restrictions
         if int(self.batch_size[1:]) > 200:
             configure_context.set_warning(
@@ -2064,7 +2060,7 @@ class TomTomDistanceMatrix:
         from datetime import datetime, timedelta
 
         # Check if API key is provided
-        if self.tomtom_api_key == "your api key here" or self.tomtom_api_key == "":
+        if self.tomtom_api_key is None or len(self.tomtom_api_key.strip()) == 0:
             knut.LOGGER.error(
                 "Please enter your TomTom API key. If you don't have one, you can register [here](https://developer.tomtom.com/user/register)."
             )
@@ -2125,6 +2121,7 @@ class TomTomDistanceMatrix:
         departure_time = None
         if self.consider_traffic and self.travel_mode in ["CAR", "TRUCK"]:
             if self.depart_time_type == "DATETIME":
+                depart_at_datetime = self.depart_at
                 current_time = datetime.now()
                 if depart_at_datetime < current_time + timedelta(minutes=1):
                     knut.LOGGER.warning(
@@ -2135,9 +2132,6 @@ class TomTomDistanceMatrix:
             elif self.depart_time_type == "NOW":
                 departure_time = "now"
             # For ANY, we leave departure_time as None
-
-        # Check if we need to apply special rules for large batch sizes
-        total_cells = len(origins) * len(destinations)
 
         # Create a copy of selected options that might need adjustment
         effective_route_type = self.route_type
@@ -2196,7 +2190,6 @@ class TomTomDistanceMatrix:
         """Process a large matrix by splitting it into smaller batches."""
         import math
 
-        total_cells = len(origins) * len(destinations)
         knut.LOGGER.info(
             f"Processing matrix with {len(origins)} origins and {len(destinations)} destinations in batches"
         )
