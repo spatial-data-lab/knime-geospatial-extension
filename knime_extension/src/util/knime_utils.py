@@ -776,6 +776,6 @@ def api_key_validator(api_key: str) -> str:
     Checks if the given API key is valid.
     """
 
-    if api_key is None or len(api_key) == 0:
+    if api_key is None or len(api_key.strip()) == 0:
         raise knext.InvalidParametersError("API key must not be empty")
     return str(api_key)
