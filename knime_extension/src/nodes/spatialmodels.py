@@ -760,11 +760,13 @@ class GeographicallyWeightedRegression:
 
         intervals = np.asarray(intervals)
         if gwr_bw.shape == ():
-            gdf.loc[:1, "bw"] = gwr_bw
-            gdf.loc[:1, ["bw_lower", "bw_upper"]] = intervals
+            gdf.loc[gdf.index[0], "bw"] = gwr_bw
+            gdf.loc[gdf.index[0], ["bw_lower", "bw_upper"]] = intervals
         else:
-            gdf.loc[: (gwr_bw.shape[0]), "bw"] = gwr_bw
-            gdf.loc[: (intervals.shape[0]), ["bw_lower", "bw_upper"]] = intervals
+            gdf.loc[gdf.index[: gwr_bw.shape[0]], "bw"] = gwr_bw
+            gdf.loc[gdf.index[: intervals.shape[0]], ["bw_lower", "bw_upper"]] = (
+                intervals
+            )
         # gdf.loc[:,"localR2"] = results.localR2
         # gdf.drop(columns=["<Row Key>"], inplace=True, axis=1)
         gdf.reset_index(drop=True, inplace=True)
@@ -1010,11 +1012,12 @@ class MultiscaleGeographicallyWeightedRegression:
 
         intervals = np.asarray(intervals)
         if mgwr_bw.shape == ():
-            gdf.loc[:1, "bw"] = mgwr_bw
-            gdf.loc[:1, ["bw_lower", "bw_upper"]] = intervals
+            gdf.loc[gdf.index[0], "bw"] = mgwr_bw
+            gdf.loc[gdf.index[0], ["bw_lower", "bw_upper"]] = intervals
         else:
-            gdf.loc[: (mgwr_bw.shape[0]), "bw"] = mgwr_bw.reshape(-1, 1)
-            gdf.loc[: (intervals.shape[0]), ["bw_lower", "bw_upper"]] = intervals
+            n = mgwr_bw.shape[0]
+            gdf.loc[gdf.index[:n], "bw"] = mgwr_bw.reshape(-1, 1)
+            gdf.loc[gdf.index[:n], ["bw_lower", "bw_upper"]] = intervals
         # gdf.loc[:,"localR2"] = results.localR2
         # gdf.drop(columns=["<Row Key>"], inplace=True, axis=1)
         gdf.reset_index(drop=True, inplace=True)
