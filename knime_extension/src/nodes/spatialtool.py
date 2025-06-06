@@ -376,6 +376,7 @@ class SpatialJoinNode:
         gdf.reset_index(drop=True, inplace=True)
         # drop additional index columns if they exist
         gdf.drop(["index_right", "index_left"], axis=1, errors="ignore", inplace=True)
+        gdf = gdf[[col for col in gdf.columns if not col.startswith("<RowID>")]]
         return knut.to_table(gdf, exec_context)
 
 
@@ -542,6 +543,7 @@ class NearestJoinNode2:
         )
 
         distance_helper.post_processing(exec_context, gdf, True)
+        gdf = gdf[[col for col in gdf.columns if not col.startswith("<RowID>")]]
         return knut.to_table(gdf, exec_context)
 
 
