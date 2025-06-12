@@ -210,7 +210,7 @@ class US2020TIGERNode:
 
         County5Fips = self.StateFips + self.County3Fips
 
-        base_url = "https://www2.census.gov/geo/tiger/TIGER2020PL/STATE/"
+        base_url = "ftp://ftp2.census.gov/geo/tiger/TIGER2020PL/STATE/"
 
         if self.StateFips != self.County3Fips and self.County3Fips != "*":
             data_url = f"{base_url}{Statepath}/{County5Fips}/tl_2020_{County5Fips}_{self.geofile}.zip"
@@ -648,8 +648,8 @@ class OSMnetworkNode:
             raise RuntimeError("Input data must be Polygon or MultiPolygon")
         ox = get_osmnx()
         knut.check_canceled(exec_context)
-        G = ox.graph.graph_from_polygon(gdf_union, self.networktype)
-        edges = ox.utils_graph.graph_to_gdfs(G, nodes=False)
+        G = ox.graph.graph_from_polygon(gdf_union, network_type=self.networktype)
+        edges = ox.convert.graph_to_gdfs(G, nodes=False)
         objcolumn = edges.select_dtypes(include=["object"]).columns.tolist()
 
         # Convert each element of the dataframe to a string but sort lists before doing so

@@ -32,11 +32,11 @@ __initialize_pyproj()
 
 # Fake the libpysal.examples import to prevent it from downloading data from the internet which might cause problems
 # in environments without internet access: https://github.com/spatial-data-lab/knime-geospatial-extension/issues/165
-class __LibpysalExamplesModuleMock:
-    pass
+# class __LibpysalExamplesModuleMock:
+#     pass
 
 
-sys.modules["libpysal.examples"] = __LibpysalExamplesModuleMock()
+# sys.modules["libpysal.examples"] = __LibpysalExamplesModuleMock()
 
 
 # This defines the root Geospatial KNIME category that is displayed in the node repository

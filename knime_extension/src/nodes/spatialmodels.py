@@ -40,6 +40,48 @@ __category = knext.category(
 __NODE_ICON_PATH = "icons/icon/SpatialModel/"
 
 
+def spreg_results(model, variable_names, k=False):
+    import pandas as pd
+
+    if k is False:
+
+        results = pd.DataFrame(
+            {
+                "Variable": variable_names,
+                "Coefficient": [b[0] for b in model.betas],
+                "Std.Error": [e for e in model.std_err],
+                "Z-Statistic": [z[0] for z in model.z_stat],
+                "Probability": [z[1] for z in model.z_stat],
+            }
+        )
+    else:
+        results = pd.DataFrame(
+            {
+                "Variable": variable_names,
+                "Coefficient": [b[0] for b in model.betas[:k]],
+                "Std.Error": [e for e in model.std_err[:k]],
+                "Z-Statistic": [z[0] for z in model.z_stat],
+                "Probability": [z[1] for z in model.z_stat],
+            }
+        )
+
+    return results
+
+
+def spreg_summary(model):
+    import pandas as pd
+
+    summary = pd.DataFrame(
+        {
+            "Pseudo R-squared ": model.pr2,
+            "Number of Observations": model.n,
+            "Number of Variables": model.k,
+        },
+        index=[0],
+    )
+    return summary
+
+
 @knext.parameter_group("Advanced Settings", since_version="1.2.0")
 class AdvancedLsSetting:
     """Advanced Setting"""
@@ -760,11 +802,13 @@ class GeographicallyWeightedRegression:
 
         intervals = np.asarray(intervals)
         if gwr_bw.shape == ():
-            gdf.loc[:1, "bw"] = gwr_bw
-            gdf.loc[:1, ["bw_lower", "bw_upper"]] = intervals
+            gdf.loc[gdf.index[0], "bw"] = gwr_bw
+            gdf.loc[gdf.index[0], ["bw_lower", "bw_upper"]] = intervals
         else:
-            gdf.loc[: (gwr_bw.shape[0]), "bw"] = gwr_bw
-            gdf.loc[: (intervals.shape[0]), ["bw_lower", "bw_upper"]] = intervals
+            gdf.loc[gdf.index[: gwr_bw.shape[0]], "bw"] = gwr_bw
+            gdf.loc[gdf.index[: intervals.shape[0]], ["bw_lower", "bw_upper"]] = (
+                intervals
+            )
         # gdf.loc[:,"localR2"] = results.localR2
         # gdf.drop(columns=["<Row Key>"], inplace=True, axis=1)
         gdf.reset_index(drop=True, inplace=True)
@@ -1010,11 +1054,12 @@ class MultiscaleGeographicallyWeightedRegression:
 
         intervals = np.asarray(intervals)
         if mgwr_bw.shape == ():
-            gdf.loc[:1, "bw"] = mgwr_bw
-            gdf.loc[:1, ["bw_lower", "bw_upper"]] = intervals
+            gdf.loc[gdf.index[0], "bw"] = mgwr_bw
+            gdf.loc[gdf.index[0], ["bw_lower", "bw_upper"]] = intervals
         else:
-            gdf.loc[: (mgwr_bw.shape[0]), "bw"] = mgwr_bw.reshape(-1, 1)
-            gdf.loc[: (intervals.shape[0]), ["bw_lower", "bw_upper"]] = intervals
+            n = mgwr_bw.shape[0]
+            gdf.loc[gdf.index[:n], "bw"] = mgwr_bw.reshape(-1, 1)
+            gdf.loc[gdf.index[:n], ["bw_lower", "bw_upper"]] = intervals
         # gdf.loc[:,"localR2"] = results.localR2
         # gdf.drop(columns=["<Row Key>"], inplace=True, axis=1)
         gdf.reset_index(drop=True, inplace=True)
@@ -1589,45 +1634,11 @@ class SpatialGM_Error:
         y = gdf[self.dependent_variable].values
 
         model = spreg.GM_Error(y, X, w)
+        k = len(model.z_stat)
+        variable_names = ["CONSTANT"] + model.name_x[1:k]
 
-        results = pd.DataFrame(
-            [model.name_x, model.betas, model.std_err, model.z_stat]
-        ).T
-        results.columns = ["Variable", "Coefficient", "Std.Error", "Z-Statistic"]
-        results = results.dropna()
-        results.loc[:, "Coefficient"] = results.loc[:, "Coefficient"].map(
-            lambda x: x[0]
-        )
-        results.loc[:, "Probability"] = results.loc[:, "Z-Statistic"].map(
-            lambda x: x[1]
-        )
-        results.loc[:, "Z-Statistic"] = results.loc[:, "Z-Statistic"].map(
-            lambda x: x[0]
-        )
-        # #
-        results.loc[:, "Coefficient"] = results.loc[:, "Coefficient"].map(
-            lambda x: round(x, 7)
-        )
-        results.loc[:, "Std.Error"] = results.loc[:, "Std.Error"].map(
-            lambda x: round(x, 7)
-        )
-        results.loc[:, "Z-Statistic"] = results.loc[:, "Z-Statistic"].map(
-            lambda x: round(x, 7)
-        )
-        results.loc[:, "Probability"] = results.loc[:, "Probability"].map(
-            lambda x: round(x, 7)
-        )
-        # results =  results.dropna()
-
-        result2 = pd.DataFrame(
-            {
-                "Pseudo R-squared ": model.pr2,
-                "Number of Observations": model.n,
-                "Number of Variables": model.k,
-            },
-            index=[0],
-        )
-        result2 = result2.round(7)
+        results = spreg_results(model, variable_names, k)
+        result2 = spreg_summary(model)
 
         html = """<p><pre>%s</pre>""" % model.summary.replace("\n", "<br/>")
 
@@ -1719,44 +1730,10 @@ class SpatialGM_Error_Het:
 
         model = spreg.GM_Error_Het(y, X, w)
 
-        results = pd.DataFrame(
-            [model.name_x, model.betas, model.std_err, model.z_stat]
-        ).T
-        results.columns = ["Variable", "Coefficient", "Std.Error", "Z-Statistic"]
-        results = results.dropna()
-        results.loc[:, "Coefficient"] = results.loc[:, "Coefficient"].map(
-            lambda x: x[0]
-        )
-        results.loc[:, "Probability"] = results.loc[:, "Z-Statistic"].map(
-            lambda x: x[1]
-        )
-        results.loc[:, "Z-Statistic"] = results.loc[:, "Z-Statistic"].map(
-            lambda x: x[0]
-        )
-        # #
-        results.loc[:, "Coefficient"] = results.loc[:, "Coefficient"].map(
-            lambda x: round(x, 7)
-        )
-        results.loc[:, "Std.Error"] = results.loc[:, "Std.Error"].map(
-            lambda x: round(x, 7)
-        )
-        results.loc[:, "Z-Statistic"] = results.loc[:, "Z-Statistic"].map(
-            lambda x: round(x, 7)
-        )
-        results.loc[:, "Probability"] = results.loc[:, "Probability"].map(
-            lambda x: round(x, 7)
-        )
-        # results =  results.dropna()
+        variable_names = ["CONSTANT"] + model.name_x[1:]
 
-        result2 = pd.DataFrame(
-            {
-                "Pseudo R-squared ": model.pr2,
-                "Number of Observations": model.n,
-                "Number of Variables": model.k,
-            },
-            index=[0],
-        )
-        result2 = result2.round(7)
+        results = spreg_results(model, variable_names)
+        result2 = spreg_summary(model)
 
         html = """<p><pre>%s</pre>""" % model.summary.replace("\n", "<br/>")
 
@@ -1846,44 +1823,10 @@ class SpatialGM_Error_Hom:
 
         model = spreg.GM_Error_Hom(y, X, w)
 
-        results = pd.DataFrame(
-            [model.name_x, model.betas, model.std_err, model.z_stat]
-        ).T
-        results.columns = ["Variable", "Coefficient", "Std.Error", "Z-Statistic"]
-        results = results.dropna()
-        results.loc[:, "Coefficient"] = results.loc[:, "Coefficient"].map(
-            lambda x: x[0]
-        )
-        results.loc[:, "Probability"] = results.loc[:, "Z-Statistic"].map(
-            lambda x: x[1]
-        )
-        results.loc[:, "Z-Statistic"] = results.loc[:, "Z-Statistic"].map(
-            lambda x: x[0]
-        )
-        # #
-        results.loc[:, "Coefficient"] = results.loc[:, "Coefficient"].map(
-            lambda x: round(x, 7)
-        )
-        results.loc[:, "Std.Error"] = results.loc[:, "Std.Error"].map(
-            lambda x: round(x, 7)
-        )
-        results.loc[:, "Z-Statistic"] = results.loc[:, "Z-Statistic"].map(
-            lambda x: round(x, 7)
-        )
-        results.loc[:, "Probability"] = results.loc[:, "Probability"].map(
-            lambda x: round(x, 7)
-        )
-        # results =  results.dropna()
+        variable_names = ["CONSTANT"] + model.name_x[1:]
 
-        result2 = pd.DataFrame(
-            {
-                "Pseudo R-squared ": model.pr2,
-                "Number of Observations": model.n,
-                "Number of Variables": model.k,
-            },
-            index=[0],
-        )
-        result2 = result2.round(7)
+        results = spreg_results(model, variable_names)
+        result2 = spreg_summary(model)
 
         html = """<p><pre>%s</pre>""" % model.summary.replace("\n", "<br/>")
 
@@ -1973,44 +1916,12 @@ class SpatialGM_Combo:
 
         model = spreg.GM_Combo(y=y, x=X, w=w)
 
-        results = pd.DataFrame(
-            [model.name_x, model.betas, model.std_err, model.z_stat]
-        ).T
-        results.columns = ["Variable", "Coefficient", "Std.Error", "Z-Statistic"]
-        results = results.dropna()
-        results.loc[:, "Coefficient"] = results.loc[:, "Coefficient"].map(
-            lambda x: x[0]
-        )
-        results.loc[:, "Probability"] = results.loc[:, "Z-Statistic"].map(
-            lambda x: x[1]
-        )
-        results.loc[:, "Z-Statistic"] = results.loc[:, "Z-Statistic"].map(
-            lambda x: x[0]
-        )
-        # #
-        results.loc[:, "Coefficient"] = results.loc[:, "Coefficient"].map(
-            lambda x: round(x, 7)
-        )
-        results.loc[:, "Std.Error"] = results.loc[:, "Std.Error"].map(
-            lambda x: round(x, 7)
-        )
-        results.loc[:, "Z-Statistic"] = results.loc[:, "Z-Statistic"].map(
-            lambda x: round(x, 7)
-        )
-        results.loc[:, "Probability"] = results.loc[:, "Probability"].map(
-            lambda x: round(x, 7)
-        )
+        k = len(model.z_stat)
 
-        result2 = pd.DataFrame(
-            {
-                "Pseudo R-squared ": model.pr2,
-                "Spatial Pseudo R-squared ": model.pr2_e,
-                "Number of Observations": model.n,
-                "Number of Variables": model.k,
-            },
-            index=[0],
-        )
-        result2 = result2.round(7)
+        variable_names = ["CONSTANT"] + model.name_x[1:k] + ["W_dep_var"]
+
+        results = spreg_results(model, variable_names, k)
+        result2 = spreg_summary(model)
 
         html = """<p><pre>%s</pre>""" % model.summary.replace("\n", "<br/>")
 
@@ -2101,44 +2012,10 @@ class SpatialGM_Combo_Het:
 
         model = spreg.GM_Combo_Het(y=y, x=X, w=w)
 
-        results = pd.DataFrame(
-            [model.name_x, model.betas, model.std_err, model.z_stat]
-        ).T
-        results.columns = ["Variable", "Coefficient", "Std.Error", "Z-Statistic"]
-        results = results.dropna()
-        results.loc[:, "Coefficient"] = results.loc[:, "Coefficient"].map(
-            lambda x: x[0]
-        )
-        results.loc[:, "Probability"] = results.loc[:, "Z-Statistic"].map(
-            lambda x: x[1]
-        )
-        results.loc[:, "Z-Statistic"] = results.loc[:, "Z-Statistic"].map(
-            lambda x: x[0]
-        )
-        # #
-        results.loc[:, "Coefficient"] = results.loc[:, "Coefficient"].map(
-            lambda x: round(x, 7)
-        )
-        results.loc[:, "Std.Error"] = results.loc[:, "Std.Error"].map(
-            lambda x: round(x, 7)
-        )
-        results.loc[:, "Z-Statistic"] = results.loc[:, "Z-Statistic"].map(
-            lambda x: round(x, 7)
-        )
-        results.loc[:, "Probability"] = results.loc[:, "Probability"].map(
-            lambda x: round(x, 7)
-        )
+        variable_names = ["CONSTANT"] + model.name_x[1:] + ["W_dep_var", "lambda"]
 
-        result2 = pd.DataFrame(
-            {
-                "Pseudo R-squared ": model.pr2,
-                "Spatial Pseudo R-squared ": model.pr2_e,
-                "Number of Observations": model.n,
-                "Number of Variables": model.k,
-            },
-            index=[0],
-        )
-        result2 = result2.round(7)
+        results = spreg_results(model, variable_names)
+        result2 = spreg_summary(model)
 
         html = """<p><pre>%s</pre>""" % model.summary.replace("\n", "<br/>")
 
@@ -2230,43 +2107,10 @@ class SpatialGM_Combo_Hom:
 
         model = spreg.GM_Combo_Hom(y=y, x=X, w=w)
 
-        results = pd.DataFrame(
-            [model.name_x, model.betas, model.std_err, model.z_stat]
-        ).T
-        results.columns = ["Variable", "Coefficient", "Std.Error", "Z-Statistic"]
-        results = results.dropna()
-        results.loc[:, "Coefficient"] = results.loc[:, "Coefficient"].map(
-            lambda x: x[0]
-        )
-        results.loc[:, "Probability"] = results.loc[:, "Z-Statistic"].map(
-            lambda x: x[1]
-        )
-        results.loc[:, "Z-Statistic"] = results.loc[:, "Z-Statistic"].map(
-            lambda x: x[0]
-        )
-        # #
-        results.loc[:, "Coefficient"] = results.loc[:, "Coefficient"].map(
-            lambda x: round(x, 7)
-        )
-        results.loc[:, "Std.Error"] = results.loc[:, "Std.Error"].map(
-            lambda x: round(x, 7)
-        )
-        results.loc[:, "Z-Statistic"] = results.loc[:, "Z-Statistic"].map(
-            lambda x: round(x, 7)
-        )
-        results.loc[:, "Probability"] = results.loc[:, "Probability"].map(
-            lambda x: round(x, 7)
-        )
+        variable_names = ["CONSTANT"] + model.name_x[1:] + ["W_dep_var", "lambda"]
 
-        result2 = pd.DataFrame(
-            {
-                "Pseudo R-squared ": model.pr2,
-                "Number of Observations": model.n,
-                "Number of Variables": model.k,
-            },
-            index=[0],
-        )
-        result2 = result2.round(7)
+        results = spreg_results(model, variable_names)
+        result2 = spreg_summary(model)
 
         html = """<p><pre>%s</pre>""" % model.summary.replace("\n", "<br/>")
 
@@ -2371,43 +2215,12 @@ class SpatialGM_Endog_Error:
         q = gdf[self.q].values
         model = spreg.GM_Endog_Error(y=y, x=X, w=w, yend=yend, q=q)
 
-        results = pd.DataFrame(
-            [model.name_x, model.betas, model.std_err, model.z_stat]
-        ).T
-        results.columns = ["Variable", "Coefficient", "Std.Error", "Z-Statistic"]
-        results = results.dropna()
-        results.loc[:, "Coefficient"] = results.loc[:, "Coefficient"].map(
-            lambda x: x[0]
-        )
-        results.loc[:, "Probability"] = results.loc[:, "Z-Statistic"].map(
-            lambda x: x[1]
-        )
-        results.loc[:, "Z-Statistic"] = results.loc[:, "Z-Statistic"].map(
-            lambda x: x[0]
-        )
-        # #
-        results.loc[:, "Coefficient"] = results.loc[:, "Coefficient"].map(
-            lambda x: round(x, 7)
-        )
-        results.loc[:, "Std.Error"] = results.loc[:, "Std.Error"].map(
-            lambda x: round(x, 7)
-        )
-        results.loc[:, "Z-Statistic"] = results.loc[:, "Z-Statistic"].map(
-            lambda x: round(x, 7)
-        )
-        results.loc[:, "Probability"] = results.loc[:, "Probability"].map(
-            lambda x: round(x, 7)
-        )
+        k = len(model.z_stat)
 
-        result2 = pd.DataFrame(
-            {
-                "Pseudo R-squared ": model.pr2,
-                "Number of Observations": model.n,
-                "Number of Variables": model.k,
-            },
-            index=[0],
-        )
-        result2 = result2.round(7)
+        variable_names = ["CONSTANT"] + model.name_x[1:k] + ["endogenous_1"]
+
+        results = spreg_results(model, variable_names, k)
+        result2 = spreg_summary(model)
 
         html = """<p><pre>%s</pre>""" % model.summary.replace("\n", "<br/>")
 
@@ -2417,8 +2230,6 @@ class SpatialGM_Endog_Error:
             knext.view_html(html),
         )
 
-
-# The following two models are rarely used and complex, so I comment them out.
 
 ############################################
 # spatial GM_Endog_Error_Het node
@@ -2532,43 +2343,12 @@ class SpatialGM_Endog_Error_Het:
 
         model = spreg.GM_Endog_Error_Het(y=y, x=X, w=w, yend=yend, q=q)
 
-        results = pd.DataFrame(
-            [model.name_x, model.betas, model.std_err, model.z_stat]
-        ).T
-        results.columns = ["Variable", "Coefficient", "Std.Error", "Z-Statistic"]
-        results = results.dropna()
-        results.loc[:, "Coefficient"] = results.loc[:, "Coefficient"].map(
-            lambda x: x[0]
-        )
-        results.loc[:, "Probability"] = results.loc[:, "Z-Statistic"].map(
-            lambda x: x[1]
-        )
-        results.loc[:, "Z-Statistic"] = results.loc[:, "Z-Statistic"].map(
-            lambda x: x[0]
-        )
-        # #
-        results.loc[:, "Coefficient"] = results.loc[:, "Coefficient"].map(
-            lambda x: round(x, 7)
-        )
-        results.loc[:, "Std.Error"] = results.loc[:, "Std.Error"].map(
-            lambda x: round(x, 7)
-        )
-        results.loc[:, "Z-Statistic"] = results.loc[:, "Z-Statistic"].map(
-            lambda x: round(x, 7)
-        )
-        results.loc[:, "Probability"] = results.loc[:, "Probability"].map(
-            lambda x: round(x, 7)
-        )
+        k = len(model.z_stat)
 
-        result2 = pd.DataFrame(
-            {
-                "Pseudo R-squared ": model.pr2,
-                "Number of Observations": model.n,
-                "Number of Variables": model.k,
-            },
-            index=[0],
-        )
-        result2 = result2.round(7)
+        variable_names = ["CONSTANT"] + model.name_x[1:k] + ["endogenous_1", "lambda"]
+
+        results = spreg_results(model, variable_names, k)
+        result2 = spreg_summary(model)
 
         html = """<p><pre>%s</pre>""" % model.summary.replace("\n", "<br/>")
 
@@ -2632,13 +2412,9 @@ class SpatialGM_Endog_Error_Het:
 )
 class SpatialGM_Endog_Error_Hom:
 
-    geo_col = knext.ColumnParameter(
-        "Geometry Column",
-        "The column containing the geometry of the input table.",
-        column_filter=knut.is_geo,
-        include_row_key=False,
-        include_none_column=False,
-    )
+    geo_col = knut.geo_col_parameter()
+
+    id_col = mut.get_id_col_parameter()
 
     dependent_variable = knext.ColumnParameter(
         "Dependent variable",
@@ -2698,43 +2474,12 @@ class SpatialGM_Endog_Error_Hom:
 
         model = spreg.GM_Endog_Error_Hom(y=y, x=X, w=w, yend=yend, q=q)
 
-        results = pd.DataFrame(
-            [model.name_x, model.betas, model.std_err, model.z_stat]
-        ).T
-        results.columns = ["Variable", "Coefficient", "Std.Error", "Z-Statistic"]
-        results = results.dropna()
-        results.loc[:, "Coefficient"] = results.loc[:, "Coefficient"].map(
-            lambda x: x[0]
-        )
-        results.loc[:, "Probability"] = results.loc[:, "Z-Statistic"].map(
-            lambda x: x[1]
-        )
-        results.loc[:, "Z-Statistic"] = results.loc[:, "Z-Statistic"].map(
-            lambda x: x[0]
-        )
-        # #
-        results.loc[:, "Coefficient"] = results.loc[:, "Coefficient"].map(
-            lambda x: round(x, 7)
-        )
-        results.loc[:, "Std.Error"] = results.loc[:, "Std.Error"].map(
-            lambda x: round(x, 7)
-        )
-        results.loc[:, "Z-Statistic"] = results.loc[:, "Z-Statistic"].map(
-            lambda x: round(x, 7)
-        )
-        results.loc[:, "Probability"] = results.loc[:, "Probability"].map(
-            lambda x: round(x, 7)
-        )
+        k = len(model.z_stat)
 
-        result2 = pd.DataFrame(
-            {
-                "Pseudo R-squared ": model.pr2,
-                "Number of Observations": model.n,
-                "Number of Variables": model.k,
-            },
-            index=[0],
-        )
-        result2 = result2.round(7)
+        variable_names = ["CONSTANT"] + model.name_x[1:k] + ["endogenous_1", "lambda"]
+
+        results = spreg_results(model, variable_names, k)
+        result2 = spreg_summary(model)
 
         html = """<p><pre>%s</pre>""" % model.summary.replace("\n", "<br/>")
 

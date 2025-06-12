@@ -138,9 +138,9 @@ class SimplifyNode:
 
     def execute(self, exec_context: knext.ExecutionContext, input):
         gdf = gp.GeoDataFrame(input.to_pandas(), geometry=self.geo_col)
-        gdf[
-            knut.get_unique_column_name("geometry", input.schema)
-        ] = gdf.geometry.simplify(self.simplifydist)
+        gdf[knut.get_unique_column_name("geometry", input.schema)] = (
+            gdf.geometry.simplify(self.simplifydist)
+        )
         gdf = gdf.reset_index(drop=True)
         exec_context.set_progress(0.1, "Transformation done")
         LOGGER.debug("Feature Simplified")
@@ -272,6 +272,7 @@ class NearestJoinNode:
         gdf.reset_index(drop=True, inplace=True)
         # drop additional index columns if they exist
         gdf.drop(["index_1", "index_2"], axis=1, errors="ignore", inplace=True)
+        gdf = gdf[[col for col in gdf.columns if not col.startswith("<RowID>")]]
         return knut.to_table(gdf, exec_context)
 
 

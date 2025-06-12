@@ -1239,11 +1239,27 @@ class ViewNodeKepler:
         html = map_1._repr_html_(center_map=True)
         html = html.decode("utf-8")
 
-        # replace css and JavaScript paths
-        html = replace_external_js_css_paths(
-            r'\1./libs/kepler/2.5.5/\3"\4',
-            html,
-        )
+        # # replace css and JavaScript paths
+        # html = replace_external_js_css_paths(
+        #     r'\1./libs/kepler/2.5.5/\3"\4',
+        #     html,
+        # )
+        replacements = {
+            "https://d1a3f4spazzrp4.cloudfront.net/kepler.gl/uber-fonts/4.0.0/superfine.css": "./libs/kepler/2.5.5/superfine.css",
+            "https://api.tiles.mapbox.com/mapbox-gl-js/v1.1.1/mapbox-gl.css": "./libs/kepler/2.5.5/mapbox-gl.css",
+            "https://unpkg.com/maplibre-gl@2.4.0/dist/maplibre-gl.css": "./libs/kepler/2.5.5/maplibre-gl.css",
+            "https://unpkg.com/react@18.2.0/umd/react.production.min.js": "./libs/kepler/2.5.5/react.production.min.js",
+            "https://unpkg.com/react-dom@18.2.0/umd/react-dom.production.min.js": "./libs/kepler/2.5.5/react-dom.production.min.js",
+            "https://unpkg.com/redux@4.2.1/dist/redux.js": "./libs/kepler/2.5.5/redux.js",
+            "https://unpkg.com/react-redux@8.0.5/dist/react-redux.min.js": "./libs/kepler/2.5.5/react-redux.min.js",
+            "https://unpkg.com/react-intl@4.7.6/dist/react-intl.min.js": "./libs/kepler/2.5.5/react-intl.min.js",
+            "https://unpkg.com/react-copy-to-clipboard@5.0.2/build/react-copy-to-clipboard.min.js": "./libs/kepler/2.5.5/react-copy-to-clipboard.min.js",
+            "https://unpkg.com/styled-components@5.3.6/dist/styled-components.min.js": "./libs/kepler/2.5.5/styled-components.min.js",
+        }
+
+        for old_url, new_url in replacements.items():
+            html = html.replace(old_url, new_url)
+
         # replace any stylesheet links that are dynamically created
         html = replace_external_js_css_paths(
             r"\1./libs/kepler/2.5.5/\2\3",
@@ -1666,7 +1682,7 @@ class ViewNodeHeatmap:
 
         gradient_map = defaultdict(dict)
         for i in range(steps):
-            gradient_map[1 / steps * i] = colormap.rgb_hex_str(1 / steps * i)
+            gradient_map[str(1 / steps * i)] = colormap.rgb_hex_str(1 / steps * i)
         if self.legend_settings.plot:
             colormap.add_to(map)  # add color bar at the top of the map
 
