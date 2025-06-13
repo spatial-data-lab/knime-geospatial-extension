@@ -1,0 +1,51 @@
+[workspace]
+name = "geospatial_env"
+channels = ["knime/label/nightly", "knime", "conda-forge"]
+platforms = ["win-64", "linux-64", "osx-64", "osx-arm64"]
+
+[tasks]
+
+[dependencies]
+packaging = "*"
+python = "3.11.*"
+curl = "8.14.0.*"
+cvxopt = "1.3.2.*"
+esda = "2.7.0.*"
+fiona = "1.10.1.*"
+folium = "0.19.6.*"
+geopandas = "1.1.0.*"
+geopy = "2.4.1.*"
+h3-py = "4.2.2.*"
+jmespath = "1.0.1.*"
+knime-extension = ">=5.5.0"
+knime-python-base = ">=5.5.0"
+libgdal = "3.10.3.*"
+libpysal = "*"
+mgwr = "2.2.1.*"
+numpy = "1.26.4.*"
+osmnx = "2.0.3.*"
+polyline = "2.0.2.*"
+pyproj = "3.7.1.*"
+pysal = "25.1.*"
+rasterio = "1.4.3.*"
+seaborn = "0.13.2.*"
+shapely = "2.1.1.*"
+sympy = "1.14.0.*"
+pip = "25.1.1.*"
+pygeoda = "0.1.2.*"
+pointpats = "2.5.1.*"
+pulp = "2.8.0.*"
+keplergl = "*"
+
+[pypi-dependencies]
+ipinfo = "==5.1.1"
+
+[feature.build.dependencies]
+python = "3.9.*"
+knime-extension-bundling = ">=5.5.0"
+
+[feature.build.tasks]
+build = { args = [{ "arg" = "dest", "default" = "./local-update-site" }], cmd = "python ./.pixi/envs/build/bin/build_python_extension.py . {{ dest }}"}
+
+[environments]
+build = {features = ["build"], no-default-feature = true}
