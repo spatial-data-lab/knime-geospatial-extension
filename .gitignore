@@ -7,3 +7,8 @@ config_*.yml
 tests/test.html
 tests/test.ipynb
 tests/*.ipynb
+
+# pixi environments
+.pixi
+*.egg-info
+local-update-site
