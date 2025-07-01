@@ -943,7 +943,7 @@ def process_place(place_name):
 
 @knext.node(
     name="OSM Boundary Map Table",
-    node_type=knext.NodeType.MANIPULATOR,
+    node_type=knext.NodeType.SOURCE,
     icon_path=__NODE_ICON_PATH + "OSMboundary.png",
     category=__category,
     after="",
@@ -979,10 +979,9 @@ class OSMGeoBoundaryTableNode:
 
     ignore_error = knext.BoolParameter(
         "Ignore error",
-        "If selected, it will return None for unknown places. "
+        "If selected, it will return a missing cell for unknown places. "
         "If not selected, the node will fail when an unknown place is encountered.",
         default_value=True,
-        # since_version="1.4.0",
     )
 
     def configure(self, configure_context, input_schema):
@@ -1046,10 +1045,6 @@ class OSMGeoBoundaryTableNode:
 
         # Convert to GeoDataFrame
         result_gdf = gp.GeoDataFrame(result_df, geometry="geometry", crs="EPSG:4326")
-
-        # Filter if ignore_error is True
-        if self.ignore_error:
-            result_gdf = result_gdf.dropna(subset=["geometry"])
 
         if len(result_gdf) == 0:
             raise RuntimeError(
