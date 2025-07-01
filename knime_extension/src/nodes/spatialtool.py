@@ -641,6 +641,7 @@ class ClipNode:
         if self.result_settings.mode == knut.ResultSettingsMode.APPEND.name:
             left_gdf[self.result_settings.new_column_name] = gdf_clip[self.left_geo_col]
             gdf_clip = left_gdf
+        gdf_clip.reset_index(drop=True, inplace=True)
         return knut.to_table(gdf_clip, exec_context)
 
 
