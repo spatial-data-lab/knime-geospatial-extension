@@ -732,6 +732,122 @@ class OSMGeoBoundaryNode:
         return knext.Table.from_pandas(gp.GeoDataFrame(geometry=[], crs="EPSG:4326"))
 
 
+############################################
+# OSM Geocode Boundary Table
+############################################
+@knext.node(
+    name="OSM Boundary Map Table",
+    node_type=knext.NodeType.SOURCE,
+    icon_path=__NODE_ICON_PATH + "OSMboundary.png",
+    category=__category,
+    after="",
+)
+@knext.input_table(
+    name="Input table",
+    description="Table with place names to get boundaries for.",
+)
+@knext.output_table(
+    name="OSM GeoBoundary data",
+    description="Boundary of places from the Open Street Map",
+)
+@knut.osm_node_description(
+    short_description="Get Boundary from OpenStreetMap with Geocoding.",
+    description="""This node gets place boundaries from [OpenStreetMap](https://www.openstreetmap.org/about) by 
+   geocoding place names from the input table. The queries must be resolvable to places in the
+   [Nominatim database.](https://nominatim.org/) The resulting GeoDataFrame's geometry column contains place
+   boundaries if they exist in OpenStreetMap.""",
+    references={
+        "OSMnx": "https://github.com/gboeing/osmnx",
+        "osmnx.geocoder.geocode_to_gdf": "https://osmnx.readthedocs.io/en/stable/osmnx.html?highlight=geocode_to_gdf#module-osmnx.geocoder",
+    },
+)
+class OSMGeoBoundaryTableNode:
+    place_col = knext.ColumnParameter(
+        "Place name column",
+        "Select the column containing place names to geocode. "
+        "Names should be hierarchical from specific to general, e.g. 'Cambridge, MA, USA'",
+        column_filter=knut.is_string,
+        include_row_key=False,
+        include_none_column=False,
+    )
+
+    ignore_error = knext.BoolParameter(
+        "Ignore error",
+        "If selected, it will return a missing cell for unknown places. "
+        "If not selected, the node will fail when an unknown place is encountered.",
+        default_value=True,
+    )
+
+    def configure(self, configure_context, input_schema):
+        self.place_col = knut.column_exists_or_preset(
+            configure_context, self.place_col, input_schema, knut.is_string
+        )
+        return None
+
+    def execute(self, exec_context: knext.ExecutionContext, input_table):
+
+        import pandas as pd
+        import geopandas as gp
+
+        # Get original data
+        input_df = input_table.to_pandas()
+        ox = get_osmnx()
+
+        # Create new DataFrame to store OSM results
+        osm_results = []
+        total = len(input_df)
+
+        for idx, place_name in enumerate(input_df[self.place_col]):
+            if pd.isna(place_name):
+                osm_results.append(pd.Series())
+                continue
+
+            try:
+                gdf = ox.geocoder.geocode_to_gdf(place_name)
+                if not gdf.empty:
+                    osm_results.append(gdf.iloc[0])
+                else:
+                    osm_results.append(pd.Series())
+                    if not self.ignore_error:
+                        raise RuntimeError(f"No boundary found for place: {place_name}")
+
+            except Exception as e:
+                osm_results.append(pd.Series())
+                if not self.ignore_error:
+                    raise RuntimeError(
+                        f"Failed to process place name '{place_name}': {str(e)}"
+                    )
+                else:
+                    knut.LOGGER.warning(
+                        f"Failed to process place name '{place_name}': {str(e)}"
+                    )
+
+            exec_context.set_progress(
+                0.9 * (idx + 1) / total, f"Processing {idx + 1} of {total}"
+            )
+            knut.check_canceled(exec_context)
+
+        # Convert OSM results to DataFrame
+        osm_df = pd.DataFrame(osm_results)
+
+        # Reset index to ensure proper alignment
+        input_df = input_df.reset_index(drop=True)
+        osm_df = osm_df.reset_index(drop=True)
+
+        # Combine original data with OSM results
+        result_df = pd.concat([input_df, osm_df], axis=1)
+
+        # Convert to GeoDataFrame
+        result_gdf = gp.GeoDataFrame(result_df, geometry="geometry", crs="EPSG:4326")
+
+        if len(result_gdf) == 0:
+            raise RuntimeError(
+                "No valid boundaries found for any of the input place names"
+            )
+
+        return knext.Table.from_pandas(result_gdf)
+
+
 # moved from spatialdata extension
 
 
@@ -917,138 +1033,3 @@ class OpenSkyNetworkDataNode:
             crs="EPSG:4326",
         )
         return knext.Table.from_pandas(gdf)
-
-
-############################################
-# OSM Geocode Boundary Table
-############################################
-
-
-def process_place(place_name):
-    import pandas as pd
-
-    """Helper function to process a single place name"""
-    if pd.isna(place_name):
-        return None
-    try:
-        ox = get_osmnx()
-        gdf = ox.geocoder.geocode_to_gdf(place_name)
-        if not gdf.empty:
-            gdf["input_place_name"] = place_name
-            return gdf
-    except Exception as e:
-        knut.LOGGER.warning(f"Failed to process place name '{place_name}': {str(e)}")
-    return None
-
-
-@knext.node(
-    name="OSM Boundary Map Table",
-    node_type=knext.NodeType.SOURCE,
-    icon_path=__NODE_ICON_PATH + "OSMboundary.png",
-    category=__category,
-    after="",
-)
-@knext.input_table(
-    name="Input table",
-    description="Table with place names to get boundaries for.",
-)
-@knext.output_table(
-    name="OSM GeoBoundary data",
-    description="Boundary of places from the Open Street Map",
-)
-@knut.osm_node_description(
-    short_description="Get Boundary from OpenStreetMap with Geocoding.",
-    description="""This node gets place boundaries from [OpenStreetMap](https://www.openstreetmap.org/about) by 
-   geocoding place names from the input table. The queries must be resolvable to places in the
-   [Nominatim database.](https://nominatim.org/) The resulting GeoDataFrame's geometry column contains place
-   boundaries if they exist in OpenStreetMap.""",
-    references={
-        "OSMnx": "https://github.com/gboeing/osmnx",
-        "osmnx.geocoder.geocode_to_gdf": "https://osmnx.readthedocs.io/en/stable/osmnx.html?highlight=geocode_to_gdf#module-osmnx.geocoder",
-    },
-)
-class OSMGeoBoundaryTableNode:
-    place_col = knext.ColumnParameter(
-        "Place name column",
-        "Select the column containing place names to geocode. "
-        "Names should be hierarchical from specific to general, e.g. 'Cambridge, MA, USA'",
-        column_filter=knut.is_string,
-        include_row_key=False,
-        include_none_column=False,
-    )
-
-    ignore_error = knext.BoolParameter(
-        "Ignore error",
-        "If selected, it will return a missing cell for unknown places. "
-        "If not selected, the node will fail when an unknown place is encountered.",
-        default_value=True,
-    )
-
-    def configure(self, configure_context, input_schema):
-        self.place_col = knut.column_exists_or_preset(
-            configure_context, self.place_col, input_schema, knut.is_string
-        )
-        return None
-
-    def execute(self, exec_context: knext.ExecutionContext, input_table):
-
-        import pandas as pd
-        import geopandas as gp
-
-        # Get original data
-        input_df = input_table.to_pandas()
-        ox = get_osmnx()
-
-        # Create new DataFrame to store OSM results
-        osm_results = []
-        total = len(input_df)
-
-        for idx, place_name in enumerate(input_df[self.place_col]):
-            if pd.isna(place_name):
-                osm_results.append(pd.Series())
-                continue
-
-            try:
-                gdf = ox.geocoder.geocode_to_gdf(place_name)
-                if not gdf.empty:
-                    osm_results.append(gdf.iloc[0])
-                else:
-                    osm_results.append(pd.Series())
-                    if not self.ignore_error:
-                        raise RuntimeError(f"No boundary found for place: {place_name}")
-
-            except Exception as e:
-                osm_results.append(pd.Series())
-                if not self.ignore_error:
-                    raise RuntimeError(
-                        f"Failed to process place name '{place_name}': {str(e)}"
-                    )
-                else:
-                    knut.LOGGER.warning(
-                        f"Failed to process place name '{place_name}': {str(e)}"
-                    )
-
-            exec_context.set_progress(
-                0.9 * (idx + 1) / total, f"Processing {idx + 1} of {total}"
-            )
-            knut.check_canceled(exec_context)
-
-        # Convert OSM results to DataFrame
-        osm_df = pd.DataFrame(osm_results)
-
-        # Reset index to ensure proper alignment
-        input_df = input_df.reset_index(drop=True)
-        osm_df = osm_df.reset_index(drop=True)
-
-        # Combine original data with OSM results
-        result_df = pd.concat([input_df, osm_df], axis=1)
-
-        # Convert to GeoDataFrame
-        result_gdf = gp.GeoDataFrame(result_df, geometry="geometry", crs="EPSG:4326")
-
-        if len(result_gdf) == 0:
-            raise RuntimeError(
-                "No valid boundaries found for any of the input place names"
-            )
-
-        return knext.Table.from_pandas(result_gdf)
