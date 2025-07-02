@@ -1810,25 +1810,32 @@ class DataverseSearchNode:
 class SocrataSearchNode:
     """Access open datasets from various well-known data resources and organizations effortlessly using the SODA interface.
 
-    US Centers for Disease Control and Prevention (CDC): CDC data includes information on infectious diseases, chronic conditions, environmental health hazards,
-    injury prevention, maternal and child health, immunization coverage, and much more. These datasets are collected through surveillance systems, population surveys,
+    US Centers for Disease Control and Prevention (CDC): CDC data includes information on infectious diseases,
+    chronic conditions, environmental health hazards, injury prevention, maternal and child health, immunization
+    coverage, and much more. These datasets are collected through surveillance systems, population surveys,
     epidemiological studies, and collaborative research efforts conducted by the CDC and its partners.
 
-    Data.gov: The official open data platform of the United States government, offering datasets from various U.S. government agencies covering fields such as education,
-    healthcare, transportation, and the environment.
+    - Data.gov: The official open data platform of the United States government, offering datasets from various
+    U.S. government agencies covering fields such as education, healthcare, transportation, and the environment.
 
-    Chicago Data Portal: The open data platform provided by the City of Chicago, offering datasets related to the city, including crime data, transportation data, demographic statistics, and more.
+    - Chicago Data Portal: The open data platform provided by the City of Chicago, offering datasets related to the city,
+    including crime data, transportation data, demographic statistics, and more.
 
-    NYC Open Data: The open data platform provided by the City of New York, offering datasets covering urban planning, public transportation, health, and various other aspects of the city.
+    - NYC Open Data: The open data platform provided by the City of New York, offering datasets covering urban planning,
+    public transportation, health, and various other aspects of the city.
 
-    UK Government Data Service: The open data platform provided by the UK government, offering datasets from various governmental bodies covering economics, social issues, the environment, and more.
+    - UK Government Data Service: The open data platform provided by the UK government, offering datasets from various
+    governmental bodies covering economics, social issues, the environment, and more.
 
-    World Bank Data: The open data platform provided by the World Bank, offering a wide range of economic, social, and environmental datasets from around the world for research and analysis of global development trends.
+    - World Bank Data: The open data platform provided by the World Bank, offering a wide range of economic, social,
+    and environmental datasets from around the world for research and analysis of global development trends.
 
-    The Socrata Open Data API (SODA) is a powerful tool designed for programmatically accessing a vast array of open data resources from various organizations around the world, including governments, non-profits,and NGOs.
+    The Socrata Open Data API (SODA) is a powerful tool designed for programmatically accessing a vast array of open
+    data resources from various organizations around the world, including governments, non-profits, and NGOs.
 
     Note: This node only retrieves publicly available datasets, as no authentication is provided.
-    This node uses the [SODA Consumer API](https://dev.socrata.com/consumers/getting-started.html) to get the dataset list.
+    This node uses the [SODA Consumer API](https://dev.socrata.com/consumers/getting-started.html) to get the
+    dataset list.
     """
 
     queryitem = knext.StringParameter(
@@ -1948,26 +1955,39 @@ class SocrataSearchNode:
 class SocrataDataNode:
     """Retrieve the open data category via Socrata API.
 
-    US Centers for Disease Control and Prevention (CDC): CDC data includes information on infectious diseases, chronic conditions, environmental health hazards,
-    injury prevention, maternal and child health, immunization coverage, and much more. These datasets are collected through surveillance systems, population surveys,
+    US Centers for Disease Control and Prevention (CDC): CDC data includes information on infectious diseases,
+    chronic conditions, environmental health hazards, injury prevention, maternal and child health,
+    immunization coverage, and much more. These datasets are collected through surveillance systems, population surveys,
     epidemiological studies, and collaborative research efforts conducted by the CDC and its partners.
 
-    Data.gov: The official open data platform of the United States government, offering datasets from various U.S. government agencies covering fields such as education,
-    healthcare, transportation, and the environment.
+    - Data.gov: The official open data platform of the United States government, offering datasets from various
+    U.S. government agencies covering fields such as education, healthcare, transportation, and the environment.
 
-    Chicago Data Portal: The open data platform provided by the City of Chicago, offering datasets related to the city, including crime data, transportation data, demographic statistics, and more.
+    - Chicago Data Portal: The open data platform provided by the City of Chicago, offering datasets related to the city,
+    including crime data, transportation data, demographic statistics, and more.
 
-    NYC Open Data: The open data platform provided by the City of New York, offering datasets covering urban planning, public transportation, health, and various other aspects of the city.
+    - NYC Open Data: The open data platform provided by the City of New York, offering datasets covering urban planning,
+    public transportation, health, and various other aspects of the city.
 
-    UK Government Data Service: The open data platform provided by the UK government, offering datasets from various governmental bodies covering economics, social issues, the environment, and more.
+    - UK Government Data Service: The open data platform provided by the UK government, offering datasets from various
+    governmental bodies covering economics, social issues, the environment, and more.
 
-    World Bank Data: The open data platform provided by the World Bank, offering a wide range of economic, social, and environmental datasets from around the world for research and analysis of global development trends.
+    - World Bank Data: The open data platform provided by the World Bank, offering a wide range of economic, social,
+    and environmental datasets from around the world for research and analysis of global development trends.
 
-    The Socrata Open Data API (SODA) is a powerful tool designed for programmatically accessing a vast array of open data resources from various organizations around the world, including governments, non-profits,and NGOs..
-    This node uses the [SODA Consumer API](https://dev.socrata.com/consumers/getting-started.html) to get the dataset from a dataset list generated by Socrata Search Node.
+    The Socrata Open Data API (SODA) is a powerful tool designed for programmatically accessing a vast array of
+    open data resources from various organizations around the world, including governments, non-profits,and NGOs.
+    This node uses the [SODA Consumer API](https://dev.socrata.com/consumers/getting-started.html) to get the
+    dataset from a dataset list generated by Socrata Search Node. You can also use the provided
+    [web search](https://www.opendatanetwork.com/) to find datasets and their resource IDs. Once you have found
+    a dataset, you can find the resource ID (Dataset Identifier) and
+    metadata domain (source domain without the http(s)://) on the dataset desciption page that you can reach
+    by clicking on the API button.
 
-    For instance, this dataset [Incidence Rate Of Breast Cancer](https://opendata.utah.gov/Health/Incidence-Rate-Of-Breast-Cancer-Per-100-000-All-St/q22t-rbk9) has a resource_id of "q22t-rbk9"  and a metadata domain of "opendata.utah.gov".
-    They can be found in the link under API,"https://opendata.utah.gov/resource/q22t-rbk9.json".  Both the two items will be used for data retriving.
+    For instance, this dataset [Incidence Rate Of Breast Cancer](https://opendata.utah.gov/Health/Incidence-Rate-Of-Breast-Cancer-Per-100-000-All-St/q22t-rbk9)
+    has a resource_id of "q22t-rbk9"  and a metadata domain of "opendata.utah.gov".
+    They can be found in the link under Actions -> API,"https://opendata.utah.gov/resource/q22t-rbk9.json".
+    Both the two items will be used for data retrival.
     """
 
     metadata_domain = knext.StringParameter(
@@ -1983,7 +2003,7 @@ class SocrataDataNode:
     )
 
     app_token = knext.StringParameter(
-        label="Application Token",
+        label="Application token",
         description="""Optional: Provide an application token to increase API request limits. 
                     You can register for a token at [Application Tokens](https://dev.socrata.com/docs/app-tokens.html)""",
         default_value="",
@@ -1991,7 +2011,7 @@ class SocrataDataNode:
     )
 
     query_filter = knext.StringParameter(
-        label="Query Filter",
+        label="Query filter",
         description="""Provide filtering conditions to narrow down results. Socrata API supports two main filtering mechanisms:
 
         1. Simple Filters: Use column names directly as parameters. Examples:
@@ -2004,7 +2024,7 @@ class SocrataDataNode:
         - $where=state='NY' AND age > 30 (combined conditions)
         - $where=annual_salary between '40000' and '60000' (range query)
 
-        For more information, see [Simple filter](https://dev.socrata.com/docs/filtering.html) and [SoQL Queries](https://dev.socrata.com/docs/queries/)
+        For more information, see [SoQL Queries.](https://dev.socrata.com/docs/queries/)
         """,
         default_value="",
         is_advanced=True,
