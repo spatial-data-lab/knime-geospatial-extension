@@ -1538,3 +1538,255 @@ class NaturalEarthNode:
             raise RuntimeError(
                 f"Failed to download or process Natural Earth data: {str(e)}{url}"
             )
+
+
+############################################
+# Dataverse File Downloader
+############################################
+
+
+def validate_path(path: str) -> None:
+    # no path check
+    pass
+
+
+class ExistingFile(knext.EnumParameterOptions):
+    FAIL = (
+        "Fail",
+        "Will issue an error during the node's execution (to prevent unintentional overwrite).",
+    )
+    OVERWRITE = (
+        "Overwrite",
+        "Will replace any existing file.",
+    )
+
+
+@knext.node(
+    name="Dataverse File Downloader",
+    node_type=knext.NodeType.SOURCE,
+    icon_path=__NODE_ICON_PATH + "dataverse.png",
+    category=__category,
+    after="",
+)
+@knext.output_table(
+    name="Downloader File Path",
+    description="Retrieved  data from Dataverse",
+)
+class DataverseFileDownloaderNode:
+    """Downloads a file from a Dataverse repository.
+
+    This node downloads a file from a Dataverse repository based on the provided File ID.
+    The user must specify: Dataverse server URL (e.g., "https://dataverse.harvard.edu");
+    File ID (a numerical identifier from Dataverse); Save location (local file path to save the downloaded file)
+    The node retrieves the file and stores it at the user-defined folder.
+    """
+
+    server_url = knext.StringParameter(
+        label="Dataverse Server URL",
+        description="Base URL of the Dataverse server (e.g., https://dataverse.harvard.edu).",
+        default_value="https://dataverse.harvard.edu",
+        is_advanced=True,
+    )
+
+    file_id = knext.StringParameter(
+        label="File ID",
+        description="The unique file identifier in Dataverse.",
+        default_value="",
+    )
+
+    save_path = knext.LocalPathParameter(
+        label="Save Path",
+        description="Select the directory to save the downloaded file.",
+        placeholder_text="Select output directory...",
+        validator=validate_path,
+    )
+
+    timeout = knext.IntParameter(
+        label="Request Timeout (seconds)",
+        description="Maximum time to wait for the server response.",
+        default_value=120,
+        min_value=1,
+        is_advanced=True,
+    )
+
+    existing_file = knext.EnumParameter(
+        "If exists:",
+        "Specify the behavior of the node in case the output file already exists.",
+        lambda v: (
+            ExistingFile.OVERWRITE.name
+            if v < knext.Version(1, 2, 0)
+            else ExistingFile.FAIL.name
+        ),
+        enum=ExistingFile,
+    )
+
+    def configure(self, configure_context):
+        return knext.Schema.from_columns([knext.Column(knext.string(), "File Path")])
+
+    def execute(self, exec_context: knext.ExecutionContext):
+        import requests
+        import os
+        import pandas as pd
+
+        base_url = self.server_url.rstrip("/")
+        download_url = f"{base_url}/api/access/datafile/{self.file_id}"
+        self.__check_overwrite(self.save_path)
+        try:
+            save_dir = os.path.dirname(self.save_path)
+            if save_dir:
+                os.makedirs(save_dir, exist_ok=True)
+
+            response = requests.get(download_url, timeout=self.timeout)
+            response.raise_for_status()
+
+            with open(self.save_path, "wb") as file:
+                file.write(response.content)
+
+            output_table = pd.DataFrame({"File Path": [self.save_path]})
+
+            return knext.Table.from_pandas(output_table)
+
+        except Exception as e:
+            raise ValueError(f"Download Error: {str(e)}")
+
+    def __check_overwrite(self, fileurl):
+        if self.existing_file == ExistingFile.FAIL.name:
+            import os.path
+
+            if os.path.exists(fileurl):
+                raise knext.InvalidParametersError(
+                    "File already exists and should not be overwritten."
+                )
+
+
+@knext.node(
+    name="Dataverse Search",
+    node_type=knext.NodeType.SOURCE,
+    icon_path=__NODE_ICON_PATH + "dataverse.png",
+    category=__category,
+    after="",
+)
+@knext.output_table(
+    name="Search Results",
+    description="Retrieved data from Dataverse",
+)
+class DataverseSearchNode:
+    """Search for datasets and files in Dataverse repositories.
+
+    This node allows you to search Dataverse using various parameters.
+
+    Query Syntax Examples:
+    1. Simple keyword search: "climate change"
+       - Searches for items containing these terms anywhere
+
+    2. Field-specific search: "title:climate"
+       - Searches only in the title field
+       - Other fields: author, description, keywords
+
+    3. Boolean operators: "climate AND temperature"
+       - AND: Both terms must be present
+       - OR: Either term must be present
+       - NOT: Exclude items with the term
+
+    4. Combining operators: "climate AND (temperature OR rainfall)"
+       - Use parentheses for complex queries
+
+    Search results are returned as a table with all available metadata from the API.
+    """
+
+    server_url = knext.StringParameter(
+        label="Dataverse Server URL",
+        description="Base URL of the Dataverse server.",
+        default_value="https://dataverse.harvard.edu",
+        is_advanced=True,
+    )
+
+    query = knext.StringParameter(
+        label="Search Query",
+        description="Search keywords. Examples: climate, title:climate, climate AND temperature",
+        default_value="",
+    )
+
+    search_type = knext.StringParameter(
+        label="Search Type",
+        description="Limit the type of objects to search for.",
+        default_value="file",
+        enum=["dataverse", "dataset", "file", "all"],
+        is_advanced=True,
+    )
+
+    max_results = knext.IntParameter(
+        label="Maximum Results",
+        description="Maximum number of results to return",
+        default_value=100,
+        min_value=1,
+        max_value=1000,
+        is_advanced=True,
+    )
+
+    timeout = knext.IntParameter(
+        label="Timeout (seconds)",
+        description="Request timeout in seconds.",
+        default_value=30,
+        min_value=1,
+        is_advanced=True,
+    )
+
+    def configure(self, configure_context):
+        return None
+
+    def execute(self, exec_context: knext.ExecutionContext):
+        import requests
+        import pandas as pd
+
+        if not self.query:
+            raise ValueError("Search query must be provided")
+
+        base_url = self.server_url.rstrip("/")
+        search_url = f"{base_url}/api/search"
+
+        params = {"q": self.query, "per_page": 20}
+        if self.search_type != "all":
+            params["type"] = self.search_type
+
+        all_results = []
+        start = 0
+
+        try:
+            while len(all_results) < self.max_results:
+                params["start"] = start
+
+                query_params = "&".join([f"{k}={v}" for k, v in params.items()])
+                full_url = f"{search_url}?{query_params}"
+
+                response = requests.get(full_url, timeout=self.timeout)
+
+                if response.status_code != 200:
+                    break
+
+                data = response.json()
+                items = data.get("data", {}).get("items", [])
+
+                if not items:
+                    break
+
+                all_results.extend(items)
+
+                start += params["per_page"]
+
+                if len(all_results) >= self.max_results:
+                    break
+
+            all_results = all_results[: self.max_results]
+
+            results_df = pd.DataFrame(all_results)
+
+            if results_df.empty:
+                results_df = pd.DataFrame({"no_results_found": []})
+
+            return knext.Table.from_pandas(results_df)
+
+        except requests.exceptions.RequestException as e:
+            raise ValueError(f"Search error: {str(e)}")
+        except Exception as e:
+            raise ValueError(f"Processing error: {str(e)}")
