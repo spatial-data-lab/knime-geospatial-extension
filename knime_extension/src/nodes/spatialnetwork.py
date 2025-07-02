@@ -1872,34 +1872,29 @@ class _TomTomMatrixBatchSize(knext.EnumParameterOptions):
     icon_path=__NODE_ICON_PATH + "TomTomDistanceMatrix.png",
 )
 @knext.input_table(
-    name="Input table with origins",
-    description="Input table with origin geometry and ID column.",
+    name="Origins Table",
+    description="A table containing origin geometries and a unique ID column.",
 )
 @knext.input_table(
-    name="Input table with destinations",
-    description="Input table with destination geometry and ID column.",
+    name="Destinations Table",
+    description="A table containing destination geometries and a unique ID column.",
 )
 @knext.output_table(
-    name="Output table",
-    description="""Output table with the selected origin and destination ID columns and the corresponding travel costs
-    in minutes and meters.""",
+    name="Distance Matrix Table",
+    description="""A table containing the origin and destination IDs along with the corresponding 
+    travel distances (meters) and durations (minutes).""",
 )
 class TomTomDistanceMatrix:
-    """This node calculates a distance matrix between origins and destinations using the
-    TomTom Matrix Routing API.
+    """Calculates travel distances and durations between origins and destinations using the [TomTom Routing API](https://www.tomtom.com/products/routing-apis/).
 
-    This node calculates a distance matrix between the provided origins and destinations using the
-    [TomTom Matrix Routing API V2](https://developer.tomtom.com/matrix-routing-v2-api/documentation).
-    The matrix is created by pairing each input origin with each input destination and will contain
-    the travel distance and duration for each pair. The distance unit is meters and the duration is
-    returned in minutes.
+    This node uses the [TomTom Matrix Routing v2 API](https://developer.tomtom.com/matrix-routing-v2-api/documentation/product-information/introduction)
+    to computes a distance matrix by pairing each origin with each destination, returning travel distances
+    (in meters) and durations (in minutes) for each pair. If the input geometries are not point-based, their
+    centroids are automatically used.
 
-    If the input geometry is not a point geometry, the centroids will be automatically computed and used.
-
-    Please note that this node requires a
-    [TomTom API key](https://developer.tomtom.com/user/register)
-    that can be acquired for free by registering. For more details about the number of free requests
-    and pricing go to the [TomTom pricing page](https://developer.tomtom.com/matrix-routing-v2-api/documentation/pricing).
+    **Note:** A [TomTom API key](https://developer.tomtom.com/knowledgebase/platform/articles/how-to-get-an-tomtom-api-key/)
+    is required. You can obtain one for free by [registering](https://developer.tomtom.com/user/register) on the
+    TomTom website. Refer to the [TomTom pricing page](https://developer.tomtom.com/pricing) for information about free request limits and costs.
     """
 
     # Origin parameters
@@ -1944,7 +1939,7 @@ class TomTomDistanceMatrix:
 
     # API key parameter
     tomtom_api_key = knext.StringParameter(
-        "TomTom API Key",
+        "TomTom API key",
         """The 
         [TomTom API key](https://developer.tomtom.com/user/register)
         is required to authenticate requests to the 
