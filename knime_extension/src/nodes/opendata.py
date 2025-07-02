@@ -1570,20 +1570,18 @@ class ExistingFile(knext.EnumParameterOptions):
 )
 @knext.output_table(
     name="Downloader File Path",
-    description="Retrieved  data from Dataverse",
+    description="Retrieved data from Dataverse",
 )
 class DataverseFileDownloaderNode:
     """Downloads a file from a Dataverse repository.
 
     This node downloads a file from a Dataverse repository based on the provided File ID.
-
-    The user must specify: Dataverse server URL (e.g., "https://dataverse.harvard.edu");
-    File ID (a numerical identifier from Dataverse); Save location (local file path to save the downloaded file)
-    The node retrieves the file and stores it at the user-defined folder.
+    The default Dataverse reposiotry that is used is [Harvard Dataverse](https://dataverse.harvard.edu/) and can
+    be changed in the advanced settings.
     """
 
     server_url = knext.StringParameter(
-        label="Dataverse Server URL",
+        label="Dataverse server URL",
         description="Base URL of the Dataverse server (e.g., https://dataverse.harvard.edu).",
         default_value="https://dataverse.harvard.edu",
         is_advanced=True,
@@ -1596,14 +1594,14 @@ class DataverseFileDownloaderNode:
     )
 
     save_path = knext.LocalPathParameter(
-        label="Save Path",
+        label="Save path",
         description="Select the directory to save the downloaded file.",
         placeholder_text="Select output directory...",
         validator=validate_path,
     )
 
     timeout = knext.IntParameter(
-        label="Request Timeout (seconds)",
+        label="Request timeout (seconds)",
         description="Maximum time to wait for the server response.",
         default_value=120,
         min_value=1,
@@ -1695,24 +1693,23 @@ class DataverseSearchNode:
        - Use parentheses for complex queries
 
     Search results are returned as a table with all available metadata from the API.
-
     """
 
     server_url = knext.StringParameter(
-        label="Dataverse Server URL",
+        label="Dataverse server URL",
         description="Base URL of the Dataverse server.",
         default_value="https://dataverse.harvard.edu",
         is_advanced=True,
     )
 
     query = knext.StringParameter(
-        label="Search Query",
+        label="Search query",
         description="Search keywords. Examples: climate, title:climate, climate AND temperature",
         default_value="",
     )
 
     search_type = knext.StringParameter(
-        label="Search Type",
+        label="Search type",
         description="Limit the type of objects to search for.",
         default_value="file",
         enum=["dataverse", "dataset", "file", "all"],
@@ -1720,7 +1717,7 @@ class DataverseSearchNode:
     )
 
     max_results = knext.IntParameter(
-        label="Maximum Results",
+        label="Maximum results",
         description="Maximum number of results to return",
         default_value=100,
         min_value=1,
