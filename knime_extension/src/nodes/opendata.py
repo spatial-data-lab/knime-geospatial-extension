@@ -1033,3 +1033,508 @@ class OpenSkyNetworkDataNode:
             crs="EPSG:4326",
         )
         return knext.Table.from_pandas(gdf)
+
+
+############################################
+# NATURAL EARTH Node Dictionary
+############################################
+
+
+# Data dictionaries for file information
+ne_dic = {
+    "all_scale": {
+        "countries": {
+            "file": "admin_0_countries",
+            "display": "Country boundaries",
+            "description": "Countries as polygons with attributes",
+        },
+        "countries_lakes": {
+            "file": "admin_0_countries_lakes",
+            "display": "Country boundaries with lakes",
+            "description": "Countries with major lakes as polygons",
+        },
+        "sovereignty": {
+            "file": "admin_0_sovereignty",
+            "display": "Sovereignty boundaries",
+            "description": "Sovereign states as polygons",
+        },
+        "map_units": {
+            "file": "admin_0_map_units",
+            "display": "Map units boundaries",
+            "description": "Map units as polygons",
+        },
+        "scale_rank": {
+            "file": "admin_0_scale_rank",
+            "display": "Scale rank boundaries",
+            "description": "Scale ranked boundaries as polygons",
+        },
+        "boundary_lines_land": {
+            "file": "admin_0_boundary_lines_land",
+            "display": "Boundary lines land",
+            "description": "Country boundary lines on land",
+        },
+        "states_provinces": {
+            "file": "admin_1_states_provinces",
+            "display": "States and provinces",
+            "description": "States and provinces as polygons",
+        },
+        "states_provinces_lakes": {
+            "file": "admin_1_states_provinces_lakes",
+            "display": "States and provinces with lakes",
+            "description": "States and provinces with lakes as polygons",
+        },
+        "states_provinces_lines": {
+            "file": "admin_1_states_provinces_lines",
+            "display": "States and provinces lines",
+            "description": "State and province boundary lines",
+        },
+        "populated_places": {
+            "file": "populated_places",
+            "display": "Populated places",
+            "description": "Major populated places as points",
+        },
+        "populated_places_simple": {
+            "file": "populated_places_simple",
+            "display": "Populated places (simple)",
+            "description": "Simplified populated places as points",
+        },
+        "coastline": {
+            "file": "coastline",
+            "display": "Coastlines",
+            "description": "Coastlines as lines",
+        },
+        "land": {
+            "file": "land",
+            "display": "Land areas",
+            "description": "Land masses as polygons",
+        },
+        "ocean": {
+            "file": "ocean",
+            "display": "Ocean areas",
+            "description": "Ocean areas as polygons",
+        },
+        "rivers_lake_centerlines": {
+            "file": "rivers_lake_centerlines",
+            "display": "Rivers and lake centerlines",
+            "description": "Major rivers and lake centerlines as lines",
+        },
+        "lakes": {
+            "file": "lakes",
+            "display": "Lakes",
+            "description": "Major lakes as polygons",
+        },
+    },
+    "pov_10m": {
+        "argentina": {
+            "file": "admin_0_countries_arg",
+            "display": "Argentina",
+            "description": "Argentina country boundary and attributes",
+        },
+        "bangladesh": {
+            "file": "admin_0_countries_bdg",
+            "display": "Bangladesh",
+            "description": "Bangladesh country boundary and attributes",
+        },
+        "brazil": {
+            "file": "admin_0_countries_bra",
+            "display": "Brazil",
+            "description": "Brazil country boundary and attributes",
+        },
+        "china": {
+            "file": "admin_0_countries_chn",
+            "display": "China",
+            "description": "China country boundary and attributes",
+        },
+        "egypt": {
+            "file": "admin_0_countries_egy",
+            "display": "Egypt",
+            "description": "Egypt country boundary and attributes",
+        },
+        "france": {
+            "file": "admin_0_countries_fra",
+            "display": "France",
+            "description": "France country boundary and attributes",
+        },
+        "germany": {
+            "file": "admin_0_countries_deu",
+            "display": "Germany",
+            "description": "Germany country boundary and attributes",
+        },
+        "greece": {
+            "file": "admin_0_countries_grc",
+            "display": "Greece",
+            "description": "Greece country boundary and attributes",
+        },
+        "indonesia": {
+            "file": "admin_0_countries_idn",
+            "display": "Indonesias",
+            "description": "Indonesia country boundary and attributes",
+        },
+        "india": {
+            "file": "admin_0_countries_ind",
+            "display": "India",
+            "description": "India country boundary and attributes",
+        },
+        "iso": {
+            "file": "admin_0_countries_iso",
+            "display": "ISO standard",
+            "description": "ISO standard country boundaries and attributes",
+        },
+        "israel": {
+            "file": "admin_0_countries_isr",
+            "display": "Israel",
+            "description": "Israel country boundary and attributes",
+        },
+        "italy": {
+            "file": "admin_0_countries_ita",
+            "display": "Italy",
+            "description": "Italy country boundary and attributes",
+        },
+        "japan": {
+            "file": "admin_0_countries_jpn",
+            "display": "Japan",
+            "description": "Japan country boundary and attributes",
+        },
+        "korea": {
+            "file": "admin_0_countries_kor",
+            "display": "Korea",
+            "description": "Korea country boundary and attributes",
+        },
+        "morocco": {
+            "file": "admin_0_countries_mar",
+            "display": "Morocco",
+            "description": "Morocco country boundary and attributes",
+        },
+        "nepal": {
+            "file": "admin_0_countries_nep",
+            "display": "Nepal",
+            "description": "Nepal country boundary and attributes",
+        },
+        "netherlands": {
+            "file": "admin_0_countries_nld",
+            "display": "Netherlands",
+            "description": "Netherlands country boundary and attributes",
+        },
+        "pakistan": {
+            "file": "admin_0_countries_pak",
+            "display": "Pakistan",
+            "description": "Pakistan country boundary and attributes",
+        },
+        "poland": {
+            "file": "admin_0_countries_pol",
+            "display": "Poland",
+            "description": "Poland country boundary and attributes",
+        },
+        "portugal": {
+            "file": "admin_0_countries_prt",
+            "display": "Portugal",
+            "description": "Portugal country boundary and attributes",
+        },
+        "palestine": {
+            "file": "admin_0_countries_pse",
+            "display": "Palestine",
+            "description": "Palestine country boundary and attributes",
+        },
+        "russia": {
+            "file": "admin_0_countries_rus",
+            "display": "Russia",
+            "description": "Russia country boundary and attributes",
+        },
+        "saudi_arabia": {
+            "file": "admin_0_countries_sau",
+            "display": "Saudi Arabia",
+            "description": "Saudi Arabia country boundary and attributes",
+        },
+        "spain": {
+            "file": "admin_0_countries_esp",
+            "display": "Spain",
+            "description": "Spain country boundary and attributes",
+        },
+        "sweden": {
+            "file": "admin_0_countries_swe",
+            "display": "Sweden",
+            "description": "Sweden country boundary and attributes",
+        },
+        "turkey": {
+            "file": "admin_0_countries_tur",
+            "display": "Turkey boundaries",
+            "description": "Turkey country boundary and attributes",
+        },
+        "united_kingdom": {
+            "file": "admin_0_countries_gbr",
+            "display": "United Kingdom",
+            "description": "United Kingdom country boundary and attributes",
+        },
+        "usa": {
+            "file": "admin_0_countries_usa",
+            "display": "United States",
+            "description": "United States country boundary and attributes",
+        },
+        "ukraine": {
+            "file": "admin_0_countries_ukr",
+            "display": "Ukraine",
+            "description": "Ukraine country boundary and attributes",
+        },
+        "vietnam": {
+            "file": "admin_0_countries_vnm",
+            "display": "Vietnam boundaries",
+            "description": "Vietnam country boundary and attributes",
+        },
+    },
+    "special_10m": {
+        "roads": {
+            "file": "roads",
+            "display": "Global roads",
+            "description": "Major roads and highways as linestrings globally",
+        },
+        "roads_north_america": {
+            "file": "roads_north_america",
+            "display": "North American roads",
+            "description": "Detailed roads as linestrings in North America",
+        },
+        "railroads": {
+            "file": "railroads",
+            "display": "Global railroads",
+            "description": "Major rail networks as linestrings globally",
+        },
+        "railroads_north_america": {
+            "file": "railroads_north_america",
+            "display": "North American railroads",
+            "description": "Detailed rail networks as linestrings in North America",
+        },
+        "airports": {
+            "file": "airports",
+            "display": "Airports",
+            "description": "Major airports as points with attributes",
+        },
+        "ports": {
+            "file": "ports",
+            "display": "Ports",
+            "description": "Major ports as points with attributes",
+        },
+        "urban_areas": {
+            "file": "urban_areas",
+            "display": "Urban areas",
+            "description": "Urban areas as polygons with population data",
+        },
+        "parks_and_protected_lands": {
+            "file": "parks_and_protected_lands",
+            "display": "Parks and protected lands",
+            "description": "Protected areas and parks as polygons",
+        },
+    },
+}
+
+############################################
+# NATURAL EARTH Node
+############################################
+
+# Constants
+BASE_URL = "https://naciscdn.org/naturalearth/"
+
+
+def is_physical_data(file_key):
+    """Determine if the file is physical data based on its key."""
+    physical_files = ["coastline", "land", "ocean", "rivers_lake_centerlines", "lakes"]
+    return file_key in physical_files
+
+
+class _DataCategory(knext.EnumParameterOptions):
+    """Enumeration for Natural Earth data categories."""
+
+    ALL_SCALE = (
+        "All scale",
+        "General scale data available in 1:10m, 1:50m, and 1:110m resolutions",
+    )
+    POV_10M = ("10M-POV", "Point of view (country-specific) data at 1:10m resolution")
+    SPECIAL_10M = ("10M-Special", "Special features data at 1:10m resolution")
+
+    @classmethod
+    def get_default(cls):
+        return cls.ALL_SCALE
+
+
+class _ScaleOptions(knext.EnumParameterOptions):
+    """Enumeration for scale options in All Scale category."""
+
+    SCALE_10M = ("1:10m", "1:10 million scale, most detailed")
+    SCALE_50M = ("1:50m", "1:50 million scale, medium detail")
+    SCALE_110M = ("1:110m", "1:110 million scale, least detailed")
+
+    @classmethod
+    def get_default(cls):
+        return cls.SCALE_10M
+
+
+class _AllScaleFiles(knext.EnumParameterOptions):
+    """Enumeration of all scale file options."""
+
+    exec(
+        "\n".join(
+            [
+                f"{key.upper()} = (ne_dic['all_scale']['{key}']['display'], ne_dic['all_scale']['{key}']['description'])"
+                for key in ne_dic["all_scale"].keys()
+            ]
+        )
+    )
+
+    @classmethod
+    def get_default(cls):
+        return "COUNTRIES"
+
+
+class _POVFiles(knext.EnumParameterOptions):
+    """Enumeration of POV file options."""
+
+    exec(
+        "\n".join(
+            [
+                f"{key.upper()} = (ne_dic['pov_10m']['{key}']['display'], ne_dic['pov_10m']['{key}']['description'])"
+                for key in ne_dic["pov_10m"].keys()
+            ]
+        )
+    )
+
+    @classmethod
+    def get_default(cls):
+        return "ARGENTINA"
+
+
+class _SpecialFiles(knext.EnumParameterOptions):
+    """Enumeration of special file options."""
+
+    exec(
+        "\n".join(
+            [
+                f"{key.upper()} = (ne_dic['special_10m']['{key}']['display'], ne_dic['special_10m']['{key}']['description'])"
+                for key in ne_dic["special_10m"].keys()
+            ]
+        )
+    )
+
+    @classmethod
+    def get_default(cls):
+        return "ROADS"
+
+
+@knext.node(
+    name="Natural Earth Global Data",
+    node_type=knext.NodeType.SOURCE,
+    icon_path=__NODE_ICON_PATH + "NaturalEarth.png",
+    category=__category,
+    after="",
+)
+@knext.output_table(
+    name="Natural Earth Data",
+    description="Contains geospatial vector data retrieved from the Natural Earth dataset.",
+)
+class NaturalEarthNode:
+    """Node for downloading and processing Natural Earth geographic data.
+
+    This node provides direct access to [Natural Earth data,](https://www.naturalearthdata.com/)
+    a public domain dataset offering detailed global geographic information at multiple map scales.
+    It enables users to download and import vector data—such as countries, states, provinces, and other geographic
+    features—directly into their KNIME workflows.
+
+    This is particularly useful for creating choropleth maps, for example, to visualize population data
+    across countries or states.
+
+    All users of Natural Earth are highly encouraged to read about data sources and manipulation in the
+    [Data Creation](https://www.naturalearthdata.com/about/data-creation/) section of the Natural Earth homepage.
+
+    Natural Earth data is hosted by the
+    [North American Cartographic Information Society (NACIS)](https://nacis.org/initiatives/natural-earth/),
+    and is free for use in any type of project (see
+    [Natural Earth Terms of Use](https://www.naturalearthdata.com/about/terms-of-use/) for more details).
+
+    ##Note
+    Made with Natural Earth. Free vector and raster map data @ naturalearthdata.com.
+    """
+
+    category = knext.EnumParameter(
+        "Data category",
+        "Select the category of Natural Earth data to download",
+        default_value=_DataCategory.ALL_SCALE.name,
+        enum=_DataCategory,
+    )
+
+    scale = knext.EnumParameter(
+        "Scale",
+        "Select the scale of the data (only applicable for All Scale category)",
+        default_value=_ScaleOptions.SCALE_10M.name,
+        enum=_ScaleOptions,
+    ).rule(knext.OneOf(category, [_DataCategory.ALL_SCALE.name]), knext.Effect.SHOW)
+
+    all_scale_file = knext.EnumParameter(
+        "All scale file type",
+        "Select the file to download for all scale category",
+        default_value=next(iter(_AllScaleFiles)).name,
+        enum=_AllScaleFiles,
+    ).rule(knext.OneOf(category, [_DataCategory.ALL_SCALE.name]), knext.Effect.SHOW)
+
+    pov_file = knext.EnumParameter(
+        "10M-POV file type",
+        "Select the country-specific file to download",
+        default_value=next(iter(_POVFiles)).name,
+        enum=_POVFiles,
+    ).rule(knext.OneOf(category, [_DataCategory.POV_10M.name]), knext.Effect.SHOW)
+
+    special_file = knext.EnumParameter(
+        "10M-Special file type",
+        "Select the special feature file to download",
+        default_value=next(iter(_SpecialFiles)).name,
+        enum=_SpecialFiles,
+    ).rule(knext.OneOf(category, [_DataCategory.SPECIAL_10M.name]), knext.Effect.SHOW)
+
+    def _build_download_url(self):
+        """Build the download URL for Natural Earth data."""
+        category_map = {
+            _DataCategory.ALL_SCALE.name: ("all_scale", self.all_scale_file),
+            _DataCategory.POV_10M.name: ("pov_10m", self.pov_file),
+            _DataCategory.SPECIAL_10M.name: ("special_10m", self.special_file),
+        }
+
+        category_key, file_param = category_map[self.category]
+        file_key = file_param.lower()
+        file_info = ne_dic[category_key][file_key]
+
+        if self.category == _DataCategory.ALL_SCALE.name:
+            scale_prefix = self.scale.replace("SCALE_", "").lower()
+        else:
+            scale_prefix = "10m"
+
+        subfolder = (
+            "physical/"
+            if (
+                self.category == _DataCategory.ALL_SCALE.name
+                and is_physical_data(file_key)
+            )
+            else "cultural/"
+        )
+
+        # Construct filename and URL
+        filename = f"ne_{scale_prefix}_{file_info['file']}"
+        url = f"{BASE_URL}{scale_prefix}/{subfolder}{filename}.zip"
+
+        return url
+
+    def configure(self, configure_context):
+        """Configure the output table structure."""
+        return None
+
+    def execute(self, exec_context: knext.ExecutionContext):
+        """Execute the node to download and process Natural Earth data."""
+        try:
+            url = self._build_download_url()
+            gdf = gp.read_file(url, encoding="utf-8")
+            exec_context.set_progress(
+                0.5,
+                f"Downloading Natural Earth data from {url}. "
+                + "Progress won't update until file is downloaded. Please wait...",
+            )
+            gdf.reset_index(drop=True, inplace=True)
+            return knext.Table.from_pandas(gdf)
+        except Exception as e:
+            raise RuntimeError(
+                f"Failed to download or process Natural Earth data: {str(e)}{url}"
+            )
