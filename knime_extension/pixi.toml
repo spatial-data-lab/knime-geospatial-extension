@@ -39,6 +39,7 @@ keplergl = "*"
 
 [pypi-dependencies]
 ipinfo = "==5.1.1"
+sodapy = "==2.2.0"
 
 [feature.build.dependencies]
 python = "3.9.*"

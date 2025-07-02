@@ -35,3 +35,4 @@ dependencies:
       - ipinfo==5.1.1
       - pulp==3.2.1
       - keplergl==0.3.7 # install ipykernel
+      - sodapy==2.2.0
