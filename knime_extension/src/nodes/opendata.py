@@ -1188,11 +1188,11 @@ class _DataCategory(knext.EnumParameterOptions):
     """Enumeration for Natural Earth data categories."""
 
     ALL_SCALE = (
-        "All Scale",
-        "General scale data available in 10M, 50M, and 110M resolutions",
+        "All scale",
+        "General scale data available in 1:10m, 1:50m, and 1:110m resolutions",
     )
-    POV_10M = ("10M-POV", "Point of view (country-specific) data at 10M resolution")
-    SPECIAL_10M = ("10M-Special", "Special features data at 10M resolution")
+    POV_10M = ("10M-POV", "Point of view (country-specific) data at 1:10m resolution")
+    SPECIAL_10M = ("10M-Special", "Special features data at 1:10m resolution")
 
     @classmethod
     def get_default(cls):
@@ -1202,9 +1202,9 @@ class _DataCategory(knext.EnumParameterOptions):
 class _ScaleOptions(knext.EnumParameterOptions):
     """Enumeration for scale options in All Scale category."""
 
-    SCALE_10M = ("10M", "1:10 million scale, most detailed")
-    SCALE_50M = ("50M", "1:50 million scale, medium detail")
-    SCALE_110M = ("110M", "1:110 million scale, least detailed")
+    SCALE_10M = ("1:10m", "1:10 million scale, most detailed")
+    SCALE_50M = ("1:50m", "1:50 million scale, medium detail")
+    SCALE_110M = ("1:110m", "1:110 million scale, least detailed")
 
     @classmethod
     def get_default(cls):
@@ -1270,22 +1270,34 @@ class _SpecialFiles(knext.EnumParameterOptions):
     after="",
 )
 @knext.output_table(
-    name="Natural Earth Data", description="Retrieved geodata from Natural Earth Data"
+    name="Natural Earth Data",
+    description="Contains geospatial vector data retrieved from the Natural Earth dataset.",
 )
 class NaturalEarthNode:
     """Node for downloading and processing Natural Earth geographic data.
 
-    The Natural Earth Global Boundary node provides direct access to [Natural Earth](https://www.naturalearthdata.com/) data,
-    a public domain dataset offering comprehensive global geographical data at various scales.
-    This node allows users to easily download and import vector data for countries, states, provinces,
-    and various geographical features directly into their KNIME workflow.
+    This node provides direct access to [Natural Earth data,](https://www.naturalearthdata.com/)
+    a public domain dataset offering detailed global geographic information at multiple map scales.
+    It enables users to download and import vector data—such as countries, states, provinces, and other geographic
+    features—directly into their KNIME workflows.
 
-    Natural Earth data is hosted by the North American Cartographic Information Society (NACIS)
-    and is available through their CDN at [naciscdn.org](https://naciscdn.org/naturalearth/).
+    This is particularly useful for creating choropleth maps, for example, to visualize population data
+    across countries or states.
+
+    All users of Natural Earth are highly encouraged to read about data sources and manipulation in the
+    [Data Creation](https://www.naturalearthdata.com/about/data-creation/) section of the Natural Earth homepage.
+
+    Natural Earth data is hosted by the
+    [North American Cartographic Information Society (NACIS)](https://nacis.org/initiatives/natural-earth/),
+    and is free for use in any type of project (see
+    [Natural Earth Terms of Use](https://www.naturalearthdata.com/about/terms-of-use/) for more details).
+
+    ##Note
+    Made with Natural Earth. Free vector and raster map data @ naturalearthdata.com.
     """
 
     category = knext.EnumParameter(
-        "Data Category",
+        "Data category",
         "Select the category of Natural Earth data to download",
         default_value=_DataCategory.ALL_SCALE.name,
         enum=_DataCategory,
@@ -1299,21 +1311,21 @@ class NaturalEarthNode:
     ).rule(knext.OneOf(category, [_DataCategory.ALL_SCALE.name]), knext.Effect.SHOW)
 
     all_scale_file = knext.EnumParameter(
-        "All Scale File Type",
-        "Select the file to download for All Scale category",
+        "All scale file type",
+        "Select the file to download for all scale category",
         default_value=next(iter(_AllScaleFiles)).name,
         enum=_AllScaleFiles,
     ).rule(knext.OneOf(category, [_DataCategory.ALL_SCALE.name]), knext.Effect.SHOW)
 
     pov_file = knext.EnumParameter(
-        "10M-POV File Type",
+        "10M-POV file type",
         "Select the country-specific file to download",
         default_value=next(iter(_POVFiles)).name,
         enum=_POVFiles,
     ).rule(knext.OneOf(category, [_DataCategory.POV_10M.name]), knext.Effect.SHOW)
 
     special_file = knext.EnumParameter(
-        "10M-Special File Type",
+        "10M-Special file type",
         "Select the special feature file to download",
         default_value=next(iter(_SpecialFiles)).name,
         enum=_SpecialFiles,
@@ -1360,6 +1372,11 @@ class NaturalEarthNode:
         try:
             url = self._build_download_url()
             gdf = gp.read_file(url, encoding="utf-8")
+            exec_context.set_progress(
+                0.5,
+                f"Downloading Natural Earth data from {url}. "
+                + "Progress won't update until file is downloaded. Please wait...",
+            )
             gdf.reset_index(drop=True, inplace=True)
             return knext.Table.from_pandas(gdf)
         except Exception as e:
