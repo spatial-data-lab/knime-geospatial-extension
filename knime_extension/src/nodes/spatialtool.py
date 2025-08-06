@@ -1716,6 +1716,7 @@ class CreateVoronoi:
     description="Output table with classified result.",
 )
 class Mapclassifier:
+
     class ClassModes(knext.EnumParameterOptions):
         BOXPLOT = ( # mapclassify.BoxPlot(y[, hinge])
             "Boxplot",
@@ -1832,7 +1833,14 @@ class Mapclassifier:
         For more details about the zoom levels  refer to 
         [Tables of Cell Statistics Across Resolutions.](https://h3geo.org/docs/core-library/restable/)
         """,
-        column_filter=knut.is_numeric,
+        column_filter = knut.is_numeric,
+    )
+
+    append_replace = knext.BoolParameter(
+        "Append Classification Results",
+        """If checked, the node will append the classification result to the input table.
+        If unchecked, the node will replace the input table with the classification result.""",
+        default_value = False
     )
 
     n_cluster = knext.IntParameter(
@@ -1844,15 +1852,15 @@ class Mapclassifier:
         For more details about the zoom levels  refer to 
         [Tables of Cell Statistics Across Resolutions.](https://h3geo.org/docs/core-library/restable/)
         """,
-        default_value=5,
-        min_value=2,
+        default_value = 5,
+        min_value = 2,
     )
 
     classifier_param = knext.EnumParameter(
-        label="Classifier Selection",
-        description="Select the type of coffee you like to drink.",
-        default_value=ClassModes.get_default().name,
-        enum=ClassModes,
+        label = "Classifier Selection",
+        description = "Select the type of coffee you like to drink.",
+        default_value = ClassModes.get_default().name,
+        enum = ClassModes
     )
 
     def configure(self, configure_context, input_schema):
@@ -1861,77 +1869,113 @@ class Mapclassifier:
     def execute(self, exec_context: knext.ExecutionContext, input_table):
         import mapclassify as mc
 
-        k=self.n_cluster
+        ar = self.append_replace
+        k = self.n_cluster
         gdf = input_table.to_pandas()
-        gdf1 = gdf.copy()
 
     # equal interval
-        if self.classifier_param == "EqualInterval":
-            y = gdf[self.class_col]
-            grid = mc.EqualInterval(y, k)
-            gdf1["class"] = grid.yb.tolist()
+        if self.classifier_param == self.ClassModes.EQUALINTERVAL.name:
+            for col in self.class_col:
+                grid = mc.EqualInterval(gdf[col], k)
+                if (ar):
+                    gdf[f'{col}_class'] = grid.yb.tolist()
+                else:
+                    gdf[col] = grid.yb.tolist()
+
     # fisher jenks
-        if self.classifier_param == "FisherJenks":
-            y = gdf[self.class_col]
-            grid = mc.FisherJenks(y, k)
-            gdf1['class'] = grid.yb.tolist()
-    # fisher jenks sampled  
-        elif self.classifier_param=="FisherJenksSampled":
-            y = gdf[self.class_col]
-            grid = mc.FisherJenksSampled(y, k)
+        elif self.classifier_param == self.ClassModes.FISHERJ.name:
+            for col in self.class_col:
+                grid = mc.FisherJenkins(gdf[col], k)
+                if (ar):
+                    gdf[f'{col}_class'] = grid.yb.tolist()
+                else:
+                    gdf[col] = grid.yb.tolist()
+            
+    # jenks caspall
+        elif self.classifier_param == self.ClassModes.JENKS_CAS.name:
+            for col in self.class_col:
+                grid = mc.JenksCaspall(gdf[col], k)
+                if (ar):
+                    gdf[f'{col}_class'] = grid.yb.tolist()
+                else:
+                    gdf[col] = grid.yb.tolist()
+            
+    # jenks caspall forced
+        elif self.classifier_param == self.ClassModes.JENKS_CASFORCED.name:
+            for col in self.class_col:
+                grid = mc.JenksCaspallForced(gdf[col], k)
+                if (ar):
+                    gdf[f'{col}_class'] = grid.yb.tolist()
+                else:
+                    gdf[col] = grid.yb.tolist()
+        
+    # pretty breaks
+        elif self.classifier_param == self.ClassModes.PRETTYBREAKS.name:
+            for col in self.class_col:
+                grid = mc.PrettyBreaks(gdf[col], k)
+                if (ar):
+                    gdf[f'{col}_class'] = grid.yb.tolist()
+                else:
+                    gdf[col] = grid.yb.tolist()
+    
+    # quantiles
+        elif self.classifier_param == self.ClassModes.QUANTILES.name:
+            for col in self.class_col:
+                grid = mc.Quanitles(gdf[col], k)
+                if (ar):
+                    gdf[f'{col}_class'] = grid.yb.tolist()
+                else:
+                    gdf[col] = grid.yb.tolist()
     # boxplot
-        elif self.classifier_param == "Boxplot":
+        elif self.classifier_param == self.ClassModes.BOXPLOT.name:
             y = gdf[self.class_col]
             grid = mc.BoxPlot(y, hinge)
-            gdf1["class"] = grid.yb.tolist()
+            gdf["class"] = grid.yb.tolist()
+
+# fisher jenks sampled  
+        elif self.classifier_param == self.ClassModes.FISHERJ_SAMPLED.name:
+            y = gdf[self.class_col]
+            grid = mc.FisherJenksSampled(y, k)
+
     # greedy
-        elif self.classifier_param=="Greedy":
+        elif self.classifier_param == self.ClassModes.GREEDY.name:
             y = gdf[self.class_col]
             grid = mc.greedy(y, k)
+
     # head tail breaks
-        elif self.classifier_param=="HeadTailBreaks":
+        elif self.classifier_param == self.ClassModes.HEADT_BREAKS.name:
             y = gdf[self.class_col]
             grid = mc.HeadTailBreaks(y, k)
-    # jenks caspall
-        elif self.classifier_param=="JenksCaspall":
-            y = gdf[self.class_col]
-            grid = mc.JenksCaspall(y, k)
-            gdf1["class"] = grid.yb.tolist()
-    # jenks caspall forced
-        elif self.classifier_param=="JenksCaspallForced":
-            y = gdf[self.class_col]
-            grid = mc.JenksCaspallForced(y, k)
+
     # jenks caspall sampled
-        elif self.classifier_param=="JenksCaspallSampled":
+        elif self.classifier_param == self.ClassModes.JENKS_CASSAMPLED.name:
             y = gdf[self.class_col]
             grid = mc.JenksCaspallSampled(y, k)
+
     # maxp
-        elif self.classifier_param=="MaxP":
+        elif self.classifier_param == self.ClassModes.MAXP.name:
             y = gdf[self.class_col]
             grid = mc.MaxP(y, k)
+
     # maximum breaks
-        elif self.classifier_param=="MaximumBreaks":
+        elif self.classifier_param == self.ClassModes.MAXIMUMBREAKS.name:
             y = gdf[self.class_col]
-            grid = mc.FisherJenks(y, k)
+            grid = mc.NaturalBreaks(y, k)
+
     # percentiles
-        elif self.classifier_param=="Percentiles":
+        elif self.classifier_param == self.ClassModes.PERCENTILES.name:
             y = gdf[self.class_col]
-            grid = mc.FisherJenks(y, k)
-    # pretty breaks
-        elif self.classifier_param=="PrettyBreaks":
-            y = gdf[self.class_col]
-            grid = mc.FisherJenks(y, k)
-    # quantiles
-        elif self.classifier_param=="Quantiles":
-            y = gdf[self.class_col]
-            grid = mc.FisherJenks(y, k)
+            grid = mc.Percentiles(y, k)
+
     # std mean
-        elif self.classifier_param=="StdMean":
+        elif self.classifier_param == self.ClassModes.STDMEAN.name:
             y = gdf[self.class_col]
-            grid = mc.FisherJenks(y, k)
+            grid = mc.StdMean(y, k)
+
     # user defined
         else:
             y = gdf[self.class_col]
-            grid = mc.FisherJenks(y, k)
+            grid = mc.UserDefined(y, 3)
+            gdf['class'] = grid.yb.tolist()
 
-        return knut.to_table(gdf1, exec_context)
+        return knut.to_table(gdf, exec_context)
