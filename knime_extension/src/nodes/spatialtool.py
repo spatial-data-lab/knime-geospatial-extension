@@ -1824,6 +1824,7 @@ class Mapclassifier:
         def get_default(cls):
             return cls.FISHERJ 
 
+    # classifier selection parameter
     class_col = knext.MultiColumnParameter(
         "Targeted columns",
         """The zoom level of the grid from 0 to 15 (default value is 8). The bigger the zoom level, the smaller the 
@@ -1833,19 +1834,21 @@ class Mapclassifier:
         For more details about the zoom levels  refer to 
         [Tables of Cell Statistics Across Resolutions.](https://h3geo.org/docs/core-library/restable/)
         """,
-        column_filter = knut.is_numeric,
+        column_filter = knut.is_numeric
     )
 
-    append_replace = knext.BoolParameter(
-        "Append Classification Results",
-        """If checked, the node will append the classification result to the input table.
-        If unchecked, the node will replace the input table with the classification result.""",
-        default_value = False
+    # classifier_param for selecting the classification method
+    classifier_param = knext.EnumParameter(
+        label = "Classifier Selection",
+        description = "Select the classifier that you want to apply to the targeted columns.",
+        default_value = ClassModes.get_default().name,
+        enum = ClassModes
     )
 
-    n_cluster = knext.IntParameter(
-        "Number of classification",
-        """The zoom level of the grid from 0 to 15 (default value is 8). The bigger the zoom level, the smaller the 
+    # k_param for all classifiers
+    k_param = knext.IntParameter(
+        label = "Number of classification",
+        description = """The zoom level of the grid from 0 to 15 (default value is 8). The bigger the zoom level, the smaller the 
         hexagon. If the zoom level is too small, the hexagon might be too big to fit in the input polygon which will
         result in an error. A very small zoom level might result in a very large output table even for smaller 
         input polygons. 
@@ -1854,13 +1857,35 @@ class Mapclassifier:
         """,
         default_value = 5,
         min_value = 2,
-    )
+    ).rule(knext.OneOf(classifier_param, [ClassModes.FISHERJ.name]), knext.Effect.HIDE)
 
-    classifier_param = knext.EnumParameter(
-        label = "Classifier Selection",
-        description = "Select the type of coffee you like to drink.",
-        default_value = ClassModes.get_default().name,
-        enum = ClassModes
+    # pct_param for JenksCaspallSampled
+    pct_param = knext.DoubleParameter(
+        label = "Natural Breaks Percentage for FisherJenks Sampled",
+        description = """The percentage of the data to be randomly sampled to determine the natural breaks.""",
+        default_value = 0.10
+    ).rule(knext.OneOf(classifier_param, [ClassModes.JENKS_CASFORCED.name]), knext.Effect.SHOW)
+
+    # hinge_param for Boxplot
+    hinge_param = knext.DoubleParameter(
+        label = "Hinge prompt for Boxplot",
+        description = """The hinge value is used to determine the lower and upper quartiles of the data.""",
+        default_value = 1.5
+    ).rule(knext.OneOf(classifier_param, [ClassModes.BOXPLOT.name]), knext.Effect.SHOW)
+
+    # determines if the output is to truncate the classification result to the number of classes specified by the k parameter
+    jc_sampledtruncate = knext.BoolParameter(
+        "Truncate for JenksCaspall Sampled",
+        """If checked, the node will truncate the classification result to the number of classes specified by the k parameter.""",
+        default_value = False
+    ).rule(knext.OneOf(classifier_param, [ClassModes.JENKS_CASSAMPLED.name]), knext.Effect.SHOW)
+
+    # determines if the output is to replace the original columns or append them
+    append_replace = knext.BoolParameter(
+        "Append Classification Results",
+        """If checked, the node will append the classification result to the input table.
+        If unchecked, the node will replace the input table with the classification result.""",
+        default_value = False
     )
 
     def configure(self, configure_context, input_schema):
@@ -1869,15 +1894,13 @@ class Mapclassifier:
     def execute(self, exec_context: knext.ExecutionContext, input_table):
         import mapclassify as mc
 
-        ar = self.append_replace
-        k = self.n_cluster
         gdf = input_table.to_pandas()
 
     # equal interval
         if self.classifier_param == self.ClassModes.EQUALINTERVAL.name:
             for col in self.class_col:
-                grid = mc.EqualInterval(gdf[col], k)
-                if (ar):
+                grid = mc.EqualInterval(gdf[col], self.k_param)
+                if (self.append_replace):
                     gdf[f'{col}_class'] = grid.yb.tolist()
                 else:
                     gdf[col] = grid.yb.tolist()
@@ -1885,8 +1908,8 @@ class Mapclassifier:
     # fisher jenks
         elif self.classifier_param == self.ClassModes.FISHERJ.name:
             for col in self.class_col:
-                grid = mc.FisherJenkins(gdf[col], k)
-                if (ar):
+                grid = mc.FisherJenkins(gdf[col], self.k_param)
+                if (self.append_replace):
                     gdf[f'{col}_class'] = grid.yb.tolist()
                 else:
                     gdf[col] = grid.yb.tolist()
@@ -1894,8 +1917,8 @@ class Mapclassifier:
     # jenks caspall
         elif self.classifier_param == self.ClassModes.JENKS_CAS.name:
             for col in self.class_col:
-                grid = mc.JenksCaspall(gdf[col], k)
-                if (ar):
+                grid = mc.JenksCaspall(gdf[col], self.k_param)
+                if (self.append_replace):
                     gdf[f'{col}_class'] = grid.yb.tolist()
                 else:
                     gdf[col] = grid.yb.tolist()
@@ -1903,8 +1926,8 @@ class Mapclassifier:
     # jenks caspall forced
         elif self.classifier_param == self.ClassModes.JENKS_CASFORCED.name:
             for col in self.class_col:
-                grid = mc.JenksCaspallForced(gdf[col], k)
-                if (ar):
+                grid = mc.JenksCaspallForced(gdf[col], self.k_param)
+                if (self.append_replace):
                     gdf[f'{col}_class'] = grid.yb.tolist()
                 else:
                     gdf[col] = grid.yb.tolist()
@@ -1912,8 +1935,8 @@ class Mapclassifier:
     # pretty breaks
         elif self.classifier_param == self.ClassModes.PRETTYBREAKS.name:
             for col in self.class_col:
-                grid = mc.PrettyBreaks(gdf[col], k)
-                if (ar):
+                grid = mc.PrettyBreaks(gdf[col], self.k_param)
+                if (self.append_replace):
                     gdf[f'{col}_class'] = grid.yb.tolist()
                 else:
                     gdf[col] = grid.yb.tolist()
@@ -1921,18 +1944,23 @@ class Mapclassifier:
     # quantiles
         elif self.classifier_param == self.ClassModes.QUANTILES.name:
             for col in self.class_col:
-                grid = mc.Quanitles(gdf[col], k)
-                if (ar):
+                grid = mc.Quanitles(gdf[col], self.k_param)
+                if (self.append_replace):
                     gdf[f'{col}_class'] = grid.yb.tolist()
                 else:
                     gdf[col] = grid.yb.tolist()
+
     # boxplot
         elif self.classifier_param == self.ClassModes.BOXPLOT.name:
             y = gdf[self.class_col]
-            grid = mc.BoxPlot(y, hinge)
-            gdf["class"] = grid.yb.tolist()
+            for col in self.class_col:
+                grid = mc.BoxPlot(y, self.hinge_param)
+                if (self.append_replace):
+                    gdf[f'{col}_class'] = grid.yb.tolist()
+                else:
+                    gdf[col] = grid.yb.tolist()
 
-# fisher jenks sampled  
+    # fisher jenks sampled  
         elif self.classifier_param == self.ClassModes.FISHERJ_SAMPLED.name:
             y = gdf[self.class_col]
             grid = mc.FisherJenksSampled(y, k)
@@ -1950,7 +1978,12 @@ class Mapclassifier:
     # jenks caspall sampled
         elif self.classifier_param == self.ClassModes.JENKS_CASSAMPLED.name:
             y = gdf[self.class_col]
-            grid = mc.JenksCaspallSampled(y, k)
+            for col in self.class_col:
+                grid = mc.JenksCaspallSampled(y, k, self.pct_param, self.jc_sampledtruncate)
+                if (ar):
+                    gdf[f'{col}_class'] = grid.yb.tolist()
+                else:
+                    gdf[col] = grid.yb.tolist()
 
     # maxp
         elif self.classifier_param == self.ClassModes.MAXP.name:
