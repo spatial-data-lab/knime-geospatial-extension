@@ -1141,8 +1141,12 @@ class ViewNodeStatic:
     after="",
 )
 @knext.input_table(
-    name="Geospatial Table to Visualize",
-    description="Table with geospatial data to visualize",
+    name="Geospatial Table",
+    description="Primary table with geospatial data to visualize",
+)
+@knext.input_table_group(
+    name="Additional Geospatial Tables",
+    description="Additional tables with geospatial data to visualize",
 )
 @knext.output_view(
     name="Geospatial View",
@@ -1150,7 +1154,7 @@ class ViewNodeStatic:
     static_resources="libs/kepler/2.5.5",
 )
 class ViewNodeKepler:
-    """Visualizes given geometric elements on a map.
+    """Visualizes given geometric elements on a map with support for multiple datasets.
 
     This node will visualize the given geometric elements on a map using the [kepler.gl](https://kepler.gl/)
     visualization framework. This view is highly interactive and allows you to change various aspects of the view
@@ -1159,6 +1163,12 @@ class ViewNodeKepler:
     creates an animation for a given time series column. For more information about the supported interactions
     see the [kepler.gl user guides](https://docs.kepler.gl/docs/user-guides).
 
+    This node requires at least one primary input table and supports additional tables through a dynamic input group.
+    The primary table must contain a geometry column, while additional tables can contain geometry columns or
+    other spatial data formats (like H3 indices, x/y coordinates, etc.) that can be configured within Kepler.gl.
+    Each input table will be added as a separate layer in kepler.gl, making it easy to compare and analyze
+    different geospatial datasets simultaneously.
+
     This node uses the [Mapbox GL JS API](https://www.mapbox.com/pricing#map-loads-for-web) which for commercial
     usage might require an [access token](https://docs.mapbox.com/help/glossary/access-token/).
     If you want to use a different base map, you can configure it inside the interactive
@@ -1166,15 +1176,14 @@ class ViewNodeKepler:
     [Mapbox style](https://docs.kepler.gl/docs/user-guides/f-map-styles#custom-map-styles) you want to use and
     the access token.
 
-
-    By default, it takes all column information that is included inside the input table.
+    By default, it takes all column information that is included inside the input tables.
     If you want to limit the amount of information sent to the node view you can use one of the
-    [column filter](https://kni.me/n/DOkyMaii62U05xZ1) nodes to filter the input table.
+    [column filter](https://kni.me/n/DOkyMaii62U05xZ1) nodes to filter the input tables.
     """
 
     geo_col = knext.ColumnParameter(
         "Geometry column",
-        "Select the geometry column to visualize.",
+        "Select the primary geometry column to visualize. ",
         column_filter=knut.is_geo,
         include_row_key=False,
         include_none_column=False,
@@ -1182,68 +1191,49 @@ class ViewNodeKepler:
 
     attribute_cols = knext.ColumnFilterParameter(
         "Attribute columns",
-        "Select the attribute columns to visualize.",
+        "Select the primary attribute columns to visualize.",
         column_filter=knut.negate(knut.is_geo),  # Filter out all geo columns
         since_version="1.2.0",
     )
 
-    def configure(self, configure_context, input_schema):
+    def configure(self, configure_context, primary_schema, additional_schemas=None):
+        # Require at least one input table
+        if primary_schema is None:
+            raise ValueError(
+                "At least one input table is required for Kepler.gl visualization."
+            )
+
+        # Use the primary table's schema to set the default geometry column
         self.geo_col = knut.column_exists_or_preset(
-            configure_context, self.geo_col, input_schema, knut.is_geo
+            configure_context, self.geo_col, primary_schema, knut.is_geo
         )
         return None
 
-    def execute(self, exec_context: knext.ExecutionContext, input_table):
-        # include only selected attribute columns that are not geospatial and the selected geospatial column
-        attribute_columns = self.attribute_cols.apply(input_table.schema)
-
-        # this code is only necessary since the apply function ignores the column_filter parameter and would return
-        # all geo columns if the "Any unknown columns" option is added to the include list
-        included_column_names = list()
-        for c in attribute_columns:
-            if not knut.is_geo(c):
-                included_column_names.append(c.name)
-        included_column_names.append(self.geo_col)
-
-        df = input_table[included_column_names].to_pandas()
-
-        df.rename(columns={self.geo_col: "geometry"}, inplace=True)
-        gdf = gp.GeoDataFrame(df, geometry="geometry")
-
-        # convert all none string_numeric and geometry columns to string
-        schema = input_table.schema
-        for c in schema:
-            if not knut.is_numeric_or_string(c) and not knut.is_geo(c):
-                gdf[c.name] = gdf[c.name].apply(str)
-
+    def execute(
+        self,
+        exec_context: knext.ExecutionContext,
+        primary_table,
+        additional_tables=None,
+    ):
         from keplergl import KeplerGl
+        import geopandas as gp
 
         map_1 = KeplerGl(show_docs=False)
-        map_1.add_data(data=gdf.copy(), name="state")
-        # config = {}
 
-        # import json
-        # if self.save_config:
-        #     # Save map_1 config to a file
-        #     # config_str = json.dumps(map_1.config)
-        #     # if type(config) == str:
-        #     #     config = config.encode("utf-8")
-        #     with open("kepler_config.json", "w") as f:
-        #         f.write(json.dumps(map_1.config))
+        # Process primary input table (required)
+        if primary_table is not None:
+            self._process_table(map_1, primary_table, "Primary GeoTable")
 
-        # if self.load_config:
-        #     with open("kepler_config.json", "r") as f:
-        #         config = json.loads(f.read())
-        # map_1.config = config
+        # Process additional input tables (optional)
+        if additional_tables is not None:
+            for i, table in enumerate(additional_tables):
+                if table is not None:
+                    dataset_name = f"Additional GeoTable{i+1}"
+                    self._process_additional_table(map_1, table, dataset_name)
 
         html = map_1._repr_html_(center_map=True)
         html = html.decode("utf-8")
 
-        # # replace css and JavaScript paths
-        # html = replace_external_js_css_paths(
-        #     r'\1./libs/kepler/2.5.5/\3"\4',
-        #     html,
-        # )
         replacements = {
             "https://d1a3f4spazzrp4.cloudfront.net/kepler.gl/uber-fonts/4.0.0/superfine.css": "./libs/kepler/2.5.5/superfine.css",
             "https://api.tiles.mapbox.com/mapbox-gl-js/v1.1.1/mapbox-gl.css": "./libs/kepler/2.5.5/mapbox-gl.css",
@@ -1283,6 +1273,81 @@ class ViewNodeKepler:
         )
 
         return knext.view_html(html)
+
+    def _process_table(self, map_1, input_table, dataset_name):
+        """Add single table to kepler.gl Map"""
+        import geopandas as gp
+
+        # include only selected attribute columns that are not geospatial and the selected geospatial column
+        attribute_columns = self.attribute_cols.apply(input_table.schema)
+
+        # this code is only necessary since the apply function ignores the column_filter parameter and would return
+        # all geo columns if the "Any unknown columns" option is added to the include list
+        included_column_names = list()
+        for c in attribute_columns:
+            if not knut.is_geo(c):
+                included_column_names.append(c.name)
+        included_column_names.append(self.geo_col)
+
+        df = input_table[included_column_names].to_pandas()
+
+        df.rename(columns={self.geo_col: "geometry"}, inplace=True)
+        gdf = gp.GeoDataFrame(df, geometry="geometry")
+
+        # convert all none string_numeric and geometry columns to string
+        schema = input_table.schema
+        for c in schema:
+            if not knut.is_numeric_or_string(c) and not knut.is_geo(c):
+                gdf[c.name] = gdf[c.name].apply(str)
+
+        # Add dataset to the map with the specified name
+        map_1.add_data(data=gdf.copy(), name=dataset_name)
+
+    def _process_additional_table(self, map_1, input_table, dataset_name):
+        """Process additional input tables with flexible data format support"""
+        import geopandas as gp
+
+        # Check if there is a geometry column
+        geometry_col = None
+        for col in input_table.schema:
+            if knut.is_geo(col):
+                geometry_col = col.name
+                break
+
+        if geometry_col:
+            # If geometry column exists, use standard processing
+            # include only selected attribute columns that are not geospatial and the selected geospatial column
+            attribute_columns = self.attribute_cols.apply(input_table.schema)
+
+            included_column_names = list()
+            for c in attribute_columns:
+                if not knut.is_geo(c):
+                    included_column_names.append(c.name)
+            included_column_names.append(geometry_col)
+
+            df = input_table[included_column_names].to_pandas()
+            df.rename(columns={geometry_col: "geometry"}, inplace=True)
+            gdf = gp.GeoDataFrame(df, geometry="geometry")
+
+            # convert all none string_numeric and geometry columns to string
+            schema = input_table.schema
+            for c in schema:
+                if not knut.is_numeric_or_string(c) and not knut.is_geo(c):
+                    gdf[c.name] = gdf[c.name].apply(str)
+
+            map_1.add_data(data=gdf.copy(), name=dataset_name)
+        else:
+            # If no geometry column, pass raw data to Kepler.gl
+            # Let users choose location columns (like H3, x, y, etc.) in the Kepler.gl interface
+            df = input_table.to_pandas()
+
+            # convert all none string_numeric columns to string
+            schema = input_table.schema
+            for c in schema:
+                if not knut.is_numeric_or_string(c):
+                    df[c.name] = df[c.name].apply(str)
+
+            map_1.add_data(data=df, name=dataset_name)
 
 
 ############################################

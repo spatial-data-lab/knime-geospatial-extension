@@ -4,6 +4,7 @@ channels = ["knime/label/nightly", "knime", "conda-forge"]
 platforms = ["win-64", "linux-64", "osx-64", "osx-arm64"]
 
 [tasks]
+post-install = "pip install keplergl==0.3.7"
 
 [dependencies]
 packaging = "*"
@@ -35,7 +36,6 @@ pip = "25.1.1.*"
 pygeoda = "0.1.2.*"
 pointpats = "2.5.1.*"
 pulp = "2.8.0.*"
-keplergl = "*"
 
 [pypi-dependencies]
 ipinfo = "==5.1.1"
@@ -50,3 +50,5 @@ build = { args = [{ "arg" = "dest", "default" = "./local-update-site" }], cmd = 
 
 [environments]
 build = {features = ["build"], no-default-feature = true}
+
+# pixi run pip install keplergl==0.3.7 
