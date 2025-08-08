@@ -6,6 +6,11 @@ platforms = ["win-64", "linux-64", "osx-64", "osx-arm64"]
 [tasks]
 format = { cmd = "ruff format ." }
 
+[pypi-options]
+# keplergl 0.3.7's declared build deps (pyarrow~=16, notebook~=6, jupyterlab~=4) are
+# over-specified and unbuildable on py3.13; its setup.py only needs jupyter_packaging.
+no-build-isolation = ["keplergl"]
+
 [dependencies]
 python = "*"
 # The knime-* packages are the AP-side API binding, not ordinary libraries: they must
@@ -27,7 +32,8 @@ geopandas = ">=1.1.1"
 geopy = ">=2.4.1"
 h3-py = ">=4.2.2"
 jmespath = ">=1.0.1"
-keplergl = "*"
+# keplergl comes from PyPI, not conda: conda-forge is capped at 0.3.2 and the kepler.gl 3.x
+# bundle this view targets only ships in 0.3.7. See [pypi-dependencies].
 libpysal = "*"
 mgwr = ">=2.2.1"
 osmnx = ">=2.0.3"
@@ -51,6 +57,17 @@ sympy = ">=1.13"
 [pypi-dependencies]
 ipinfo = ">=5.6"
 sodapy = ">=2.2"
+# keplergl 0.3.7 (kepler.gl 3.x). conda-forge only has 0.3.2, so this must come from PyPI.
+# It is an sdist but ships the prebuilt static assets (static/keplergl.html, index.js,
+# main.js) and jstargets exist, so setup.py's skip_if_exists short-circuits the yarn build
+# and it installs with plain setuptools. Built with no-build-isolation (see [pypi-options]):
+# its build-system.requires pins pyarrow~=16.0.0, which has no cp313 wheel and cannot build
+# from source under setuptools 82. NOTE: 0.3.7 still does `from pkg_resources import
+# resource_string`, so the pkg_resources shim in visualize.py is still required.
+keplergl = "==0.3.7"
+# New hard runtime imports in keplergl 0.3.7 (keplergl.py top level); 0.3.2 had neither.
+geoarrow-pyarrow = ">=0.1.2"
+geoarrow-pandas = ">=0.1.1"
 # pulp from PyPI, not conda: conda-forge is capped at 2.8.0 (pulled transitively via
 # spopt), whose CBC invocation fails to execute in the bundled KNIME env on Windows.
 # The PyPI wheel is py3-none-any and bundles CBC for all platforms, so bundling accepts
