@@ -36,6 +36,7 @@ pygeoda = "0.1.2.*"
 pointpats = "2.5.1.*"
 pulp = "2.8.0.*"
 keplergl = "*"
+contextily = "1.6.2"
 
 [pypi-dependencies]
 ipinfo = "==5.1.1"

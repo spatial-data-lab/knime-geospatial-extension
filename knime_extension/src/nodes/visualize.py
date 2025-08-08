@@ -357,6 +357,30 @@ class BaseMapSettings:
     )
 
 
+@knext.parameter_group(label="Base Map (contextily)")
+class StaticBaseMapCxSettings:
+    """Contextily-only base map setting for the static matplotlib view."""
+
+    base_map = knext.StringParameter(
+        "Base map",
+        "Select a contextily base map to render as background. Set to 'Don't show base map' to disable.",
+        default_value="Don't show base map",
+        enum=[
+            "Don't show base map",
+            "OpenStreetMap",
+            "CartoDB Positron",
+            "CartoDB DarkMatter",
+            "Esri WorldImagery",
+            "Esri WorldStreetMap",
+            "Esri WorldTopoMap",
+            "Esri WorldTerrain",
+            "Esri WorldGrayCanvas",
+            "Stamen Watercolor",
+        ],
+        since_version="2.0.0",
+    )
+
+
 @knext.node(
     name="Geospatial View",
     node_type=knext.NodeType.VISUALIZER,
@@ -988,6 +1012,9 @@ class ViewNodeStatic:
 
     legend_settings = StaticLegendSettings()
 
+    # Contextily-only basemap settings for static view (advanced, default off)
+    basemap_cx_settings = StaticBaseMapCxSettings()
+
     def configure(self, configure_context, input_schema):
         self.geo_col = knut.column_exists_or_preset(
             configure_context, self.geo_col, input_schema, knut.is_geo
@@ -1117,17 +1144,40 @@ class ViewNodeStatic:
         map.set_title(self.figure_title, fontsize=self.figure_title_size)
         if self.set_axis_off:
             map.set_axis_off()
-        # knut.check_canceled(exec_context)
-        # cx.add_basemap(map, crs=gdf.crs.to_string(), source=cx.providers.flatten()[self.base_map])
+
+        # Add contextily basemap if selected (contextily-only options)
+        if self.basemap_cx_settings.base_map != "Don't show base map":
+            import contextily as cx
+
+            label = self.basemap_cx_settings.base_map
+            if label == "OpenStreetMap":
+                source = cx.providers.OpenStreetMap.Mapnik
+            elif label == "CartoDB Positron":
+                source = cx.providers.CartoDB.Positron
+            elif label == "CartoDB DarkMatter":
+                source = cx.providers.CartoDB.DarkMatter
+            elif label == "Esri WorldImagery":
+                source = cx.providers.Esri.WorldImagery
+            elif label == "Esri WorldStreetMap":
+                source = cx.providers.Esri.WorldStreetMap
+            elif label == "Esri WorldTopoMap":
+                source = cx.providers.Esri.WorldTopoMap
+            elif label == "Esri WorldTerrain":
+                source = cx.providers.Esri.WorldTerrain
+            elif label == "Esri WorldGrayCanvas":
+                source = cx.providers.Esri.WorldGrayCanvas
+            elif label == "Stamen Watercolor":
+                source = cx.providers.Stamen.Watercolor
+            else:
+                source = cx.providers.OpenStreetMap.Mapnik
+
+            if gdf.crs is not None:
+                cx.add_basemap(map, source=source, crs=gdf.crs.to_string())
 
         # create the output image
-        import io
-
-        fig = map.get_figure()
-        out_image_buffer = io.BytesIO()
-        fig.savefig(out_image_buffer, format=self.image_type.lower())
-
-        return (out_image_buffer.getvalue(), knext.view_matplotlib(fig))
+        view = knext.view_matplotlib(map.get_figure(), self.image_type.lower())
+        output_image = view.render()
+        return output_image, view
 
 
 ############################################
