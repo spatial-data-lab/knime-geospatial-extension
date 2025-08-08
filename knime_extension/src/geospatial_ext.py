@@ -30,6 +30,21 @@ def __initialize_pyproj():
 __initialize_pyproj()
 
 
+def __initialize_gdal():
+    """
+    Set GDAL_DATA environment variable to avoid rasterio warnings
+    """
+    import os.path as os
+
+    gdal_path = os.join(knut.get_env_path(), "Library\share\gdal")
+    if os.exists(gdal_path):
+        import os as os_env
+
+        os_env.environ["GDAL_DATA"] = gdal_path
+
+
+__initialize_gdal()
+
 # Fake the libpysal.examples import to prevent it from downloading data from the internet which might cause problems
 # in environments without internet access: https://github.com/spatial-data-lab/knime-geospatial-extension/issues/165
 # class __LibpysalExamplesModuleMock:
