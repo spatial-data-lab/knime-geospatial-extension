@@ -1,6 +1,7 @@
 import geopandas as gp
 import knime_extension as knext
 import util.knime_utils as knut
+import pandas as pd
 
 
 category = knext.category(
@@ -357,6 +358,60 @@ class BaseMapSettings:
     )
 
 
+@knext.parameter_group(label="Label Settings")
+class LabelSettings:
+    """Settings for displaying labels on points and polygons."""
+
+    show_labels = knext.BoolParameter(
+        "Show labels",
+        "If checked, labels will be displayed on the map for points and polygons.",
+        default_value=False,
+    )
+
+    label_column = knext.ColumnParameter(
+        "Label column",
+        "Select the column to use as labels. This column should contain text values.",
+        column_filter=knut.is_string,
+        include_row_key=False,
+        include_none_column=True,
+    ).rule(knext.OneOf(show_labels, [True]), knext.Effect.SHOW)
+
+    label_color = knext.StringParameter(
+        "Label color",
+        "Select the color for the labels.",
+        default_value="black",
+        enum=[
+            "black",
+            "white",
+            "red",
+            "blue",
+            "green",
+            "orange",
+            "purple",
+            "brown",
+            "gray",
+        ],
+        is_advanced=True,
+    ).rule(knext.OneOf(show_labels, [True]), knext.Effect.SHOW)
+
+    label_size = knext.IntParameter(
+        "Label font size",
+        "Select the font size for the labels.",
+        default_value=12,
+        min_value=8,
+        max_value=24,
+        is_advanced=True,
+    ).rule(knext.OneOf(show_labels, [True]), knext.Effect.SHOW)
+
+    label_weight = knext.StringParameter(
+        "Label font weight",
+        "Select the font weight for the labels.",
+        default_value="normal",
+        enum=["normal", "bold"],
+        is_advanced=True,
+    ).rule(knext.OneOf(show_labels, [True]), knext.Effect.SHOW)
+
+
 @knext.node(
     name="Geospatial View",
     node_type=knext.NodeType.VISUALIZER,
@@ -418,6 +473,14 @@ class ViewNode:
 
     legend_settings = LegendSettings()
 
+    label_settings = LabelSettings()
+
+    disable_scroll_zoom = knext.BoolParameter(
+        "Disable scroll zoom",
+        "If checked, disables scroll wheel zoom on the map.",
+        default_value=False,
+    )
+
     def configure(self, configure_context, input_schema):
         self.geo_col = knut.column_exists_or_preset(
             configure_context, self.geo_col, input_schema, knut.is_geo
@@ -437,6 +500,12 @@ class ViewNode:
             selected_col_names.add(self.color_settings.color_col)
         if "none" not in str(self.size_settings.size_col).lower():
             selected_col_names.add(self.size_settings.size_col)
+        if (
+            self.label_settings.show_labels
+            and self.label_settings.label_column is not None
+        ):
+            selected_col_names.add(self.label_settings.label_column)
+
         filtered_table = input_table[list(selected_col_names)]
 
         gdf = gp.GeoDataFrame(filtered_table.to_pandas(), geometry=self.geo_col)
@@ -561,6 +630,58 @@ class ViewNode:
             else:
                 kws["style_kwds"] = {"stroke": False}
         map = gdf.explore(**kws)
+
+        # Disable scroll zoom if enabled
+        if self.disable_scroll_zoom:
+            # Disable scroll wheel zoom directly without showing toggle button
+            map.options["scrollWheelZoom"] = False
+
+        # Add labels if enabled
+        if (
+            self.label_settings.show_labels
+            and self.label_settings.label_column is not None
+        ):
+            import folium
+
+            for idx, row in gdf.iterrows():
+                if pd.notna(row[self.label_settings.label_column]):
+                    # Get geometry representative point for label placement
+                    if row[self.geo_col].geom_type == "Point":
+                        coords = [row[self.geo_col].y, row[self.geo_col].x]
+                    else:
+                        # Use representative_point() instead of centroid to ensure point is inside geometry
+                        rep_point = row[self.geo_col].representative_point()
+                        coords = [rep_point.y, rep_point.x]
+
+                    # Create a simple text label that will be added to the map
+                    # We'll use a marker with a custom icon that contains just text
+                    text_html = f"""
+                    <div style="
+                        color: {self.label_settings.label_color};
+                        font-size: {self.label_settings.label_size}px;
+                        font-weight: {self.label_settings.label_weight};
+                        white-space: nowrap;
+                        text-align: center;
+                        background: transparent;
+                        border: none;
+                    ">
+                        {row[self.label_settings.label_column]}
+                    </div>
+                    """
+
+                    # Create a transparent marker with text
+                    icon = folium.DivIcon(
+                        html=text_html,
+                        icon_size=(100, 20),
+                        icon_anchor=(50, 10),
+                    )
+
+                    folium.Marker(
+                        location=coords,
+                        icon=icon,
+                        popup=row[self.label_settings.label_column],
+                        shadow=False,
+                    ).add_to(map)
 
         # replace css and JavaScript paths
         html = map.get_root().render()
