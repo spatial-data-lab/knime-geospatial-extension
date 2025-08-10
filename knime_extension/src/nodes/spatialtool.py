@@ -1856,80 +1856,100 @@ class Mapclassifier:
         """,
         default_value = 5,
         min_value = 2
-    ).rule(knext.OneOf(classifier_param, [ClassModes.FISHERJ.name]), knext.Effect.HIDE)
+    ).rule(knext.OneOf(classifier_param, [ClassModes.BOXPLOT.name,
+                                          ClassModes.GREEDY.name,
+                                          ClassModes.PERCENTILES.name,
+                                          ClassModes.STDMEAN.name,
+                                          ClassModes.USERDEFINED.name]), knext.Effect.HIDE)
 
     # strategy options for Greedy, sopme will require additional package: networkx.greedy_color
     # see: https://networkx.github.io/documentation/stable/reference/algorithms/generated/networkx.algorithms.coloring.greedy_color.html
     class Strategies(knext.EnumParameterOptions):
         BALANCED = (
             "balanced",
+            """"""
         )
 
         LARGEST_FIRST = (
             "largest_first",
+            """"""
         )
         
         RANDOM_SEQUENTIAL = (
             "random_sequential",
+            """"""
         )
         
         SMALLEST_LAST = (
             "smallest_last",
+            """"""
         )
         
         CONNECTED_SEQUENTIAL_BFS = (
             "connected_sequential_bfs",
+            """"""
         )
         
         CONNECTED_SEQUENTIAL_DFS = (
             "connected_sequential_dfs",
+            """"""
         )
         
         CONNECTED_SEQUENTIAL = (
             "connected_sequential",
+            """"""
         )
 
         DASTUR = (
             "DASTUR",
+            """"""
         )
 
         @classmethod
         def get_default(cls):
             return cls.BALANCED
 
-    # strategies_param for Greedy
+    # strategy_param for Greedy
     strategy_param = knext.EnumParameter(
-        label = "Strategy Selection",
-        description = """Select the strategy to use for the greedy algorithm.""",
+        label = "Strategy",
+        description = """The strategy to use for the greedy algorithm.""",
         default_value = Strategies.get_default().name,
         enum = Strategies
     ).rule(knext.OneOf(classifier_param, [ClassModes.GREEDY.name]), knext.Effect.SHOW)
 
-    # strategy_param for Greedy
-    strategy_param = knext.EnumParameter(
-        label = "Greedy Strategy",
-        description = """The strategy to use for the greedy algorithm.""",
-        default_value = Strategies.get_default().name
-    ).rule(knext.OneOf(classifier_param, [ClassModes.GREEDY.name]), knext.Effect.SHOW)
-
     class Balances(knext.EnumParameterOptions):
-        BALANCED = ('balanced')
+        BALANCEDb = (
+            "balanced",
+            """"""
+        )
 
-        COUNT = ('count')
+        COUNT = (
+            "count",
+            """"""
+        )
 
-        AREA = ('area')
+        AREA = (
+            "area",
+            """"""
+        )
 
-        CENTROID = ('centroid')
+        CENTROID = (
+            "centroid",
+            """"""
+        )
 
-        DISTANCE = ('distance')
+        DISTANCE = (
+            "distance",
+            """"""
+        )
 
         @classmethod
         def get_default(cls):
-            return cls.BALANCED
+            return cls.BALANCEDb
 
     # balance_param for Greedy
     balance_param = knext.EnumParameter(
-        label = "Balance Strategy",
+        label = "Balance",
         description = """The balance strategy to use for the greedy algorithm.""",
         default_value = Balances.get_default().name,
         enum = Balances
