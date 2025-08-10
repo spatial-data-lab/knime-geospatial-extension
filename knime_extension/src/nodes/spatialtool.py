@@ -1901,7 +1901,8 @@ class Mapclassifier:
     strategy_param = knext.EnumParameter(
         label = "Strategy Selection",
         description = """Select the strategy to use for the greedy algorithm.""",
-        default_value = strategies.get_default().name
+        default_value = Strategies.get_default().name,
+        enum = Strategies
     ).rule(knext.OneOf(classifier_param, [ClassModes.GREEDY.name]), knext.Effect.SHOW)
 
     # strategy_param for Greedy
@@ -1930,7 +1931,8 @@ class Mapclassifier:
     balance_param = knext.EnumParameter(
         label = "Balance Strategy",
         description = """The balance strategy to use for the greedy algorithm.""",
-        default_value = Balances.get_default().name
+        default_value = Balances.get_default().name,
+        enum = Balances
     ).rule(knext.OneOf(classifier_param, [ClassModes.GREEDY.name]), knext.Effect.SHOW)
 
     # pct_param for JenksCaspallSampled
