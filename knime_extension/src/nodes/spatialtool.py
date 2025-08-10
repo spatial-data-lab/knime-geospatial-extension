@@ -1694,7 +1694,6 @@ class CreateVoronoi:
         return knut.to_table(gdf, exec_context)
 
 
-
 ############################################
 # Mapclassify
 ############################################
@@ -1822,8 +1821,8 @@ class Mapclassifier:
 
         @classmethod
         def get_default(cls):
-            return cls.FISHERJ 
-
+            return cls.FISHERJ
+    
     # classifier selection parameter
     class_col = knext.MultiColumnParameter(
         "Targeted columns",
@@ -1856,8 +1855,83 @@ class Mapclassifier:
         [Tables of Cell Statistics Across Resolutions.](https://h3geo.org/docs/core-library/restable/)
         """,
         default_value = 5,
-        min_value = 2,
+        min_value = 2
     ).rule(knext.OneOf(classifier_param, [ClassModes.FISHERJ.name]), knext.Effect.HIDE)
+
+    # strategy options for Greedy, sopme will require additional package: networkx.greedy_color
+    # see: https://networkx.github.io/documentation/stable/reference/algorithms/generated/networkx.algorithms.coloring.greedy_color.html
+    class Strategies(knext.EnumParameterOptions):
+        BALANCED = (
+            "balanced",
+        )
+
+        LARGEST_FIRST = (
+            "largest_first",
+        )
+        
+        RANDOM_SEQUENTIAL = (
+            "random_sequential",
+        )
+        
+        SMALLEST_LAST = (
+            "smallest_last",
+        )
+        
+        CONNECTED_SEQUENTIAL_BFS = (
+            "connected_sequential_bfs",
+        )
+        
+        CONNECTED_SEQUENTIAL_DFS = (
+            "connected_sequential_dfs",
+        )
+        
+        CONNECTED_SEQUENTIAL = (
+            "connected_sequential",
+        )
+
+        DASTUR = (
+            "DASTUR",
+        )
+
+        @classmethod
+        def get_default(cls):
+            return cls.BALANCED
+
+    # strategies_param for Greedy
+    strategy_param = knext.EnumParameter(
+        label = "Strategy Selection",
+        description = """Select the strategy to use for the greedy algorithm.""",
+        default_value = strategies.get_default().name
+    ).rule(knext.OneOf(classifier_param, [ClassModes.GREEDY.name]), knext.Effect.SHOW)
+
+    # strategy_param for Greedy
+    strategy_param = knext.EnumParameter(
+        label = "Greedy Strategy",
+        description = """The strategy to use for the greedy algorithm.""",
+        default_value = Strategies.get_default().name
+    ).rule(knext.OneOf(classifier_param, [ClassModes.GREEDY.name]), knext.Effect.SHOW)
+
+    class Balances(knext.EnumParameterOptions):
+        BALANCED = ('balanced')
+
+        COUNT = ('count')
+
+        AREA = ('area')
+
+        CENTROID = ('centroid')
+
+        DISTANCE = ('distance')
+
+        @classmethod
+        def get_default(cls):
+            return cls.BALANCED
+
+    # balance_param for Greedy
+    balance_param = knext.EnumParameter(
+        label = "Balance Strategy",
+        description = """The balance strategy to use for the greedy algorithm.""",
+        default_value = Balances.get_default().name
+    ).rule(knext.OneOf(classifier_param, [ClassModes.GREEDY.name]), knext.Effect.SHOW)
 
     # pct_param for JenksCaspallSampled
     pct_param = knext.DoubleParameter(
@@ -1950,6 +2024,8 @@ class Mapclassifier:
                 else:
                     gdf[col] = grid.yb.tolist()
 
+    # ***BEGINNING OF COMMPLEX CLASSIFIERS***
+
     # boxplot
         elif self.classifier_param == self.ClassModes.BOXPLOT.name:
             y = gdf[self.class_col]
@@ -1963,7 +2039,12 @@ class Mapclassifier:
     # fisher jenks sampled  
         elif self.classifier_param == self.ClassModes.FISHERJ_SAMPLED.name:
             y = gdf[self.class_col]
-            grid = mc.FisherJenksSampled(y, k)
+            for col in self.class_col:
+                grid = mc.FisherJenksSampled(y, self.k_param, self.pct_param, self.jc_sampledtruncate)
+                if (self.append_replace):
+                    gdf[f'{col}_class'] = grid.yb.tolist()
+                else:
+                    gdf[col] = grid.yb.tolist()
 
     # greedy
         elif self.classifier_param == self.ClassModes.GREEDY.name:
@@ -1980,7 +2061,7 @@ class Mapclassifier:
             y = gdf[self.class_col]
             for col in self.class_col:
                 grid = mc.JenksCaspallSampled(y, k, self.pct_param, self.jc_sampledtruncate)
-                if (ar):
+                if (self.append_replace):
                     gdf[f'{col}_class'] = grid.yb.tolist()
                 else:
                     gdf[col] = grid.yb.tolist()
