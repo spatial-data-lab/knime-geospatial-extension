@@ -1862,6 +1862,8 @@ class Mapclassifier:
                                           ClassModes.STDMEAN.name,
                                           ClassModes.USERDEFINED.name]), knext.Effect.HIDE)
 
+    # *** SETTINGS FOR GREEDY CLASSIFIER ***
+
     # strategy options for Greedy, sopme will require additional package: networkx.greedy_color
     # see: https://networkx.github.io/documentation/stable/reference/algorithms/generated/networkx.algorithms.coloring.greedy_color.html
     class Strategies(knext.EnumParameterOptions):
@@ -1918,7 +1920,7 @@ class Mapclassifier:
     ).rule(knext.OneOf(classifier_param, [ClassModes.GREEDY.name]), knext.Effect.SHOW)
 
     class Balances(knext.EnumParameterOptions):
-        BALANCEDb = (
+        BALANCED = (
             "balanced",
             """"""
         )
@@ -1945,7 +1947,7 @@ class Mapclassifier:
 
         @classmethod
         def get_default(cls):
-            return cls.BALANCEDb
+            return cls.BALANCED
 
     # balance_param for Greedy
     balance_param = knext.EnumParameter(
@@ -1955,12 +1957,62 @@ class Mapclassifier:
         enum = Balances
     ).rule(knext.OneOf(classifier_param, [ClassModes.GREEDY.name]), knext.Effect.SHOW)
 
-    # pct_param for JenksCaspallSampled
-    pct_param = knext.DoubleParameter(
-        label = "Natural Breaks Percentage for FisherJenks Sampled",
-        description = """The percentage of the data to be randomly sampled to determine the natural breaks.""",
-        default_value = 0.10
-    ).rule(knext.OneOf(classifier_param, [ClassModes.JENKS_CASFORCED.name]), knext.Effect.SHOW)
+    # min_colors_param for Greedy
+    min_colors_param = knext.IntParameter(
+        label = "Minimum number of colors",
+        description = """The minimum number of colors to use for the greedy algorithm.""",
+        default_value = 4,
+        min_value = 2
+    ).rule(knext.OneOf(balance_param, [Balances.BALANCED.name]), knext.Effect.SHOW)
+
+    class SWOptions(knext.EnumParameterOptions):
+        
+        QUEEN = (
+            "queen",
+            """"""
+        )
+
+        ROOK = (
+            "rook",
+            """"""
+        )
+
+        LIBYSAL = (
+            "libysal.weights.W",
+            """"""
+        )
+
+        @classmethod
+        def get_default(cls):
+            return cls.QUEEN
+
+    # sw_param for Greedy
+    sw_param = knext.EnumParameter(
+        label = "Use spatial weights",
+        description = """If checked, the node will use spatial weights to determine the adjacency of the polygons.""",
+        default_value = None
+    ).rule(knext.OneOf(classifier_param, [ClassModes.GREEDY.name]), knext.Effect.SHOW)
+
+    # min_distance_param for Greedy
+    min_distance_param = knext.DoubleParameter(
+        label = "Minimum distance",
+        description = """The minimum distance to consider two polygons as adjacent. Only used if spatial weights is checked.""",
+        default_value = 0.0,
+    ).rule(knext.OneOf(classifier_param, [ClassModes.GREEDY.name]), knext.Effect.SHOW)
+
+    silence_warn_param = knext.BoolParameter(
+        label = "Silence warnings",
+        description = """If checked, the node will silence the warnings from the greedy algorithm.""",
+        default_value = False
+    ).rule(knext.OneOf(classifier_param, [ClassModes.GREEDY.name]), knext.Effect.SHOW)
+
+    interchange_param = knext.BoolParameter(
+        label = "Interchange",
+        description = """If checked, the node will use the interchange algorithm to improve the coloring result.""",
+        default_value = False
+    ).rule(knext.OneOf(classifier_param, [ClassModes.GREEDY.name]), knext.Effect.SHOW)
+
+    # *** SETTINGS FOR BOXPLOT CLASSIFIER ***
 
     # hinge_param for Boxplot
     hinge_param = knext.DoubleParameter(
@@ -1969,12 +2021,23 @@ class Mapclassifier:
         default_value = 1.5
     ).rule(knext.OneOf(classifier_param, [ClassModes.BOXPLOT.name]), knext.Effect.SHOW)
 
+    # SETTINGS FOR FISHER JENKS SAMPLED CLASSIFIER ***
+
+    # pct_param for JenksCaspallSampled
+    pct_param = knext.DoubleParameter(
+        label = "Natural Breaks Percentage for FisherJenks Sampled",
+        description = """The percentage of the data to be randomly sampled to determine the natural breaks.""",
+        default_value = 0.10
+    ).rule(knext.OneOf(classifier_param, [ClassModes.JENKS_CASFORCED.name]), knext.Effect.SHOW)
+
     # determines if the output is to truncate the classification result to the number of classes specified by the k parameter
     jc_sampledtruncate = knext.BoolParameter(
-        "Truncate for JenksCaspall Sampled",
+        "Truncate for FisherJenksSampled",
         """If checked, the node will truncate the classification result to the number of classes specified by the k parameter.""",
         default_value = False
     ).rule(knext.OneOf(classifier_param, [ClassModes.JENKS_CASSAMPLED.name]), knext.Effect.SHOW)
+
+    # *** Formatting Settings ***
 
     # determines if the output is to replace the original columns or append them
     append_replace = knext.BoolParameter(
@@ -1982,7 +2045,7 @@ class Mapclassifier:
         """If checked, the node will append the classification result to the input table.
         If unchecked, the node will replace the input table with the classification result.""",
         default_value = False
-    )
+    ).rule(knext.OneOf(classifier_param, [ClassModes.GREEDY.name]), knext.Effect.HIDE)
 
     def configure(self, configure_context, input_schema):
         return None
@@ -2071,7 +2134,10 @@ class Mapclassifier:
     # greedy
         elif self.classifier_param == self.ClassModes.GREEDY.name:
             y = gdf[self.class_col]
-            grid = mc.greedy(y, k)
+            grid = mc.greedy(gdf, self.strategy_param, self.balance_param, self.min_colors_param,
+                             self.sw_param, self.min_distance_param, self.silence_warn_param,
+                             self.interchange_param)
+            
 
     # head tail breaks
         elif self.classifier_param == self.ClassModes.HEADT_BREAKS.name:
