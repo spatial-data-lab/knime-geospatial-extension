@@ -2134,10 +2134,15 @@ class Mapclassifier:
     # greedy
         elif self.classifier_param == self.ClassModes.GREEDY.name:
             y = gdf[self.class_col]
-            grid = mc.greedy(gdf, self.strategy_param, self.balance_param, self.min_colors_param,
+            for col in self.class_col:
+                grid = mc.greedy(gdf, self.strategy_param, self.balance_param, self.min_colors_param,
                              self.sw_param, self.min_distance_param, self.silence_warn_param,
                              self.interchange_param)
-            
+                if (self.append_replace):
+                    gdf[f'{col}_geoclass'] = grid.yb.tolist()
+                else:
+                    gdf[col] = grid.yb.tolist()
+                
 
     # head tail breaks
         elif self.classifier_param == self.ClassModes.HEADT_BREAKS.name:
