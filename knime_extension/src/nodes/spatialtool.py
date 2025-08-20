@@ -1716,6 +1716,7 @@ class CreateVoronoi:
 )
 class Mapclassifier:
 
+    # classmode_param options for mapclassify
     class ClassModes(knext.EnumParameterOptions):
         BOXPLOT = ( # mapclassify.BoxPlot(y[, hinge])
             "Boxplot",
@@ -1822,6 +1823,14 @@ class Mapclassifier:
         @classmethod
         def get_default(cls):
             return cls.FISHERJ
+        
+    # classifier_param for selecting the classification method
+    classifier_param = knext.EnumParameter(
+        label = "Classifier Selection",
+        description = "Select the classifier that you want to apply to the targeted columns.",
+        default_value = ClassModes.get_default().name,
+        enum = ClassModes
+    )
     
     # classifier selection parameter
     class_col = knext.MultiColumnParameter(
@@ -1834,15 +1843,7 @@ class Mapclassifier:
         [Tables of Cell Statistics Across Resolutions.](https://h3geo.org/docs/core-library/restable/)
         """,
         column_filter = knut.is_numeric
-    )
-
-    # classifier_param for selecting the classification method
-    classifier_param = knext.EnumParameter(
-        label = "Classifier Selection",
-        description = "Select the classifier that you want to apply to the targeted columns.",
-        default_value = ClassModes.get_default().name,
-        enum = ClassModes
-    )
+    ).rule(knext.OneOf(classifier_param, [ClassModes.GREEDY.name]), knext.Effect.HIDE)
 
     # k_param for all classifiers
     k_param = knext.IntParameter(
@@ -1862,9 +1863,11 @@ class Mapclassifier:
                                           ClassModes.STDMEAN.name,
                                           ClassModes.USERDEFINED.name]), knext.Effect.HIDE)
 
+
+    '''
     # *** SETTINGS FOR GREEDY CLASSIFIER ***
 
-    # strategy options for Greedy, sopme will require additional package: networkx.greedy_color
+    # strategy_param options for Greedy, sopme will require additional package: networkx.greedy_color
     # see: https://networkx.github.io/documentation/stable/reference/algorithms/generated/networkx.algorithms.coloring.greedy_color.html
     class Strategies(knext.EnumParameterOptions):
         BALANCED = (
@@ -1919,6 +1922,7 @@ class Mapclassifier:
         enum = Strategies
     ).rule(knext.OneOf(classifier_param, [ClassModes.GREEDY.name]), knext.Effect.SHOW)
 
+    # balance_param options for Greedy
     class Balances(knext.EnumParameterOptions):
         BALANCED = (
             "balanced",
@@ -1965,6 +1969,7 @@ class Mapclassifier:
         min_value = 2
     ).rule(knext.OneOf(balance_param, [Balances.BALANCED.name]), knext.Effect.SHOW)
 
+    # sw_options for Greedy
     class SWOptions(knext.EnumParameterOptions):
         
         QUEEN = (
@@ -1988,9 +1993,10 @@ class Mapclassifier:
 
     # sw_param for Greedy
     sw_param = knext.EnumParameter(
-        label = "Use spatial weights",
+        label = "Spatial weights",
         description = """If checked, the node will use spatial weights to determine the adjacency of the polygons.""",
-        default_value = None
+        default_value = SWOptions.get_default().name,
+        enum = SWOptions
     ).rule(knext.OneOf(classifier_param, [ClassModes.GREEDY.name]), knext.Effect.SHOW)
 
     # min_distance_param for Greedy
@@ -2000,17 +2006,21 @@ class Mapclassifier:
         default_value = 0.0,
     ).rule(knext.OneOf(classifier_param, [ClassModes.GREEDY.name]), knext.Effect.SHOW)
 
+    # silence_warn_param for Greedy
     silence_warn_param = knext.BoolParameter(
         label = "Silence warnings",
         description = """If checked, the node will silence the warnings from the greedy algorithm.""",
         default_value = False
     ).rule(knext.OneOf(classifier_param, [ClassModes.GREEDY.name]), knext.Effect.SHOW)
 
+    # interchange_param for Greedy
     interchange_param = knext.BoolParameter(
         label = "Interchange",
         description = """If checked, the node will use the interchange algorithm to improve the coloring result.""",
         default_value = False
     ).rule(knext.OneOf(classifier_param, [ClassModes.GREEDY.name]), knext.Effect.SHOW)
+    '''
+
 
     # *** SETTINGS FOR BOXPLOT CLASSIFIER ***
 
@@ -2052,6 +2062,7 @@ class Mapclassifier:
 
     def execute(self, exec_context: knext.ExecutionContext, input_table):
         import mapclassify as mc
+        import geopandas as gpd
 
         gdf = input_table.to_pandas()
 
@@ -2060,7 +2071,7 @@ class Mapclassifier:
             for col in self.class_col:
                 grid = mc.EqualInterval(gdf[col], self.k_param)
                 if (self.append_replace):
-                    gdf[f'{col}_class'] = grid.yb.tolist()
+                    gdf[f'{col}applied'] = grid.yb.tolist()
                 else:
                     gdf[col] = grid.yb.tolist()
 
@@ -2069,7 +2080,7 @@ class Mapclassifier:
             for col in self.class_col:
                 grid = mc.FisherJenkins(gdf[col], self.k_param)
                 if (self.append_replace):
-                    gdf[f'{col}_class'] = grid.yb.tolist()
+                    gdf[f'{col}applied'] = grid.yb.tolist()
                 else:
                     gdf[col] = grid.yb.tolist()
             
@@ -2078,7 +2089,7 @@ class Mapclassifier:
             for col in self.class_col:
                 grid = mc.JenksCaspall(gdf[col], self.k_param)
                 if (self.append_replace):
-                    gdf[f'{col}_class'] = grid.yb.tolist()
+                    gdf[f'{col}applied'] = grid.yb.tolist()
                 else:
                     gdf[col] = grid.yb.tolist()
             
@@ -2087,7 +2098,7 @@ class Mapclassifier:
             for col in self.class_col:
                 grid = mc.JenksCaspallForced(gdf[col], self.k_param)
                 if (self.append_replace):
-                    gdf[f'{col}_class'] = grid.yb.tolist()
+                    gdf[f'{col}applied'] = grid.yb.tolist()
                 else:
                     gdf[col] = grid.yb.tolist()
         
@@ -2096,7 +2107,7 @@ class Mapclassifier:
             for col in self.class_col:
                 grid = mc.PrettyBreaks(gdf[col], self.k_param)
                 if (self.append_replace):
-                    gdf[f'{col}_class'] = grid.yb.tolist()
+                    gdf[f'{col}applied'] = grid.yb.tolist()
                 else:
                     gdf[col] = grid.yb.tolist()
     
@@ -2105,7 +2116,7 @@ class Mapclassifier:
             for col in self.class_col:
                 grid = mc.Quanitles(gdf[col], self.k_param)
                 if (self.append_replace):
-                    gdf[f'{col}_class'] = grid.yb.tolist()
+                    gdf[f'{col}applied'] = grid.yb.tolist()
                 else:
                     gdf[col] = grid.yb.tolist()
 
@@ -2117,7 +2128,7 @@ class Mapclassifier:
             for col in self.class_col:
                 grid = mc.BoxPlot(y, self.hinge_param)
                 if (self.append_replace):
-                    gdf[f'{col}_class'] = grid.yb.tolist()
+                    gdf[f'{col}_applied'] = grid.yb.tolist()
                 else:
                     gdf[col] = grid.yb.tolist()
 
@@ -2127,42 +2138,45 @@ class Mapclassifier:
             for col in self.class_col:
                 grid = mc.FisherJenksSampled(y, self.k_param, self.pct_param, self.jc_sampledtruncate)
                 if (self.append_replace):
-                    gdf[f'{col}_class'] = grid.yb.tolist()
+                    gdf[f'{col}_applied'] = grid.yb.tolist()
                 else:
                     gdf[col] = grid.yb.tolist()
 
     # greedy
         elif self.classifier_param == self.ClassModes.GREEDY.name:
-            y = gdf[self.class_col]
-            for col in self.class_col:
-                grid = mc.greedy(gdf, self.strategy_param, self.balance_param, self.min_colors_param,
-                             self.sw_param, self.min_distance_param, self.silence_warn_param,
-                             self.interchange_param)
-                if (self.append_replace):
-                    gdf[f'{col}_geoclass'] = grid.yb.tolist()
-                else:
-                    gdf[col] = grid.yb.tolist()
+            grid = mc.greedy(gdf, self.strategy_param, self.balance_param, self.min_colors_param,
+                            self.sw_param, self.min_distance_param, self.silence_warn_param,
+                            self.interchange_param)
+            if (self.append_replace):
+                grid[f'{col}_greedy_colors'] = grid.yb.tolist()
+            else:
+                grid["greedy_colors"] = grid.yb.tolist()
                 
 
     # head tail breaks
         elif self.classifier_param == self.ClassModes.HEADT_BREAKS.name:
             y = gdf[self.class_col]
-            grid = mc.HeadTailBreaks(y, k)
+            grid = mc.HeadTailBreaks(y, self.k_param)
 
     # jenks caspall sampled
         elif self.classifier_param == self.ClassModes.JENKS_CASSAMPLED.name:
             y = gdf[self.class_col]
             for col in self.class_col:
-                grid = mc.JenksCaspallSampled(y, k, self.pct_param, self.jc_sampledtruncate)
+                grid = mc.JenksCaspallSampled(y, self.k_param, self.pct_param, self.jc_sampledtruncate)
                 if (self.append_replace):
-                    gdf[f'{col}_class'] = grid.yb.tolist()
+                    gdf[f'{col}applied'] = grid.yb.tolist()
                 else:
                     gdf[col] = grid.yb.tolist()
 
     # maxp
         elif self.classifier_param == self.ClassModes.MAXP.name:
             y = gdf[self.class_col]
-            grid = mc.MaxP(y, k)
+            grid = mc.MaxP(self.cal_param)
+            for col in self.class_col:
+                if (self.append_replace):
+                    gdf[f'{col}applied'] = grid.yb.tolist()
+                else:
+                    gdf[col] = grid.yb.tolist()
 
     # maximum breaks
         elif self.classifier_param == self.ClassModes.MAXIMUMBREAKS.name:
