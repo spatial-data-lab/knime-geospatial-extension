@@ -383,7 +383,7 @@ class StaticBaseMapCxSettings:
     )
 
 
-@knext.parameter_group(label="Label Settings")
+@knext.parameter_group(label="Label Settings", since_version="2.2.0")
 class LabelSettings:
     """Settings for displaying labels on points and polygons."""
 
@@ -504,6 +504,7 @@ class ViewNode:
         "Disable scroll zoom",
         "If checked, disables scroll wheel zoom on the map.",
         default_value=False,
+        since_version="2.1.0",
     )
 
     def configure(self, configure_context, input_schema):
