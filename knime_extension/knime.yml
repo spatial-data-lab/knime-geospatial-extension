@@ -4,11 +4,11 @@ author: Lingbo Liu,Xiaokang Fu,Tobias Koetter
 vendor: SDL, Harvard, Cambridge US
 description: Geospatial Analytics Extension for KNIME # Human readable bundle name / description
 long_description: KNIME nodes for processing, analyzing and visualizing Geospatial data.
-version: 1.3.1 # Version of this Python node extension
+version: 1.3.2 # Version of this Python node extension
 license_file: LICENSE.TXT # Best practice: put your LICENSE.TXT next to the knime.yml; otherwise you would need to change to path/to/LICENSE.txt
 extension_module: src/geospatial_ext # The .py Python module containing the nodes of your extension
 env_yml_path: geospatial_env.yml # This is necessary for bundling, but not needed during development
-feature_dependencies: 
+feature_dependencies:
   - org.knime.features.geospatial 4.7.0
   - org.knime.features.core 5.2.0 #ensure that this extension can only be used with 5.2 with date time support
 
