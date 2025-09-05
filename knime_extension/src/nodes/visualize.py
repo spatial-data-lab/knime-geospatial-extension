@@ -357,6 +357,13 @@ class BaseMapSettings:
         ],
     )
 
+    disable_scroll_zoom = knext.BoolParameter(
+        "Disable scroll zoom",
+        "If checked, disables scroll wheel zoom on the map.",
+        default_value=False,
+        since_version="2.1.0",
+    )
+
 
 @knext.parameter_group(label="Label Settings", since_version="2.1.0")
 class LabelSettings:
@@ -474,13 +481,6 @@ class ViewNode:
     legend_settings = LegendSettings()
 
     label_settings = LabelSettings()
-
-    disable_scroll_zoom = knext.BoolParameter(
-        "Disable scroll zoom",
-        "If checked, disables scroll wheel zoom on the map.",
-        default_value=False,
-        since_version="2.1.0",
-    )
 
     def configure(self, configure_context, input_schema):
         self.geo_col = knut.column_exists_or_preset(
@@ -633,7 +633,7 @@ class ViewNode:
         map = gdf.explore(**kws)
 
         # Disable scroll zoom if enabled
-        if self.disable_scroll_zoom:
+        if self.basemap_setting.disable_scroll_zoom:
             # Disable scroll wheel zoom directly without showing toggle button
             map.options["scrollWheelZoom"] = False
 
