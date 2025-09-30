@@ -1692,3 +1692,511 @@ class CreateVoronoi:
         # append region id column
         gdf[self._COL_ID] = range(1, (gdf.shape[0] + 1))
         return knut.to_table(gdf, exec_context)
+
+
+############################################
+# Mapclassify
+############################################
+
+
+@knext.node(
+    name="Mapclassifier",
+    node_type=knext.NodeType.MANIPULATOR,
+    icon_path=__NODE_ICON_PATH + "Mapclassifier.png",
+    category=__category,
+    after="",
+)
+@knext.input_table(
+    name="Input Table",
+    description="Input table with targeted columns for classification.",
+)
+@knext.output_table(
+    name="Output Table",
+    description="Output table with classified result.",
+)
+class Mapclassifier:
+
+    # classmode_param options for mapclassify
+    class ClassModes(knext.EnumParameterOptions):
+        BOXPLOT = ( # mapclassify.BoxPlot(y[, hinge])
+            "Boxplot",
+            """PURPOSE: Creates class breaks based on the statistical properties of a box plot distribution.
+            HOW IT WORKS: Uses the quartiles (Q1, median, Q3) and interquartile range (IQR) to identify outliers and create meaningful breaks. Typically creates 6 classes: lower outlier, < Q1, Q1-median, median-Q3, > Q3, and upper outlier.
+            BEST FOR: Identifying and highlighting outliers in your data while maintaining interpretable breaks based on statistical distribution.""",
+        )
+        EQUALINTERVAL = ( # mapclassify.EqualInterval(y[, k])  
+            "EqualInterval",
+            """PURPOSE: Divides the data range into equal-sized intervals.
+            HOW IT WORKS: Takes the difference between maximum and minimum values, then divides by the number of desired classes to create intervals of equal width.
+            BEST FOR: Data that is relatively evenly distributed and when you want consistent interval sizes for easy interpretation.""",
+        )
+        FISHERJ = ( # mapclassify.FisherJenks(y[, k])
+            "FisherJenks",
+            """PURPOSE: Finds optimal class breaks that minimize within-class variance while maximizing between-class variance.
+            HOW IT WORKS: Uses dynamic programming to find the optimal groupings that create the most homogeneous classes possible.
+            BEST FOR: Most types of data as it adapts to the natural clustering in your dataset. Considered one of the most statistically robust methods.""",
+        )
+        FISHERJ_SAMPLED = ( # mapclassify.FisherJenksSampled(y[, k, pct, ...])
+            "FisherJanksSampled",
+            """PURPOSE: Same optimization as FisherJenks but uses a random sample for computational efficiency.
+            HOW IT WORKS: Applies the Fisher-Jenks algorithm to a subset of the data, making it faster for large datasets.
+            BEST FOR: Large datasets where standard Fisher-Jenks would be computationally expensive but you still want optimal breaks.""", 
+        ) 
+        GREEDY = ( # mapclassify.greedy(gdf[, strategy, balance, ...])
+            "Greedy",
+            """PURPOSE: Colors geographic areas using graph coloring strategies to ensure adjacent areas have different colors.
+            HOW IT WORKS: Implements topological coloring algorithms (various strategies available) to minimize color conflicts between neighboring polygons.
+            BEST FOR: Categorical data or when you need to ensure visual distinction between adjacent geographic units regardless of data values."""
+        )
+        HEADT_BREAKS = ( # mapclassify.HeadTailBreaks(y)
+            "HeadTailBreaks",
+            """PURPOSE: Recursively divides data around the mean, designed specifically for heavy-tailed distributions.
+            HOW IT WORKS: Splits data at the arithmetic mean, then recursively applies the same process to the "head" (above-mean values) until stopping criteria are met.
+            BEST FOR: Highly skewed data with heavy tails, such as city populations, income distributions, or social media network data."""
+        )
+        JENKS_CAS = ( # mapclassify.JenksCaspall(y[, k])
+            "JenksCaspall",
+            """PURPOSE: An iterative optimization method that moves class boundaries to minimize within-class variance.
+            HOW IT WORKS: Starts with initial class breaks and iteratively moves boundaries to improve the goodness of variance fit.
+            BEST FOR: When you want optimized breaks similar to Fisher-Jenks but prefer an iterative approach that can be stopped at any point."""
+
+        )
+        JENKS_CASFORCED = ( # mapclassify.JenksCaspallForced(y[, k])
+            "JenksCaspallForced",
+            """PURPOSE: Similar to JenksCaspall but allows forcing specific values to be class boundaries.
+            HOW IT WORKS: Performs the iterative optimization while ensuring certain predetermined values remain as class breaks.
+            BEST FOR: When you have meaningful breakpoints (like 0, poverty line, etc.) that must be preserved while optimizing the remaining breaks."""
+        )
+        JENKS_CASSAMPLED = ( # mapclassify.JenksCaspallSampled(y[, k, pct])
+            "JenksCaspallSampled",
+            """PURPOSE: Applies JenksCaspall optimization to a random sample of the data.
+            HOW IT WORKS: Uses sampling to make the iterative process computationally feasible for large datasets.
+            BEST FOR: Large datasets where full JenksCaspall would be too slow but you want iteratively optimized breaks."""
+        )
+        MAXP = ( # mapclassify.MaxP(y[, k, initial, seed1, seed2])
+            "MaxP",
+            """PURPOSE: Creates the maximum number of classes possible while maintaining a minimum population threshold per class.
+            HOW IT WORKS: Aggregates spatial units to ensure each class meets minimum size requirements while maximizing the number of classes.
+            BEST FOR: Spatial analysis where you need to balance detail (number of classes) with statistical reliability (minimum sample sizes)."""
+        )
+        MAXIMUMBREAKS = ( # mapclassify.MaximumBreaks(y[, k, mindiff])
+            "MaximumBreaks",
+            """PURPOSE: Places class breaks at the largest gaps in the sorted data values.
+            HOW IT WORKS: Identifies the biggest jumps between consecutive values and uses these as natural breaking points.
+            BEST FOR: Data with clear natural clusters or gaps, where you want breaks at the most obvious discontinuities."""
+        )
+        NATURALBREAKS = ( # mapclassify.NaturalBreaks(y[, k, initial, ...]) needs to be revised
+            "NaturalBreaks",
+            """PURPOSE: Identifies class breaks that minimize variance within classes while maximizing variance between classes"""
+        )
+        PERCENTILES = ( # mapclassify.Percentiles(y[, pct])
+            "Percentiles",
+            """PURPOSE: Creates class breaks at specified percentile values.
+            HOW IT WORKS: Divides data based on percentile ranks (e.g., quintiles at 20th, 40th, 60th, 80th percentiles).
+            BEST FOR: When you want equal numbers of observations in each class, or when working with data where relative position matters more than absolute values."""
+        )
+        PRETTYBREAKS = ( # mapclassify.PrettyBreaks(y[, k])
+            "PrettyBreaks",
+            """PURPOSE: Creates "nice" round numbers as class breaks for improved readability.
+            HOW IT WORKS: Chooses aesthetically pleasing break points (round numbers) that are close to optimal statistical breaks.
+            BEST FOR: Maps intended for general audiences where readability and round numbers are more important than statistical optimization."""
+        )
+        QUANTILES = ( # mapclassify.Quantiles(y[, k])
+            "Quantiles",
+            """PURPOSE: Divides data so each class contains an equal number of observations.
+            HOW IT WORKS: Sorts data and creates breaks at quantile boundaries to ensure equal sample sizes per class.
+            BEST FOR: Comparing relative rankings across areas, or when you want to ensure balanced representation across all classes."""
+        )
+        STDMEAN = ( # mapclassify.StdMean(y[, multiples, anchor])
+            "StdMean",
+            """PURPOSE: Creates classes based on standard deviations from the mean.
+            HOW IT WORKS: Sets breaks at intervals of standard deviations above and below the mean (e.g., mean±1σ, mean±2σ).
+            BEST FOR: Normally distributed data where you want to highlight areas that are statistically typical vs. unusual relative to the average."""
+        )
+        USERDEFINED = ( # mapclassify.UserDefined(y, bins[, lowest])
+            "UserDefined",
+            """PURPOSE: Allows manual specification of class break values.
+            HOW IT WORKS: Uses exactly the break points you provide, giving complete control over classification.
+            BEST FOR: When you have domain knowledge about meaningful thresholds, need to match existing standards, or want to compare across multiple maps with consistent breaks."""
+        )
+
+        @classmethod
+        def get_default(cls):
+            return cls.FISHERJ
+        
+    # classifier_param for selecting the classification method
+    classifier_param = knext.EnumParameter(
+        label = "Classifier Selection",
+        description = "Select the classifier that you want to apply to the targeted columns.",
+        default_value = ClassModes.get_default().name,
+        enum = ClassModes
+    )
+    
+    # classifier selection parameter
+    class_col = knext.MultiColumnParameter(
+        "Targeted columns",
+        """The zoom level of the grid from 0 to 15 (default value is 8). The bigger the zoom level, the smaller the 
+        hexagon. If the zoom level is too small, the hexagon might be too big to fit in the input polygon which will
+        result in an error. A very small zoom level might result in a very large output table even for smaller 
+        input polygons. 
+        For more details about the zoom levels  refer to 
+        [Tables of Cell Statistics Across Resolutions.](https://h3geo.org/docs/core-library/restable/)
+        """,
+        column_filter = knut.is_numeric
+    ).rule(knext.OneOf(classifier_param, [ClassModes.GREEDY.name]), knext.Effect.HIDE)
+
+    # k_param for all classifiers
+    k_param = knext.IntParameter(
+        label = "Number of classification",
+        description = """The zoom level of the grid from 0 to 15 (default value is 8). The bigger the zoom level, the smaller the 
+        hexagon. If the zoom level is too small, the hexagon might be too big to fit in the input polygon which will
+        result in an error. A very small zoom level might result in a very large output table even for smaller 
+        input polygons. 
+        For more details about the zoom levels  refer to 
+        [Tables of Cell Statistics Across Resolutions.](https://h3geo.org/docs/core-library/restable/)
+        """,
+        default_value = 5,
+        min_value = 2
+    ).rule(knext.OneOf(classifier_param, [ClassModes.BOXPLOT.name,
+                                          ClassModes.GREEDY.name,
+                                          ClassModes.PERCENTILES.name,
+                                          ClassModes.STDMEAN.name,
+                                          ClassModes.USERDEFINED.name]), knext.Effect.HIDE)
+
+
+    '''
+    # *** SETTINGS FOR GREEDY CLASSIFIER ***
+
+    # strategy_param options for Greedy, sopme will require additional package: networkx.greedy_color
+    # see: https://networkx.github.io/documentation/stable/reference/algorithms/generated/networkx.algorithms.coloring.greedy_color.html
+    class Strategies(knext.EnumParameterOptions):
+        BALANCED = (
+            "balanced",
+            """"""
+        )
+
+        LARGEST_FIRST = (
+            "largest_first",
+            """"""
+        )
+        
+        RANDOM_SEQUENTIAL = (
+            "random_sequential",
+            """"""
+        )
+        
+        SMALLEST_LAST = (
+            "smallest_last",
+            """"""
+        )
+        
+        CONNECTED_SEQUENTIAL_BFS = (
+            "connected_sequential_bfs",
+            """"""
+        )
+        
+        CONNECTED_SEQUENTIAL_DFS = (
+            "connected_sequential_dfs",
+            """"""
+        )
+        
+        CONNECTED_SEQUENTIAL = (
+            "connected_sequential",
+            """"""
+        )
+
+        DASTUR = (
+            "DASTUR",
+            """"""
+        )
+
+        @classmethod
+        def get_default(cls):
+            return cls.BALANCED
+
+    # strategy_param for Greedy
+    strategy_param = knext.EnumParameter(
+        label = "Strategy",
+        description = """The strategy to use for the greedy algorithm.""",
+        default_value = Strategies.get_default().name,
+        enum = Strategies
+    ).rule(knext.OneOf(classifier_param, [ClassModes.GREEDY.name]), knext.Effect.SHOW)
+
+    # balance_param options for Greedy
+    class Balances(knext.EnumParameterOptions):
+        BALANCED = (
+            "balanced",
+            """"""
+        )
+
+        COUNT = (
+            "count",
+            """"""
+        )
+
+        AREA = (
+            "area",
+            """"""
+        )
+
+        CENTROID = (
+            "centroid",
+            """"""
+        )
+
+        DISTANCE = (
+            "distance",
+            """"""
+        )
+
+        @classmethod
+        def get_default(cls):
+            return cls.BALANCED
+
+    # balance_param for Greedy
+    balance_param = knext.EnumParameter(
+        label = "Balance",
+        description = """The balance strategy to use for the greedy algorithm.""",
+        default_value = Balances.get_default().name,
+        enum = Balances
+    ).rule(knext.OneOf(classifier_param, [ClassModes.GREEDY.name]), knext.Effect.SHOW)
+
+    # min_colors_param for Greedy
+    min_colors_param = knext.IntParameter(
+        label = "Minimum number of colors",
+        description = """The minimum number of colors to use for the greedy algorithm.""",
+        default_value = 4,
+        min_value = 2
+    ).rule(knext.OneOf(balance_param, [Balances.BALANCED.name]), knext.Effect.SHOW)
+
+    # sw_options for Greedy
+    class SWOptions(knext.EnumParameterOptions):
+        
+        QUEEN = (
+            "queen",
+            """"""
+        )
+
+        ROOK = (
+            "rook",
+            """"""
+        )
+
+        LIBYSAL = (
+            "libysal.weights.W",
+            """"""
+        )
+
+        @classmethod
+        def get_default(cls):
+            return cls.QUEEN
+
+    # sw_param for Greedy
+    sw_param = knext.EnumParameter(
+        label = "Spatial weights",
+        description = """If checked, the node will use spatial weights to determine the adjacency of the polygons.""",
+        default_value = SWOptions.get_default().name,
+        enum = SWOptions
+    ).rule(knext.OneOf(classifier_param, [ClassModes.GREEDY.name]), knext.Effect.SHOW)
+
+    # min_distance_param for Greedy
+    min_distance_param = knext.DoubleParameter(
+        label = "Minimum distance",
+        description = """The minimum distance to consider two polygons as adjacent. Only used if spatial weights is checked.""",
+        default_value = 0.0,
+    ).rule(knext.OneOf(classifier_param, [ClassModes.GREEDY.name]), knext.Effect.SHOW)
+
+    # silence_warn_param for Greedy
+    silence_warn_param = knext.BoolParameter(
+        label = "Silence warnings",
+        description = """If checked, the node will silence the warnings from the greedy algorithm.""",
+        default_value = False
+    ).rule(knext.OneOf(classifier_param, [ClassModes.GREEDY.name]), knext.Effect.SHOW)
+
+    # interchange_param for Greedy
+    interchange_param = knext.BoolParameter(
+        label = "Interchange",
+        description = """If checked, the node will use the interchange algorithm to improve the coloring result.""",
+        default_value = False
+    ).rule(knext.OneOf(classifier_param, [ClassModes.GREEDY.name]), knext.Effect.SHOW)
+    '''
+
+
+    # *** SETTINGS FOR BOXPLOT CLASSIFIER ***
+
+    # hinge_param for Boxplot
+    hinge_param = knext.DoubleParameter(
+        label = "Hinge prompt for Boxplot",
+        description = """The hinge value is used to determine the lower and upper quartiles of the data.""",
+        default_value = 1.5
+    ).rule(knext.OneOf(classifier_param, [ClassModes.BOXPLOT.name]), knext.Effect.SHOW)
+
+    # SETTINGS FOR FISHER JENKS SAMPLED CLASSIFIER ***
+
+    # pct_param for JenksCaspallSampled
+    pct_param = knext.DoubleParameter(
+        label = "Natural Breaks Percentage for FisherJenks Sampled",
+        description = """The percentage of the data to be randomly sampled to determine the natural breaks.""",
+        default_value = 0.10
+    ).rule(knext.OneOf(classifier_param, [ClassModes.JENKS_CASFORCED.name]), knext.Effect.SHOW)
+
+    # determines if the output is to truncate the classification result to the number of classes specified by the k parameter
+    jc_sampledtruncate = knext.BoolParameter(
+        "Truncate for FisherJenksSampled",
+        """If checked, the node will truncate the classification result to the number of classes specified by the k parameter.""",
+        default_value = False
+    ).rule(knext.OneOf(classifier_param, [ClassModes.JENKS_CASSAMPLED.name]), knext.Effect.SHOW)
+
+    # *** Formatting Settings ***
+
+    # determines if the output is to replace the original columns or append them
+    append_replace = knext.BoolParameter(
+        "Append Classification Results",
+        """If checked, the node will append the classification result to the input table.
+        If unchecked, the node will replace the input table with the classification result.""",
+        default_value = False
+    ).rule(knext.OneOf(classifier_param, [ClassModes.GREEDY.name]), knext.Effect.HIDE)
+
+    def configure(self, configure_context, input_schema):
+        return None
+
+    def execute(self, exec_context: knext.ExecutionContext, input_table):
+        import mapclassify as mc
+        import geopandas as gpd
+
+        gdf = input_table.to_pandas()
+
+    # equal interval
+        if self.classifier_param == self.ClassModes.EQUALINTERVAL.name:
+            for col in self.class_col:
+                grid = mc.EqualInterval(gdf[col], self.k_param)
+                if (self.append_replace):
+                    gdf[f'{col}applied'] = grid.yb.tolist()
+                else:
+                    gdf[col] = grid.yb.tolist()
+
+    # fisher jenks
+        elif self.classifier_param == self.ClassModes.FISHERJ.name:
+            for col in self.class_col:
+                grid = mc.FisherJenkins(gdf[col], self.k_param)
+                if (self.append_replace):
+                    gdf[f'{col}applied'] = grid.yb.tolist()
+                else:
+                    gdf[col] = grid.yb.tolist()
+            
+    # jenks caspall
+        elif self.classifier_param == self.ClassModes.JENKS_CAS.name:
+            for col in self.class_col:
+                grid = mc.JenksCaspall(gdf[col], self.k_param)
+                if (self.append_replace):
+                    gdf[f'{col}applied'] = grid.yb.tolist()
+                else:
+                    gdf[col] = grid.yb.tolist()
+            
+    # jenks caspall forced
+        elif self.classifier_param == self.ClassModes.JENKS_CASFORCED.name:
+            for col in self.class_col:
+                grid = mc.JenksCaspallForced(gdf[col], self.k_param)
+                if (self.append_replace):
+                    gdf[f'{col}applied'] = grid.yb.tolist()
+                else:
+                    gdf[col] = grid.yb.tolist()
+        
+    # pretty breaks
+        elif self.classifier_param == self.ClassModes.PRETTYBREAKS.name:
+            for col in self.class_col:
+                grid = mc.PrettyBreaks(gdf[col], self.k_param)
+                if (self.append_replace):
+                    gdf[f'{col}applied'] = grid.yb.tolist()
+                else:
+                    gdf[col] = grid.yb.tolist()
+    
+    # quantiles
+        elif self.classifier_param == self.ClassModes.QUANTILES.name:
+            for col in self.class_col:
+                grid = mc.Quanitles(gdf[col], self.k_param)
+                if (self.append_replace):
+                    gdf[f'{col}applied'] = grid.yb.tolist()
+                else:
+                    gdf[col] = grid.yb.tolist()
+
+    # ***BEGINNING OF COMMPLEX CLASSIFIERS***
+
+    # boxplot
+        elif self.classifier_param == self.ClassModes.BOXPLOT.name:
+            y = gdf[self.class_col]
+            for col in self.class_col:
+                grid = mc.BoxPlot(y, self.hinge_param)
+                if (self.append_replace):
+                    gdf[f'{col}_applied'] = grid.yb.tolist()
+                else:
+                    gdf[col] = grid.yb.tolist()
+
+    # fisher jenks sampled  
+        elif self.classifier_param == self.ClassModes.FISHERJ_SAMPLED.name:
+            y = gdf[self.class_col]
+            for col in self.class_col:
+                grid = mc.FisherJenksSampled(y, self.k_param, self.pct_param, self.jc_sampledtruncate)
+                if (self.append_replace):
+                    gdf[f'{col}_applied'] = grid.yb.tolist()
+                else:
+                    gdf[col] = grid.yb.tolist()
+
+    # greedy
+        elif self.classifier_param == self.ClassModes.GREEDY.name:
+            grid = mc.greedy(gdf, self.strategy_param, self.balance_param, self.min_colors_param,
+                            self.sw_param, self.min_distance_param, self.silence_warn_param,
+                            self.interchange_param)
+            if (self.append_replace):
+                grid[f'{col}_greedy_colors'] = grid.yb.tolist()
+            else:
+                grid["greedy_colors"] = grid.yb.tolist()
+                
+
+    # head tail breaks
+        elif self.classifier_param == self.ClassModes.HEADT_BREAKS.name:
+            y = gdf[self.class_col]
+            grid = mc.HeadTailBreaks(y, self.k_param)
+
+    # jenks caspall sampled
+        elif self.classifier_param == self.ClassModes.JENKS_CASSAMPLED.name:
+            y = gdf[self.class_col]
+            for col in self.class_col:
+                grid = mc.JenksCaspallSampled(y, self.k_param, self.pct_param, self.jc_sampledtruncate)
+                if (self.append_replace):
+                    gdf[f'{col}applied'] = grid.yb.tolist()
+                else:
+                    gdf[col] = grid.yb.tolist()
+
+    # maxp
+        elif self.classifier_param == self.ClassModes.MAXP.name:
+            y = gdf[self.class_col]
+            grid = mc.MaxP(self.cal_param)
+            for col in self.class_col:
+                if (self.append_replace):
+                    gdf[f'{col}applied'] = grid.yb.tolist()
+                else:
+                    gdf[col] = grid.yb.tolist()
+
+    # maximum breaks
+        elif self.classifier_param == self.ClassModes.MAXIMUMBREAKS.name:
+            y = gdf[self.class_col]
+            grid = mc.NaturalBreaks(y, k)
+
+    # percentiles
+        elif self.classifier_param == self.ClassModes.PERCENTILES.name:
+            y = gdf[self.class_col]
+            grid = mc.Percentiles(y, k)
+
+    # std mean
+        elif self.classifier_param == self.ClassModes.STDMEAN.name:
+            y = gdf[self.class_col]
+            grid = mc.StdMean(y, k)
+
+    # user defined
+        else:
+            y = gdf[self.class_col]
+            grid = mc.UserDefined(y, 3)
+            gdf['class'] = grid.yb.tolist()
+
+        return knut.to_table(gdf, exec_context)
