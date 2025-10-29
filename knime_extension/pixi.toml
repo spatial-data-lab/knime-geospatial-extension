@@ -10,6 +10,7 @@ packaging = "*"
 python = "3.11.*"
 curl = "8.14.0.*"
 cvxopt = "1.3.2.*"
+contextily = "1.6.2.*"
 esda = "2.7.0.*"
 fiona = "1.10.1.*"
 folium = "0.19.6.*"
@@ -36,7 +37,7 @@ pygeoda = "0.1.2.*"
 pointpats = "2.5.1.*"
 pulp = "2.8.0.*"
 keplergl = "*"
-contextily = "1.6.2"
+
 
 [pypi-dependencies]
 ipinfo = "==5.1.1"
