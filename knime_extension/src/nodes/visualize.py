@@ -357,13 +357,14 @@ class BaseMapSettings:
     )
 
 
-@knext.parameter_group(label="Base Map (contextily)")
+@knext.parameter_group(label="Base Map", since_version="2.1.0")
 class StaticBaseMapCxSettings:
-    """Contextily-only base map setting for the static matplotlib view."""
+    """The base map setting allow you to show a base map as background for the static matplotlib view."""
 
     base_map = knext.StringParameter(
         "Base map",
-        "Select a contextily base map to render as background. Set to 'Don't show base map' to disable.",
+        "Select a [contextily](https://contextily.readthedocs.io/en/latest/) base map to render as background. "
+        + "Set to 'Don't show base map' to disable.",
         default_value="Don't show base map",
         enum=[
             "Don't show base map",
@@ -377,7 +378,7 @@ class StaticBaseMapCxSettings:
             "Esri WorldGrayCanvas",
             "Stamen Watercolor",
         ],
-        since_version="2.0.0",
+        since_version="2.1.0",
     )
 
 
