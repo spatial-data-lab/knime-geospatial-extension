@@ -198,6 +198,51 @@ class _GoogleTrafficModel(knext.EnumParameterOptions):
         return cls.BEST_GUESS
 
 
+class _TomTomMatrixDepartTimeType(knext.EnumParameterOptions):
+    ANY = ("Any", "Use the default departure time.")
+    NOW = ("Now", "Use the current time as departure time.")
+    DATETIME = ("Custom datetime", "Specify a custom departure time.")
+
+    @classmethod
+    def get_default(cls):
+        return cls.ANY
+
+
+class _TomTomMatrixRouteType(knext.EnumParameterOptions):
+    FASTEST = ("Fastest", "Focuses on reducing travel time.")
+    SHORTEST = ("Shortest", "Prioritizes the shortest physical distance.")
+
+    @classmethod
+    def get_default(cls):
+        return cls.FASTEST
+
+
+class _TomTomMatrixTravelMode(knext.EnumParameterOptions):
+    CAR = ("Car", "Car as vehicle type.")
+    TRUCK = ("Truck", "Truck as vehicle type.")
+    PEDESTRIAN = ("Pedestrian", "Walking as travel mode.")
+
+    @classmethod
+    def get_default(cls):
+        return cls.CAR
+
+
+class _TomTomMatrixBatchSize(knext.EnumParameterOptions):
+    N100 = ("100", "No limitations.")
+    N200 = (
+        "200",
+        "All origins and destinations should be contained in an axis-aligned 400 km x 400 km bounding box. Otherwise, some matrix cells will be resolved as OUT_OF_REGION.",
+    )
+    N2500 = (
+        "2500",
+        "Route type will be FASTEST, traffic will be HISTORICAL, travel mode must be CAR or TRUCK, and departure time type will be ANY.",
+    )
+
+    @classmethod
+    def get_default(cls):
+        return cls.N100
+
+
 @knext.node(
     name="Google Distance Matrix",
     node_type=knext.NodeType.MANIPULATOR,
@@ -865,6 +910,1072 @@ class OSRMDistanceMatrix:
             gdf = rdf
 
         return knut.to_table(gdf, exec_context)
+
+
+############################################
+# OSRM Pairwise Distance Matrix
+############################################
+
+
+@knext.node(
+    name="OSRM Pairwise Distance Matrix",
+    node_type=knext.NodeType.MANIPULATOR,
+    category=__category,
+    icon_path=__NODE_ICON_PATH + "OSRMdistMatrix.png",
+)
+@knext.input_table(
+    name="Input table with point pairs",
+    description="Input table with source and target geometry columns. Each row represents one query.",
+)
+@knext.output_table(
+    name="Output Table",
+    description="""Input table with appended Distance (meters), Duration (minutes), and optional Route (line geometry) columns.""",
+)
+class OSRMPairwiseDistanceMatrix:
+    """Calculates pairwise distances between source and target points for each row using OSRM.
+
+    This node calculates the travel distance and duration between source and target points for each row in the input table using OSRM.
+    Unlike the OSRM Distance Matrix node that performs cross joins, this node processes point-to-point queries directly.
+    Each input row represents one query that returns the route between two points including distance and travel time.
+
+    This node uses the [Open Source Routing Machine (OSRM)](https://project-osrm.org/) to calculate pairwise distances.
+    The travel distance unit is meter and the estimated drive time is returned in minutes.
+
+    OSRM is a C++ implementation of a high-performance routing engine for shortest paths in road networks.
+    It combines sophisticated routing algorithms with the open and free road network data of the
+    [OpenStreetMap (OSM) project.](https://www.openstreetmap.org/about)
+
+    If the input geometries are not point geometries, their centroids will be automatically computed and used.
+
+    ##Usage Policy
+    Good practice and general limitations of the OSRM service that is used by this node can be found
+    [here.](https://github.com/Project-OSRM/osrm-backend/wiki/Api-usage-policy)
+    The current demo server is hosted by [FOSSGIS](https://www.fossgis.de/) which is subject to the usage policies and
+    terms and conditions that can be found [here.](https://www.fossgis.de/arbeitsgruppen/osm-server/nutzungsbedingungen/)
+
+    ##Batch Size Configuration
+
+    The batch size parameter controls how many point pairs are processed per API request. This setting is important
+    for balancing performance and server rate limits:
+
+    - **Official OSRM servers** (e.g., https://router.project-osrm.org): Use batch size 10-50 (default: 50) to avoid
+      rate limiting. Lower values (10-20) are safer for free/public servers.
+    - **Your own OSRM server**: You can use higher batch sizes (up to 150) for faster processing, depending on your
+      server's capacity and configuration.
+
+    The batch size can be adjusted in the advanced settings. If you encounter rate limiting errors, reduce the batch size.
+    For faster processing on your own server, increase the batch size accordingly.
+
+    ##Note
+    Data copyright by [OpenStreetMap](https://www.openstreetmap.org/copyright)
+    [(ODbl)](https://opendatacommons.org/licenses/odbl/index.html) and provided under
+    [CC-BY-SA.](https://creativecommons.org/licenses/by-sa/2.0/)
+    To report a problem and contribute to OpenStreetMap click [here.](https://www.openstreetmap.org/fixthemap)
+    Please note the licence/attribution guidelines as described [here.](https://wiki.osmfoundation.org/wiki/Licence/Attribution_Guidelines)
+    """
+
+    # Geometry column parameters
+    source_geo_col = knext.ColumnParameter(
+        "Source geometry column",
+        "Select the geometry column that contains the source (origin) points.",
+        port_index=0,
+        column_filter=knut.is_geo,
+        include_row_key=False,
+        include_none_column=False,
+    )
+
+    target_geo_col = knext.ColumnParameter(
+        "Target geometry column",
+        "Select the geometry column that contains the target (destination) points.",
+        port_index=0,
+        column_filter=knut.is_geo,
+        include_row_key=False,
+        include_none_column=False,
+    )
+
+    result_model = knext.EnumParameter(
+        label="Result mode",
+        description="Supports the following result modes:",
+        default_value=_OSRMResultModel.get_default().name,
+        enum=_OSRMResultModel,
+    )
+
+    min_delay_seconds = knext.IntParameter(
+        label="Minimum delay (seconds)",
+        description="The minimum delay in seconds between two requests to the OSRM server.",
+        default_value=1,
+        since_version="1.2.0",
+        is_advanced=True,
+    )
+
+    default_timeout = knext.IntParameter(
+        label="Default timeout (seconds)",
+        description="The default timeout in seconds for a request to the OSRM server.",
+        default_value=10,
+        since_version="1.2.0",
+        is_advanced=True,
+    )
+
+    osrm_server = knext.StringParameter(
+        label="OSRM server",
+        description="""The URL of the OSRM server to use. The default value is the demo server hosted at https://router.project-osrm.org""",
+        default_value="https://router.project-osrm.org",
+        since_version="1.2.0",
+        is_advanced=True,
+    )
+
+    batch_size = knext.IntParameter(
+        label="Batch size",
+        description="""Number of point pairs to process per request (default: 50).
+        For official OSRM servers, use 10-50 to avoid rate limiting.
+        For your own server, you can use higher values (up to 150) for faster processing.""",
+        default_value=50,
+        min_value=10,
+        max_value=150,
+        is_advanced=True,
+    )
+
+    # Constants
+    _COL_GEOMETRY = "Route"
+    _COL_DISTANCE = "Distance"
+    _COL_DURATION = "Duration"
+    _PROFILE = "driving"
+    _REQUEST_PARAMETER = {"continue_straight": "false"}
+
+    def configure(self, configure_context, input_schema):
+        self.source_geo_col = knut.column_exists_or_preset(
+            configure_context, self.source_geo_col, input_schema, knut.is_geo
+        )
+        self.target_geo_col = knut.column_exists_or_preset(
+            configure_context, self.target_geo_col, input_schema, knut.is_geo
+        )
+
+        model = _OSRMResultModel[self.result_model]
+
+        # Build output schema: original columns + Distance + Duration + optional Route
+        output_schema = input_schema
+        if model.append_distance():
+            output_schema = output_schema.append(
+                knext.Column(knext.double(), self._COL_DISTANCE)
+            )
+            output_schema = output_schema.append(
+                knext.Column(knext.double(), self._COL_DURATION)
+            )
+        if model.append_route():
+            output_schema = output_schema.append(
+                knext.Column(knut.TYPE_LINE, self._COL_GEOMETRY)
+            )
+
+        return output_schema
+
+    def round_coord_list(self, coord_list, digits):
+        """Round coordinates to specified digits."""
+        coord_list = list(map(lambda x: [round(i, digits) for i in x], coord_list))
+        coord_list = [tuple(i) for i in coord_list]
+        return coord_list
+
+    def extract_pair_routes(self, data):
+        """Extract route geometries from OSRM response for pairwise queries."""
+        import polyline
+        from shapely.geometry import LineString
+
+        try:
+            # Decode the full polyline
+            decoded = polyline.decode(data["routes"][0]["geometry"])
+            # OSRM waypoint.location is [lon, lat]
+            coords_flat = [
+                round(c, 5) for w in data["waypoints"] for c in w["location"]
+            ]
+            waypoints_latlon = [
+                (coords_flat[i + 1], coords_flat[i])
+                for i in range(0, len(coords_flat), 2)
+            ]
+
+            # Locate waypoint indices in polyline by rounding
+            dec4 = self.round_coord_list(decoded, 4)
+            pts4 = self.round_coord_list(waypoints_latlon, 4)
+            idx = []
+            pos = 0
+            for target in pts4:
+                sub = dec4[pos:]
+                for j, p in enumerate(sub):
+                    if p == target:
+                        pos = pos + j
+                        break
+                idx.append(pos)
+                pos += 1
+
+            # Shapely needs (lon, lat)
+            decoded_lonlat = [(lon, lat) for lat, lon in decoded]
+
+            # Extract routes for each pair (0->1), (2->3), ...
+            routes = []
+            for i in range(0, len(idx), 2):
+                a, b = idx[i], idx[i + 1]
+                seg = decoded_lonlat[a : b + 1]
+                routes.append(LineString(seg))
+            return routes
+        except Exception as e:
+            knut.LOGGER.warning(f"Error extracting routes: {e}")
+            return []
+
+    def execute(self, exec_context: knext.ExecutionContext, input_table):
+        import requests
+        import time
+        import json
+        import pandas as pd
+        import numpy as np
+        from shapely.geometry import LineString
+
+        knut.check_canceled(exec_context)
+
+        # Load input data and reset index to ensure alignment
+        df = input_table.to_pandas()
+        df = df.reset_index(drop=True)
+
+        source_gdf = knut.load_geo_data_frame(
+            input_table, self.source_geo_col, exec_context
+        )
+        target_gdf = knut.load_geo_data_frame(
+            input_table, self.target_geo_col, exec_context
+        )
+
+        # Convert to WGS84 (EPSG:4326) for API calls
+        source_gdf = source_gdf.to_crs(4326)
+        target_gdf = target_gdf.to_crs(4326)
+
+        # Extract centroids and ensure index alignment
+        source_gdf = source_gdf.reset_index(drop=True)
+        target_gdf = target_gdf.reset_index(drop=True)
+        source_gdf["geometry"] = source_gdf.geometry.centroid
+        target_gdf["geometry"] = target_gdf.geometry.centroid
+
+        # Prepare result dataframe - work directly on df
+        model = _OSRMResultModel[self.result_model]
+
+        if model.append_distance():
+            df[self._COL_DISTANCE] = 0.0
+            df[self._COL_DURATION] = 0.0
+        if model.append_route():
+            df[self._COL_GEOMETRY] = LineString([(0, 0), (1, 1)])
+
+        # Extract coordinates
+        source_coords = [
+            (pt.centroid.y, pt.centroid.x) for pt in source_gdf.geometry
+        ]  # (lat, lon)
+        target_coords = [
+            (pt.centroid.y, pt.centroid.x) for pt in target_gdf.geometry
+        ]  # (lat, lon)
+
+        # Process in batches
+        n_rows = len(df)
+
+        for i in range(0, n_rows, self.batch_size):
+            end_idx = min(i + self.batch_size, n_rows)
+            batch_source = source_coords[i:end_idx]
+            batch_target = target_coords[i:end_idx]
+
+            # Build coordinate string: "lon,lat;lon,lat;..."
+            coord_pairs = []
+            for (src_lat, src_lon), (tgt_lat, tgt_lon) in zip(
+                batch_source, batch_target
+            ):
+                coord_pairs.append(
+                    f"{src_lon:.6f},{src_lat:.6f};{tgt_lon:.6f},{tgt_lat:.6f}"
+                )
+
+            coords_str = ";".join(coord_pairs)
+
+            request_url = (
+                f"{self.osrm_server.rstrip('/')}/route/v1/{self._PROFILE}/{coords_str}"
+            )
+
+            try:
+                response = requests.get(
+                    request_url,
+                    params=self._REQUEST_PARAMETER,
+                    headers=knut.WEB_REQUEST_HEADER,
+                    timeout=self.default_timeout,
+                )
+                time.sleep(max(0.0, float(self.min_delay_seconds)))
+                data = response.json()
+
+                if data.get("code") == "Ok":
+                    legs = data["routes"][0]["legs"]
+                    # For pairwise, we only need every other leg (0, 2, 4, ...)
+                    pair_legs = [legs[j] for j in range(0, len(legs), 2)]
+
+                    for j, (leg, row_idx) in enumerate(
+                        zip(pair_legs, range(i, end_idx))
+                    ):
+                        if row_idx < len(df):
+                            if model.append_distance():
+                                df.loc[row_idx, self._COL_DURATION] = (
+                                    leg["duration"] / 60.0
+                                )  # seconds to minutes
+                                df.loc[row_idx, self._COL_DISTANCE] = leg[
+                                    "distance"
+                                ]  # meters
+
+                            if model.append_route():
+                                try:
+                                    routes = self.extract_pair_routes(data)
+                                    if j < len(routes):
+                                        df.loc[row_idx, self._COL_GEOMETRY] = routes[j]
+                                except Exception as e:
+                                    knut.LOGGER.warning(
+                                        f"Error extracting route for row {row_idx}: {e}"
+                                    )
+                else:
+                    knut.LOGGER.warning(
+                        f"No route found for batch starting at row {i}: {data.get('code', 'Unknown error')}"
+                    )
+            except Exception as e:
+                knut.LOGGER.warning(f"OSRM server error: {e}")
+
+            exec_context.set_progress(
+                min(0.9 * end_idx / n_rows, 0.9),
+                f"Processed {min(end_idx, n_rows)} of {n_rows} rows",
+            )
+            knut.check_canceled(exec_context)
+
+        exec_context.set_progress(1.0, "Processing complete")
+
+        # Convert result to GeoDataFrame if route is included
+        if model.append_route():
+            gdf = gp.GeoDataFrame(df, geometry=self._COL_GEOMETRY, crs=4326)
+            return knut.to_table(gdf, exec_context)
+        else:
+            return knut.to_table(df, exec_context)
+
+
+############################################
+# Google Pairwise Distance Matrix
+############################################
+
+
+@knext.node(
+    name="Google Pairwise Distance Matrix",
+    node_type=knext.NodeType.MANIPULATOR,
+    category=__category,
+    icon_path=__NODE_ICON_PATH + "GoogleDistMatrix.png",
+)
+@knext.input_table(
+    name="Input table with point pairs",
+    description="Input table with source and target geometry columns. Each row represents one query.",
+)
+@knext.output_table(
+    name="Output Table",
+    description="""Input table with appended Distance (meters), Duration (minutes), and optional Duration in Traffic (minutes) columns.""",
+)
+class GooglePairwiseDistanceMatrix:
+    """Calculates pairwise distances between source and target points for each row using Google Distance Matrix API.
+
+    This node calculates the travel distance and duration between source and target points for each row in the input table using Google Distance Matrix API.
+    Unlike the Google Distance Matrix node that performs cross joins, this node processes point-to-point queries directly.
+    Each input row represents one query that returns the distance and travel time between two points.
+
+    This node uses the [Google Distance Matrix API](https://developers.google.com/maps/documentation/distance-matrix/overview)
+    to calculate pairwise distances. The distance unit is meter and the duration is returned in minutes.
+
+    If the input geometries are not point geometries, their centroids will be automatically computed and used.
+    """
+
+    # Geometry column parameters
+    source_geo_col = knext.ColumnParameter(
+        "Source geometry column",
+        "Select the geometry column that contains the source (origin) points.",
+        port_index=0,
+        column_filter=knut.is_geo,
+        include_row_key=False,
+        include_none_column=False,
+    )
+
+    target_geo_col = knext.ColumnParameter(
+        "Target geometry column",
+        "Select the geometry column that contains the target (destination) points.",
+        port_index=0,
+        column_filter=knut.is_geo,
+        include_row_key=False,
+        include_none_column=False,
+    )
+
+    api_key = knext.StringParameter(
+        label="Google API key",
+        description="""Click [here](https://developers.google.com/maps/documentation/distance-matrix/get-api-key) for details on
+        how to obtain and use a Google API key for the Distance Matrix API.""",
+        default_value="your api key here",
+        validator=knut.api_key_validator,
+    )
+
+    travel_mode = knext.EnumParameter(
+        "Travel mode",
+        """The following 
+        [travel modes](https://developers.google.com/maps/documentation/distance-matrix/distance-matrix#mode) 
+        are supported: """,
+        default_value=_GoogleTravelMode.get_default().name,
+        enum=_GoogleTravelMode,
+    )
+
+    consider_traffic = knext.BoolParameter(
+        label="Consider traffic",
+        description="""If checked, the travel time and distance will be computed considering the traffic conditions.
+        If unchecked, the travel time and distance will be computed without considering the traffic conditions.""",
+        default_value=False,
+        since_version="1.3.0",
+    )
+
+    traffic_model = knext.EnumParameter(
+        "Traffic model",
+        """The [traffic model](https://developers.google.com/maps/documentation/distance-matrix/distance-matrix#traffic_model)
+        specifies the assumptions to use when calculating time in traffic.
+        """,
+        default_value=_GoogleTrafficModel.get_default().name,
+        since_version="1.3.0",
+        enum=_GoogleTrafficModel,
+    ).rule(knext.OneOf(consider_traffic, [True]), knext.Effect.SHOW)
+
+    departure_time = knext.DateTimeParameter(
+        label="Departure time",
+        description="""The departure time may be specified in two cases:
+                - For requests where the travel mode is transit: You can optionally specify departure_time or arrival_time. If None the departure_time defaults to now (that is, the departure time defaults to the current time).
+                - For requests where the travel mode is driving: You can specify the departure_time to receive a route and trip duration (response field: duration_in_traffic) that take traffic conditions into account. The departure_time must be set to the current time or some time in the future. It cannot be in the past.
+                
+                Note: If departure time is not specified, choice of route and duration are based on road network and average time-independent traffic conditions. Results for a given request may vary over time due to changes in the road network, updated average traffic conditions, and the distributed nature of the service. Results may also vary between nearly-equivalent routes at any time or frequency.
+                """,
+        default_value=dt.datetime.now() + dt.timedelta(days=1),
+        since_version="1.3.0",
+        show_time=True,
+        show_seconds=False,
+    ).rule(knext.OneOf(consider_traffic, [True]), knext.Effect.SHOW)
+
+    # Constants
+    _BASE_URL = "https://maps.googleapis.com/maps/api/distancematrix/json?language=en&units=imperial&origins={0}&destinations={1}&key={2}&mode={3}"
+    _COL_DISTANCE = "Distance"
+    _COL_DURATION = "Duration"
+    _COL_DURATION_TRAFFIC = "Duration in Traffic"
+    _BATCH_SIZE = 10  # 10 origins × 10 destinations = 100 elements (Google API limit)
+
+    def configure(self, configure_context, input_schema):
+        self.source_geo_col = knut.column_exists_or_preset(
+            configure_context, self.source_geo_col, input_schema, knut.is_geo
+        )
+        self.target_geo_col = knut.column_exists_or_preset(
+            configure_context, self.target_geo_col, input_schema, knut.is_geo
+        )
+
+        if self.api_key == "your api key here":
+            configure_context.set_warning("Please provide a valid API key")
+
+        # Build output schema: original columns + Distance + Duration + optional Duration in Traffic
+        output_schema = input_schema
+        output_schema = output_schema.append(
+            knext.Column(knext.double(), self._COL_DISTANCE)
+        )
+        output_schema = output_schema.append(
+            knext.Column(knext.double(), self._COL_DURATION)
+        )
+        if self.consider_traffic:
+            output_schema = output_schema.append(
+                knext.Column(knext.double(), self._COL_DURATION_TRAFFIC)
+            )
+
+        return output_schema
+
+    def execute(self, exec_context: knext.ExecutionContext, input_table):
+        import requests
+        import json
+        from pandas import json_normalize
+        import numpy as np
+        from datetime import datetime, timedelta
+
+        knut.check_canceled(exec_context)
+
+        if self.api_key == "your api key here":
+            raise ValueError("Please provide a valid API key")
+
+        # Load input data and reset index to ensure alignment
+        df = input_table.to_pandas()
+        df = df.reset_index(drop=True)
+
+        source_gdf = knut.load_geo_data_frame(
+            input_table, self.source_geo_col, exec_context
+        )
+        target_gdf = knut.load_geo_data_frame(
+            input_table, self.target_geo_col, exec_context
+        )
+
+        # Convert to WGS84 (EPSG:4326) for API calls
+        source_gdf = source_gdf.to_crs(4326)
+        target_gdf = target_gdf.to_crs(4326)
+
+        # Extract centroids and ensure index alignment
+        source_gdf = source_gdf.reset_index(drop=True)
+        target_gdf = target_gdf.reset_index(drop=True)
+        source_gdf["geometry"] = source_gdf.geometry.centroid
+        target_gdf["geometry"] = target_gdf.geometry.centroid
+
+        def extract_coords(point):
+            return point.centroid.y, point.centroid.x
+
+        # Extract coordinates
+        source_coords = [extract_coords(pt) for pt in source_gdf.geometry]  # (lat, lon)
+        target_coords = [extract_coords(pt) for pt in target_gdf.geometry]  # (lat, lon)
+
+        # Prepare result dataframe - work directly on df
+        df[self._COL_DISTANCE] = 0.0
+        df[self._COL_DURATION] = 0.0
+        if self.consider_traffic:
+            df[self._COL_DURATION_TRAFFIC] = 0.0
+
+        # Process in batches
+        n_rows = len(df)
+
+        for i in range(0, n_rows, self._BATCH_SIZE):
+            end_idx = min(i + self._BATCH_SIZE, n_rows)
+            batch_source = source_coords[i:end_idx]
+            batch_target = target_coords[i:end_idx]
+
+            # Google API expects "lat,lng|lat,lng" format
+            origins_str = "|".join([f"{lat},{lng}" for lat, lng in batch_source])
+            destinations_str = "|".join([f"{lat},{lng}" for lat, lng in batch_target])
+
+            request_url = self._BASE_URL.format(
+                origins_str,
+                destinations_str,
+                self.api_key,
+                self.travel_mode.lower(),
+            )
+
+            if self.consider_traffic:
+                departure_time_timestamp = int(self.departure_time.timestamp())
+                departure_time = datetime.fromtimestamp(departure_time_timestamp)
+                current_time = datetime.now()
+                if departure_time < current_time + timedelta(minutes=10):
+                    knut.LOGGER.warning(
+                        "Departure time is in the past. Adjusting to the same time tomorrow."
+                    )
+                    departure_time = departure_time + timedelta(days=1)
+                departure_time_timestamp = int(departure_time.timestamp())
+                request_url += (
+                    "&traffic_model="
+                    + "_".join(self.traffic_model.lower().split(" "))
+                    + "&departure_time={}".format(departure_time_timestamp)
+                )
+
+            try:
+                response = requests.get(request_url)
+
+                # Check HTTP status code
+                if response.status_code != 200:
+                    knut.LOGGER.error(
+                        f"Google API HTTP Error: Status code {response.status_code}, "
+                        f"Response: {response.text[:500]}"
+                    )
+                    continue
+
+                data = response.json()
+                status = data.get("status", "UNKNOWN")
+
+                if status == "OK":
+                    # For pairwise, Google API returns a matrix where rows[i] contains
+                    # all destinations for origin i. We need the diagonal elements:
+                    # rows[i].elements[i] for the pairwise query (origin i -> destination i)
+                    rows_data = data.get("rows", [])
+                    for row_idx, row_data in enumerate(rows_data):
+                        elements = row_data.get("elements", [])
+                        # Extract diagonal element (row_idx -> row_idx)
+                        if row_idx < len(elements):
+                            element = elements[row_idx]
+                            if element.get("status") == "OK":
+                                actual_row = i + row_idx
+                                if actual_row < len(df):
+                                    df.loc[actual_row, self._COL_DURATION] = (
+                                        element["duration"]["value"] / 60
+                                    )  # seconds to minutes
+                                    df.loc[actual_row, self._COL_DISTANCE] = element[
+                                        "distance"
+                                    ][
+                                        "value"
+                                    ]  # meters
+
+                                    if self.consider_traffic:
+                                        if "duration_in_traffic" in element:
+                                            df.loc[
+                                                actual_row, self._COL_DURATION_TRAFFIC
+                                            ] = (
+                                                element["duration_in_traffic"]["value"]
+                                                / 60
+                                            )  # seconds to minutes
+                            else:
+                                # Log individual element errors
+                                knut.LOGGER.warning(
+                                    f"Row {i + row_idx}: Element status '{element.get('status', 'UNKNOWN')}' - "
+                                    f"{element.get('error_message', 'No error message')}"
+                                )
+                        else:
+                            knut.LOGGER.warning(
+                                f"No element found for row {i + row_idx} in batch"
+                            )
+                else:
+                    # Enhanced error logging with full details
+                    error_message = data.get("error_message", "")
+                    error_details = []
+
+                    # Check for detailed error information in rows
+                    if "rows" in data:
+                        for idx, row in enumerate(data.get("rows", [])):
+                            if "elements" in row:
+                                for elem_idx, elem in enumerate(row["elements"]):
+                                    if elem.get("status") != "OK":
+                                        error_details.append(
+                                            f"Row {i+idx}, Element {elem_idx}: {elem.get('status', 'UNKNOWN')} - "
+                                            f"{elem.get('error_message', 'No error message')}"
+                                        )
+
+                    error_msg = f"Google API Error - Status: {status}"
+                    if error_message:
+                        error_msg += f", Message: {error_message}"
+                    if error_details:
+                        error_msg += f", Details: {'; '.join(error_details[:5])}"  # Limit to first 5 details
+                    else:
+                        # Include full response for debugging (truncated)
+                        error_msg += f", Full response: {json.dumps(data)[:500]}"
+
+                    knut.LOGGER.error(error_msg)
+            except json.JSONDecodeError as e:
+                knut.LOGGER.error(
+                    f"Error parsing Google API response: {e}, Response text: {response.text[:500]}"
+                )
+            except Exception as e:
+                knut.LOGGER.warning(f"Error processing Google API request: {e}")
+
+            exec_context.set_progress(
+                min(0.9 * end_idx / n_rows, 0.9),
+                f"Processed {min(end_idx, n_rows)} of {n_rows} rows",
+            )
+            knut.check_canceled(exec_context)
+
+        exec_context.set_progress(1.0, "Processing complete")
+
+        return knut.to_table(df, exec_context)
+
+
+############################################
+# TomTom Pairwise Distance Matrix
+############################################
+
+
+@knext.node(
+    name="TomTom Pairwise Distance Matrix",
+    node_type=knext.NodeType.MANIPULATOR,
+    category=__category,
+    icon_path=__NODE_ICON_PATH + "TomTomDistanceMatrix.png",
+)
+@knext.input_table(
+    name="Input table with point pairs",
+    description="Input table with source and target geometry columns. Each row represents one query.",
+)
+@knext.output_table(
+    name="Output Table",
+    description="""Input table with appended Distance (meters) and Duration (minutes) columns.""",
+)
+class TomTomPairwiseDistanceMatrix:
+    """Calculates pairwise distances between source and target points for each row using TomTom Matrix Routing API.
+
+    This node calculates the travel distance and duration between source and target points for each row in the input table using TomTom Matrix Routing API V2.
+    Unlike the TomTom Distance Matrix node that performs cross joins, this node processes point-to-point queries directly.
+    Each input row represents one query that returns the distance and travel time between two points.
+
+    This node uses the [TomTom Matrix Routing API V2](https://developer.tomtom.com/matrix-routing-v2-api/documentation)
+    to calculate pairwise distances. The distance unit is meter and the duration is returned in minutes.
+
+    **Note:** A [TomTom API key](https://developer.tomtom.com/knowledgebase/platform/articles/how-to-get-an-tomtom-api-key/)
+    is required. You can obtain one for free by [registering](https://developer.tomtom.com/user/register) on the
+    TomTom website. Refer to the [TomTom pricing page](https://developer.tomtom.com/pricing) for information about free request limits and costs.
+
+    If the input geometries are not point geometries, their centroids will be automatically computed and used.
+
+    ## Performance and Rate Limiting
+
+    This node supports concurrent processing using multiple threads to significantly improve performance.
+    The node automatically handles rate limiting and retries failed requests.
+
+    **Recommended Settings:**
+    - **Free tier accounts**: Use `max_workers=3-5` and `request_delay=0.2` seconds to avoid rate limiting
+    - **Paid tier accounts**: Can use `max_workers=10-20` and `request_delay=0.1` seconds for faster processing
+    - **If you encounter 429 (Too Many Requests) errors**: Reduce `max_workers` or increase `request_delay`
+
+    The node includes automatic retry logic with exponential backoff for handling temporary failures and rate limits.
+    """
+
+    # Geometry column parameters
+    source_geo_col = knext.ColumnParameter(
+        "Source geometry column",
+        "Select the geometry column that contains the source (origin) points.",
+        port_index=0,
+        column_filter=knut.is_geo,
+        include_row_key=False,
+        include_none_column=False,
+    )
+
+    target_geo_col = knext.ColumnParameter(
+        "Target geometry column",
+        "Select the geometry column that contains the target (destination) points.",
+        port_index=0,
+        column_filter=knut.is_geo,
+        include_row_key=False,
+        include_none_column=False,
+    )
+
+    # API key parameter
+    tomtom_api_key = knext.StringParameter(
+        "TomTom API key",
+        """The 
+        [TomTom API key](https://developer.tomtom.com/user/register)
+        is required to authenticate requests to the 
+        [Matrix Routing API V2](https://developer.tomtom.com/matrix-routing-v2-api/documentation)
+        provided by TomTom. 
+        To get an API key, click
+        [here.](https://developer.tomtom.com/user/register)
+        For details about the pricing go to the [TomTom pricing page.](https://developer.tomtom.com/matrix-routing-v2-api/documentation/pricing)""",
+    )
+
+    # Routing parameters
+    route_type = knext.EnumParameter(
+        "Route type",
+        """Determines the type of route used for the distance calculation. 
+        Different route types can result in different route choices.""",
+        default_value=_TomTomMatrixRouteType.get_default().name,
+        enum=_TomTomMatrixRouteType,
+        style=knext.EnumParameter.Style.DROPDOWN,
+    )
+
+    travel_mode = knext.EnumParameter(
+        "Travel mode",
+        """Specifies the mode of travel for the distance calculation, which can 
+        significantly impact the route choice, distance and travel time.""",
+        default_value=_TomTomMatrixTravelMode.get_default().name,
+        enum=_TomTomMatrixTravelMode,
+    )
+
+    consider_traffic = knext.BoolParameter(
+        "Consider current traffic",
+        """If selected, the current traffic conditions are considered in the distance and duration calculations. 
+        Note that information on historic road speeds is always used.
+        This option is only available for CAR and TRUCK travel modes.""",
+        default_value=True,
+    ).rule(knext.OneOf(travel_mode, ["CAR", "TRUCK"]), knext.Effect.SHOW)
+
+    depart_time_type = knext.EnumParameter(
+        "Departure time type",
+        """Specify how to set the departure time:
+        - Any: Use the default departure time
+        - Now: Use the current time as departure time
+        - Custom datetime: Specify a custom departure time""",
+        default_value=_TomTomMatrixDepartTimeType.get_default().name,
+        enum=_TomTomMatrixDepartTimeType,
+    ).rule(knext.OneOf(travel_mode, ["CAR", "TRUCK"]), knext.Effect.SHOW)
+
+    depart_at = knext.DateTimeParameter(
+        "Custom departure time",
+        """Specify a custom departure time for the distance calculation.
+        This time must be in the future.""",
+        default_value=None,
+        show_time=True,
+        show_seconds=False,
+    ).rule(knext.OneOf(depart_time_type, ["DATETIME"]), knext.Effect.SHOW)
+
+    # Advanced parameters
+    timeout = knext.IntParameter(
+        "Request timeout in seconds",
+        "The maximum time in seconds to wait for the request to the TomTom API to succeed.",
+        120,
+        min_value=1,
+        is_advanced=True,
+    )
+
+    max_workers = knext.IntParameter(
+        "Maximum concurrent requests",
+        """Maximum number of concurrent API requests (default: 3).
+        Higher values may trigger rate limiting. If you encounter 429 errors, reduce this value.
+        Recommended range: 3-5 for free tier, up to 20 for paid tier.""",
+        default_value=1,
+        min_value=1,
+        max_value=20,
+        is_advanced=True,
+    )
+
+    request_delay = knext.DoubleParameter(
+        "Delay between requests (seconds)",
+        """Minimum delay in seconds between requests to avoid rate limiting (default: 0.2).
+        Increase if you encounter 429 (Too Many Requests) errors.""",
+        default_value=0.2,
+        min_value=0.0,
+        max_value=1.0,
+        is_advanced=True,
+    )
+
+    # Constants
+    _COL_DISTANCE = "Distance"
+    _COL_DURATION = "Duration"
+
+    def configure(self, configure_context, input_schema):
+        self.source_geo_col = knut.column_exists_or_preset(
+            configure_context, self.source_geo_col, input_schema, knut.is_geo
+        )
+        self.target_geo_col = knut.column_exists_or_preset(
+            configure_context, self.target_geo_col, input_schema, knut.is_geo
+        )
+
+        if (
+            self.tomtom_api_key is None
+            or len(self.tomtom_api_key.strip()) == 0
+            or self.tomtom_api_key == "your api key here"
+        ):
+            configure_context.set_warning("Please provide a valid TomTom API key")
+
+        # Build output schema: original columns + Distance + Duration
+        output_schema = input_schema
+        output_schema = output_schema.append(
+            knext.Column(knext.double(), self._COL_DISTANCE)
+        )
+        output_schema = output_schema.append(
+            knext.Column(knext.double(), self._COL_DURATION)
+        )
+
+        return output_schema
+
+    def execute(self, exec_context: knext.ExecutionContext, input_table):
+        import requests
+        import json
+        import time
+        import threading
+        from datetime import datetime, timedelta
+        from concurrent.futures import ThreadPoolExecutor, as_completed
+
+        knut.check_canceled(exec_context)
+
+        # Check if API key is provided
+        if (
+            self.tomtom_api_key is None
+            or len(self.tomtom_api_key.strip()) == 0
+            or self.tomtom_api_key == "your api key here"
+        ):
+            knut.LOGGER.error(
+                "Please enter your TomTom API key. If you don't have one, you can register [here](https://developer.tomtom.com/user/register)."
+            )
+            raise ValueError(
+                "Please enter your TomTom API key. If you don't have one, you can register [here](https://developer.tomtom.com/user/register)."
+            )
+
+        # Load input data and reset index to ensure alignment
+        df = input_table.to_pandas()
+        df = df.reset_index(drop=True)
+
+        source_gdf = knut.load_geo_data_frame(
+            input_table, self.source_geo_col, exec_context
+        )
+        target_gdf = knut.load_geo_data_frame(
+            input_table, self.target_geo_col, exec_context
+        )
+
+        # Convert to WGS84 (EPSG:4326) for API calls
+        source_gdf = source_gdf.to_crs(4326)
+        target_gdf = target_gdf.to_crs(4326)
+
+        # Extract centroids and ensure index alignment
+        source_gdf = source_gdf.reset_index(drop=True)
+        target_gdf = target_gdf.reset_index(drop=True)
+        source_gdf["geometry"] = source_gdf.geometry.centroid
+        target_gdf["geometry"] = target_gdf.geometry.centroid
+
+        def extract_coords(point):
+            return {
+                "point": {
+                    "latitude": float(point.centroid.y),
+                    "longitude": float(point.centroid.x),
+                }
+            }
+
+        # Extract coordinates
+        source_points = [extract_coords(pt) for pt in source_gdf.geometry]
+        target_points = [extract_coords(pt) for pt in target_gdf.geometry]
+
+        # Prepare result dataframe - work directly on df
+        df[self._COL_DISTANCE] = 0.0
+        df[self._COL_DURATION] = 0.0
+
+        # Prepare departure time if specified
+        departure_time = None
+        if self.consider_traffic and self.travel_mode in ["CAR", "TRUCK"]:
+            if self.depart_time_type == "DATETIME":
+                depart_at_datetime = self.depart_at
+                current_time = datetime.now()
+                if depart_at_datetime < current_time + timedelta(minutes=1):
+                    knut.LOGGER.warning(
+                        "Departure time is in the past. Adjusting to the same time tomorrow."
+                    )
+                    depart_at_datetime += timedelta(days=1)
+                departure_time = depart_at_datetime.isoformat()[0:19]
+            elif self.depart_time_type == "NOW":
+                departure_time = "now"
+
+        n_rows = len(df)
+        tomtom_base_url = "https://api.tomtom.com/routing/matrix/2"
+
+        # Thread-safe variables for progress tracking
+        df_lock = threading.Lock()
+        completed_count = [0]
+        error_count = [0]
+
+        def process_single_row(row_idx, max_retries=3):
+            """Process a single row with retry mechanism and rate limit handling."""
+            # Each request contains only one origin and one destination (1×1 = 1 cell)
+            request_body = {
+                "origins": [source_points[row_idx]],
+                "destinations": [target_points[row_idx]],
+                "options": {
+                    "routeType": self.route_type.lower(),
+                    "travelMode": self.travel_mode.lower(),
+                },
+            }
+
+            # Add traffic options if applicable
+            if self.travel_mode in ["CAR", "TRUCK"]:
+                if self.consider_traffic:
+                    request_body["options"]["traffic"] = "live"
+                    if departure_time:
+                        request_body["options"]["departAt"] = departure_time
+                    else:
+                        request_body["options"]["departAt"] = "now"
+                else:
+                    request_body["options"]["traffic"] = "historical"
+
+            url = f"{tomtom_base_url}?key={self.tomtom_api_key}"
+            headers = {"Content-Type": "application/json"}
+
+            # Add delay to avoid rate limiting
+            if self.request_delay > 0:
+                time.sleep(self.request_delay)
+
+            # Retry logic with exponential backoff
+            for attempt in range(max_retries):
+                try:
+                    response = requests.post(
+                        url,
+                        data=json.dumps(request_body),
+                        headers=headers,
+                        timeout=self.timeout,
+                    )
+
+                    # Handle rate limiting (429 Too Many Requests)
+                    if response.status_code == 429:
+                        retry_after = int(response.headers.get("Retry-After", 2))
+                        if attempt < max_retries - 1:
+                            knut.LOGGER.warning(
+                                f"Rate limit hit for row {row_idx}. Waiting {retry_after} seconds before retry {attempt + 1}/{max_retries}..."
+                            )
+                            time.sleep(retry_after)
+                            continue
+                        else:
+                            return False, row_idx, "Rate limit exceeded after retries"
+
+                    if response.status_code == 200:
+                        data = response.json()
+                        matrix_data = data.get("data", [])
+
+                        # For single point pair, directly use the first (and only) result
+                        if len(matrix_data) > 0:
+                            route_data = matrix_data[0]
+                            route_summary = route_data.get("routeSummary", {})
+                            distance_meters = route_summary.get("lengthInMeters", 0)
+                            duration_seconds = route_summary.get(
+                                "travelTimeInSeconds", 0
+                            )
+
+                            # Thread-safe update of DataFrame
+                            with df_lock:
+                                df.loc[row_idx, self._COL_DISTANCE] = distance_meters
+                                df.loc[row_idx, self._COL_DURATION] = (
+                                    duration_seconds / 60
+                                )  # seconds to minutes
+                                completed_count[0] += 1
+
+                                # Update progress every 10 completed requests or at the end
+                                if (
+                                    completed_count[0] % 10 == 0
+                                    or completed_count[0] == n_rows
+                                ):
+                                    exec_context.set_progress(
+                                        min(0.9 * completed_count[0] / n_rows, 0.9),
+                                        f"Processed {completed_count[0]}/{n_rows} rows "
+                                        f"(Errors: {error_count[0]})",
+                                    )
+
+                            return True, row_idx, None
+                        else:
+                            return False, row_idx, "No route data returned"
+                    else:
+                        # Other HTTP errors
+                        error_json = response.json() if response.text else {}
+                        error_msg = f"Status code {response.status_code}"
+                        if attempt < max_retries - 1:
+                            time.sleep(2**attempt)  # Exponential backoff
+                            continue
+                        return False, row_idx, error_msg
+
+                except requests.exceptions.Timeout:
+                    if attempt < max_retries - 1:
+                        time.sleep(2**attempt)  # Exponential backoff
+                        continue
+                    return False, row_idx, "Request timeout"
+                except Exception as e:
+                    if attempt < max_retries - 1:
+                        time.sleep(2**attempt)  # Exponential backoff
+                        continue
+                    return False, row_idx, str(e)
+
+            return False, row_idx, "Max retries exceeded"
+
+        # Use ThreadPoolExecutor for concurrent processing
+        max_workers = min(self.max_workers, 20)  # Cap at 20 for safety
+        knut.LOGGER.info(
+            f"Processing {n_rows} rows with {max_workers} concurrent workers"
+        )
+
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            # Submit all tasks
+            future_to_row = {
+                executor.submit(process_single_row, row_idx): row_idx
+                for row_idx in range(n_rows)
+            }
+
+            # Process completed tasks
+            for future in as_completed(future_to_row):
+                row_idx = future_to_row[future]
+                try:
+                    success, _, error = future.result()
+                    if not success:
+                        with df_lock:
+                            error_count[0] += 1
+                        knut.LOGGER.warning(f"Error processing row {row_idx}: {error}")
+                except Exception as e:
+                    with df_lock:
+                        error_count[0] += 1
+                    knut.LOGGER.warning(f"Exception processing row {row_idx}: {e}")
+
+                # Check for cancellation
+                knut.check_canceled(exec_context)
+
+        exec_context.set_progress(1.0, "Processing complete")
+
+        if error_count[0] > 0:
+            knut.LOGGER.warning(
+                f"Completed with {error_count[0]} errors out of {n_rows} total rows"
+            )
+
+        return knut.to_table(df, exec_context)
 
 
 ############################################
@@ -1818,51 +2929,6 @@ class TomTomIsochroneMap:
 ############################################
 # TomTom Distance Matrix Node
 ############################################
-
-
-class _TomTomMatrixDepartTimeType(knext.EnumParameterOptions):
-    ANY = ("Any", "Use the default departure time.")
-    NOW = ("Now", "Use the current time as departure time.")
-    DATETIME = ("Custom datetime", "Specify a custom departure time.")
-
-    @classmethod
-    def get_default(cls):
-        return cls.ANY
-
-
-class _TomTomMatrixRouteType(knext.EnumParameterOptions):
-    FASTEST = ("Fastest", "Focuses on reducing travel time.")
-    SHORTEST = ("Shortest", "Prioritizes the shortest physical distance.")
-
-    @classmethod
-    def get_default(cls):
-        return cls.FASTEST
-
-
-class _TomTomMatrixTravelMode(knext.EnumParameterOptions):
-    CAR = ("Car", "Car as vehicle type.")
-    TRUCK = ("Truck", "Truck as vehicle type.")
-    PEDESTRIAN = ("Pedestrian", "Walking as travel mode.")
-
-    @classmethod
-    def get_default(cls):
-        return cls.CAR
-
-
-class _TomTomMatrixBatchSize(knext.EnumParameterOptions):
-    N100 = ("100", "No limitations.")
-    N200 = (
-        "200",
-        "All origins and destinations should be contained in an axis-aligned 400 km x 400 km bounding box. Otherwise, some matrix cells will be resolved as OUT_OF_REGION.",
-    )
-    N2500 = (
-        "2500",
-        "Route type will be FASTEST, traffic will be HISTORICAL, travel mode must be CAR or TRUCK, and departure time type will be ANY.",
-    )
-
-    @classmethod
-    def get_default(cls):
-        return cls.N100
 
 
 @knext.node(
