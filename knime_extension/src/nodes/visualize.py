@@ -1267,6 +1267,29 @@ class ViewNodeKepler:
             if not knut.is_numeric_or_string(c) and not knut.is_geo(c):
                 gdf[c.name] = gdf[c.name].apply(str)
 
+        # keplergl 0.3.x does `from pkg_resources import resource_string`, but
+        # setuptools >=81 (bundled with KNIME 5.12) no longer ships pkg_resources.
+        # Provide a minimal shim so the import and static-asset loading keep working.
+        import sys
+
+        if "pkg_resources" not in sys.modules:
+            try:
+                import pkg_resources  # noqa: F401
+            except ModuleNotFoundError:
+                import types
+                import os
+                import importlib
+
+                _pkg_resources = types.ModuleType("pkg_resources")
+
+                def _resource_string(package, resource):
+                    base = os.path.dirname(importlib.import_module(package).__file__)
+                    with open(os.path.join(base, resource), "rb") as _fh:
+                        return _fh.read()
+
+                _pkg_resources.resource_string = _resource_string
+                sys.modules["pkg_resources"] = _pkg_resources
+
         from keplergl import KeplerGl
 
         map_1 = KeplerGl(show_docs=False)

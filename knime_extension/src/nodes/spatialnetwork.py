@@ -1296,7 +1296,7 @@ class RoadNetworkDistanceMatrix:
 
         # 08-1: update internal edges (split line segments)
         line_pps_dict = {
-            k: MultiPoint(list(v)) for k, v in POI.groupby(["kne_idx"])["pp"]
+            k: MultiPoint(list(v)) for k, v in POI.groupby("kne_idx")["pp"]
         }
         new_lines = [
             self.split_line(edges["geometry"][idx], pps)
