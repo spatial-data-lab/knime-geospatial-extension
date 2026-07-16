@@ -143,34 +143,78 @@ _KEPLER_COPY_CONFIG_SCRIPT = """<script>
     return ok;
   }
 
-  var button = document.createElement("button");
+  // Matches kepler's own header actions: 20px icon, viewBox 0 0 64 64, fill: currentcolor.
+  var COPY_PATH = "M56,54.5H26.4a2,2,0,0,1-2-2V22.9a2,2,0,0,1,2-2H56a2,2,0,0,1,2,2V52.5A2,2,0,0,1,56,54.5Z"
+    + "M28.4,50.5H54V24.9H28.4Z"
+    + "M37.6,43.1H8a2,2,0,0,1-2-2V11.5a2,2,0,0,1,2-2H37.6a2,2,0,0,1,2,2v3.6a2,2,0,0,1-4,0V13.5H10V39.1H35.6V37.5"
+    + "a2,2,0,0,1,4,0v3.6A2,2,0,0,1,37.6,43.1Z";
+  var CHECK_PATH = "M25.8,48.6a2,2,0,0,1-1.4-.6L10.6,34.2a2,2,0,0,1,2.8-2.8L25.8,43.8,50.6,19a2,2,0,0,1,2.8,2.8"
+    + "L27.2,48A2,2,0,0,1,25.8,48.6Z";
+
+  function icon(path) {
+    return '<svg viewBox="0 0 64 64" width="20px" height="20px" style="fill: currentcolor;">'
+      + '<path d="' + path + '"></path></svg>';
+  }
+
+  // Kepler's own header actions get their look from styled-components hash classes, and its
+  // semantic `side-panel__panel-header__action` class carries no styling of its own, so the
+  // geometry and colour of the neighbouring docs icon are restated here rather than inherited.
+  var IDLE_COLOR = "rgb(106, 116, 133)";
+  var ACTIVE_COLOR = "rgb(160, 167, 180)";
+
+  var button = document.createElement("div");
   button.id = BTN_ID;
-  button.textContent = "Copy map configuration";
+  button.className = "side-panel__panel-header__action";
   button.setAttribute("style", [
-    "position:absolute", "bottom:12px", "left:12px", "z-index:9999",
-    "padding:6px 10px", "font:500 11px/1.4 Helvetica,Arial,sans-serif",
-    "color:#A0A7B4", "background:#242730", "border:1px solid #3A414C",
-    "border-radius:2px", "cursor:pointer"
+    "display:flex", "align-items:center", "justify-content:center",
+    "width:30px", "height:26px", "margin-left:4px",
+    "color:" + IDLE_COLOR, "cursor:pointer"
   ].join(";"));
+  button.title = "Copy map configuration, to paste into the node's 'Map configuration' setting";
+  button.innerHTML = icon(COPY_PATH);
+  button.addEventListener("mouseenter", function () { button.style.color = ACTIVE_COLOR; });
+  button.addEventListener("mouseleave", function () { button.style.color = IDLE_COLOR; });
+
+  function flash(html, title, ms) {
+    button.innerHTML = html;
+    var previous = button.title;
+    button.title = title;
+    setTimeout(function () {
+      button.innerHTML = icon(COPY_PATH);
+      button.title = previous;
+    }, ms);
+  }
 
   button.addEventListener("click", function () {
     var config = buildConfig();
     if (!config) {
-      button.textContent = "Map not ready yet";
-      setTimeout(function () { button.textContent = "Copy map configuration"; }, 2000);
+      flash(icon(COPY_PATH), "Map is not ready yet", 2000);
       return;
     }
     copy(JSON.stringify(config), function (ok) {
-      button.textContent = ok ? "Copied - paste into 'Map configuration'" : "Copy failed";
-      setTimeout(function () { button.textContent = "Copy map configuration"; }, 3000);
+      flash(
+        icon(ok ? CHECK_PATH : COPY_PATH),
+        ok ? "Copied - paste into the node's 'Map configuration' setting" : "Copy failed",
+        3000
+      );
     });
   });
 
+  // The header only exists while the side panel is expanded, and React re-creates it on
+  // collapse/expand, so re-attach whenever it reappears instead of injecting once.
   function attach() {
-    if (document.body) { document.body.appendChild(button); }
-    else { window.addEventListener("load", attach); }
+    var actions = document.querySelector(".side-panel__top__actions");
+    if (!actions || actions.contains(button)) { return; }
+    var docsAction = actions.querySelector(".side-panel__panel-header__right");
+    if (docsAction) { actions.insertBefore(button, docsAction); }
+    else { actions.appendChild(button); }
   }
+
   attach();
+  new MutationObserver(attach).observe(document.documentElement, {
+    childList: true,
+    subtree: true
+  });
 })();
 </script>"""
 
