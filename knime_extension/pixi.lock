@@ -582,7 +582,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/noarch/zipp-3.23.1-pyhcf101f3_0.conda
       - conda: https://conda.anaconda.org/knime/label/nightly/linux-64/knime-python-base-5.12.0-py312_202606041333.conda
       - conda: https://conda.anaconda.org/knime/label/nightly/linux-64/knime-python-versions-5.12.0-py313_202606041333.conda
-      - conda: https://conda.anaconda.org/knime/label/nightly/noarch/knime-extension-5.13.0-202607161421.conda
+      - conda: https://conda.anaconda.org/knime/label/nightly/noarch/knime-extension-5.12.0-202607101345.conda
       - pypi: https://files.pythonhosted.org/packages/49/cf/39ce66942763831a1bae1874964f184ef8c73c78ecd2f475fc76265611d6/pygeoda-0.1.2-cp313-cp313-manylinux_2_17_x86_64.manylinux2014_x86_64.whl
       - pypi: https://files.pythonhosted.org/packages/52/55/f1b20ecbe50e4a18c5f580149ed6a744a38cf56f46b951fff8bc4150f7bb/ipinfo-5.6.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/71/43/1947f06babed6b3f1d7f38b0c767f52df66bfb2bc10b468c4a7de9eceff2/aiohappyeyeballs-2.7.1-py3-none-any.whl
@@ -860,7 +860,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/osx-64/zlib-1.3.2-hbb4bfdb_2.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-64/zlib-ng-2.3.3-h8bce59a_1.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-64/zstd-1.5.7-h3eecb57_6.conda
-      - conda: https://conda.anaconda.org/knime/label/nightly/noarch/knime-extension-5.13.0-202607161421.conda
+      - conda: https://conda.anaconda.org/knime/label/nightly/noarch/knime-extension-5.12.0-202607101345.conda
       - conda: https://conda.anaconda.org/knime/label/nightly/osx-64/knime-python-base-5.12.0-py314_202606041333.conda
       - conda: https://conda.anaconda.org/knime/label/nightly/osx-64/knime-python-versions-5.12.0-py313_202606041333.conda
       - pypi: https://files.pythonhosted.org/packages/30/ba/b0b3de23f40bc55a7057bd38434e25c34fa48e17f20ee273bbde5e0650f3/frozenlist-1.8.0-cp313-cp313-macosx_10_13_x86_64.whl
@@ -1139,7 +1139,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/zlib-1.3.2-h8088a28_2.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/zlib-ng-2.3.3-hed4e4f5_1.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/zstd-1.5.7-hbf9d68e_6.conda
-      - conda: https://conda.anaconda.org/knime/label/nightly/noarch/knime-extension-5.13.0-202607161421.conda
+      - conda: https://conda.anaconda.org/knime/label/nightly/noarch/knime-extension-5.12.0-202607101345.conda
       - conda: https://conda.anaconda.org/knime/label/nightly/osx-arm64/knime-python-base-5.12.0-py312_202606041333.conda
       - conda: https://conda.anaconda.org/knime/label/nightly/osx-arm64/knime-python-versions-5.12.0-py313_202606041333.conda
       - pypi: https://files.pythonhosted.org/packages/0c/ab/6e5080ee374f875296c4243c381bbdef97a9ac39c6e3ce1d5f7d42cb78d6/frozenlist-1.8.0-cp313-cp313-macosx_11_0_arm64.whl
@@ -1395,7 +1395,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/win-64/zlib-1.3.2-hfd05255_2.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/zlib-ng-2.3.3-h0261ad2_1.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/zstd-1.5.7-h534d264_6.conda
-      - conda: https://conda.anaconda.org/knime/label/nightly/noarch/knime-extension-5.13.0-202607161421.conda
+      - conda: https://conda.anaconda.org/knime/label/nightly/noarch/knime-extension-5.12.0-202607101345.conda
       - conda: https://conda.anaconda.org/knime/label/nightly/win-64/knime-python-base-5.12.0-py312_202606041333.conda
       - conda: https://conda.anaconda.org/knime/label/nightly/win-64/knime-python-versions-5.12.0-py313_202606041333.conda
       - pypi: https://files.pythonhosted.org/packages/1c/fd/3f0f10dba4dabad3bf53102be007abf55481067952bde0fdddff439e7c61/propcache-0.5.2-cp313-cp313-win_amd64.whl
@@ -1691,7 +1691,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/noarch/zipp-3.23.1-pyhcf101f3_0.conda
       - conda: https://conda.anaconda.org/knime/label/nightly/linux-64/knime-python-base-5.12.0-py312_202606041333.conda
       - conda: https://conda.anaconda.org/knime/label/nightly/linux-64/knime-python-versions-5.12.0-py313_202606041333.conda
-      - conda: https://conda.anaconda.org/knime/label/nightly/noarch/knime-extension-5.13.0-202607161421.conda
+      - conda: https://conda.anaconda.org/knime/label/nightly/noarch/knime-extension-5.12.0-202607101345.conda
       - pypi: https://files.pythonhosted.org/packages/49/cf/39ce66942763831a1bae1874964f184ef8c73c78ecd2f475fc76265611d6/pygeoda-0.1.2-cp313-cp313-manylinux_2_17_x86_64.manylinux2014_x86_64.whl
       - pypi: https://files.pythonhosted.org/packages/52/55/f1b20ecbe50e4a18c5f580149ed6a744a38cf56f46b951fff8bc4150f7bb/ipinfo-5.6.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/71/43/1947f06babed6b3f1d7f38b0c767f52df66bfb2bc10b468c4a7de9eceff2/aiohappyeyeballs-2.7.1-py3-none-any.whl
@@ -1968,7 +1968,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/osx-64/zlib-1.3.2-hbb4bfdb_2.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-64/zlib-ng-2.3.3-h8bce59a_1.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-64/zstd-1.5.7-h3eecb57_6.conda
-      - conda: https://conda.anaconda.org/knime/label/nightly/noarch/knime-extension-5.13.0-202607161421.conda
+      - conda: https://conda.anaconda.org/knime/label/nightly/noarch/knime-extension-5.12.0-202607101345.conda
       - conda: https://conda.anaconda.org/knime/label/nightly/osx-64/knime-python-base-5.12.0-py314_202606041333.conda
       - conda: https://conda.anaconda.org/knime/label/nightly/osx-64/knime-python-versions-5.12.0-py313_202606041333.conda
       - pypi: https://files.pythonhosted.org/packages/30/ba/b0b3de23f40bc55a7057bd38434e25c34fa48e17f20ee273bbde5e0650f3/frozenlist-1.8.0-cp313-cp313-macosx_10_13_x86_64.whl
@@ -2246,7 +2246,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/zlib-1.3.2-h8088a28_2.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/zlib-ng-2.3.3-hed4e4f5_1.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/zstd-1.5.7-hbf9d68e_6.conda
-      - conda: https://conda.anaconda.org/knime/label/nightly/noarch/knime-extension-5.13.0-202607161421.conda
+      - conda: https://conda.anaconda.org/knime/label/nightly/noarch/knime-extension-5.12.0-202607101345.conda
       - conda: https://conda.anaconda.org/knime/label/nightly/osx-arm64/knime-python-base-5.12.0-py312_202606041333.conda
       - conda: https://conda.anaconda.org/knime/label/nightly/osx-arm64/knime-python-versions-5.12.0-py313_202606041333.conda
       - pypi: https://files.pythonhosted.org/packages/0c/ab/6e5080ee374f875296c4243c381bbdef97a9ac39c6e3ce1d5f7d42cb78d6/frozenlist-1.8.0-cp313-cp313-macosx_11_0_arm64.whl
@@ -2501,7 +2501,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/win-64/zlib-1.3.2-hfd05255_2.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/zlib-ng-2.3.3-h0261ad2_1.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/zstd-1.5.7-h534d264_6.conda
-      - conda: https://conda.anaconda.org/knime/label/nightly/noarch/knime-extension-5.13.0-202607161421.conda
+      - conda: https://conda.anaconda.org/knime/label/nightly/noarch/knime-extension-5.12.0-202607101345.conda
       - conda: https://conda.anaconda.org/knime/label/nightly/win-64/knime-python-base-5.12.0-py312_202606041333.conda
       - conda: https://conda.anaconda.org/knime/label/nightly/win-64/knime-python-versions-5.12.0-py313_202606041333.conda
       - pypi: https://files.pythonhosted.org/packages/1c/fd/3f0f10dba4dabad3bf53102be007abf55481067952bde0fdddff439e7c61/propcache-0.5.2-cp313-cp313-win_amd64.whl
@@ -17417,16 +17417,16 @@ packages:
   license: GPL-3.0-only
   size: 23928
   timestamp: 1780580218331
-- conda: https://conda.anaconda.org/knime/label/nightly/noarch/knime-extension-5.13.0-202607161421.conda
+- conda: https://conda.anaconda.org/knime/label/nightly/noarch/knime-extension-5.12.0-202607101345.conda
   build_number: 0
   noarch: python
-  sha256: fcd2ff14bd0ed5119b00fa25a63c2de2fefec9417241a3b0a24102e595a779a3
-  md5: 45d97700bfc7f594c74b2b2bac20d00c
+  sha256: d34869db488449e69c315f2bdfb5640e7b817923be710ba4e04c2d5e89918ef0
+  md5: 5ce83e884531e2a9ecbeeec208b3b2b2
   depends:
   - python >=3.9
   license: GPLv3
-  size: 114189
-  timestamp: 1784204682109
+  size: 114119
+  timestamp: 1783684129982
 - conda: https://conda.anaconda.org/knime/label/nightly/noarch/knime-extension-bundling-5.12.0-202606241529.conda
   build_number: 0
   noarch: python

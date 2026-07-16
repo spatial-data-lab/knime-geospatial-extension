@@ -8,8 +8,12 @@ format = { cmd = "ruff format ." }
 
 [dependencies]
 python = "*"
-knime-extension = "*"
-knime-python-base = "*"
+# The knime-* packages are the AP-side API binding, not ordinary libraries: they must
+# match the KNIME version this extension targets, so they are pinned to 5.12 rather than
+# tracking latest. Left unbounded, the nightly channel drifts them to the next dev line
+# (5.13) and the extension silently gets built against an API the target AP does not have.
+knime-extension = "5.12.*"
+knime-python-base = "5.12.*"
 knime-python-versions = "5.12.*"   # geo-compatible build (icu-enabled libxml2 on osx-arm64)
 
 # --- geospatial extension deps (bumped to py3.13) ---
