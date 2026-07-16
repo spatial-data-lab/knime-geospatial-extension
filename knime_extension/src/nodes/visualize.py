@@ -46,6 +46,143 @@ def replace_external_js_css_paths(
     return result
 
 
+def _parse_map_config(raw: str, exec_context=None):
+    """
+    Turn the 'Map configuration' parameter into a config dict for KeplerGl._repr_html_,
+    or None when it is empty. A malformed config must not fail the node: warn and fall
+    back to the default map, which is always renderable.
+    """
+    if raw is None or not raw.strip():
+        return None
+    import json
+
+    try:
+        config = json.loads(raw)
+    except ValueError as error:
+        if exec_context is not None:
+            exec_context.set_warning(
+                f"Ignoring the map configuration, it is not valid JSON ({error}). "
+                "Showing the default map instead."
+            )
+        return None
+    if not isinstance(config, dict) or "config" not in config:
+        if exec_context is not None:
+            exec_context.set_warning(
+                "Ignoring the map configuration: expected a Kepler.gl configuration object "
+                "with a 'config' key, as produced by the view's 'Copy map configuration' "
+                "button. Showing the default map instead."
+            )
+        return None
+    return config
+
+
+# Kepler.gl's store lives inside the bundle's module scope and is not reachable from an
+# injected script, and the bundle exposes neither the store nor KeplerGlSchema on window.
+# The one seam is Redux itself: the bundle consumes it as the UMD global that the <head>
+# loads, so wrapping Redux.createStore before the bundle runs captures the store instance.
+# This must be injected after the <head> scripts and before the bundle, i.e. right after
+# the opening <body>.
+_KEPLER_STORE_CAPTURE_SCRIPT = """<script>
+(function () {
+  if (!window.Redux || !window.Redux.createStore) { return; }
+  var createStore = window.Redux.createStore;
+  window.Redux.createStore = function () {
+    var store = createStore.apply(this, arguments);
+    window.__knimeKeplerStore = store;
+    return store;
+  };
+})();
+</script>"""
+
+# Serialises the live map state into the same shape KeplerGl._repr_html_(config=...) accepts,
+# and puts it on the clipboard for pasting into the node's 'Map configuration' parameter.
+# Kepler.gl ships no export UI of its own in this bundle -- that is a feature of the kepler.gl
+# demo application, not of the component -- so the button has to come from here.
+_KEPLER_COPY_CONFIG_SCRIPT = """<script>
+(function () {
+  var BTN_ID = "knime-copy-kepler-config";
+  if (document.getElementById(BTN_ID)) { return; }
+
+  function buildConfig() {
+    var store = window.__knimeKeplerStore;
+    if (!store) { return null; }
+    var map = store.getState().keplerGl.map;
+    return {
+      version: "v1",
+      config: {
+        visState: {
+          filters: map.visState.filters,
+          layers: map.visState.layers.map(function (layer) {
+            return {
+              id: layer.id,
+              type: layer.type,
+              config: layer.config,
+              visualChannels: layer.visualChannels
+            };
+          }),
+          interactionConfig: map.visState.interactionConfig,
+          layerBlending: map.visState.layerBlending
+        },
+        mapState: map.mapState,
+        mapStyle: { styleType: map.mapStyle.styleType }
+      }
+    };
+  }
+
+  function copy(text, done) {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(function () { done(true); },
+                                              function () { done(fallback(text)); });
+    } else {
+      done(fallback(text));
+    }
+  }
+
+  function fallback(text) {
+    // Clipboard API needs a secure context, which a KNIME view is not guaranteed to be.
+    var area = document.createElement("textarea");
+    area.value = text;
+    area.style.position = "fixed";
+    area.style.opacity = "0";
+    document.body.appendChild(area);
+    area.select();
+    var ok = false;
+    try { ok = document.execCommand("copy"); } catch (e) { ok = false; }
+    document.body.removeChild(area);
+    return ok;
+  }
+
+  var button = document.createElement("button");
+  button.id = BTN_ID;
+  button.textContent = "Copy map configuration";
+  button.setAttribute("style", [
+    "position:absolute", "bottom:12px", "left:12px", "z-index:9999",
+    "padding:6px 10px", "font:500 11px/1.4 Helvetica,Arial,sans-serif",
+    "color:#A0A7B4", "background:#242730", "border:1px solid #3A414C",
+    "border-radius:2px", "cursor:pointer"
+  ].join(";"));
+
+  button.addEventListener("click", function () {
+    var config = buildConfig();
+    if (!config) {
+      button.textContent = "Map not ready yet";
+      setTimeout(function () { button.textContent = "Copy map configuration"; }, 2000);
+      return;
+    }
+    copy(JSON.stringify(config), function (ok) {
+      button.textContent = ok ? "Copied - paste into 'Map configuration'" : "Copy failed";
+      setTimeout(function () { button.textContent = "Copy map configuration"; }, 3000);
+    });
+  });
+
+  function attach() {
+    if (document.body) { document.body.appendChild(button); }
+    else { window.addEventListener("load", attach); }
+  }
+  attach();
+})();
+</script>"""
+
 _KEPLER_RESIZE_SCRIPT = """<script>
 (function () {
   var fire = function () { window.dispatchEvent(new Event("resize")); };
@@ -56,6 +193,20 @@ _KEPLER_RESIZE_SCRIPT = """<script>
   }
 })();
 </script></body>"""
+
+
+def _add_kepler_store_capture(html: str) -> str:
+    """
+    Insert the Redux.createStore wrapper right after the opening <body>, which is where
+    keplergl itself injects window.__keplerglDataConfig: the <head> libraries are loaded
+    by then, and the kepler bundle further down the body has not run yet.
+    """
+    marker = "<body>"
+    i = html.find(marker)
+    if i < 0:
+        return html
+    i += len(marker)
+    return html[:i] + _KEPLER_STORE_CAPTURE_SCRIPT + html[i:]
 
 
 def _add_kepler_resize_tracking(html: str) -> str:
@@ -77,6 +228,18 @@ def _add_kepler_resize_tracking(html: str) -> str:
     if i < 0:
         return html
     return html[:i] + _KEPLER_RESIZE_SCRIPT + html[i + len("</body>") :]
+
+
+def _add_kepler_copy_config_button(html: str) -> str:
+    """
+    Append the 'Copy map configuration' button. Anchored to the last </body> for the same
+    reason as the resize script: an earlier, escaped </body> belongs to kepler's own
+    export-to-HTML template inside the bundle.
+    """
+    i = html.rfind("</body>")
+    if i < 0:
+        return html
+    return html[:i] + _KEPLER_COPY_CONFIG_SCRIPT + html[i:]
 
 
 @knext.parameter_group(label="Coloring Settings")
@@ -1280,6 +1443,24 @@ class ViewNodeKepler:
         since_version="1.2.0",
     )
 
+    map_config = knext.MultilineStringParameter(
+        "Map configuration",
+        """Kepler.gl map configuration to restore each time the node is executed: layers, colors,
+        filters, base map and camera position. Leave empty to let Kepler.gl pick its defaults and
+        center the map on the data.
+
+        To fill it in, execute the node, arrange the map in the interactive view the way you want it,
+        then use the **Copy map configuration** button in the lower left corner of the view and paste
+        the result here. The configuration is stored with the workflow, so it travels with it.
+
+        The configuration refers to the input tables by name ("Primary GeoTable",
+        "Additional GeoTable1", ...), which do not change between executions, so a saved
+        configuration keeps working as long as the columns it references are still present.""",
+        "",
+        number_of_lines=5,
+        since_version="2.2.0",
+    )
+
     def configure(self, configure_context, primary_schema, additional_schemas=None):
         # Require at least one input table
         if primary_schema is None:
@@ -1338,8 +1519,12 @@ class ViewNodeKepler:
                     dataset_name = f"Additional GeoTable{i+1}"
                     self._process_additional_table(map_1, table, dataset_name)
 
-        html = map_1._repr_html_(center_map=True)
-        html = html.decode("utf-8")
+        saved_config = _parse_map_config(self.map_config, exec_context)
+        # With a saved config the camera position comes from that config, so centering on the
+        # data would override the viewport the user deliberately saved.
+        html = map_1._repr_html_(
+            config=saved_config, center_map=saved_config is None
+        ).decode("utf-8")
 
         # Every external URL that keplergl 0.3.7's static/keplergl.html references, mapped to
         # the vendored copy of that exact version under libs/kepler/0.3.7. Any entry that does
@@ -1385,6 +1570,8 @@ class ViewNodeKepler:
             """s\.a\.createElement\("script",null,"[^"]*gtag\([^"]*"\)""",
         )
 
+        html = _add_kepler_store_capture(html)
+        html = _add_kepler_copy_config_button(html)
         html = _add_kepler_resize_tracking(html)
 
         return knext.view_html(html)
