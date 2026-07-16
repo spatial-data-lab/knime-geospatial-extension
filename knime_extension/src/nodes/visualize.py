@@ -46,6 +46,39 @@ def replace_external_js_css_paths(
     return result
 
 
+_KEPLER_RESIZE_SCRIPT = """<script>
+(function () {
+  var fire = function () { window.dispatchEvent(new Event("resize")); };
+  if (window.ResizeObserver) {
+    new ResizeObserver(fire).observe(document.documentElement);
+  } else {
+    window.addEventListener("load", fire);
+  }
+})();
+</script></body>"""
+
+
+def _add_kepler_resize_tracking(html: str) -> str:
+    """
+    kepler.gl 3.x reads window.innerWidth/innerHeight into React state once, when the app
+    mounts, and only refreshes it on a window 'resize' event (kepler.gl 2.x sized the map
+    with plain CSS instead, so it always filled its frame). Inside a KNIME view the iframe
+    has not reached its final size at mount time, so the map stays stuck at the size it saw
+    first and only fills the frame once something makes the window fire 'resize' -- e.g. the
+    user dragging the view's splitter.
+
+    Re-fire 'resize' whenever the document itself changes size, so the map tracks the frame.
+    ResizeObserver also fires once on observe, which covers the initial layout.
+
+    Anchored to the LAST </body>: the bundle carries kepler's own "export to HTML" template
+    as a JS string literal, which contains an earlier, escaped </body> that must not be touched.
+    """
+    i = html.rfind("</body>")
+    if i < 0:
+        return html
+    return html[:i] + _KEPLER_RESIZE_SCRIPT + html[i + len("</body>") :]
+
+
 @knext.parameter_group(label="Coloring Settings")
 class ColorSettings:
     """
@@ -1345,6 +1378,8 @@ class ViewNodeKepler:
             html,
             """s\.a\.createElement\("script",null,"[^"]*gtag\([^"]*"\)""",
         )
+
+        html = _add_kepler_resize_tracking(html)
 
         return knext.view_html(html)
 
