@@ -60,12 +60,12 @@ _KEPLER_RESIZE_SCRIPT = """<script>
 
 def _add_kepler_resize_tracking(html: str) -> str:
     """
-    kepler.gl 3.x reads window.innerWidth/innerHeight into React state once, when the app
-    mounts, and only refreshes it on a window 'resize' event (kepler.gl 2.x sized the map
-    with plain CSS instead, so it always filled its frame). Inside a KNIME view the iframe
-    has not reached its final size at mount time, so the map stays stuck at the size it saw
-    first and only fills the frame once something makes the window fire 'resize' -- e.g. the
-    user dragging the view's splitter.
+    kepler.gl 3.x sizes the map from a measurement it takes when the app mounts, and only
+    re-measures when the window fires 'resize'. Its container div is 100vw/100vh, so the
+    frame itself is always right -- but inside a KNIME view the iframe has not reached its
+    final size at mount time, so the map renders at the size it saw first and only fills the
+    frame once something makes the window fire 'resize' (e.g. dragging the view's splitter).
+    kepler.gl 2.x did not have this problem.
 
     Re-fire 'resize' whenever the document itself changes size, so the map tracks the frame.
     ResizeObserver also fires once on observe, which covers the initial layout.
