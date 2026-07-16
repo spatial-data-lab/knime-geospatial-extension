@@ -45,13 +45,13 @@ seaborn = ">=0.13"
 sympy = ">=1.13"
 
 [pypi-dependencies]
-ipinfo = "==5.1.1"
-sodapy = "==2.2.0"
-# pulp from PyPI. conda-forge is capped at 2.8.0 (pulled transitively via spopt), whose
-# CBC invocation fails to execute in the bundled KNIME env on Windows. 3.2.1 is the exact
-# version the pre-update env used and whose Windows solver invocation works there. The
-# wheel is py3-none-any (bundles CBC for all platforms), so bundling accepts it everywhere.
-pulp = "==3.2.1"
+ipinfo = ">=5.6"
+sodapy = ">=2.2"
+# pulp from PyPI, not conda: conda-forge is capped at 2.8.0 (pulled transitively via
+# spopt), whose CBC invocation fails to execute in the bundled KNIME env on Windows.
+# The PyPI wheel is py3-none-any and bundles CBC for all platforms, so bundling accepts
+# it everywhere.
+pulp = ">=3.3.2"
 
 # pygeoda has no macOS-x86_64 (osx-64) cp313 wheel, only win_amd64 / linux_x86_64 /
 # macOS-arm64. build-python-extension packs all 4 KNIME platforms and rejects non-wheel
