@@ -94,10 +94,19 @@ _KEPLER_STORE_CAPTURE_SCRIPT = """<script>
 })();
 </script>"""
 
-# Serialises the live map state into the same shape KeplerGl._repr_html_(config=...) accepts,
-# and puts it on the clipboard for pasting into the node's 'Map configuration' parameter.
-# Kepler.gl ships no export UI of its own in this bundle -- that is a feature of the kepler.gl
-# demo application, not of the component -- so the button has to come from here.
+# Serialises the live map state into the shape KeplerGl._repr_html_(config=...) accepts, and
+# puts it on the clipboard for pasting into the node's 'Map configuration' parameter. Kepler.gl
+# ships no export UI of its own in this bundle -- that is a feature of the kepler.gl demo
+# application, not of the component -- so the button has to come from here.
+#
+# The serialisation itself is kepler's own: visState carries the KeplerGlSchema instance that
+# the demo app would use, so getConfigToSave() produces exactly what its loader expects.
+# Do not hand-roll this from the raw state: the runtime shape differs from the saved shape in
+# ways that fail silently. Saved layers keep the visual channels under `visualChannels` as
+# {colorField: {name, type}, colorScale: ...}, whereas at runtime `config.colorField` is a full
+# field object and `layer.visualChannels` is a static channel descriptor; `columns` is
+# {geojson: "geometry"} when saved but {geojson: {value, fieldIdx}} at runtime. Feeding raw
+# state back in restores the base map (a plain string) but drops the layer styling.
 _KEPLER_COPY_CONFIG_SCRIPT = """<script>
 (function () {
   var BTN_ID = "knime-copy-kepler-config";
@@ -107,26 +116,8 @@ _KEPLER_COPY_CONFIG_SCRIPT = """<script>
     var store = window.__knimeKeplerStore;
     if (!store) { return null; }
     var map = store.getState().keplerGl.map;
-    return {
-      version: "v1",
-      config: {
-        visState: {
-          filters: map.visState.filters,
-          layers: map.visState.layers.map(function (layer) {
-            return {
-              id: layer.id,
-              type: layer.type,
-              config: layer.config,
-              visualChannels: layer.visualChannels
-            };
-          }),
-          interactionConfig: map.visState.interactionConfig,
-          layerBlending: map.visState.layerBlending
-        },
-        mapState: map.mapState,
-        mapStyle: { styleType: map.mapStyle.styleType }
-      }
-    };
+    if (!map || !map.visState || !map.visState.schema) { return null; }
+    return map.visState.schema.getConfigToSave(map);
   }
 
   function copy(text, done) {
