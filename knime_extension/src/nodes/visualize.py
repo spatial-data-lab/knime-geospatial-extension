@@ -170,7 +170,8 @@ _KEPLER_COPY_CONFIG_SCRIPT = """<script>
     "width:30px", "height:26px", "margin-left:4px",
     "color:" + IDLE_COLOR, "cursor:pointer"
   ].join(";"));
-  button.title = "Copy map configuration, to paste into the node's 'Map configuration' setting";
+  button.title = "Copy map configuration, to paste into the node's "
+    + "'Map configuration' setting (under Advanced settings)";
   button.innerHTML = icon(COPY_PATH);
   button.addEventListener("mouseenter", function () { button.style.color = ACTIVE_COLOR; });
   button.addEventListener("mouseleave", function () { button.style.color = IDLE_COLOR; });
@@ -194,7 +195,9 @@ _KEPLER_COPY_CONFIG_SCRIPT = """<script>
     copy(JSON.stringify(config), function (ok) {
       flash(
         icon(ok ? CHECK_PATH : COPY_PATH),
-        ok ? "Copied - paste into the node's 'Map configuration' setting" : "Copy failed",
+        ok
+          ? "Copied - paste into the node's 'Map configuration' setting, under Advanced settings"
+          : "Copy failed",
         3000
       );
     });
@@ -1484,9 +1487,10 @@ class ViewNodeKepler:
         filters, base map and camera position. Leave empty to let Kepler.gl pick its defaults and
         center the map on the data.
 
-        To fill it in, execute the node, arrange the map in the interactive view the way you want it,
-        then use the **Copy map configuration** button in the lower left corner of the view and paste
-        the result here. The configuration is stored with the workflow, so it travels with it.
+        This setting is not meant to be written by hand. To fill it in, execute the node, arrange
+        the map in the interactive view the way you want it, then use the copy icon in the top right
+        corner of the view's side panel, next to the documentation icon, and paste the result here.
+        The configuration is stored with the workflow, so it travels with it.
 
         The configuration refers to the input tables by name ("Primary GeoTable",
         "Additional GeoTable1", ...), which do not change between executions, so a saved
@@ -1494,6 +1498,7 @@ class ViewNodeKepler:
         "",
         number_of_lines=5,
         since_version="2.2.0",
+        is_advanced=True,
     )
 
     def configure(self, configure_context, primary_schema, additional_schemas=None):
