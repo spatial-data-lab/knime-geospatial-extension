@@ -1235,7 +1235,7 @@ class ViewNodeStatic:
 @knext.output_view(
     name="Geospatial View",
     description="Showing a map with the geospatial data",
-    static_resources="libs/kepler/2.5.5",
+    static_resources="libs/kepler/0.3.7",
 )
 class ViewNodeKepler:
     """Visualizes given geometric elements on a map with support for multiple datasets.
@@ -1341,17 +1341,23 @@ class ViewNodeKepler:
         html = map_1._repr_html_(center_map=True)
         html = html.decode("utf-8")
 
+        # Every external URL that keplergl 0.3.7's static/keplergl.html references, mapped to
+        # the vendored copy of that exact version under libs/kepler/0.3.7. Any entry that does
+        # not match the HTML verbatim is not an inert leftover: it silently leaves that asset
+        # pointing at the public CDN, so the view stops working offline. Keep this table in
+        # lockstep with the keplergl version pinned in pixi.toml -- when bumping keplergl,
+        # diff the <head> of its static/keplergl.html against these keys.
         replacements = {
-            "https://d1a3f4spazzrp4.cloudfront.net/kepler.gl/uber-fonts/4.0.0/superfine.css": "./libs/kepler/2.5.5/superfine.css",
-            "https://api.tiles.mapbox.com/mapbox-gl-js/v1.1.1/mapbox-gl.css": "./libs/kepler/2.5.5/mapbox-gl.css",
-            "https://unpkg.com/maplibre-gl@2.4.0/dist/maplibre-gl.css": "./libs/kepler/2.5.5/maplibre-gl.css",
-            "https://unpkg.com/react@18.2.0/umd/react.production.min.js": "./libs/kepler/2.5.5/react.production.min.js",
-            "https://unpkg.com/react-dom@18.2.0/umd/react-dom.production.min.js": "./libs/kepler/2.5.5/react-dom.production.min.js",
-            "https://unpkg.com/redux@4.2.1/dist/redux.js": "./libs/kepler/2.5.5/redux.js",
-            "https://unpkg.com/react-redux@8.0.5/dist/react-redux.min.js": "./libs/kepler/2.5.5/react-redux.min.js",
-            "https://unpkg.com/react-intl@4.7.6/dist/react-intl.min.js": "./libs/kepler/2.5.5/react-intl.min.js",
-            "https://unpkg.com/react-copy-to-clipboard@5.0.2/build/react-copy-to-clipboard.min.js": "./libs/kepler/2.5.5/react-copy-to-clipboard.min.js",
-            "https://unpkg.com/styled-components@5.3.6/dist/styled-components.min.js": "./libs/kepler/2.5.5/styled-components.min.js",
+            "https://d1a3f4spazzrp4.cloudfront.net/kepler.gl/uber-fonts/4.0.0/superfine.css": "./libs/kepler/0.3.7/superfine.css",
+            "https://api.tiles.mapbox.com/mapbox-gl-js/v1.1.1/mapbox-gl.css": "./libs/kepler/0.3.7/mapbox-gl.css",
+            "https://unpkg.com/maplibre-gl@^3/dist/maplibre-gl.css": "./libs/kepler/0.3.7/maplibre-gl.css",
+            "https://unpkg.com/react@18.2.0/umd/react.production.min.js": "./libs/kepler/0.3.7/react.production.min.js",
+            "https://unpkg.com/react-dom@18.2.0/umd/react-dom.production.min.js": "./libs/kepler/0.3.7/react-dom.production.min.js",
+            "https://unpkg.com/redux@4.2.1/dist/redux.js": "./libs/kepler/0.3.7/redux.js",
+            "https://unpkg.com/react-redux@8.0.5/dist/react-redux.min.js": "./libs/kepler/0.3.7/react-redux.min.js",
+            "https://unpkg.com/react-intl@4.7.6/dist/react-intl.min.js": "./libs/kepler/0.3.7/react-intl.min.js",
+            "https://unpkg.com/react-copy-to-clipboard@5.0.2/build/react-copy-to-clipboard.min.js": "./libs/kepler/0.3.7/react-copy-to-clipboard.min.js",
+            "https://unpkg.com/styled-components@6.1.8/dist/styled-components.min.js": "./libs/kepler/0.3.7/styled-components.min.js",
         }
 
         for old_url, new_url in replacements.items():
@@ -1359,7 +1365,7 @@ class ViewNodeKepler:
 
         # replace any stylesheet links that are dynamically created
         html = replace_external_js_css_paths(
-            r"\1./libs/kepler/2.5.5/\2\3",
+            r"\1./libs/kepler/0.3.7/\2\3",
             html,
             """(createElement\("link",\{rel:"stylesheet",href:")[^"']*\/([^"']*)("\}\))""",
         )
