@@ -4,51 +4,84 @@ channels = ["knime/label/nightly", "knime", "conda-forge"]
 platforms = ["win-64", "linux-64", "osx-64", "osx-arm64"]
 
 [tasks]
+format = { cmd = "ruff format ." }
 
 [dependencies]
-packaging = "*"
-python = "3.11.*"
-curl = "*"
-cvxopt = "1.3.2.*"
-contextily = "1.6.2.*"
-esda = "2.7.0.*"
-fiona = "1.10.1.*"
-folium = "0.19.6.*"
-geopandas = "1.1.1.*"
-geopy = "2.4.1.*"
-h3-py = "4.2.2.*"
-jmespath = "1.0.1.*"
-knime-extension = ">=5.5.0"
-knime-python-versions = ">=5.7.0"
-libgdal = "3.10.3.*"
-libpysal = "*"
-mgwr = "2.2.1.*"
-numpy = "1.26.4.*"
-osmnx = "2.0.3.*"
-polyline = "2.0.2.*"
-pyproj = "3.7.1.*"
-pysal = "25.1.*"
-rasterio = "1.4.3.*"
-seaborn = "0.13.2.*"
-shapely = "2.1.1.*"
-sympy = "1.14.0.*"
-pip = "25.1.1.*"
-pygeoda = "0.1.2.*"
-pointpats = "2.5.1.*"
-pulp = "2.8.0.*"
-keplergl = "*"
+python = "*"
+# The knime-* packages are the AP-side API binding, not ordinary libraries: they must
+# match the KNIME version this extension targets, so they are pinned to 5.12 rather than
+# tracking latest. Left unbounded, the nightly channel drifts them to the next dev line
+# (5.13) and the extension silently gets built against an API the target AP does not have.
+knime-extension = "5.12.*"
+knime-python-base = "5.12.*"
+knime-python-versions = "5.12.*"   # geo-compatible build (icu-enabled libxml2 on osx-arm64)
 
+# --- geospatial extension deps (bumped to py3.13) ---
+contextily = ">=1.6.2"
+curl = "*"
+cvxopt = ">=1.3.2"
+esda = ">=2.7.0"
+fiona = ">=1.10.1"
+folium = ">=0.19.6"
+geopandas = ">=1.1.1"
+geopy = ">=2.4.1"
+h3-py = ">=4.2.2"
+jmespath = ">=1.0.1"
+keplergl = "*"
+libpysal = "*"
+mgwr = ">=2.2.1"
+osmnx = ">=2.0.3"
+pointpats = ">=2.5.1"
+polyline = ">=2.0.2"
+pyproj = ">=3.7.1"
+# Depend on the individual PySAL components the extension actually imports
+# (esda / libpysal / mgwr / pointpats / spreg) instead of the `pysal` meta-package.
+# The meta pulls in `spopt`, which hard-pins conda `pulp` to 2.8.0 and blocks the
+# newer PyPI pulp (see [pypi-dependencies]); spopt itself is unused.
+spreg = ">=1.8"
+rasterio = ">=1.4.3"
+# rtree is imported directly in spatialnetwork.py (spatial index for the Road Network
+# nodes). geopandas 1.x no longer pulls it in transitively, so declare it explicitly.
+rtree = ">=1.3"
+# seaborn (spatialstatistics plots) and sympy (top-level import in geolab.py) were only
+# pulled in transitively before; they are no longer, so declare them explicitly.
+seaborn = ">=0.13"
+sympy = ">=1.13"
 
 [pypi-dependencies]
-ipinfo = "==5.1.1"
-sodapy = "==2.2.0"
+ipinfo = ">=5.6"
+sodapy = ">=2.2"
+# pulp from PyPI, not conda: conda-forge is capped at 2.8.0 (pulled transitively via
+# spopt), whose CBC invocation fails to execute in the bundled KNIME env on Windows.
+# The PyPI wheel is py3-none-any and bundles CBC for all platforms, so bundling accepts
+# it everywhere.
+pulp = ">=3.3.2"
+
+# pygeoda has no macOS-x86_64 (osx-64) cp313 wheel, only win_amd64 / linux_x86_64 /
+# macOS-arm64. build-python-extension packs all 4 KNIME platforms and rejects non-wheel
+# deps, so it is declared per-platform below (omitted on osx-64). pygeoda is lazy-imported
+# in src/nodes/spatialclustering.py, so on osx-64 only the SKATER / REDCAP / MaxP / LISA
+# nodes are unavailable; the rest of the extension loads and tests normally.
+
+[target.win-64.pypi-dependencies]
+pygeoda = "==0.1.2"
+
+[target.linux-64.pypi-dependencies]
+pygeoda = "==0.1.2"
+
+[target.osx-arm64.pypi-dependencies]
+pygeoda = "==0.1.2"
 
 [feature.build.dependencies]
-python = "3.9.*"
-knime-extension-bundling = "5.7.*"
+python = "*"
+knime-extension-bundling = "5.12.*"
+
+[feature.debug.dependencies]
+debugpy = "*"
 
 [feature.build.tasks]
-build = { args = [{ "arg" = "dest", "default" = "./local-update-site" }], cmd = "build-python-extension . {{ dest }}"}
+build = { args = [{ "arg" = "dest", "default" = "./local-update-site" }], cmd = "build-python-extension . {{ dest }} --disable-strict-enforcement --update-sites-version 5.12" }
 
 [environments]
 build = {features = ["build"], no-default-feature = true}
+debug = {features = ["debug"]}

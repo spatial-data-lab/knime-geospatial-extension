@@ -259,7 +259,11 @@ class StandardEllipseNode:
             xy=pointpats.mean_center(pp.points),
             width=sx * 2,
             height=sy * 2,
-            angle=-theta_degree,
+            # pointpats returns theta as the major-axis angle measured counter-clockwise
+            # from the x-axis, matching matplotlib's Ellipse `angle`. (Older pointpats used
+            # the opposite sign, which is why this used to be negated; negating now mirror-
+            # flips the ellipse against the point distribution.)
+            angle=theta_degree,
         )
         # angle is rotation in degrees (anti-clockwise)
         # get the vertices from the ellipse object
