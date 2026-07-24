@@ -594,7 +594,7 @@ class BaseMapSettings:
         "Disable scroll zoom",
         "If checked, disables scroll wheel zoom on the map.",
         default_value=False,
-        since_version="2.1.0",
+        since_version="2.2.0",
     )
 
 
