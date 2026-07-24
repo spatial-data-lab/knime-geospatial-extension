@@ -210,16 +210,51 @@ class US2020TIGERNode:
 
         County5Fips = self.StateFips + self.County3Fips
 
-        base_url = "ftp://ftp2.census.gov/geo/tiger/TIGER2020PL/STATE/"
+        # The Census Bureau serves the same TIGER archive over HTTPS (www2) and FTP (ftp2).
+        # HTTPS is preferred: it is currently faster and more reliable, whereas FTP can hang
+        # in GDAL. FTP is kept as a fallback for environments where HTTPS is blocked but FTP
+        # is not. The path after the host is identical for both.
+        http_base = "https://www2.census.gov/geo/tiger/TIGER2020PL/STATE/"
+        ftp_base = "ftp://ftp2.census.gov/geo/tiger/TIGER2020PL/STATE/"
 
         if self.StateFips != self.County3Fips and self.County3Fips != "*":
-            data_url = f"{base_url}{Statepath}/{County5Fips}/tl_2020_{County5Fips}_{self.geofile}.zip"
+            rel_path = f"{Statepath}/{County5Fips}/tl_2020_{County5Fips}_{self.geofile}.zip"
         else:
             County5Fips = self.StateFips
             if self.geofile == "roads":
                 self.geofile = "prisecroads"
-            data_url = f"{base_url}{Statepath}/{County5Fips}/tl_2020_{County5Fips}_{self.geofile}.zip"
-        # data_url = "/vsizip/vsicurl/" + data_url
+            rel_path = f"{Statepath}/{County5Fips}/tl_2020_{County5Fips}_{self.geofile}.zip"
+
+        def _is_reachable(url, timeout=5):
+            # Probe by reading a single feature so we detect a working data source, not just
+            # a reachable host. Run it on a thread with a timeout: GDAL/pyogrio has no read
+            # timeout of its own, so a stalled server would otherwise hang the node forever.
+            # shutdown(wait=False) is deliberate -- if the probe is still stuck in GDAL after
+            # the timeout, we must not block the node waiting for that thread to unwind.
+            import concurrent.futures
+            import pyogrio
+
+            def _probe():
+                pyogrio.read_dataframe(url, max_features=1)
+                return True
+
+            pool = concurrent.futures.ThreadPoolExecutor(max_workers=1)
+            try:
+                return pool.submit(_probe).result(timeout=timeout)
+            except Exception:
+                return False
+            finally:
+                pool.shutdown(wait=False)
+
+        http_url = http_base + rel_path
+        if _is_reachable(http_url):
+            data_url = http_url
+        else:
+            exec_context.set_warning(
+                "HTTPS Census source did not respond within 5s; falling back to FTP."
+            )
+            data_url = ftp_base + rel_path
+
         gdf = gp.read_file(data_url)
         gdf.reset_index(drop=True, inplace=True)
         return knext.Table.from_pandas(gdf)
