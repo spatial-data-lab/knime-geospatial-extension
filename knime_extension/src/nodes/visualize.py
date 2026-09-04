@@ -2,7 +2,6 @@ import geopandas as gp
 import knime_extension as knext
 import util.knime_utils as knut
 
-
 category = knext.category(
     path="/community/geo",
     level_id="viz",
@@ -1497,7 +1496,7 @@ class ViewNodeKepler:
         configuration keeps working as long as the columns it references are still present.""",
         "",
         number_of_lines=5,
-        since_version="2.2.0",
+        since_version="2.1.0",
         is_advanced=True,
     )
 
