@@ -2,7 +2,6 @@ import geopandas as gp
 import knime_extension as knext
 import util.knime_utils as knut
 
-
 __category = knext.category(
     path="/community/geo",
     level_id="opendataset",
@@ -218,12 +217,16 @@ class US2020TIGERNode:
         ftp_base = "ftp://ftp2.census.gov/geo/tiger/TIGER2020PL/STATE/"
 
         if self.StateFips != self.County3Fips and self.County3Fips != "*":
-            rel_path = f"{Statepath}/{County5Fips}/tl_2020_{County5Fips}_{self.geofile}.zip"
+            rel_path = (
+                f"{Statepath}/{County5Fips}/tl_2020_{County5Fips}_{self.geofile}.zip"
+            )
         else:
             County5Fips = self.StateFips
             if self.geofile == "roads":
                 self.geofile = "prisecroads"
-            rel_path = f"{Statepath}/{County5Fips}/tl_2020_{County5Fips}_{self.geofile}.zip"
+            rel_path = (
+                f"{Statepath}/{County5Fips}/tl_2020_{County5Fips}_{self.geofile}.zip"
+            )
 
         def _is_reachable(url, timeout=5):
             # Probe by reading a single feature so we detect a working data source, not just
@@ -285,11 +288,9 @@ H1_001N (Total Housing Units), H1_002 (Total Occupied Housing Units).
 Only if county is chosen for geography, then * can be input in State FIPS (2-digits) to retrieve all the 
 county level data of all states. Each query can include **at most 50 variables**.
 
-You may use this node **without an API key**. However, anonymous access is **limited to 500 requests per day per IP**.  
-To avoid throttling and improve performance (especially for batch queries), it is recommended to register and provide a Census API key.
-
-Before using the node, user need to sign up and get a Census API key first by clicking 
-[here.](https://api.census.gov/data/key_signup.html)
+**A Census API key is required.** The Census Bureau no longer supports anonymous access to this
+API; requests without a valid key are rejected. Before using the node, sign up and get a free
+Census API key by clicking [here.](https://api.census.gov/data/key_signup.html)
     """,
     references={
         "Census API Key Sign Up": "https://api.census.gov/data/key_signup.html",
@@ -321,10 +322,11 @@ class USCensus2020Node:
     )
 
     censusapikey = knext.StringParameter(
-        label="US Census API key (optional)",
-        description="Optional Census API key to increase query limits and reliability.",
+        label="US Census API key",
+        description="""Census API key, required by the US Census Bureau for all requests to this API
+(anonymous access is no longer supported). Sign up for a free key
+[here.](https://api.census.gov/data/key_signup.html)""",
         default_value="",
-        is_advanced=True,
     )
 
     cols = knext.StringParameter(
@@ -357,6 +359,13 @@ For more details about the format and the conversion see
         return None
 
     def execute(self, exec_context: knext.ExecutionContext):
+        if not self.censusapikey or not self.censusapikey.strip():
+            raise knext.InvalidParametersError(
+                "A US Census API key is required. Anonymous access is no longer supported by "
+                "the US Census Bureau. Sign up for a free key at "
+                "https://api.census.gov/data/key_signup.html"
+            )
+
         base_url = "https://api.census.gov/data/2020/dec/pl?get="
 
         if self.geofile == "county":
@@ -369,7 +378,27 @@ For more details about the format and the conversion see
         import requests
 
         response = requests.get(data_url)
-        data = response.json()
+        if "X-DataWebAPI-KeyError" in response.headers:
+            raise RuntimeError(
+                "The US Census API rejected the request because of a missing or invalid "
+                "API key. The Census Bureau now requires an API key for all requests to "
+                "this endpoint (anonymous access is no longer supported). Please provide a "
+                "valid key via the 'US Census API key' parameter. You can request a free "
+                "key at https://api.census.gov/data/key_signup.html"
+            )
+        if response.status_code != 200:
+            raise RuntimeError(
+                f"Census API request failed with status code {response.status_code}: "
+                f"{response.text}"
+            )
+        try:
+            data = response.json()
+        except requests.exceptions.JSONDecodeError as e:
+            raise RuntimeError(
+                "Census API did not return valid JSON. This usually means the request "
+                "parameters (variable names, geography level or FIPS codes) are invalid, "
+                f"or the API key is missing/invalid. Response text: {response.text}"
+            ) from e
 
         import pandas as pd
 
@@ -405,8 +434,9 @@ for less populated areas and small population subgroups.
 Only if county is chosen for geography, then * can be input in State FIPS (2-digits) to retrieve all the 
 county level data of all states. Each query can include **at most 50 variables**.
 
-You may use this node **without an API key**. However, anonymous access is **limited to 500 requests per day per IP**.  
-To avoid throttling and improve performance (especially for batch queries), it is recommended to register and provide a Census API key.
+**A Census API key is required.** The Census Bureau no longer supports anonymous access to this
+API; requests without a valid key are rejected. Sign up and get a free Census API key
+[here.](https://api.census.gov/data/key_signup.html)
 
 The 5-year estimates are available for all geographies down to the block group level.
     """,
@@ -439,10 +469,11 @@ class UScensusACSNode:
     )
 
     censusapikey = knext.StringParameter(
-        label="US Census API key (optional)",
-        description="Optional Census API key to increase query limits and reliability.",
+        label="US Census API key",
+        description="""Census API key, required by the US Census Bureau for all requests to this API
+(anonymous access is no longer supported). Sign up for a free key
+[here.](https://api.census.gov/data/key_signup.html)""",
         default_value="",
-        is_advanced=True,
     )
 
     cols = knext.StringParameter(
@@ -478,6 +509,13 @@ class UScensusACSNode:
         return None
 
     def execute(self, exec_context: knext.ExecutionContext):
+        if not self.censusapikey or not self.censusapikey.strip():
+            raise knext.InvalidParametersError(
+                "A US Census API key is required. Anonymous access is no longer supported by "
+                "the US Census Bureau. Sign up for a free key at "
+                "https://api.census.gov/data/key_signup.html"
+            )
+
         base_url = "https://api.census.gov/data/"
         Dataset = "acs/acs5"
 
@@ -493,7 +531,27 @@ class UScensusACSNode:
         import requests
 
         response = requests.get(data_url)
-        data = response.json()
+        if "X-DataWebAPI-KeyError" in response.headers:
+            raise RuntimeError(
+                "The US Census API rejected the request because of a missing or invalid "
+                "API key. The Census Bureau now requires an API key for all requests to "
+                "this endpoint (anonymous access is no longer supported). Please provide a "
+                "valid key via the 'US Census API key' parameter. You can request a free "
+                "key at https://api.census.gov/data/key_signup.html"
+            )
+        if response.status_code != 200:
+            raise RuntimeError(
+                f"Census API request failed with status code {response.status_code}: "
+                f"{response.text}"
+            )
+        try:
+            data = response.json()
+        except requests.exceptions.JSONDecodeError as e:
+            raise RuntimeError(
+                "Census API did not return valid JSON. This usually means the request "
+                "parameters (variable names, geography level or FIPS codes) are invalid, "
+                f"or the API key is missing/invalid. Response text: {response.text}"
+            ) from e
 
         import pandas as pd
 
