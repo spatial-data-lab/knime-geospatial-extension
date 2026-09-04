@@ -1467,7 +1467,7 @@ class ViewNodeKepler:
 
     geo_col = knext.ColumnParameter(
         "Geometry column",
-        "Select the primary geometry column to visualize. ",
+        "Select the primary geometry column to visualize.",
         column_filter=knut.is_geo,
         include_row_key=False,
         include_none_column=False,
