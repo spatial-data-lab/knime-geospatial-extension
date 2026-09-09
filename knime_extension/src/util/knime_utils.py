@@ -1,3 +1,4 @@
+import contextlib
 import logging
 from typing import Callable
 from typing import List
@@ -635,6 +636,99 @@ def ensure_file_extension(file_name: str, file_extension: str) -> str:
     if file_name.lower().endswith(file_extension):
         return file_name
     return file_name + file_extension
+
+
+def file_with_extension(file: knext.File, file_extension: str) -> knext.File:
+    """
+    Returns the given file with the given file extension appended to its name if the name
+    does not end with it already.
+    """
+    return file.with_name(ensure_file_extension(file.name, file_extension))
+
+
+def is_web_url(file: knext.File) -> bool:
+    """
+    Checks if the given file is an http(s) URL. GDAL reads those itself and streams the
+    content, so they are handed to it as they are instead of being downloaded first.
+    """
+    return (
+        file.file_system == knext.FileSystem.CUSTOM_URL
+        and file.path.lower().startswith(("http://", "https://"))
+    )
+
+
+SHAPEFILE_SIDECAR_SUFFIXES = (
+    ".shx",
+    ".dbf",
+    ".prj",
+    ".cpg",
+    ".qpj",
+    ".sbn",
+    ".sbx",
+    ".fix",
+    ".qix",
+    ".qmd",
+)
+"""The suffixes of the files a Shapefile consists of, apart from the .shp file itself."""
+
+
+@contextlib.contextmanager
+def shapefile_to_local(shp_file: knext.File):
+    """
+    Yields a local path to the given Shapefile with its sidecar files (.shx, .dbf, ...)
+    next to it, since a Shapefile can only be read as a complete set.
+
+    A Shapefile that is on the local disk already is read in place. For all others the
+    sidecar files are downloaded next to the .shp file and removed afterwards. Locations
+    that cannot be listed, e.g. URLs, are left to GDAL.
+
+    Args:
+        shp_file (knext.File): The .shp file to read.
+    """
+    with shp_file.to_local() as local_shp:
+        if local_shp.with_suffix(".shx").exists():
+            yield local_shp
+            return
+        staged = []
+        try:
+            for sidecar in _shapefile_sidecars(shp_file):
+                companion = local_shp.with_suffix(sidecar.suffix)
+                if companion.exists():
+                    continue
+                sidecar.write_to(companion)
+                staged.append(companion)
+            yield local_shp
+        finally:
+            for companion in staged:
+                companion.unlink(missing_ok=True)
+
+
+def _shapefile_sidecars(shp_file: knext.File) -> List[knext.File]:
+    try:
+        siblings = list(shp_file.parent.iterdir())
+    except OSError:
+        return []
+    return [
+        sibling
+        for sibling in siblings
+        if sibling.stem == shp_file.stem
+        and sibling.suffix.lower() in SHAPEFILE_SIDECAR_SUFFIXES
+    ]
+
+
+def write_file_set(local_file, target: knext.File) -> None:
+    """
+    Writes the given local file to the given target file, together with every file that
+    was written next to it: the Shapefile and GML formats consist of a set of files that
+    share their name but differ in their suffix.
+
+    Args:
+        local_file (pathlib.Path): The local file that was written.
+        target (knext.File): The file to write it to.
+    """
+    target.parent.mkdir()
+    for produced in sorted(local_file.parent.glob(local_file.stem + ".*")):
+        target.with_name(produced.name).read_from(produced)
 
 
 class ResultSettingsMode(knext.EnumParameterOptions):

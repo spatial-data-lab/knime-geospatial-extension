@@ -232,12 +232,11 @@ class spatialWeights:
         ],
     ).rule(knext.OneOf(category, ["Kernel"]), knext.Effect.SHOW)
 
-    Your_own_matrix_local_path = knext.StringParameter(
+    Your_own_matrix_local_path = knext.FileSelectionParameter(
         "Get spatial weights matrix from file",
-        """The file path of a user-defined spatial weights matrix in CSV format. Defaults to ''.
-        Please enter the path of the spatial weights matrix in CSV format in the following options. 
-        The weights matrix must be in matrix format and in the order of the samples. """,
-        "",
+        """The file with a user-defined spatial weights matrix in CSV format. The weights
+        matrix must be in matrix format and in the order of the samples.""",
+        file_extensions=["csv"],
     ).rule(
         knext.OneOf(category, ["Get spatial weights matrix from file"]),
         knext.Effect.SHOW,
@@ -301,7 +300,8 @@ class spatialWeights:
             import pandas as pd
             import numpy as np
 
-            z = pd.read_csv(self.Your_own_matrix_local_path, header=None)
+            with self.Your_own_matrix_local_path.to_local() as local_path:
+                z = pd.read_csv(local_path, header=None)
             zz = np.array(z)
 
             import scipy.sparse

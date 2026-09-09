@@ -46,11 +46,6 @@ class ExistingFile(knext.EnumParameterOptions):
     )
 
 
-def validate_path(path: str) -> None:
-    # no path check
-    pass
-
-
 def clean_dataframe(df):
     """
     Cleans the given DataFrame by resetting its index and removing specific columns.
@@ -69,37 +64,18 @@ def clean_dataframe(df):
     return df.drop(columns=[col for col in columns_to_drop if col in df.columns])
 
 
-def check_overwrite(fileurl, existing_file):
+def check_overwrite(file, existing_file):
     """
     Checks if a file already exists and raises an error if overwriting is not allowed.
     Args:
-        fileurl (str): The path to the file to check.
+        file (knext.File): The file to check.
         existing_file (Enum): An enumeration value indicating the overwrite policy.
             It should have a `FAIL` member to signify that overwriting is not allowed.
     Raises:
         knext.InvalidParametersError: If the file exists and the overwrite policy is set to FAIL.
     """
-    import os
-
-    if existing_file == ExistingFile.FAIL.name and os.path.exists(fileurl):
+    if existing_file == ExistingFile.FAIL.name and file.exists():
         raise knext.InvalidParametersError("File already exists.")
-
-
-def check_outdir(fileurl):
-    """
-    Ensures that the directory for the given file path exists. If the directory
-    does not exist, it is created.
-    Args:
-        fileurl (str): The file path for which the directory should be checked
-                       and created if necessary.
-    Raises:
-        OSError: If the directory cannot be created due to an operating system error.
-    """
-    import os
-
-    output_dir = os.path.dirname(fileurl)
-    if output_dir and not os.path.exists(output_dir):
-        os.makedirs(output_dir, exist_ok=True)
 
 
 class _EncodingOptions(knext.EnumParameterOptions):
@@ -157,7 +133,7 @@ class _EncodingOptions(knext.EnumParameterOptions):
 )
 @knut.geo_node_description(
     short_description="Read single layer GeoFile.",
-    description="""This node reads a single geospatial file from the provided local file path or URL. 
+    description="""This node reads a single geospatial file from the selected file or URL. 
     The supported file formats are the popular data types such as [Shapefile (.shp),](https://en.wikipedia.org/wiki/Shapefile)
 zipped Shapefiles(.zip) with a single Shapefile, single-layer [Geopackage (.gpkg),](https://www.geopackage.org/) 
 [GeoJSON (.geojson),](https://geojson.org/) [GeoParquet,](https://github.com/opengeospatial/geoparquet)
@@ -181,11 +157,10 @@ load a GeoJSON file from [geojson.xyz](http://geojson.xyz/) you would enter
     },
 )
 class GeoFileReaderNode:
-    data_url = knext.LocalPathParameter(
-        "Input file path",
-        "Select the file path or directly enter a remote URL for reading the data.",
-        placeholder_text="Select input file path or enter URL...",
-        validator=validate_path,
+    data_url = knext.FileSelectionParameter(
+        "Input file",
+        "Select the file to read the data from or directly enter a remote URL.",
+        placeholder_text="Select input file or enter URL...",
     )
 
     encoding = knext.EnumParameter(
@@ -206,6 +181,18 @@ class GeoFileReaderNode:
             0.4, "Reading file (This might take a while without progress changes)"
         )
 
+        file_name = self.data_url.name.lower()
+        if knut.is_web_url(self.data_url):
+            return self._read_data(self.data_url.path, file_name)
+        if file_name.endswith(".shp"):
+            with knut.shapefile_to_local(self.data_url) as local_path:
+                return self._read_data(str(local_path), file_name)
+        with self.data_url.to_local() as local_path:
+            return self._read_data(str(local_path), file_name)
+
+    def _read_data(self, data_path: str, file_name: str):
+        # the format is taken from the selected file's name because a staged copy of a
+        # compressed GeoParquet file keeps only its last suffix
         import geopandas as gpd
 
         def urlread(url: str) -> gpd.GeoDataFrame:
@@ -230,16 +217,16 @@ class GeoFileReaderNode:
                         )
                 raise RuntimeError(f"Could not read {url}: {direct_error}")
 
-        if self.data_url.lower().endswith(".kml"):
+        if file_name.endswith(".kml"):
             import fiona
 
             fiona.drvsupport.supported_drivers["KML"] = "r"
-            gdf = gp.read_file(self.data_url, driver="KML")
-        elif self.data_url.lower().endswith(".kmz"):
+            gdf = gp.read_file(data_path, driver="KML")
+        elif file_name.endswith(".kmz"):
             import zipfile
             import fiona
 
-            zf = zipfile.ZipFile(self.data_url)
+            zf = zipfile.ZipFile(data_path)
             names = zf.namelist()
             name = None
             for i in range(len(names)):
@@ -251,21 +238,18 @@ class GeoFileReaderNode:
                             "Node supports only kmz files with a single kml file"
                         )
             fiona.drvsupport.supported_drivers["KML"] = "r"
-            gdf = gp.read_file("/vsizip/" + self.data_url + "/" + name, driver="KML")
-        elif (
-            self.data_url.lower().endswith(".parquet")
-            or self.data_url.lower().endswith(".parquet.br")
-            or self.data_url.lower().endswith(".parquet.gz")
-            or self.data_url.lower().endswith(".parquet.snappy")
+            gdf = gp.read_file("/vsizip/" + data_path + "/" + name, driver="KML")
+        elif file_name.endswith(
+            (".parquet", ".parquet.br", ".parquet.gz", ".parquet.snappy")
         ):
-            gdf = gp.read_parquet(self.data_url)
+            gdf = gp.read_parquet(data_path)
 
         else:
             if self.encoding == _EncodingOptions.AUTO.name:
-                gdf = urlread(self.data_url)
+                gdf = urlread(data_path)
             else:
                 gdf = gp.read_file(
-                    self.data_url,
+                    data_path,
                     encoding=self.encoding,
                     engine="pyogrio",
                     on_invalid="ignore",
@@ -315,11 +299,11 @@ class GeoFileWriterNode:
         include_none_column=False,
     )
 
-    data_url = knext.LocalPathParameter(
-        "Output file path",
-        "Select the file path for saving data.",
-        placeholder_text="Select output file path...",
-        validator=validate_path,
+    data_url = knext.FileSelectionParameter(
+        "Output file",
+        "Select the file to save the data to.",
+        placeholder_text="Select output file...",
+        is_writer=True,
     )
 
     existing_file = knext.EnumParameter(
@@ -369,17 +353,13 @@ class GeoFileWriterNode:
             0.4, "Writing file (This might take a while without progress changes)"
         )
 
-        check_outdir(self.data_url)
         gdf = gp.GeoDataFrame(input_1.to_pandas(), geometry=self.geo_col)
         gdf = clean_dataframe(gdf)
 
         if self.dataformat == "Shapefile":
-            fileurl = knut.ensure_file_extension(self.data_url, ".shp")
-            check_overwrite(fileurl, self.existing_file)
-            if self.encoding == _EncodingOptions.AUTO.name:
-                gdf.to_file(fileurl)
-            else:
-                gdf.to_file(fileurl, encoding=self.encoding)
+            target = knut.file_with_extension(self.data_url, ".shp")
+            check_overwrite(target, self.existing_file)
+            self._write_file_set(gdf, target)
 
         elif self.dataformat == "GeoParquet":
             if self.parquet_compression == Compression.NONE.name:
@@ -394,24 +374,44 @@ class GeoFileWriterNode:
             elif self.parquet_compression == Compression.SNAPPY.name:
                 file_extension = ".parquet.snappy"
                 compression = "snappy"
-            fileurl = knut.ensure_file_extension(self.data_url, file_extension)
-            check_overwrite(fileurl, self.existing_file)
-            gdf.to_parquet(fileurl, compression=compression)
+            target = knut.file_with_extension(self.data_url, file_extension)
+            check_overwrite(target, self.existing_file)
+            target.parent.mkdir()
+            with target.to_local(reupload=True) as local_file:
+                gdf.to_parquet(local_file, compression=compression)
         elif self.dataformat == "GeoJSON":
-            fileurl = knut.ensure_file_extension(self.data_url, ".geojson")
-            check_overwrite(fileurl, self.existing_file)
-            if self.encoding == _EncodingOptions.AUTO.name:
-                gdf.to_file(fileurl)
-            else:
-                gdf.to_file(fileurl, driver="GeoJSON", encoding=self.encoding)
+            target = knut.file_with_extension(self.data_url, ".geojson")
+            check_overwrite(target, self.existing_file)
+            target.parent.mkdir()
+            with target.to_local(reupload=True) as local_file:
+                if self.encoding == _EncodingOptions.AUTO.name:
+                    gdf.to_file(local_file)
+                else:
+                    gdf.to_file(local_file, driver="GeoJSON", encoding=self.encoding)
         else:
-            fileurl = knut.ensure_file_extension(self.data_url, ".gml")
-            check_overwrite(fileurl, self.existing_file)
-            if self.encoding == _EncodingOptions.AUTO.name:
-                gdf.to_file(fileurl)
-            else:
-                gdf.to_file(fileurl, driver="GML", encoding=self.encoding)
+            target = knut.file_with_extension(self.data_url, ".gml")
+            check_overwrite(target, self.existing_file)
+            self._write_file_set(gdf, target, driver="GML")
         return None
+
+    def _write_file_set(self, gdf, target, driver=None):
+        """
+        Writes the GeoDataFrame into a local staging directory and then writes every file
+        it produced to the target location, since the Shapefile and GML formats consist
+        of a set of files, e.g. .shp, .shx, .dbf and .prj.
+        """
+        import pathlib
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as staging:
+            local_file = pathlib.Path(staging) / target.name
+            if self.encoding == _EncodingOptions.AUTO.name:
+                gdf.to_file(local_file)
+            elif driver is None:
+                gdf.to_file(local_file, encoding=self.encoding)
+            else:
+                gdf.to_file(local_file, driver=driver, encoding=self.encoding)
+            knut.write_file_set(local_file, target)
 
 
 ############################################
@@ -451,11 +451,12 @@ The node can load resources directly from a web URL e.g.
     },
 )
 class GeoPackageReaderNode:
-    data_url = knext.LocalPathParameter(
-        "Input file path",
-        "Select the file path or directly enter a remote URL for reading the data.",
-        placeholder_text="Select input file path or enter URL...",
-        validator=validate_path,
+    data_url = knext.FileSelectionParameter(
+        "Input file",
+        "Select the GeoPackage file or GeoDatabase folder to read the data from, or "
+        "directly enter a remote URL.",
+        placeholder_text="Select input file or enter URL...",
+        selection_mode=knext.FileSelectionMode.FILE_OR_FOLDER,
     )
 
     data_layer = knext.StringParameter(
@@ -481,19 +482,25 @@ class GeoPackageReaderNode:
         exec_context.set_progress(
             0.4, "Reading file (This might take a while without progress changes)"
         )
+        if knut.is_web_url(self.data_url):
+            return self._read_data(self.data_url.path)
+        with self.data_url.to_local() as local_path:
+            return self._read_data(str(local_path))
+
+    def _read_data(self, data_path: str):
         import fiona
         import pandas as pd
 
-        layerlist = fiona.listlayers(self.data_url)
+        layerlist = fiona.listlayers(data_path)
         layer = self._get_layer(layerlist)
 
         if self.encoding == _EncodingOptions.AUTO.name:
             gdf = gp.read_file(
-                self.data_url, layer=layer, engine="pyogrio", on_invalid="ignore"
+                data_path, layer=layer, engine="pyogrio", on_invalid="ignore"
             )
         else:
             gdf = gp.read_file(
-                self.data_url,
+                data_path,
                 layer=layer,
                 engine="pyogrio",
                 on_invalid="ignore",
@@ -549,11 +556,12 @@ class GeoPackageWriterNode:
         include_none_column=False,
     )
 
-    data_url = knext.LocalPathParameter(
-        "Output file path",
-        "Select the file path for saving data.",
-        placeholder_text="Select output file path...",
-        validator=validate_path,
+    data_url = knext.FileSelectionParameter(
+        "Output file",
+        "Select the file to save the data to.",
+        placeholder_text="Select output file...",
+        is_writer=True,
+        file_extension="gpkg",
     )
 
     data_layer = knext.StringParameter(
@@ -594,13 +602,12 @@ class GeoPackageWriterNode:
             0.4, "Writing file (This might take a while without progress changes)"
         )
 
-        check_overwrite(self.data_url, self.existing_file)
-
-        check_outdir(self.data_url)
+        target = knut.file_with_extension(self.data_url, ".gpkg")
+        check_overwrite(target, self.existing_file)
+        target.parent.mkdir()
 
         gdf = gp.GeoDataFrame(input_1.to_pandas(), geometry=self.geo_col)
         gdf = gdf.reset_index(drop=True)
-        file_name = knut.ensure_file_extension(self.data_url, ".gpkg")
         time_columns = gdf.select_dtypes(
             include=[
                 'knime.pandas_type<struct<0:int64,1:int64>, {"value_factory_class":"org.knime.core.data.v2.time.LocalDateTimeValueFactory"}>'
@@ -611,11 +618,16 @@ class GeoPackageWriterNode:
 
         gdf = clean_dataframe(gdf)
 
-        if self.encoding == _EncodingOptions.AUTO.name:
-            gdf.to_file(file_name, layer=self.data_layer, driver="GPKG")
-        else:
-            gdf.to_file(
-                file_name, layer=self.data_layer, driver="GPKG", encoding=self.encoding
-            )
+        # an existing GeoPackage is downloaded first so that the layer is added to it
+        with target.to_local(reupload=True) as file_name:
+            if self.encoding == _EncodingOptions.AUTO.name:
+                gdf.to_file(file_name, layer=self.data_layer, driver="GPKG")
+            else:
+                gdf.to_file(
+                    file_name,
+                    layer=self.data_layer,
+                    driver="GPKG",
+                    encoding=self.encoding,
+                )
 
         return None
