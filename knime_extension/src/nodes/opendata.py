@@ -1639,11 +1639,6 @@ class NaturalEarthNode:
 ############################################
 
 
-def validate_path(path: str) -> None:
-    # no path check
-    pass
-
-
 class ExistingFile(knext.EnumParameterOptions):
     FAIL = (
         "Fail",
@@ -1687,11 +1682,12 @@ class DataverseFileDownloaderNode:
         default_value="",
     )
 
-    save_path = knext.LocalPathParameter(
+    save_path = knext.FileSelectionParameter(
         label="Save path",
-        description="Select the directory to save the downloaded file.",
-        placeholder_text="Select output directory...",
-        validator=validate_path,
+        description="Select the file to save the downloaded data to.",
+        placeholder_text="Select output file...",
+        is_writer=True,
+        validator=knut.check_file_selected,
     )
 
     timeout = knext.IntParameter(
@@ -1718,38 +1714,36 @@ class DataverseFileDownloaderNode:
 
     def execute(self, exec_context: knext.ExecutionContext):
         import requests
-        import os
         import pandas as pd
 
         base_url = self.server_url.rstrip("/")
         download_url = f"{base_url}/api/access/datafile/{self.file_id}"
         self.__check_overwrite(self.save_path)
         try:
-            save_dir = os.path.dirname(self.save_path)
-            if save_dir:
-                os.makedirs(save_dir, exist_ok=True)
+            self.save_path.parent.mkdir()
 
-            response = requests.get(download_url, timeout=self.timeout)
-            response.raise_for_status()
+            # streamed in chunks so that the whole file does not have to fit into memory
+            with requests.get(
+                download_url, timeout=self.timeout, stream=True
+            ) as response:
+                response.raise_for_status()
 
-            with open(self.save_path, "wb") as file:
-                file.write(response.content)
+                with self.save_path.open("wb") as file:
+                    for chunk in response.iter_content(chunk_size=1024 * 1024):
+                        file.write(chunk)
 
-            output_table = pd.DataFrame({"File Path": [self.save_path]})
+            output_table = pd.DataFrame({"File Path": [self.save_path.path]})
 
             return knext.Table.from_pandas(output_table)
 
         except Exception as e:
             raise ValueError(f"Download Error: {str(e)}")
 
-    def __check_overwrite(self, fileurl):
-        if self.existing_file == ExistingFile.FAIL.name:
-            import os.path
-
-            if os.path.exists(fileurl):
-                raise knext.InvalidParametersError(
-                    "File already exists and should not be overwritten."
-                )
+    def __check_overwrite(self, file):
+        if self.existing_file == ExistingFile.FAIL.name and file.exists():
+            raise knext.InvalidParametersError(
+                "File already exists and should not be overwritten."
+            )
 
 
 @knext.node(

@@ -14,12 +14,12 @@ no-build-isolation = ["keplergl"]
 [dependencies]
 python = "*"
 # The knime-* packages are the AP-side API binding, not ordinary libraries: they must
-# match the KNIME version this extension targets, so they are pinned to 5.12 rather than
+# match the KNIME version this extension targets, so they are pinned to 5.13 rather than
 # tracking latest. Left unbounded, the nightly channel drifts them to the next dev line
-# (5.13) and the extension silently gets built against an API the target AP does not have.
-knime-extension = "5.12.*"
-knime-python-base = "5.12.*"
-knime-python-versions = "5.12.*"   # geo-compatible build (icu-enabled libxml2 on osx-arm64)
+# and the extension silently gets built against an API the target AP does not have.
+knime-extension = "5.13.*"
+knime-python-base = "5.13.*"
+knime-python-versions = "5.13.*"   # geo-compatible build (icu-enabled libxml2 on osx-arm64)
 
 # --- geospatial extension deps (bumped to py3.13) ---
 contextily = ">=1.6.2"
@@ -91,13 +91,14 @@ pygeoda = "==0.1.2"
 
 [feature.build.dependencies]
 python = "*"
-knime-extension-bundling = "5.12.*"
+knime-extension-bundling = "6.1.*"
+pixi-pack = ">=0.7.7"          # bundling 6.x ships pixi 0.70 (lockfile v7); pixi-pack < 0.7.7 reads v6 only
 
 [feature.debug.dependencies]
 debugpy = "*"
 
 [feature.build.tasks]
-build = { args = [{ "arg" = "dest", "default" = "./local-update-site" }], cmd = "build-python-extension . {{ dest }} --disable-strict-enforcement --update-sites-version 5.12" }
+build = { args = [{ "arg" = "dest", "default" = "./local-update-site" }], cmd = "build-python-extension . {{ dest }} --disable-strict-enforcement --update-sites-version nightly" }
 
 [environments]
 build = {features = ["build"], no-default-feature = true}
