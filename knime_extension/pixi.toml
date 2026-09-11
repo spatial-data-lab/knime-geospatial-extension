@@ -6,6 +6,11 @@ platforms = ["win-64", "linux-64", "osx-64", "osx-arm64"]
 [tasks]
 format = { cmd = "ruff format ." }
 
+[system-requirements]
+# pygeoda's Apple-silicon wheels are tagged macosx_15_0; below that the PyPI resolver falls back
+# to the sdist, which knime-extension-bundling (pixi-pack) cannot pack.
+macos = "15.0"
+
 [dependencies]
 python = "*"
 # The knime-* packages are the AP-side API binding, not ordinary libraries: they must
