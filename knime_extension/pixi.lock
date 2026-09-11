@@ -582,6 +582,7 @@ environments:
       - conda: https://conda.anaconda.org/knime/label/nightly/linux-64/knime-python-base-5.13.2-py314_202609041406.conda
       - conda: https://conda.anaconda.org/knime/label/nightly/linux-64/knime-python-versions-5.13.2-py313_202609041406.conda
       - conda: https://conda.anaconda.org/knime/label/nightly/noarch/knime-extension-5.13.0-202609091611.conda
+      - pypi: direct+https://github.com/knime-community/knime-geospatial-extension/releases/download/keplergl-0.3.7-wheel/keplergl-0.3.7-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/01/b0/7226069e909fb54c9b799ea6f5ff97c500c689311bd0b81eabf22f5c6eec/geoarrow_c-0.3.1-cp313-cp313-manylinux_2_24_x86_64.manylinux_2_28_x86_64.whl
       - pypi: https://files.pythonhosted.org/packages/02/c3/253a89ee03fc9b9682f1541728eb66db7db22148cd94f89ab22528cd1e1b/deprecation-2.1.0-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/04/4b/29cac41a4d98d144bf5f6d33995617b185d14b22401f75ca86f384e87ff1/h11-0.16.0-py3-none-any.whl
@@ -645,7 +646,6 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/9e/6a/a83720e953b1682d2d109d3c2dbb0bc9bf28cc1cbc205be4ef4be5da709d/jsonpointer-3.1.1-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/9e/c3/059298687310d527a58bb01f3b1965787ee3b40dce76752eda8b44e9a2c5/pexpect-4.9.0-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/9f/f2/2086ba18a925a73586c4d4e61d25f4a6058e56fd00d77ce8f1d361ab4c9b/cachetools-7.1.6-py3-none-any.whl
-      - pypi: https://files.pythonhosted.org/packages/a0/1e/adc9406362eba310840634c1482c016a49c60ab576daeeb4fee1c595ddae/keplergl-0.3.7.tar.gz
       - pypi: https://files.pythonhosted.org/packages/a9/82/0340caa499416c78e5d8f5f05947ae4bc3cba53c9f038ab6e9ed964e22f1/nbformat-5.10.4-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/ab/b5/36c712098e6191d1b4e349304ef73a8d06aed77e56ceaac8c0a306c7bda1/jupyterlab_widgets-3.0.16-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/b0/73/6e1b01cbeb458807aa0831742232dbdd1fa92bfa33f52a3f176b4ff3dc11/multidict-6.7.1-cp313-cp313-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl
@@ -949,6 +949,7 @@ environments:
       - conda: https://conda.anaconda.org/knime/label/nightly/noarch/knime-extension-5.13.0-202609091611.conda
       - conda: https://conda.anaconda.org/knime/label/nightly/osx-64/knime-python-base-5.13.2-py313_202609041406.conda
       - conda: https://conda.anaconda.org/knime/label/nightly/osx-64/knime-python-versions-5.13.2-py313_202609041406.conda
+      - pypi: direct+https://github.com/knime-community/knime-geospatial-extension/releases/download/keplergl-0.3.7-wheel/keplergl-0.3.7-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/02/c3/253a89ee03fc9b9682f1541728eb66db7db22148cd94f89ab22528cd1e1b/deprecation-2.1.0-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/04/4b/29cac41a4d98d144bf5f6d33995617b185d14b22401f75ca86f384e87ff1/h11-0.16.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/05/7f/798705f5296a58ca505d600456748d1be48078eac8a7050d8a98bc9edb89/decorator-5.3.1-py3-none-any.whl
@@ -1011,7 +1012,6 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/9e/6a/a83720e953b1682d2d109d3c2dbb0bc9bf28cc1cbc205be4ef4be5da709d/jsonpointer-3.1.1-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/9e/c3/059298687310d527a58bb01f3b1965787ee3b40dce76752eda8b44e9a2c5/pexpect-4.9.0-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/9f/f2/2086ba18a925a73586c4d4e61d25f4a6058e56fd00d77ce8f1d361ab4c9b/cachetools-7.1.6-py3-none-any.whl
-      - pypi: https://files.pythonhosted.org/packages/a0/1e/adc9406362eba310840634c1482c016a49c60ab576daeeb4fee1c595ddae/keplergl-0.3.7.tar.gz
       - pypi: https://files.pythonhosted.org/packages/a4/9e/b818ee580026ec578138e961027a68820c40afeb1ec8f6819b54fb99e196/rpds_py-2026.6.3-cp313-cp313-macosx_10_12_x86_64.whl
       - pypi: https://files.pythonhosted.org/packages/a9/82/0340caa499416c78e5d8f5f05947ae4bc3cba53c9f038ab6e9ed964e22f1/nbformat-5.10.4-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/ab/b5/36c712098e6191d1b4e349304ef73a8d06aed77e56ceaac8c0a306c7bda1/jupyterlab_widgets-3.0.16-py3-none-any.whl
@@ -1316,6 +1316,7 @@ environments:
       - conda: https://conda.anaconda.org/knime/label/nightly/noarch/knime-extension-5.13.0-202609091611.conda
       - conda: https://conda.anaconda.org/knime/label/nightly/osx-arm64/knime-python-base-5.13.2-py312_202609041406.conda
       - conda: https://conda.anaconda.org/knime/label/nightly/osx-arm64/knime-python-versions-5.13.2-py313_202609041406.conda
+      - pypi: direct+https://github.com/knime-community/knime-geospatial-extension/releases/download/keplergl-0.3.7-wheel/keplergl-0.3.7-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/02/c3/253a89ee03fc9b9682f1541728eb66db7db22148cd94f89ab22528cd1e1b/deprecation-2.1.0-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/02/dc/c7043cab6fed8ae159fc1923ce829ada35c4dbd797d408a43858ffaf9639/tornado-6.5.7-cp39-abi3-macosx_10_9_universal2.whl
       - pypi: https://files.pythonhosted.org/packages/04/4b/29cac41a4d98d144bf5f6d33995617b185d14b22401f75ca86f384e87ff1/h11-0.16.0-py3-none-any.whl
@@ -1380,7 +1381,6 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/9e/6a/a83720e953b1682d2d109d3c2dbb0bc9bf28cc1cbc205be4ef4be5da709d/jsonpointer-3.1.1-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/9e/c3/059298687310d527a58bb01f3b1965787ee3b40dce76752eda8b44e9a2c5/pexpect-4.9.0-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/9f/f2/2086ba18a925a73586c4d4e61d25f4a6058e56fd00d77ce8f1d361ab4c9b/cachetools-7.1.6-py3-none-any.whl
-      - pypi: https://files.pythonhosted.org/packages/a0/1e/adc9406362eba310840634c1482c016a49c60ab576daeeb4fee1c595ddae/keplergl-0.3.7.tar.gz
       - pypi: https://files.pythonhosted.org/packages/a9/12/a6ba6482bb5ea3260c000c9b20881c95fa11c6b30173715668259f844ed7/propcache-0.5.2-cp313-cp313-macosx_11_0_arm64.whl
       - pypi: https://files.pythonhosted.org/packages/a9/82/0340caa499416c78e5d8f5f05947ae4bc3cba53c9f038ab6e9ed964e22f1/nbformat-5.10.4-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/ab/b5/36c712098e6191d1b4e349304ef73a8d06aed77e56ceaac8c0a306c7bda1/jupyterlab_widgets-3.0.16-py3-none-any.whl
@@ -1661,6 +1661,7 @@ environments:
       - conda: https://conda.anaconda.org/knime/label/nightly/noarch/knime-extension-5.13.0-202609091611.conda
       - conda: https://conda.anaconda.org/knime/label/nightly/win-64/knime-python-base-5.13.2-py312_202609041406.conda
       - conda: https://conda.anaconda.org/knime/label/nightly/win-64/knime-python-versions-5.13.2-py313_202609041406.conda
+      - pypi: direct+https://github.com/knime-community/knime-geospatial-extension/releases/download/keplergl-0.3.7-wheel/keplergl-0.3.7-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/02/c3/253a89ee03fc9b9682f1541728eb66db7db22148cd94f89ab22528cd1e1b/deprecation-2.1.0-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/04/4b/29cac41a4d98d144bf5f6d33995617b185d14b22401f75ca86f384e87ff1/h11-0.16.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/05/7f/798705f5296a58ca505d600456748d1be48078eac8a7050d8a98bc9edb89/decorator-5.3.1-py3-none-any.whl
@@ -1719,7 +1720,6 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/9e/51/17023c0f8f1869d8806b979a2bffa3f861f26a3f1a66b094288323fba52f/rfc3986_validator-0.1.1-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/9e/6a/a83720e953b1682d2d109d3c2dbb0bc9bf28cc1cbc205be4ef4be5da709d/jsonpointer-3.1.1-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/9f/f2/2086ba18a925a73586c4d4e61d25f4a6058e56fd00d77ce8f1d361ab4c9b/cachetools-7.1.6-py3-none-any.whl
-      - pypi: https://files.pythonhosted.org/packages/a0/1e/adc9406362eba310840634c1482c016a49c60ab576daeeb4fee1c595ddae/keplergl-0.3.7.tar.gz
       - pypi: https://files.pythonhosted.org/packages/a9/82/0340caa499416c78e5d8f5f05947ae4bc3cba53c9f038ab6e9ed964e22f1/nbformat-5.10.4-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/ab/b5/36c712098e6191d1b4e349304ef73a8d06aed77e56ceaac8c0a306c7bda1/jupyterlab_widgets-3.0.16-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/b1/dd/ead9d8ea85bf202d90cc513b533f9c363121c7792674f78e0d8a854b63b4/jupyterlab_pygments-0.3.0-py3-none-any.whl
@@ -2044,6 +2044,7 @@ environments:
       - conda: https://conda.anaconda.org/knime/label/nightly/linux-64/knime-python-base-5.13.2-py314_202609041406.conda
       - conda: https://conda.anaconda.org/knime/label/nightly/linux-64/knime-python-versions-5.13.2-py313_202609041406.conda
       - conda: https://conda.anaconda.org/knime/label/nightly/noarch/knime-extension-5.13.0-202609091611.conda
+      - pypi: direct+https://github.com/knime-community/knime-geospatial-extension/releases/download/keplergl-0.3.7-wheel/keplergl-0.3.7-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/01/b0/7226069e909fb54c9b799ea6f5ff97c500c689311bd0b81eabf22f5c6eec/geoarrow_c-0.3.1-cp313-cp313-manylinux_2_24_x86_64.manylinux_2_28_x86_64.whl
       - pypi: https://files.pythonhosted.org/packages/02/c3/253a89ee03fc9b9682f1541728eb66db7db22148cd94f89ab22528cd1e1b/deprecation-2.1.0-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/04/4b/29cac41a4d98d144bf5f6d33995617b185d14b22401f75ca86f384e87ff1/h11-0.16.0-py3-none-any.whl
@@ -2108,7 +2109,6 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/9e/6a/a83720e953b1682d2d109d3c2dbb0bc9bf28cc1cbc205be4ef4be5da709d/jsonpointer-3.1.1-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/9e/c3/059298687310d527a58bb01f3b1965787ee3b40dce76752eda8b44e9a2c5/pexpect-4.9.0-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/9f/f2/2086ba18a925a73586c4d4e61d25f4a6058e56fd00d77ce8f1d361ab4c9b/cachetools-7.1.6-py3-none-any.whl
-      - pypi: https://files.pythonhosted.org/packages/a0/1e/adc9406362eba310840634c1482c016a49c60ab576daeeb4fee1c595ddae/keplergl-0.3.7.tar.gz
       - pypi: https://files.pythonhosted.org/packages/a9/82/0340caa499416c78e5d8f5f05947ae4bc3cba53c9f038ab6e9ed964e22f1/nbformat-5.10.4-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/ab/b5/36c712098e6191d1b4e349304ef73a8d06aed77e56ceaac8c0a306c7bda1/jupyterlab_widgets-3.0.16-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/b0/73/6e1b01cbeb458807aa0831742232dbdd1fa92bfa33f52a3f176b4ff3dc11/multidict-6.7.1-cp313-cp313-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl
@@ -2411,6 +2411,7 @@ environments:
       - conda: https://conda.anaconda.org/knime/label/nightly/noarch/knime-extension-5.13.0-202609091611.conda
       - conda: https://conda.anaconda.org/knime/label/nightly/osx-64/knime-python-base-5.13.2-py313_202609041406.conda
       - conda: https://conda.anaconda.org/knime/label/nightly/osx-64/knime-python-versions-5.13.2-py313_202609041406.conda
+      - pypi: direct+https://github.com/knime-community/knime-geospatial-extension/releases/download/keplergl-0.3.7-wheel/keplergl-0.3.7-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/02/c3/253a89ee03fc9b9682f1541728eb66db7db22148cd94f89ab22528cd1e1b/deprecation-2.1.0-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/04/4b/29cac41a4d98d144bf5f6d33995617b185d14b22401f75ca86f384e87ff1/h11-0.16.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/05/7f/798705f5296a58ca505d600456748d1be48078eac8a7050d8a98bc9edb89/decorator-5.3.1-py3-none-any.whl
@@ -2474,7 +2475,6 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/9e/6a/a83720e953b1682d2d109d3c2dbb0bc9bf28cc1cbc205be4ef4be5da709d/jsonpointer-3.1.1-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/9e/c3/059298687310d527a58bb01f3b1965787ee3b40dce76752eda8b44e9a2c5/pexpect-4.9.0-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/9f/f2/2086ba18a925a73586c4d4e61d25f4a6058e56fd00d77ce8f1d361ab4c9b/cachetools-7.1.6-py3-none-any.whl
-      - pypi: https://files.pythonhosted.org/packages/a0/1e/adc9406362eba310840634c1482c016a49c60ab576daeeb4fee1c595ddae/keplergl-0.3.7.tar.gz
       - pypi: https://files.pythonhosted.org/packages/a4/9e/b818ee580026ec578138e961027a68820c40afeb1ec8f6819b54fb99e196/rpds_py-2026.6.3-cp313-cp313-macosx_10_12_x86_64.whl
       - pypi: https://files.pythonhosted.org/packages/a9/82/0340caa499416c78e5d8f5f05947ae4bc3cba53c9f038ab6e9ed964e22f1/nbformat-5.10.4-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/ab/b5/36c712098e6191d1b4e349304ef73a8d06aed77e56ceaac8c0a306c7bda1/jupyterlab_widgets-3.0.16-py3-none-any.whl
@@ -2778,6 +2778,7 @@ environments:
       - conda: https://conda.anaconda.org/knime/label/nightly/noarch/knime-extension-5.13.0-202609091611.conda
       - conda: https://conda.anaconda.org/knime/label/nightly/osx-arm64/knime-python-base-5.13.2-py312_202609041406.conda
       - conda: https://conda.anaconda.org/knime/label/nightly/osx-arm64/knime-python-versions-5.13.2-py313_202609041406.conda
+      - pypi: direct+https://github.com/knime-community/knime-geospatial-extension/releases/download/keplergl-0.3.7-wheel/keplergl-0.3.7-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/02/c3/253a89ee03fc9b9682f1541728eb66db7db22148cd94f89ab22528cd1e1b/deprecation-2.1.0-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/02/dc/c7043cab6fed8ae159fc1923ce829ada35c4dbd797d408a43858ffaf9639/tornado-6.5.7-cp39-abi3-macosx_10_9_universal2.whl
       - pypi: https://files.pythonhosted.org/packages/04/4b/29cac41a4d98d144bf5f6d33995617b185d14b22401f75ca86f384e87ff1/h11-0.16.0-py3-none-any.whl
@@ -2843,7 +2844,6 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/9e/6a/a83720e953b1682d2d109d3c2dbb0bc9bf28cc1cbc205be4ef4be5da709d/jsonpointer-3.1.1-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/9e/c3/059298687310d527a58bb01f3b1965787ee3b40dce76752eda8b44e9a2c5/pexpect-4.9.0-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/9f/f2/2086ba18a925a73586c4d4e61d25f4a6058e56fd00d77ce8f1d361ab4c9b/cachetools-7.1.6-py3-none-any.whl
-      - pypi: https://files.pythonhosted.org/packages/a0/1e/adc9406362eba310840634c1482c016a49c60ab576daeeb4fee1c595ddae/keplergl-0.3.7.tar.gz
       - pypi: https://files.pythonhosted.org/packages/a9/12/a6ba6482bb5ea3260c000c9b20881c95fa11c6b30173715668259f844ed7/propcache-0.5.2-cp313-cp313-macosx_11_0_arm64.whl
       - pypi: https://files.pythonhosted.org/packages/a9/82/0340caa499416c78e5d8f5f05947ae4bc3cba53c9f038ab6e9ed964e22f1/nbformat-5.10.4-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/ab/b5/36c712098e6191d1b4e349304ef73a8d06aed77e56ceaac8c0a306c7bda1/jupyterlab_widgets-3.0.16-py3-none-any.whl
@@ -3123,6 +3123,7 @@ environments:
       - conda: https://conda.anaconda.org/knime/label/nightly/noarch/knime-extension-5.13.0-202609091611.conda
       - conda: https://conda.anaconda.org/knime/label/nightly/win-64/knime-python-base-5.13.2-py312_202609041406.conda
       - conda: https://conda.anaconda.org/knime/label/nightly/win-64/knime-python-versions-5.13.2-py313_202609041406.conda
+      - pypi: direct+https://github.com/knime-community/knime-geospatial-extension/releases/download/keplergl-0.3.7-wheel/keplergl-0.3.7-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/02/c3/253a89ee03fc9b9682f1541728eb66db7db22148cd94f89ab22528cd1e1b/deprecation-2.1.0-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/04/4b/29cac41a4d98d144bf5f6d33995617b185d14b22401f75ca86f384e87ff1/h11-0.16.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/05/7f/798705f5296a58ca505d600456748d1be48078eac8a7050d8a98bc9edb89/decorator-5.3.1-py3-none-any.whl
@@ -3181,7 +3182,6 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/9e/51/17023c0f8f1869d8806b979a2bffa3f861f26a3f1a66b094288323fba52f/rfc3986_validator-0.1.1-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/9e/6a/a83720e953b1682d2d109d3c2dbb0bc9bf28cc1cbc205be4ef4be5da709d/jsonpointer-3.1.1-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/9f/f2/2086ba18a925a73586c4d4e61d25f4a6058e56fd00d77ce8f1d361ab4c9b/cachetools-7.1.6-py3-none-any.whl
-      - pypi: https://files.pythonhosted.org/packages/a0/1e/adc9406362eba310840634c1482c016a49c60ab576daeeb4fee1c595ddae/keplergl-0.3.7.tar.gz
       - pypi: https://files.pythonhosted.org/packages/a9/82/0340caa499416c78e5d8f5f05947ae4bc3cba53c9f038ab6e9ed964e22f1/nbformat-5.10.4-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/ab/b5/36c712098e6191d1b4e349304ef73a8d06aed77e56ceaac8c0a306c7bda1/jupyterlab_widgets-3.0.16-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/b1/dd/ead9d8ea85bf202d90cc513b533f9c363121c7792674f78e0d8a854b63b4/jupyterlab_pygments-0.3.0-py3-none-any.whl
@@ -19695,6 +19695,22 @@ packages:
   license: MIT
   size: 11976
   timestamp: 1788531010850
+- pypi: direct+https://github.com/knime-community/knime-geospatial-extension/releases/download/keplergl-0.3.7-wheel/keplergl-0.3.7-py2.py3-none-any.whl
+  name: keplergl
+  version: 0.3.7
+  requires_dist:
+  - ipywidgets>=8.1.5
+  - traittypes>=0.2.1
+  - traitlets>=4.3.2
+  - geopandas>=0.14.3
+  - shapely>=1.6.4.post2
+  - jupyter-packaging>=0.12.3
+  - jupyter>=1.0.0
+  - jupyterlab>=4.1.6
+  - notebook>=6.0.1
+  - pyarrow>=16.0.0
+  - geoarrow-pyarrow>=0.1.2
+  - geoarrow-pandas>=0.1.1
 - pypi: https://files.pythonhosted.org/packages/01/b0/7226069e909fb54c9b799ea6f5ff97c500c689311bd0b81eabf22f5c6eec/geoarrow_c-0.3.1-cp313-cp313-manylinux_2_24_x86_64.manylinux_2_28_x86_64.whl
   name: geoarrow-c
   version: 0.3.1
@@ -20730,23 +20746,6 @@ packages:
   version: 7.1.6
   sha256: 2c12e255780330af28b91bb7fb96cce4c766f04e38396b9a24510190a5827096
   requires_python: '>=3.10'
-- pypi: https://files.pythonhosted.org/packages/a0/1e/adc9406362eba310840634c1482c016a49c60ab576daeeb4fee1c595ddae/keplergl-0.3.7.tar.gz
-  name: keplergl
-  version: 0.3.7
-  sha256: 52357af658ff21cf478b18e8670f9ee39c295dfdfe72a8f00cfcc523a7979962
-  requires_dist:
-  - ipywidgets>=8.1.5
-  - traittypes>=0.2.1
-  - traitlets>=4.3.2
-  - geopandas>=0.14.3
-  - shapely>=1.6.4.post2
-  - jupyter-packaging>=0.12.3
-  - jupyter>=1.0.0
-  - jupyterlab>=4.1.6
-  - notebook>=6.0.1
-  - pyarrow>=16.0.0
-  - geoarrow-pyarrow>=0.1.2
-  - geoarrow-pandas>=0.1.1
 - pypi: https://files.pythonhosted.org/packages/a4/9e/b818ee580026ec578138e961027a68820c40afeb1ec8f6819b54fb99e196/rpds_py-2026.6.3-cp313-cp313-macosx_10_12_x86_64.whl
   name: rpds-py
   version: 2026.6.3

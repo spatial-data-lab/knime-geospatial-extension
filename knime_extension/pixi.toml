@@ -6,11 +6,6 @@ platforms = ["win-64", "linux-64", "osx-64", "osx-arm64"]
 [tasks]
 format = { cmd = "ruff format ." }
 
-[pypi-options]
-# keplergl 0.3.7's declared build deps (pyarrow~=16, notebook~=6, jupyterlab~=4) are
-# over-specified and unbuildable on py3.13; its setup.py only needs jupyter_packaging.
-no-build-isolation = ["keplergl"]
-
 [dependencies]
 python = "*"
 # The knime-* packages are the AP-side API binding, not ordinary libraries: they must
@@ -57,14 +52,13 @@ sympy = ">=1.13"
 [pypi-dependencies]
 ipinfo = ">=5.6"
 sodapy = ">=2.2"
-# keplergl 0.3.7 (kepler.gl 3.x). conda-forge only has 0.3.2, so this must come from PyPI.
-# It is an sdist but ships the prebuilt static assets (static/keplergl.html, index.js,
-# main.js) and jstargets exist, so setup.py's skip_if_exists short-circuits the yarn build
-# and it installs with plain setuptools. Built with no-build-isolation (see [pypi-options]):
-# its build-system.requires pins pyarrow~=16.0.0, which has no cp313 wheel and cannot build
-# from source under setuptools 82. NOTE: 0.3.7 still does `from pkg_resources import
+# keplergl 0.3.7 (kepler.gl 3.x). conda-forge only has 0.3.2 and PyPI ships 0.3.7 only as an
+# sdist, which pixi-pack (used by knime-extension-bundling) refuses: it packs wheels only.
+# The wheel below was built from that sdist with plain setuptools (the prebuilt static assets
+# ship in the sdist, so no yarn build runs) and is attached to the "keplergl-0.3.7-wheel"
+# release of the knime-community fork. NOTE: 0.3.7 still does `from pkg_resources import
 # resource_string`, so the pkg_resources shim in visualize.py is still required.
-keplergl = "==0.3.7"
+keplergl = { url = "https://github.com/knime-community/knime-geospatial-extension/releases/download/keplergl-0.3.7-wheel/keplergl-0.3.7-py2.py3-none-any.whl" }
 # New hard runtime imports in keplergl 0.3.7 (keplergl.py top level); 0.3.2 had neither.
 geoarrow-pyarrow = ">=0.1.2"
 geoarrow-pandas = ">=0.1.1"
