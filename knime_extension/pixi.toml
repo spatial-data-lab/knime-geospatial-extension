@@ -6,6 +6,9 @@ platforms = ["win-64", "linux-64", "osx-64", "osx-arm64"]
 [tasks]
 format = { cmd = "ruff format ." }
 
+# NOTE: lock this workspace with the pixi that knime-extension-bundling ships (0.70). Newer pixi
+# rewrites the [system-requirements] below into per-platform entries and names the lock sections
+# "osx-64-macos-15-0", which pixi 0.70 rejects -- the Jenkins build runs "pixi run --locked".
 [system-requirements]
 # pygeoda's Apple-silicon wheels are tagged macosx_15_0; below that the PyPI resolver falls back
 # to the sdist, which knime-extension-bundling (pixi-pack) cannot pack.
@@ -20,6 +23,11 @@ python = "*"
 knime-extension = "5.13.*"
 knime-python-base = "5.13.*"
 knime-python-versions = "5.13.*"   # geo-compatible build (icu-enabled libxml2 on osx-arm64)
+
+# argon2-cffi-bindings comes in transitively (keplergl -> jupyter/notebook). Its 26.x wheels on
+# PyPI cover macOS arm64 only, so the PyPI resolver falls back to the sdist on osx-64, which
+# knime-extension-bundling (pixi-pack) cannot pack. conda-forge has it built for all platforms.
+argon2-cffi-bindings = "*"
 
 # --- geospatial extension deps (bumped to py3.13) ---
 contextily = ">=1.6.2"
