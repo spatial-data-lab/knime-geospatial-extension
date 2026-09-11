@@ -14,9 +14,9 @@ no-build-isolation = ["keplergl"]
 [dependencies]
 python = "*"
 # The knime-* packages are the AP-side API binding, not ordinary libraries: they must
-# match the KNIME version this extension targets, so they are pinned to 5.12 rather than
+# match the KNIME version this extension targets, so they are pinned to 5.13 rather than
 # tracking latest. Left unbounded, the nightly channel drifts them to the next dev line
-# (5.13) and the extension silently gets built against an API the target AP does not have.
+# and the extension silently gets built against an API the target AP does not have.
 knime-extension = "5.13.*"
 knime-python-base = "5.13.*"
 knime-python-versions = "5.13.*"   # geo-compatible build (icu-enabled libxml2 on osx-arm64)

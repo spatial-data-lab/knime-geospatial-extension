@@ -246,6 +246,14 @@ class spatialWeights:
         self.geo_col = knut.column_exists_or_preset(
             configure_context, self.geo_col, input_schema_1, knut.is_geo
         )
+        # the parameter is only shown for this option, so it is only required then
+        if (
+            self.category == "Get spatial weights matrix from file"
+            and not self.Your_own_matrix_local_path.name
+        ):
+            raise knext.InvalidParametersError(
+                "Please select the file with the spatial weights matrix."
+            )
         return None
 
     def execute(self, exec_context: knext.ExecutionContext, input_1):

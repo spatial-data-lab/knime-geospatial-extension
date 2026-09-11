@@ -161,6 +161,7 @@ class GeoFileReaderNode:
         "Input file",
         "Select the file to read the data from or directly enter a remote URL.",
         placeholder_text="Select input file or enter URL...",
+        validator=knut.check_file_selected,
     )
 
     encoding = knext.EnumParameter(
@@ -304,6 +305,7 @@ class GeoFileWriterNode:
         "Select the file to save the data to.",
         placeholder_text="Select output file...",
         is_writer=True,
+        validator=knut.check_file_selected,
     )
 
     existing_file = knext.EnumParameter(
@@ -359,7 +361,7 @@ class GeoFileWriterNode:
         if self.dataformat == "Shapefile":
             target = knut.file_with_extension(self.data_url, ".shp")
             check_overwrite(target, self.existing_file)
-            self._write_file_set(gdf, target)
+            self._write_staged(target, self._to_file(gdf))
 
         elif self.dataformat == "GeoParquet":
             if self.parquet_compression == Compression.NONE.name:
@@ -376,42 +378,46 @@ class GeoFileWriterNode:
                 compression = "snappy"
             target = knut.file_with_extension(self.data_url, file_extension)
             check_overwrite(target, self.existing_file)
-            target.parent.mkdir()
-            with target.to_local(reupload=True) as local_file:
-                gdf.to_parquet(local_file, compression=compression)
+            self._write_staged(
+                target,
+                lambda local_file: gdf.to_parquet(local_file, compression=compression),
+            )
         elif self.dataformat == "GeoJSON":
             target = knut.file_with_extension(self.data_url, ".geojson")
             check_overwrite(target, self.existing_file)
-            target.parent.mkdir()
-            with target.to_local(reupload=True) as local_file:
-                if self.encoding == _EncodingOptions.AUTO.name:
-                    gdf.to_file(local_file)
-                else:
-                    gdf.to_file(local_file, driver="GeoJSON", encoding=self.encoding)
+            self._write_staged(target, self._to_file(gdf, driver="GeoJSON"))
         else:
             target = knut.file_with_extension(self.data_url, ".gml")
             check_overwrite(target, self.existing_file)
-            self._write_file_set(gdf, target, driver="GML")
+            self._write_staged(target, self._to_file(gdf, driver="GML"))
         return None
 
-    def _write_file_set(self, gdf, target, driver=None):
+    def _write_staged(self, target, write):
         """
-        Writes the GeoDataFrame into a local staging directory and then writes every file
-        it produced to the target location, since the Shapefile and GML formats consist
-        of a set of files, e.g. .shp, .shx, .dbf and .prj.
+        Writes into a local staging directory and then writes every produced file to the
+        target location: an existing target is not downloaded just to be overwritten, and
+        the formats that consist of several files (Shapefile, GML) arrive complete.
         """
         import pathlib
         import tempfile
 
         with tempfile.TemporaryDirectory() as staging:
             local_file = pathlib.Path(staging) / target.name
+            write(local_file)
+            knut.write_file_set(local_file, target)
+
+    def _to_file(self, gdf, driver=None):
+        """Returns a writer that calls ``gdf.to_file`` with the node's encoding setting."""
+
+        def write(local_file):
             if self.encoding == _EncodingOptions.AUTO.name:
                 gdf.to_file(local_file)
             elif driver is None:
                 gdf.to_file(local_file, encoding=self.encoding)
             else:
                 gdf.to_file(local_file, driver=driver, encoding=self.encoding)
-            knut.write_file_set(local_file, target)
+
+        return write
 
 
 ############################################
@@ -457,6 +463,7 @@ class GeoPackageReaderNode:
         "directly enter a remote URL.",
         placeholder_text="Select input file or enter URL...",
         selection_mode=knext.FileSelectionMode.FILE_OR_FOLDER,
+        validator=knut.check_file_selected,
     )
 
     data_layer = knext.StringParameter(
@@ -562,6 +569,7 @@ class GeoPackageWriterNode:
         placeholder_text="Select output file...",
         is_writer=True,
         file_extension="gpkg",
+        validator=knut.check_file_selected,
     )
 
     data_layer = knext.StringParameter(
