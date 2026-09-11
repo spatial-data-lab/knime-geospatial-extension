@@ -1687,6 +1687,7 @@ class DataverseFileDownloaderNode:
         description="Select the file to save the downloaded data to.",
         placeholder_text="Select output file...",
         is_writer=True,
+        validator=knut.check_file_selected,
     )
 
     timeout = knext.IntParameter(

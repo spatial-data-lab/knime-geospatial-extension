@@ -1,4 +1,5 @@
 import contextlib
+import glob
 import logging
 from typing import Callable
 from typing import List
@@ -638,6 +639,16 @@ def ensure_file_extension(file_name: str, file_extension: str) -> str:
     return file_name + file_extension
 
 
+def check_file_selected(file: knext.File) -> None:
+    """
+    Validator for a FileSelectionParameter: fails already in configure when nothing was
+    selected, instead of during execution - or, for a folder selection, after staging a
+    whole folder that was never meant to be read.
+    """
+    if not file.name:
+        raise knext.InvalidParametersError("Please select a file.")
+
+
 def file_with_extension(file: knext.File, file_extension: str) -> knext.File:
     """
     Returns the given file with the given file extension appended to its name if the name
@@ -727,7 +738,7 @@ def write_file_set(local_file, target: knext.File) -> None:
         target (knext.File): The file to write it to.
     """
     target.parent.mkdir()
-    for produced in sorted(local_file.parent.glob(local_file.stem + ".*")):
+    for produced in sorted(local_file.parent.glob(glob.escape(local_file.stem) + ".*")):
         target.with_name(produced.name).read_from(produced)
 
 
