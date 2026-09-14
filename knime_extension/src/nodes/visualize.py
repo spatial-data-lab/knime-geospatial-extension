@@ -594,7 +594,7 @@ class BaseMapSettings:
         "Disable scroll zoom",
         "If checked, disables scroll wheel zoom on the map.",
         default_value=False,
-        since_version="2.2.0",
+        since_version="2.1.0",
     )
 
 
@@ -623,7 +623,7 @@ class StaticBaseMapCxSettings:
     )
 
 
-@knext.parameter_group(label="Label Settings", since_version="2.2.0")
+@knext.parameter_group(label="Label Settings", since_version="2.1.0")
 class LabelSettings:
     """Settings for displaying labels on points and polygons."""
 
