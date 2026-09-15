@@ -167,7 +167,6 @@ class GeoFileReaderNode2:
         "Input file",
         "Select the file to read the data from or directly enter a remote URL.",
         placeholder_text="Select input file or enter URL...",
-        validator=knut.check_file_selected,
     ).rule(
         knext.DialogContextCondition(lambda ctx: not knut.is_file_system_connected(ctx)),
         knext.Effect.SHOW,
@@ -178,7 +177,6 @@ class GeoFileReaderNode2:
         "Select the file to read the data from on the connected file system.",
         placeholder_text="Select input file...",
         connected_port_index=0,
-        validator=knut.check_file_selected,
     ).rule(
         knext.DialogContextCondition(knut.is_file_system_connected),
         knext.Effect.SHOW,
@@ -193,11 +191,14 @@ class GeoFileReaderNode2:
         is_advanced=True,
     )
 
-    def configure(self, configure_context):
+    def configure(self, configure_context, fs_connection):
+        knut.check_file_selected(
+            knut.resolve_connected_file(self.data_url, self.data_url_connected)
+        )
         # TODO Create combined schema
         return None
 
-    def execute(self, exec_context: knext.ExecutionContext):
+    def execute(self, exec_context: knext.ExecutionContext, fs_connection):
         exec_context.set_progress(
             0.4, "Reading file (This might take a while without progress changes)"
         )
@@ -321,6 +322,8 @@ class GeoFileWriterNode2:
     geo_col = knext.ColumnParameter(
         "Geometry column",
         "Select the geometry column for Geodata.",
+        # port 0 is the optional file system connection, the input table is port 1
+        port_index=1,
         # Allow only GeoValue compatible columns
         column_filter=knut.is_geo,
         include_row_key=False,
@@ -332,7 +335,6 @@ class GeoFileWriterNode2:
         "Select the file to save the data to.",
         placeholder_text="Select output file...",
         is_writer=True,
-        validator=knut.check_file_selected,
     ).rule(
         knext.DialogContextCondition(lambda ctx: not knut.is_file_system_connected(ctx)),
         knext.Effect.SHOW,
@@ -344,7 +346,6 @@ class GeoFileWriterNode2:
         placeholder_text="Select output file...",
         is_writer=True,
         connected_port_index=0,
-        validator=knut.check_file_selected,
     ).rule(
         knext.DialogContextCondition(knut.is_file_system_connected),
         knext.Effect.SHOW,
@@ -386,13 +387,16 @@ class GeoFileWriterNode2:
         is_advanced=True,
     )
 
-    def configure(self, configure_context, input_schema):
+    def configure(self, configure_context, fs_connection, input_schema):
         self.geo_col = knut.column_exists_or_preset(
             configure_context, self.geo_col, input_schema, knut.is_geo
         )
+        knut.check_file_selected(
+            knut.resolve_connected_file(self.data_url, self.data_url_connected)
+        )
         return None
 
-    def execute(self, exec_context: knext.ExecutionContext, input_1):
+    def execute(self, exec_context: knext.ExecutionContext, fs_connection, input_1):
         exec_context.set_progress(
             0.4, "Writing file (This might take a while without progress changes)"
         )
@@ -512,7 +516,6 @@ class GeoPackageReaderNode2:
         "directly enter a remote URL.",
         placeholder_text="Select input file or enter URL...",
         selection_mode=knext.FileSelectionMode.FILE_OR_FOLDER,
-        validator=knut.check_file_selected,
     ).rule(
         knext.DialogContextCondition(lambda ctx: not knut.is_file_system_connected(ctx)),
         knext.Effect.SHOW,
@@ -525,7 +528,6 @@ class GeoPackageReaderNode2:
         placeholder_text="Select input file...",
         selection_mode=knext.FileSelectionMode.FILE_OR_FOLDER,
         connected_port_index=0,
-        validator=knut.check_file_selected,
     ).rule(
         knext.DialogContextCondition(knut.is_file_system_connected),
         knext.Effect.SHOW,
@@ -546,11 +548,14 @@ class GeoPackageReaderNode2:
         is_advanced=True,
     )
 
-    def configure(self, configure_context):
+    def configure(self, configure_context, fs_connection):
+        knut.check_file_selected(
+            knut.resolve_connected_file(self.data_url, self.data_url_connected)
+        )
         # TODO Create combined schema
         return None
 
-    def execute(self, exec_context: knext.ExecutionContext):
+    def execute(self, exec_context: knext.ExecutionContext, fs_connection):
         exec_context.set_progress(
             0.4, "Reading file (This might take a while without progress changes)"
         )
@@ -629,6 +634,8 @@ class GeoPackageWriterNode2:
     geo_col = knext.ColumnParameter(
         "Geometry column",
         "Select the geometry column for Geodata.",
+        # port 0 is the optional file system connection, the input table is port 1
+        port_index=1,
         # Allow only GeoValue compatible columns
         column_filter=knut.is_geo,
         include_row_key=False,
@@ -641,7 +648,6 @@ class GeoPackageWriterNode2:
         placeholder_text="Select output file...",
         is_writer=True,
         file_extension="gpkg",
-        validator=knut.check_file_selected,
     ).rule(
         knext.DialogContextCondition(lambda ctx: not knut.is_file_system_connected(ctx)),
         knext.Effect.SHOW,
@@ -654,7 +660,6 @@ class GeoPackageWriterNode2:
         is_writer=True,
         file_extension="gpkg",
         connected_port_index=0,
-        validator=knut.check_file_selected,
     ).rule(
         knext.DialogContextCondition(knut.is_file_system_connected),
         knext.Effect.SHOW,
@@ -687,13 +692,16 @@ class GeoPackageWriterNode2:
         since_version="1.4.0",
     )
 
-    def configure(self, configure_context, input_schema):
+    def configure(self, configure_context, fs_connection, input_schema):
         self.geo_col = knut.column_exists_or_preset(
             configure_context, self.geo_col, input_schema, knut.is_geo
         )
+        knut.check_file_selected(
+            knut.resolve_connected_file(self.data_url, self.data_url_connected)
+        )
         return None
 
-    def execute(self, exec_context: knext.ExecutionContext, input_1):
+    def execute(self, exec_context: knext.ExecutionContext, fs_connection, input_1):
         exec_context.set_progress(
             0.4, "Writing file (This might take a while without progress changes)"
         )

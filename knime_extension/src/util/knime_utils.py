@@ -61,38 +61,46 @@ DEF_GEO_COL_NAME = "geometry"
 def geo_point_col_parameter(
     label: str = __DEF_GEO_COL_LABEL,
     description: str = __DEF_GEO_COL_DESC,
+    port_index: int = 0,
 ) -> knext.ColumnParameter:
     """
     Returns a column selection parameter that only supports GeoPoint columns.
     @return: Column selection parameter for point columns
     """
-    return typed_geo_col_parameter(label, description, is_geo_point)
+    return typed_geo_col_parameter(label, description, is_geo_point, port_index)
 
 
 def geo_col_parameter(
     label: str = __DEF_GEO_COL_LABEL,
     description: str = __DEF_GEO_COL_DESC,
+    port_index: int = 0,
 ) -> knext.ColumnParameter:
     """
     Returns a column selection parameter that supports Geo columns.
     @return: Column selection parameter for all Geo columns
     """
-    return typed_geo_col_parameter(label, description, is_geo)
+    return typed_geo_col_parameter(label, description, is_geo, port_index)
 
 
 def typed_geo_col_parameter(
     label: str = __DEF_GEO_COL_LABEL,
     description: str = __DEF_GEO_COL_DESC,
     type_filter: Callable[[knext.Column], bool] = None,
+    port_index: int = 0,
 ) -> knext.ColumnParameter:
     """
     Returns a column selection parameter that allows the user to select all columns that are compatible with
     the provided type filter.
+
+    port_index : the input port to select columns from - the input table port, if it is
+        not the node's first input port (e.g. an optional file system connection port
+        comes before it).
     @return: Column selection parameter
     """
     return knext.ColumnParameter(
         label=label,
         description=description,
+        port_index=port_index,
         column_filter=type_filter,
         include_row_key=False,
         include_none_column=False,
@@ -641,9 +649,16 @@ def ensure_file_extension(file_name: str, file_extension: str) -> str:
 
 def check_file_selected(file: knext.File) -> None:
     """
-    Validator for a FileSelectionParameter: fails already in configure when nothing was
-    selected, instead of during execution - or, for a folder selection, after staging a
-    whole folder that was never meant to be read.
+    Raises knext.InvalidParametersError if no file was selected. Call this from a
+    node's configure() so it fails already in configure, instead of during execution -
+    or, for a folder selection, after staging a whole folder that was never meant to be
+    read.
+
+    Do NOT pass this as a FileSelectionParameter's own ``validator=``: KNIME also runs
+    a parameter's validator while injecting its still-empty default value right after
+    the node is dropped, before configure() ever gets a chance to run - and on that
+    path InvalidParametersError is not caught, so it surfaces as a raw Python
+    traceback instead of the friendly one-line message configure() gets.
     """
     if not file.name:
         raise knext.InvalidParametersError("Please select a file.")

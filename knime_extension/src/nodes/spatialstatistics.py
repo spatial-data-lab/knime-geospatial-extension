@@ -103,17 +103,20 @@ class spatialWeights2:
     """
 
     geo_col = knut.geo_col_parameter(
-        description="The name of the geometry column in the input data."
+        description="The name of the geometry column in the input data.",
+        # port 0 is the optional file system connection, the input table is port 1
+        port_index=1,
     )
 
     id_col = knext.ColumnParameter(
         "ID column",
         """Select the column which contains for each observation in the input data a unique ID, it should be an integer column.
-        If 'none' is selected, the IDs will be automatically generated from 0 to the number of rows flowing 
+        If 'none' is selected, the IDs will be automatically generated from 0 to the number of rows flowing
         the order of the input data.
-        The IDs of this column must match with the values of the ID column selected in subsequent ESDA or spatial 
+        The IDs of this column must match with the values of the ID column selected in subsequent ESDA or spatial
         modeling nodes.
         """,
+        port_index=1,
         include_none_column=True,
         column_filter=knut.is_long,
         since_version="1.1.0",
@@ -268,7 +271,7 @@ class spatialWeights2:
         knext.Effect.SHOW,
     )
 
-    def configure(self, configure_context, input_schema_1):
+    def configure(self, configure_context, fs_connection, input_schema_1):
         self.geo_col = knut.column_exists_or_preset(
             configure_context, self.geo_col, input_schema_1, knut.is_geo
         )
@@ -282,7 +285,7 @@ class spatialWeights2:
             )
         return None
 
-    def execute(self, exec_context: knext.ExecutionContext, input_1):
+    def execute(self, exec_context: knext.ExecutionContext, fs_connection, input_1):
         gdf = gp.GeoDataFrame(input_1.to_pandas(), geometry=self.geo_col)
 
         gdf.index = range(len(gdf))
