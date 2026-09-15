@@ -127,6 +127,12 @@ class _EncodingOptions(knext.EnumParameterOptions):
     category=__category,
     after="",
 )
+@knext.input_port(
+    knut.FS_CONNECTION_PORT_NAME,
+    knut.FS_CONNECTION_PORT_DESCRIPTION,
+    knext.PortType.FILE_SYSTEM,
+    optional=True,
+)
 @knext.output_table(
     name="Geodata table",
     description="Geodata from the input file.",
@@ -162,6 +168,20 @@ class GeoFileReaderNode2:
         "Select the file to read the data from or directly enter a remote URL.",
         placeholder_text="Select input file or enter URL...",
         validator=knut.check_file_selected,
+    ).rule(
+        knext.DialogContextCondition(lambda ctx: not knut.is_file_system_connected(ctx)),
+        knext.Effect.SHOW,
+    )
+
+    data_url_connected = knext.FileSelectionParameter(
+        "Input file",
+        "Select the file to read the data from on the connected file system.",
+        placeholder_text="Select input file...",
+        connected_port_index=0,
+        validator=knut.check_file_selected,
+    ).rule(
+        knext.DialogContextCondition(knut.is_file_system_connected),
+        knext.Effect.SHOW,
     )
 
     encoding = knext.EnumParameter(
@@ -182,13 +202,14 @@ class GeoFileReaderNode2:
             0.4, "Reading file (This might take a while without progress changes)"
         )
 
-        file_name = self.data_url.name.lower()
-        if knut.is_web_url(self.data_url):
-            return self._read_data(self.data_url.path, file_name)
+        data_url = knut.resolve_connected_file(self.data_url, self.data_url_connected)
+        file_name = data_url.name.lower()
+        if knut.is_web_url(data_url):
+            return self._read_data(data_url.path, file_name)
         if file_name.endswith(".shp"):
-            with knut.shapefile_to_local(self.data_url) as local_path:
+            with knut.shapefile_to_local(data_url) as local_path:
                 return self._read_data(str(local_path), file_name)
-        with self.data_url.to_local() as local_path:
+        with data_url.to_local() as local_path:
             return self._read_data(str(local_path), file_name)
 
     def _read_data(self, data_path: str, file_name: str):
@@ -272,6 +293,12 @@ class GeoFileReaderNode2:
     category=__category,
     after="",
 )
+@knext.input_port(
+    knut.FS_CONNECTION_PORT_NAME,
+    knut.FS_CONNECTION_PORT_DESCRIPTION,
+    knext.PortType.FILE_SYSTEM,
+    optional=True,
+)
 @knext.input_table(
     name="Geodata table",
     description="Geodata from the input portal.",
@@ -306,6 +333,21 @@ class GeoFileWriterNode2:
         placeholder_text="Select output file...",
         is_writer=True,
         validator=knut.check_file_selected,
+    ).rule(
+        knext.DialogContextCondition(lambda ctx: not knut.is_file_system_connected(ctx)),
+        knext.Effect.SHOW,
+    )
+
+    data_url_connected = knext.FileSelectionParameter(
+        "Output file",
+        "Select the file to save the data to on the connected file system.",
+        placeholder_text="Select output file...",
+        is_writer=True,
+        connected_port_index=0,
+        validator=knut.check_file_selected,
+    ).rule(
+        knext.DialogContextCondition(knut.is_file_system_connected),
+        knext.Effect.SHOW,
     )
 
     existing_file = knext.EnumParameter(
@@ -355,11 +397,12 @@ class GeoFileWriterNode2:
             0.4, "Writing file (This might take a while without progress changes)"
         )
 
+        data_url = knut.resolve_connected_file(self.data_url, self.data_url_connected)
         gdf = gp.GeoDataFrame(input_1.to_pandas(), geometry=self.geo_col)
         gdf = clean_dataframe(gdf)
 
         if self.dataformat == "Shapefile":
-            target = knut.file_with_extension(self.data_url, ".shp")
+            target = knut.file_with_extension(data_url, ".shp")
             check_overwrite(target, self.existing_file)
             self._write_staged(target, self._to_file(gdf))
 
@@ -376,18 +419,18 @@ class GeoFileWriterNode2:
             elif self.parquet_compression == Compression.SNAPPY.name:
                 file_extension = ".parquet.snappy"
                 compression = "snappy"
-            target = knut.file_with_extension(self.data_url, file_extension)
+            target = knut.file_with_extension(data_url, file_extension)
             check_overwrite(target, self.existing_file)
             self._write_staged(
                 target,
                 lambda local_file: gdf.to_parquet(local_file, compression=compression),
             )
         elif self.dataformat == "GeoJSON":
-            target = knut.file_with_extension(self.data_url, ".geojson")
+            target = knut.file_with_extension(data_url, ".geojson")
             check_overwrite(target, self.existing_file)
             self._write_staged(target, self._to_file(gdf, driver="GeoJSON"))
         else:
-            target = knut.file_with_extension(self.data_url, ".gml")
+            target = knut.file_with_extension(data_url, ".gml")
             check_overwrite(target, self.existing_file)
             self._write_staged(target, self._to_file(gdf, driver="GML"))
         return None
@@ -430,6 +473,12 @@ class GeoFileWriterNode2:
     category=__category,
     after="",
 )
+@knext.input_port(
+    knut.FS_CONNECTION_PORT_NAME,
+    knut.FS_CONNECTION_PORT_DESCRIPTION,
+    knext.PortType.FILE_SYSTEM,
+    optional=True,
+)
 @knext.output_table(
     name="Geodata table",
     description="Geodata from the input file path.",
@@ -464,6 +513,22 @@ class GeoPackageReaderNode2:
         placeholder_text="Select input file or enter URL...",
         selection_mode=knext.FileSelectionMode.FILE_OR_FOLDER,
         validator=knut.check_file_selected,
+    ).rule(
+        knext.DialogContextCondition(lambda ctx: not knut.is_file_system_connected(ctx)),
+        knext.Effect.SHOW,
+    )
+
+    data_url_connected = knext.FileSelectionParameter(
+        "Input file",
+        "Select the GeoPackage file or GeoDatabase folder to read the data from on "
+        "the connected file system.",
+        placeholder_text="Select input file...",
+        selection_mode=knext.FileSelectionMode.FILE_OR_FOLDER,
+        connected_port_index=0,
+        validator=knut.check_file_selected,
+    ).rule(
+        knext.DialogContextCondition(knut.is_file_system_connected),
+        knext.Effect.SHOW,
     )
 
     data_layer = knext.StringParameter(
@@ -489,9 +554,10 @@ class GeoPackageReaderNode2:
         exec_context.set_progress(
             0.4, "Reading file (This might take a while without progress changes)"
         )
-        if knut.is_web_url(self.data_url):
-            return self._read_data(self.data_url.path)
-        with self.data_url.to_local() as local_path:
+        data_url = knut.resolve_connected_file(self.data_url, self.data_url_connected)
+        if knut.is_web_url(data_url):
+            return self._read_data(data_url.path)
+        with data_url.to_local() as local_path:
             return self._read_data(str(local_path))
 
     def _read_data(self, data_path: str):
@@ -537,6 +603,12 @@ class GeoPackageReaderNode2:
     category=__category,
     after="",
 )
+@knext.input_port(
+    knut.FS_CONNECTION_PORT_NAME,
+    knut.FS_CONNECTION_PORT_DESCRIPTION,
+    knext.PortType.FILE_SYSTEM,
+    optional=True,
+)
 @knext.input_table(
     name="Geodata table",
     description="Geodata from the input file path.",
@@ -570,6 +642,22 @@ class GeoPackageWriterNode2:
         is_writer=True,
         file_extension="gpkg",
         validator=knut.check_file_selected,
+    ).rule(
+        knext.DialogContextCondition(lambda ctx: not knut.is_file_system_connected(ctx)),
+        knext.Effect.SHOW,
+    )
+
+    data_url_connected = knext.FileSelectionParameter(
+        "Output file",
+        "Select the file to save the data to on the connected file system.",
+        placeholder_text="Select output file...",
+        is_writer=True,
+        file_extension="gpkg",
+        connected_port_index=0,
+        validator=knut.check_file_selected,
+    ).rule(
+        knext.DialogContextCondition(knut.is_file_system_connected),
+        knext.Effect.SHOW,
     )
 
     data_layer = knext.StringParameter(
@@ -610,7 +698,8 @@ class GeoPackageWriterNode2:
             0.4, "Writing file (This might take a while without progress changes)"
         )
 
-        target = knut.file_with_extension(self.data_url, ".gpkg")
+        data_url = knut.resolve_connected_file(self.data_url, self.data_url_connected)
+        target = knut.file_with_extension(data_url, ".gpkg")
         check_overwrite(target, self.existing_file)
         target.parent.mkdir()
 

@@ -668,6 +668,39 @@ def is_web_url(file: knext.File) -> bool:
     )
 
 
+FS_CONNECTION_PORT_NAME = "File system connection"
+FS_CONNECTION_PORT_DESCRIPTION = (
+    "An optional file system connection, e.g. from an SSH Connector or similar node. "
+    "If connected, the file can be selected on that file system in addition to the "
+    "options offered otherwise."
+)
+"""Name/description for the optional knext.PortType.FILE_SYSTEM input port used
+together with is_file_system_connected() and a connected_port_index FileSelectionParameter."""
+
+
+def is_file_system_connected(ctx, port_index: int = 0) -> bool:
+    """
+    Whether the file system connection input port at the given index - added via
+    ``@knext.input_port(..., knext.PortType.FILE_SYSTEM, optional=True)`` - is
+    connected. Meant for a FileSelectionParameter's ``.rule()`` together with
+    ``knext.DialogContextCondition``, to show a ``connected_port_index`` parameter
+    only while the port it refers to is actually connected.
+    """
+    specs = ctx.get_input_specs()
+    return port_index < len(specs) and specs[port_index] is not None
+
+
+def resolve_connected_file(regular: knext.File, connected: knext.File) -> knext.File:
+    """
+    Picks which of a node's two file parameters to use: the one bound to the file
+    system connection input port (connected_port_index) if it was set, otherwise the
+    regular one. Both parameters exist for the whole lifetime of the node - only one
+    is shown at a time, based on is_file_system_connected() - so this is the
+    execute()/configure() side counterpart of that dialog rule.
+    """
+    return connected if connected.name else regular
+
+
 SHAPEFILE_SIDECAR_SUFFIXES = (
     ".shx",
     ".dbf",

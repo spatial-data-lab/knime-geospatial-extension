@@ -89,6 +89,12 @@ def get_id_col_parameter(
     category=__category,
     after="",
 )
+@knext.input_port(
+    knut.FS_CONNECTION_PORT_NAME,
+    knut.FS_CONNECTION_PORT_DESCRIPTION,
+    knext.PortType.FILE_SYSTEM,
+    optional=True,
+)
 @knext.input_table(name="Geo table", description="Table with geometry column.")
 @knext.output_table(name="Spatial Weights", description="Spatial Weights.")
 class spatialWeights2:
@@ -238,7 +244,27 @@ class spatialWeights2:
         matrix must be in matrix format and in the order of the samples.""",
         file_extensions=["csv"],
     ).rule(
-        knext.OneOf(category, ["Get spatial weights matrix from file"]),
+        knext.And(
+            knext.OneOf(category, ["Get spatial weights matrix from file"]),
+            knext.DialogContextCondition(
+                lambda ctx: not knut.is_file_system_connected(ctx)
+            ),
+        ),
+        knext.Effect.SHOW,
+    )
+
+    Your_own_matrix_connected_path = knext.FileSelectionParameter(
+        "Get spatial weights matrix from file",
+        """The file with a user-defined spatial weights matrix in CSV format, on the
+        connected file system. The weights matrix must be in matrix format and in the
+        order of the samples.""",
+        file_extensions=["csv"],
+        connected_port_index=0,
+    ).rule(
+        knext.And(
+            knext.OneOf(category, ["Get spatial weights matrix from file"]),
+            knext.DialogContextCondition(knut.is_file_system_connected),
+        ),
         knext.Effect.SHOW,
     )
 
@@ -247,10 +273,10 @@ class spatialWeights2:
             configure_context, self.geo_col, input_schema_1, knut.is_geo
         )
         # the parameter is only shown for this option, so it is only required then
-        if (
-            self.category == "Get spatial weights matrix from file"
-            and not self.Your_own_matrix_local_path.name
-        ):
+        matrix_path = knut.resolve_connected_file(
+            self.Your_own_matrix_local_path, self.Your_own_matrix_connected_path
+        )
+        if self.category == "Get spatial weights matrix from file" and not matrix_path.name:
             raise knext.InvalidParametersError(
                 "Please select the file with the spatial weights matrix."
             )
@@ -308,7 +334,10 @@ class spatialWeights2:
             import pandas as pd
             import numpy as np
 
-            with self.Your_own_matrix_local_path.to_local() as local_path:
+            matrix_path = knut.resolve_connected_file(
+                self.Your_own_matrix_local_path, self.Your_own_matrix_connected_path
+            )
+            with matrix_path.to_local() as local_path:
                 z = pd.read_csv(local_path, header=None)
             zz = np.array(z)
 
