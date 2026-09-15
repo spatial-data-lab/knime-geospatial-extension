@@ -156,7 +156,7 @@ load a GeoJSON file from [geojson.xyz](http://geojson.xyz/) you would enter
         "Read Parquet": "https://geopandas.org/en/stable/docs/reference/api/geopandas.read_parquet.html",
     },
 )
-class GeoFileReaderNode:
+class GeoFileReaderNode2:
     data_url = knext.FileSelectionParameter(
         "Input file",
         "Select the file to read the data from or directly enter a remote URL.",
@@ -289,7 +289,7 @@ depending on the selected file format if not specified.""",
         "To Parquet": "https://geopandas.org/en/stable/docs/reference/api/geopandas.GeoDataFrame.to_parquet.html",
     },
 )
-class GeoFileWriterNode:
+class GeoFileWriterNode2:
 
     geo_col = knext.ColumnParameter(
         "Geometry column",
@@ -456,7 +456,7 @@ The node can load resources directly from a web URL e.g.
         "Read file": "https://geopandas.org/en/stable/docs/reference/api/geopandas.read_file.html",
     },
 )
-class GeoPackageReaderNode:
+class GeoPackageReaderNode2:
     data_url = knext.FileSelectionParameter(
         "Input file",
         "Select the GeoPackage file or GeoDatabase folder to read the data from, or "
@@ -553,7 +553,7 @@ as layer into an existing file.
         "To file": "https://geopandas.org/en/stable/docs/reference/api/geopandas.GeoDataFrame.to_file.html",
     },
 )
-class GeoPackageWriterNode:
+class GeoPackageWriterNode2:
     geo_col = knext.ColumnParameter(
         "Geometry column",
         "Select the geometry column for Geodata.",

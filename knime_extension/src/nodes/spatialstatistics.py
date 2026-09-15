@@ -91,7 +91,7 @@ def get_id_col_parameter(
 )
 @knext.input_table(name="Geo table", description="Table with geometry column.")
 @knext.output_table(name="Spatial Weights", description="Spatial Weights.")
-class spatialWeights:
+class spatialWeights2:
     """Constructs a contiguity spatial weights matrix from the input data.
     This node constructs a contiguity spatial weights matrix from the input data.
     """
