@@ -612,7 +612,6 @@ class GeoPackageWriterNode2:
 
         target = knut.file_with_extension(self.data_url, ".gpkg")
         check_overwrite(target, self.existing_file)
-        target.parent.mkdir()
 
         gdf = gp.GeoDataFrame(input_1.to_pandas(), geometry=self.geo_col)
         gdf = gdf.reset_index(drop=True)
