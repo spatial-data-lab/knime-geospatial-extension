@@ -1097,7 +1097,14 @@ class OpenSkyNetworkDataNode:
         if len(self.user) != 0 and len(self.password) != 0:
             kws["auth"] = (self.user, self.password)
 
-        response = requests.get(**kws)
+        try:
+            response = requests.get(**kws)
+        except requests.exceptions.ConnectTimeout as e:
+            raise RuntimeError(
+                "Could not connect to opensky-network.org. OpenSky blocks requests from "
+                "cloud providers such as AWS, so this node does not work on cloud-hosted "
+                "executors."
+            ) from e
         json_data = response.json()
         states = pd.DataFrame(
             json_data["states"],
